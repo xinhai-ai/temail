@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Filter, Forward, Globe, Hash, Mail, MessageCircle, PencilLine } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Filter, Forward, Globe, Hash, Mail, MessageCircle, PencilLine, TestTube } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   ForwardConditionTreeEditor,
@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -225,6 +226,13 @@ export default function NewForwardRulePage() {
   const [templateWebhookBody, setTemplateWebhookBody] = useState("");
   const [templateContentType, setTemplateContentType] = useState("");
 
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [testResult, setTestResult] = useState<unknown>(null);
+  const [testPayload, setTestPayload] = useState<{ config: string; targets: CreateTargetPayload[] } | null>(null);
+  const [testingTargetId, setTestingTargetId] = useState<string | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testTargetLabel, setTestTargetLabel] = useState<string | null>(null);
+
   useEffect(() => {
     const run = async () => {
       try {
@@ -366,6 +374,89 @@ export default function NewForwardRulePage() {
       toast.error(error instanceof Error ? error.message : "Invalid configuration");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestTarget = async (target: TargetDraft) => {
+    setTestingTargetId(target.clientId);
+    try {
+      const config = buildRuleConfig({
+        conditionTree,
+        templateText,
+        templateSubject,
+        templateHtml,
+        templateWebhookBody,
+        templateContentType,
+      });
+
+      const builtTargets = buildTargets([target]);
+      const label = (() => {
+        switch (target.type) {
+          case "EMAIL":
+            return target.to?.trim() ? `Email → ${target.to.trim()}` : "Email";
+          case "TELEGRAM":
+            return target.chatId?.trim() ? `Telegram → ${target.chatId.trim()}` : "Telegram";
+          case "DISCORD":
+            return "Discord";
+          case "SLACK":
+            return "Slack";
+          case "WEBHOOK":
+            return "Webhook";
+        }
+      })();
+
+      const res = await fetch("/api/forwards/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "dry_run",
+          config,
+          targets: builtTargets,
+          ignoreConditions: true,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Test failed");
+        return;
+      }
+      setTestPayload({ config, targets: builtTargets });
+      setTestTargetLabel(label);
+      setTestResult(data);
+      setTestDialogOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Test failed");
+    } finally {
+      setTestingTargetId(null);
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!testPayload) return;
+    setSendingTest(true);
+    try {
+      const res = await fetch("/api/forwards/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "send",
+          config: testPayload.config,
+          targets: testPayload.targets,
+          ignoreConditions: true,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Test failed");
+        setTestResult(data);
+        return;
+      }
+      toast.success("Test sent");
+      setTestResult(data);
+    } catch {
+      toast.error("Test failed");
+    } finally {
+      setSendingTest(false);
     }
   };
 
@@ -608,7 +699,17 @@ export default function NewForwardRulePage() {
                           </Select>
                         </div>
 
-                        <div className="pt-5">
+                        <div className="pt-5 flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleTestTarget(t)}
+                            disabled={testingTargetId === t.clientId}
+                          >
+                            <TestTube className="mr-2 h-4 w-4" />
+                            {testingTargetId === t.clientId ? "Testing..." : "Test"}
+                          </Button>
                           <Button
                             type="button"
                             size="sm"
@@ -951,6 +1052,35 @@ export default function NewForwardRulePage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{testTargetLabel ? `Test: ${testTargetLabel}` : "Test Target"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <pre className="max-h-[60vh] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-50">
+              {testResult ? JSON.stringify(testResult, null, 2) : "No result"}
+            </pre>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTestDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSendTest}
+              disabled={!testPayload || sendingTest}
+            >
+              {sendingTest ? "Sending..." : "Send Test"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center justify-between">
         <Button variant="outline" onClick={goBack} disabled={currentStepIndex <= 0}>
