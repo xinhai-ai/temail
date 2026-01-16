@@ -66,18 +66,51 @@ export async function POST(request: NextRequest) {
         domainId: webhookConfig.domainId,
         status: "ACTIVE",
       },
+      select: { id: true, userId: true },
     });
 
-    if (!mailbox) {
-      return NextResponse.json(
-        { error: "Mailbox not found" },
-        { status: 404 }
-      );
+    const parsedMessageId = typeof messageId === "string" ? messageId : null;
+    const fromAddress =
+      extractEmailAddress(from) ||
+      (typeof from === "string" ? from : null) ||
+      "unknown@unknown.com";
+    const normalizedSubject = typeof subject === "string" && subject.trim() ? subject.trim() : "(No subject)";
+
+    try {
+      await prisma.inboundEmail.create({
+        data: {
+          sourceType: "WEBHOOK",
+          messageId: parsedMessageId || undefined,
+          fromAddress,
+          toAddress,
+          subject: normalizedSubject,
+          textBody: typeof text === "string" ? text : undefined,
+          htmlBody: typeof html === "string" ? html : undefined,
+          rawContent: JSON.stringify({
+            to,
+            from,
+            subject,
+            text,
+            html,
+            messageId: parsedMessageId,
+          }),
+          domainId: webhookConfig.domainId,
+          mailboxId: mailbox?.id,
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+        throw error;
+      }
     }
 
-    if (messageId && typeof messageId === "string") {
+    if (!mailbox) {
+      return NextResponse.json({ success: true, matched: false });
+    }
+
+    if (parsedMessageId) {
       const existing = await prisma.email.findFirst({
-        where: { mailboxId: mailbox.id, messageId },
+        where: { mailboxId: mailbox.id, messageId: parsedMessageId },
         select: { id: true },
       });
       if (existing) {
@@ -85,26 +118,26 @@ export async function POST(request: NextRequest) {
           success: true,
           emailId: existing.id,
           duplicate: true,
+          matched: true,
         });
       }
     }
 
     const email = await prisma.email.create({
       data: {
-        messageId: typeof messageId === "string" ? messageId : undefined,
-        fromAddress: extractEmailAddress(from) || (typeof from === "string" ? from : null) || "unknown@unknown.com",
-        toAddress: toAddress,
-        subject: subject || "(No subject)",
-        textBody: text,
-        htmlBody: html,
+        messageId: parsedMessageId || undefined,
+        fromAddress,
+        toAddress,
+        subject: normalizedSubject,
+        textBody: typeof text === "string" ? text : undefined,
+        htmlBody: typeof html === "string" ? html : undefined,
         mailboxId: mailbox.id,
       },
     });
 
-    // Execute forward rules asynchronously
     executeForwards(email, mailbox.id, mailbox.userId).catch(console.error);
 
-    return NextResponse.json({ success: true, emailId: email.id });
+    return NextResponse.json({ success: true, emailId: email.id, matched: true });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       // Unique constraint (e.g. messageId) - treat as idempotent
