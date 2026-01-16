@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import nodemailer from "nodemailer";
 
 interface EmailData {
   id: string;
@@ -88,6 +89,30 @@ interface ForwardResult {
   success: boolean;
   message: string;
   code?: number;
+}
+
+type SmtpTransporter = ReturnType<typeof nodemailer.createTransport>;
+let cachedTransporter: SmtpTransporter | null = null;
+
+function getSmtpTransporter(): SmtpTransporter | null {
+  if (cachedTransporter) return cachedTransporter;
+
+  const host = process.env.SMTP_HOST;
+  if (!host) return null;
+
+  const port = parseInt(process.env.SMTP_PORT || "587");
+  const secure = process.env.SMTP_SECURE === "true" || port === 465;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  cachedTransporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    ...(user && pass ? { auth: { user, pass } } : {}),
+  });
+
+  return cachedTransporter;
 }
 
 async function sendToTelegram(
@@ -224,11 +249,32 @@ async function sendToEmail(
   config: { to: string },
   email: EmailData
 ): Promise<ForwardResult> {
-  // Email forwarding would require SMTP configuration
-  // For now, just log that it would be forwarded
-  console.log(`Would forward email to: ${config.to}`);
-  return {
-    success: true,
-    message: `Email forward to ${config.to} (SMTP not configured)`,
-  };
+  const transporter = getSmtpTransporter();
+  if (!transporter) {
+    return { success: false, message: "SMTP is not configured" };
+  }
+
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  if (!from) {
+    return { success: false, message: "SMTP_FROM (or SMTP_USER) is required" };
+  }
+
+  try {
+    await transporter.sendMail({
+      from,
+      to: config.to,
+      subject: `[TEmail] ${email.subject}`,
+      text:
+        email.textBody ||
+        `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`,
+      html: email.htmlBody || undefined,
+    });
+
+    return { success: true, message: `Sent to ${config.to}` };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "SMTP send failed",
+    };
+  }
 }
