@@ -2,11 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Filter, Forward, PencilLine } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ForwardConditionTreeEditor,
+  countForwardMatchConditions,
+  normalizeForwardConditionNode,
+  type ForwardConditionTree,
+} from "@/components/forwards/ForwardConditionTreeEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,15 +25,6 @@ import { Textarea } from "@/components/ui/textarea";
 
 type StepId = "basic" | "conditions" | "targets" | "template" | "review";
 type TargetType = "EMAIL" | "TELEGRAM" | "DISCORD" | "SLACK" | "WEBHOOK";
-
-type ConditionField = "subject" | "fromAddress" | "toAddress" | "textBody";
-type ConditionOperator = "contains" | "equals" | "startsWith" | "endsWith" | "regex";
-
-type ConditionRow = {
-  field: ConditionField;
-  operator: ConditionOperator;
-  value: string;
-};
 
 type TargetDraft = {
   clientId: string;
@@ -99,34 +96,14 @@ function parseHeadersJson(raw: string | undefined) {
 }
 
 function buildRuleConfig(input: {
-  conditionLogic: "and" | "or";
-  conditions: ConditionRow[];
+  conditionTree: ForwardConditionTree;
   templateText: string;
   templateSubject: string;
   templateHtml: string;
   templateWebhookBody: string;
   templateContentType: string;
 }) {
-  const trimmedConditions = input.conditions
-    .map((c) => ({
-      field: c.field,
-      operator: c.operator,
-      value: c.value.trim(),
-    }))
-    .filter((c) => c.value.length > 0);
-
-  const conditionTree =
-    trimmedConditions.length > 0
-      ? {
-          kind: input.conditionLogic,
-          conditions: trimmedConditions.map((c) => ({
-            kind: "match",
-            field: c.field,
-            operator: c.operator,
-            value: c.value,
-          })),
-        }
-      : undefined;
+  const conditionTree = normalizeForwardConditionNode(input.conditionTree);
 
   const template: Record<string, string> = {};
   if (input.templateSubject.trim()) template.subject = input.templateSubject.trim();
@@ -208,8 +185,7 @@ export default function NewForwardRulePage() {
   const [name, setName] = useState("");
   const [mailboxId, setMailboxId] = useState<string>("");
 
-  const [conditionLogic, setConditionLogic] = useState<"and" | "or">("and");
-  const [conditions, setConditions] = useState<ConditionRow[]>([]);
+  const [conditionTree, setConditionTree] = useState<ForwardConditionTree>({ kind: "and", conditions: [] });
 
   const [targets, setTargets] = useState<TargetDraft[]>([createTargetDraft("WEBHOOK")]);
 
@@ -242,35 +218,42 @@ export default function NewForwardRulePage() {
     ? mailboxes.find((m) => m.id === mailboxId)?.address || "Selected mailbox"
     : "All mailboxes";
 
-  const validateStep = (id: StepId): string | null => {
-    if (id === "basic") {
-      if (!name.trim()) return "Please enter a rule name";
-      return null;
-    }
-    if (id === "targets") {
-      try {
-        buildTargets(targets);
+  const validateStep = useCallback(
+    (id: StepId): string | null => {
+      if (id === "basic") {
+        if (!name.trim()) return "Please enter a rule name";
         return null;
-      } catch (error) {
-        return error instanceof Error ? error.message : "Invalid targets";
       }
-    }
-    if (id === "review") {
-      const basicError = validateStep("basic");
-      if (basicError) return basicError;
-      const targetsError = validateStep("targets");
-      if (targetsError) return targetsError;
+      if (id === "targets") {
+        try {
+          buildTargets(targets);
+          return null;
+        } catch (error) {
+          return error instanceof Error ? error.message : "Invalid targets";
+        }
+      }
+      if (id === "review") {
+        if (!name.trim()) return "Please enter a rule name";
+        try {
+          buildTargets(targets);
+        } catch (error) {
+          return error instanceof Error ? error.message : "Invalid targets";
+        }
+        return null;
+      }
       return null;
-    }
-    return null;
-  };
+    },
+    [name, targets]
+  );
 
-  const isStepComplete = (id: StepId) => !validateStep(id);
+  const isStepComplete = useCallback((id: StepId) => !validateStep(id), [validateStep]);
+
+  const conditionCount = useMemo(() => countForwardMatchConditions(conditionTree), [conditionTree]);
 
   const stepSummaries: Record<StepId, string> = useMemo(
     () => ({
       basic: name.trim() ? `${name.trim()} · ${selectedMailboxLabel}` : selectedMailboxLabel,
-      conditions: conditions.length > 0 ? `${conditions.length} condition(s)` : "Matches all emails",
+      conditions: conditionCount > 0 ? `${conditionCount} condition(s)` : "Matches all emails",
       targets: summarizeTargets(targets),
       template: [
         templateSubject.trim() ? "subject" : null,
@@ -283,7 +266,7 @@ export default function NewForwardRulePage() {
       review: isStepComplete("review") ? "Ready" : "Fix required fields",
     }),
     [
-      conditions.length,
+      conditionCount,
       isStepComplete,
       name,
       selectedMailboxLabel,
@@ -322,8 +305,7 @@ export default function NewForwardRulePage() {
     setSaving(true);
     try {
       const config = buildRuleConfig({
-        conditionLogic,
-        conditions,
+        conditionTree,
         templateText,
         templateSubject,
         templateHtml,
@@ -360,8 +342,7 @@ export default function NewForwardRulePage() {
   const reviewPayload = useMemo(() => {
     try {
       const config = buildRuleConfig({
-        conditionLogic,
-        conditions,
+        conditionTree,
         templateText,
         templateSubject,
         templateHtml,
@@ -379,8 +360,7 @@ export default function NewForwardRulePage() {
       return null;
     }
   }, [
-    conditionLogic,
-    conditions,
+    conditionTree,
     mailboxId,
     name,
     targets,
@@ -520,104 +500,24 @@ export default function NewForwardRulePage() {
               </div>
 
               <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Logic</Label>
-                  <Select value={conditionLogic} onValueChange={(v) => setConditionLogic(v as "and" | "or")}>
-                    <SelectTrigger className="h-8 w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="and">Match all</SelectItem>
-                      <SelectItem value="or">Match any</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm">Condition Tree</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={conditionCount === 0}
+                    onClick={() => setConditionTree({ kind: "and", conditions: [] })}
+                  >
+                    Clear
+                  </Button>
                 </div>
 
-                {conditions.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">
-                    No conditions. This rule matches all emails.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {conditions.map((c, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-4">
-                          <Select
-                            value={c.field}
-                            onValueChange={(value) =>
-                              setConditions((prev) =>
-                                prev.map((row, i) => (i === index ? { ...row, field: value as ConditionField } : row))
-                              )
-                            }
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="subject">Subject</SelectItem>
-                              <SelectItem value="fromAddress">From</SelectItem>
-                              <SelectItem value="toAddress">To</SelectItem>
-                              <SelectItem value="textBody">Text</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-4">
-                          <Select
-                            value={c.operator}
-                            onValueChange={(value) =>
-                              setConditions((prev) =>
-                                prev.map((row, i) => (i === index ? { ...row, operator: value as ConditionOperator } : row))
-                              )
-                            }
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="contains">contains</SelectItem>
-                              <SelectItem value="equals">equals</SelectItem>
-                              <SelectItem value="startsWith">startsWith</SelectItem>
-                              <SelectItem value="endsWith">endsWith</SelectItem>
-                              <SelectItem value="regex">regex</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-3">
-                          <Input
-                            className="h-8"
-                            placeholder="Value"
-                            value={c.value}
-                            onChange={(e) =>
-                              setConditions((prev) =>
-                                prev.map((row, i) => (i === index ? { ...row, value: e.target.value } : row))
-                              )
-                            }
-                          />
-                        </div>
-                        <div className="col-span-1 flex justify-end">
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="ghost"
-                            onClick={() => setConditions((prev) => prev.filter((_, i) => i !== index))}
-                            aria-label="Remove condition"
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="text-xs text-muted-foreground">
+                  You can nest groups and use NOT. Empty values are ignored when saving.
+                </div>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConditions((prev) => [...prev, { field: "subject", operator: "contains", value: "" }])}
-                >
-                  Add condition
-                </Button>
+                <ForwardConditionTreeEditor value={conditionTree} onChange={setConditionTree} />
               </div>
             </div>
           )}
@@ -929,4 +829,3 @@ export default function NewForwardRulePage() {
     </div>
   );
 }
-
