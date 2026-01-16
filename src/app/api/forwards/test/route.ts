@@ -23,6 +23,7 @@ const testRequestSchema = z.object({
   mode: z.enum(["dry_run", "send"]).optional(),
   config: z.string().trim().min(1),
   targets: z.array(targetSchema).min(1),
+  mailboxId: z.string().trim().min(1).optional(),
   emailId: z.string().trim().min(1).optional(),
   sample: z
     .object({
@@ -237,7 +238,7 @@ export async function POST(request: NextRequest) {
       ...sample,
       receivedAt: Number.isFinite(receivedAt.getTime()) ? receivedAt : base.receivedAt,
     };
-    mailboxId = "sample";
+    mailboxId = parsed.data.mailboxId || "sample";
   }
 
   const vars = buildForwardTemplateVars(email, mailboxId);
@@ -441,4 +442,3 @@ export async function POST(request: NextRequest) {
   const status = allOk ? 200 : 400;
   return NextResponse.json({ success: allOk, matched: true, previews, results }, { status });
 }
-
