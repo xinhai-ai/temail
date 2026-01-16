@@ -13,6 +13,7 @@ import type { Domain, EmailDetail, EmailListItem, Mailbox, MailboxGroup } from "
 export default function InboxPage() {
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
   const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
+  const EMAILS_PAGE_SIZE = 20;
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
 
@@ -28,9 +29,11 @@ export default function InboxPage() {
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingMailboxes, setLoadingMailboxes] = useState(true);
   const [loadingEmails, setLoadingEmails] = useState(false);
+  const [loadingMoreEmails, setLoadingMoreEmails] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
-  const [realtimeTick, setRealtimeTick] = useState(0);
+  const [emailsCursor, setEmailsCursor] = useState<string | null>(null);
+  const [emailsHasMore, setEmailsHasMore] = useState(false);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -148,17 +151,49 @@ export default function InboxPage() {
     const fetchEmails = async () => {
       setLoadingEmails(true);
       const params = new URLSearchParams();
+      params.set("mode", "cursor");
+      params.set("limit", String(EMAILS_PAGE_SIZE));
       if (emailSearch) params.set("search", emailSearch);
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
 
       const res = await fetch(`/api/emails?${params.toString()}`);
       const data = await res.json();
       setEmails(Array.isArray(data?.emails) ? data.emails : []);
+      setEmailsCursor(typeof data?.nextCursor === "string" ? data.nextCursor : null);
+      setEmailsHasMore(Boolean(data?.hasMore));
       setLoadingEmails(false);
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch, realtimeTick]);
+  }, [selectedMailboxId, emailSearch]);
+
+  const loadMoreEmails = async () => {
+    if (loadingEmails || loadingMoreEmails || !emailsHasMore || !emailsCursor) return;
+    setLoadingMoreEmails(true);
+
+    const params = new URLSearchParams();
+    params.set("mode", "cursor");
+    params.set("limit", String(EMAILS_PAGE_SIZE));
+    params.set("cursor", emailsCursor);
+    if (emailSearch) params.set("search", emailSearch);
+    if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
+
+    const res = await fetch(`/api/emails?${params.toString()}`);
+    const data = await res.json();
+    const nextEmails = Array.isArray(data?.emails) ? data.emails : [];
+
+    setEmails((prev) => {
+      const seen = new Set(prev.map((e) => e.id));
+      const merged = [...prev];
+      for (const e of nextEmails) {
+        if (!seen.has(e.id)) merged.push(e);
+      }
+      return merged;
+    });
+    setEmailsCursor(typeof data?.nextCursor === "string" ? data.nextCursor : null);
+    setEmailsHasMore(Boolean(data?.hasMore));
+    setLoadingMoreEmails(false);
+  };
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -215,7 +250,28 @@ export default function InboxPage() {
               // ignore
             }
           }
-          setRealtimeTick((t) => t + 1);
+          const matchesMailbox =
+            !selectedMailboxId || event.data.email.mailboxId === selectedMailboxId;
+          const hasSearch = Boolean(emailSearch);
+          if (matchesMailbox && !hasSearch) {
+            setEmails((prev) => {
+              if (prev.some((e) => e.id === event.data.email.id)) return prev;
+              return [
+                {
+                  id: event.data.email.id,
+                  mailboxId: event.data.email.mailboxId,
+                  mailbox: { address: event.data.email.mailboxAddress },
+                  subject: event.data.email.subject,
+                  fromAddress: event.data.email.fromAddress,
+                  fromName: event.data.email.fromName,
+                  status: event.data.email.status,
+                  isStarred: event.data.email.isStarred,
+                  receivedAt: event.data.email.receivedAt,
+                },
+                ...prev,
+              ];
+            });
+          }
           return;
         }
 
@@ -228,7 +284,17 @@ export default function InboxPage() {
               ...(typeof event.data.isStarred === "boolean" ? { isStarred: event.data.isStarred } : {}),
             };
           });
-          setRealtimeTick((t) => t + 1);
+          setEmails((prev) =>
+            prev.map((e) =>
+              e.id === event.data.id
+                ? {
+                    ...e,
+                    ...(event.data.status ? { status: event.data.status } : {}),
+                    ...(typeof event.data.isStarred === "boolean" ? { isStarred: event.data.isStarred } : {}),
+                  }
+                : e
+            )
+          );
           return;
         }
 
@@ -236,7 +302,7 @@ export default function InboxPage() {
           setSelectedEmailIds((prev) => prev.filter((id) => id !== event.data.id));
           setSelectedEmailId((current) => (current === event.data.id ? null : current));
           setSelectedEmail((prev) => (prev?.id === event.data.id ? null : prev));
-          setRealtimeTick((t) => t + 1);
+          setEmails((prev) => prev.filter((e) => e.id !== event.data.id));
           return;
         }
 
@@ -245,14 +311,19 @@ export default function InboxPage() {
           if (event.data.action === "delete") {
             setSelectedEmailId((current) => (current && event.data.ids.includes(current) ? null : current));
             setSelectedEmail((prev) => (prev && event.data.ids.includes(prev.id) ? null : prev));
+            setEmails((prev) => prev.filter((e) => !event.data.ids.includes(e.id)));
+          } else if (event.data.action === "markRead") {
+            setSelectedEmail((prev) => (prev ? { ...prev, status: "READ" } : prev));
+            setEmails((prev) =>
+              prev.map((e) => (event.data.ids.includes(e.id) ? { ...e, status: "READ" } : e))
+            );
           }
-          setRealtimeTick((t) => t + 1);
         }
       },
     });
 
     return disconnect;
-  }, [notificationsEnabled, notificationPermission]);
+  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch]);
 
   useEffect(() => {
     setSelectedEmailIds([]);
@@ -691,6 +762,8 @@ export default function InboxPage() {
             emailSearch={emailSearch}
             emails={emails}
             loadingEmails={loadingEmails}
+            loadingMore={loadingMoreEmails}
+            hasMore={emailsHasMore}
             selectedEmailId={selectedEmailId}
             selectedEmailIds={selectedEmailIds}
             selectedEmailIdSet={selectedEmailIdSet}
@@ -705,6 +778,7 @@ export default function InboxPage() {
             onClearSelection={() => setSelectedEmailIds([])}
             onStarEmail={handleStarEmail}
             onDeleteEmail={handleDeleteEmail}
+            onLoadMore={loadMoreEmails}
           />
 
           <PreviewPanel

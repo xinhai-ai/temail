@@ -16,6 +16,8 @@ type EmailsPanelProps = {
   emailSearch: string;
   emails: EmailListItem[];
   loadingEmails: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   selectedEmailId: string | null;
   selectedEmailIds: string[];
   selectedEmailIdSet: Set<string>;
@@ -30,12 +32,15 @@ type EmailsPanelProps = {
   onClearSelection: () => void;
   onStarEmail: (emailId: string, isStarred: boolean) => void;
   onDeleteEmail: (emailId: string) => void;
+  onLoadMore: () => void;
 };
 
 export function EmailsPanel({
   emailSearch,
   emails,
   loadingEmails,
+  loadingMore,
+  hasMore,
   selectedEmailId,
   selectedEmailIds,
   selectedEmailIdSet,
@@ -50,6 +55,7 @@ export function EmailsPanel({
   onClearSelection,
   onStarEmail,
   onDeleteEmail,
+  onLoadMore,
 }: EmailsPanelProps) {
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col">
@@ -246,6 +252,20 @@ export function EmailsPanel({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {(hasMore || loadingMore) && (
+          <div className="pt-2 flex justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onLoadMore}
+              disabled={loadingEmails || loadingMore || !hasMore}
+            >
+              {loadingMore ? "Loading..." : "Load more"}
+            </Button>
           </div>
         )}
       </CardContent>
