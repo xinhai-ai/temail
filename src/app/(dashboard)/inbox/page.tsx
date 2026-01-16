@@ -6,6 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -25,6 +33,7 @@ import {
   ChevronRight,
   ExternalLink,
   Plus,
+  MoreHorizontal,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -266,6 +275,26 @@ export default function InboxPage() {
     }
   };
 
+  const handleMoveMailboxToGroup = async (mailboxId: string, groupId: string | null) => {
+    const res = await fetch(`/api/mailboxes/${mailboxId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupId }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      toast.error(data?.error || "Failed to update mailbox");
+      return;
+    }
+
+    const nextGroup = groupId ? groups.find((g) => g.id === groupId) || null : null;
+    setMailboxes((prev) =>
+      prev.map((m) => (m.id === mailboxId ? { ...m, group: nextGroup } : m))
+    );
+    toast.success("Mailbox updated");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-2">
@@ -403,6 +432,47 @@ export default function InboxPage() {
                                   {mailbox.isStarred && (
                                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                                   )}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                        }}
+                                        className={cn(
+                                          "h-8 w-8 p-0",
+                                          active ? "hover:bg-white/15" : ""
+                                        )}
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuLabel>Move to group</DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => handleMoveMailboxToGroup(mailbox.id, null)}
+                                        disabled={!mailbox.group}
+                                      >
+                                        Ungrouped
+                                      </DropdownMenuItem>
+                                      {groups.length === 0 ? (
+                                        <DropdownMenuItem disabled>No groups</DropdownMenuItem>
+                                      ) : (
+                                        groups.map((group) => (
+                                          <DropdownMenuItem
+                                            key={group.id}
+                                            onClick={() => handleMoveMailboxToGroup(mailbox.id, group.id)}
+                                            disabled={mailbox.group?.id === group.id}
+                                          >
+                                            {group.name}
+                                          </DropdownMenuItem>
+                                        ))
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                   <Badge
                                     variant={active ? "secondary" : "secondary"}
                                     className={cn(active ? "bg-white/15 text-white" : "")}
