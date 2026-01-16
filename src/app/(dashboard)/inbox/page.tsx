@@ -5,7 +5,15 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   Inbox,
@@ -16,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  Plus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -87,6 +96,10 @@ export default function InboxPage() {
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   const groupedMailboxes = useMemo(() => {
     const grouped: Record<string, { group: MailboxGroup | null; mailboxes: Mailbox[] }> = {};
@@ -222,6 +235,37 @@ export default function InboxPage() {
     setPreviewMode("text");
   }, [selectedEmailId]);
 
+  const handleCreateGroup = async () => {
+    const name = newGroupName.trim();
+    if (!name) {
+      toast.error("Group name is required");
+      return;
+    }
+
+    setCreatingGroup(true);
+    try {
+      const res = await fetch("/api/mailbox-groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to create group");
+        return;
+      }
+
+      setGroups((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      toast.success("Group created");
+      setNewGroupName("");
+      setGroupDialogOpen(false);
+    } catch {
+      toast.error("Failed to create group");
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-2">
@@ -256,6 +300,37 @@ export default function InboxPage() {
                 <Inbox className="mr-2 h-4 w-4" />
                 All Emails
               </Button>
+              <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Group
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Group</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="groupName">Name</Label>
+                      <Input
+                        id="groupName"
+                        placeholder="e.g. Shopping, Work"
+                        value={newGroupName}
+                        onChange={(e) => setNewGroupName(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleCreateGroup}
+                      className="w-full"
+                      disabled={creatingGroup}
+                    >
+                      {creatingGroup ? "Creating..." : "Create"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <span className="text-xs text-muted-foreground">
                 {loadingGroups || loadingMailboxes
                   ? "Loading..."
