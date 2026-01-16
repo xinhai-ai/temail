@@ -67,6 +67,28 @@ const forwardTypeLabels: Record<TargetType, string> = {
   WEBHOOK: "Webhook",
 };
 
+const DEFAULT_TEXT_TEMPLATE = `📧 {{subject}}
+From: {{fromName}} <{{fromAddress}}>
+To: {{toAddress}}
+Received: {{receivedAt}}
+
+{{textBody}}`;
+
+const DEFAULT_EMAIL_SUBJECT_TEMPLATE = "[TEmail] {{subject}}";
+const DEFAULT_EMAIL_HTML_TEMPLATE = "{{htmlBody}}";
+const DEFAULT_WEBHOOK_BODY_TEMPLATE = `{
+  "id": "{{id}}",
+  "subject": "{{subject}}",
+  "from": "{{fromAddress}}",
+  "fromName": "{{fromName}}",
+  "to": "{{toAddress}}",
+  "text": "{{textBody}}",
+  "html": "{{htmlBody}}",
+  "receivedAt": "{{receivedAt}}"
+}`;
+
+const DEFAULT_WEBHOOK_CONTENT_TYPE = "application/json";
+
 function createClientId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -703,68 +725,182 @@ export default function NewForwardRulePage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
-                <Label className="text-sm">Variables</Label>
-                <div className="text-xs text-muted-foreground">
-                  <span className="font-mono">{`{{subject}} {{fromAddress}} {{fromName}} {{toAddress}} {{textBody}} {{receivedAt}} {{mailboxId}}`}</span>
-                </div>
-
-                {(hasEmailTarget || hasTextTarget) && (
-                  <div className="space-y-2">
-                    <Label>Text Template</Label>
-                    <Textarea
-                      placeholder="New email: {{subject}}"
-                      value={templateText}
-                      onChange={(e) => setTemplateText(e.target.value)}
-                      rows={5}
-                    />
-                  </div>
-                )}
-
-                {hasEmailTarget && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Subject Template</Label>
-                      <Input
-                        placeholder="[TEmail] {{subject}}"
-                        value={templateSubject}
-                        onChange={(e) => setTemplateSubject(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>HTML Template (optional)</Label>
-                      <Textarea
-                        placeholder="{{htmlBody}}"
-                        value={templateHtml}
-                        onChange={(e) => setTemplateHtml(e.target.value)}
-                        rows={5}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {hasWebhookTarget && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Webhook Body Template</Label>
-                      <Textarea
-                        placeholder='{"subject": "{{subject}}", "from": "{{fromAddress}}"}'
-                        value={templateWebhookBody}
-                        onChange={(e) => setTemplateWebhookBody(e.target.value)}
-                        rows={5}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Content-Type (optional)</Label>
-                      <Input
-                        placeholder="application/json"
-                        value={templateContentType}
-                        onChange={(e) => setTemplateContentType(e.target.value)}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
+	              <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+	                <Label className="text-sm">Variables</Label>
+	                <div className="text-xs text-muted-foreground">
+	                  <span className="font-mono">{`{{id}} {{subject}} {{fromAddress}} {{fromName}} {{toAddress}} {{textBody}} {{htmlBody}} {{receivedAt}} {{mailboxId}}`}</span>
+	                </div>
+	
+	                {(hasEmailTarget || hasTextTarget) && (
+	                  <div className="space-y-2">
+	                    <div className="flex items-center justify-between gap-2">
+	                      <Label>Text Template</Label>
+	                      <div className="flex items-center gap-2">
+	                        <Button
+	                          type="button"
+	                          variant="outline"
+	                          size="sm"
+	                          onClick={() => setTemplateText(DEFAULT_TEXT_TEMPLATE)}
+	                        >
+	                          Use default
+	                        </Button>
+	                        <Button
+	                          type="button"
+	                          variant="ghost"
+	                          size="sm"
+	                          onClick={() => setTemplateText("")}
+	                          disabled={!templateText.trim()}
+	                        >
+	                          Clear
+	                        </Button>
+	                      </div>
+	                    </div>
+	                    <div className="text-xs text-muted-foreground">
+	                      Leave empty to use built-in defaults (Slack/Discord may use rich layouts).
+	                    </div>
+	                    <Textarea
+	                      placeholder={DEFAULT_TEXT_TEMPLATE}
+	                      value={templateText}
+	                      onChange={(e) => setTemplateText(e.target.value)}
+	                      rows={5}
+	                    />
+	                  </div>
+	                )}
+	
+	                {hasEmailTarget && (
+	                  <>
+	                    <div className="space-y-2">
+	                      <div className="flex items-center justify-between gap-2">
+	                        <Label>Subject Template</Label>
+	                        <div className="flex items-center gap-2">
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            size="sm"
+	                            onClick={() => setTemplateSubject(DEFAULT_EMAIL_SUBJECT_TEMPLATE)}
+	                          >
+	                            Use default
+	                          </Button>
+	                          <Button
+	                            type="button"
+	                            variant="ghost"
+	                            size="sm"
+	                            onClick={() => setTemplateSubject("")}
+	                            disabled={!templateSubject.trim()}
+	                          >
+	                            Clear
+	                          </Button>
+	                        </div>
+	                      </div>
+	                      <Input
+	                        placeholder={DEFAULT_EMAIL_SUBJECT_TEMPLATE}
+	                        value={templateSubject}
+	                        onChange={(e) => setTemplateSubject(e.target.value)}
+	                      />
+	                    </div>
+	                    <div className="space-y-2">
+	                      <div className="flex items-center justify-between gap-2">
+	                        <Label>HTML Template (optional)</Label>
+	                        <div className="flex items-center gap-2">
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            size="sm"
+	                            onClick={() => setTemplateHtml(DEFAULT_EMAIL_HTML_TEMPLATE)}
+	                          >
+	                            Use default
+	                          </Button>
+	                          <Button
+	                            type="button"
+	                            variant="ghost"
+	                            size="sm"
+	                            onClick={() => setTemplateHtml("")}
+	                            disabled={!templateHtml.trim()}
+	                          >
+	                            Clear
+	                          </Button>
+	                        </div>
+	                      </div>
+	                      <Textarea
+	                        placeholder={DEFAULT_EMAIL_HTML_TEMPLATE}
+	                        value={templateHtml}
+	                        onChange={(e) => setTemplateHtml(e.target.value)}
+	                        rows={5}
+	                      />
+	                    </div>
+	                  </>
+	                )}
+	
+	                {hasWebhookTarget && (
+	                  <>
+	                    <div className="space-y-2">
+	                      <div className="flex items-center justify-between gap-2">
+	                        <Label>Webhook Body Template</Label>
+	                        <div className="flex items-center gap-2">
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            size="sm"
+	                            onClick={() => {
+	                              setTemplateWebhookBody(DEFAULT_WEBHOOK_BODY_TEMPLATE);
+	                              if (!templateContentType.trim()) setTemplateContentType(DEFAULT_WEBHOOK_CONTENT_TYPE);
+	                            }}
+	                          >
+	                            Use default
+	                          </Button>
+	                          <Button
+	                            type="button"
+	                            variant="ghost"
+	                            size="sm"
+	                            onClick={() => setTemplateWebhookBody("")}
+	                            disabled={!templateWebhookBody.trim()}
+	                          >
+	                            Clear
+	                          </Button>
+	                        </div>
+	                      </div>
+	                      <div className="text-xs text-muted-foreground">
+	                        Leave empty to send the built-in JSON payload.
+	                      </div>
+	                      <Textarea
+	                        placeholder={DEFAULT_WEBHOOK_BODY_TEMPLATE}
+	                        value={templateWebhookBody}
+	                        onChange={(e) => setTemplateWebhookBody(e.target.value)}
+	                        rows={5}
+	                      />
+	                    </div>
+	                    <div className="space-y-2">
+	                      <div className="flex items-center justify-between gap-2">
+	                        <Label>Content-Type (optional)</Label>
+	                        <div className="flex items-center gap-2">
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            size="sm"
+	                            onClick={() => setTemplateContentType(DEFAULT_WEBHOOK_CONTENT_TYPE)}
+	                          >
+	                            Use default
+	                          </Button>
+	                          <Button
+	                            type="button"
+	                            variant="ghost"
+	                            size="sm"
+	                            onClick={() => setTemplateContentType("")}
+	                            disabled={!templateContentType.trim()}
+	                          >
+	                            Clear
+	                          </Button>
+	                        </div>
+	                      </div>
+	                      <Input
+	                        placeholder={DEFAULT_WEBHOOK_CONTENT_TYPE}
+	                        value={templateContentType}
+	                        onChange={(e) => setTemplateContentType(e.target.value)}
+	                      />
+	                    </div>
+	                  </>
+	                )}
+	              </div>
             </div>
           )}
 
