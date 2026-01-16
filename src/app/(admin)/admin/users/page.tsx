@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
+ import {
   Table,
   TableBody,
   TableCell,
@@ -11,8 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users } from "lucide-react";
-import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+ import { Users } from "lucide-react";
+ import { format } from "date-fns";
+import Link from "next/link";
 
 interface User {
   id: string;
@@ -66,6 +68,7 @@ export default function AdminUsersPage() {
                 <TableHead>Mailboxes</TableHead>
                 <TableHead>Domains</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -95,6 +98,11 @@ export default function AdminUsersPage() {
                   <TableCell>{user._count.domains}</TableCell>
                   <TableCell>
                     {format(new Date(user.createdAt), "PP")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/users/${user.id}`}>Manage</Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
