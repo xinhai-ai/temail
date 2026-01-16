@@ -42,7 +42,10 @@ export default function EmailsPage() {
   };
 
   useEffect(() => {
-    fetchEmails();
+    const run = async () => {
+      await fetchEmails();
+    };
+    run();
   }, [search]);
 
   const handleStar = async (id: string, isStarred: boolean) => {

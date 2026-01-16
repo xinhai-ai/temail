@@ -101,7 +101,10 @@ function parsePort(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-async function loadSmtpRuntime(): Promise<SmtpRuntime | null> {
+async function getSmtpRuntime(): Promise<SmtpRuntime | null> {
+  const now = Date.now();
+  if (cachedSmtp && cachedSmtp.expiresAt > now) return cachedSmtp.runtime;
+
   const keys = ["smtp_host", "smtp_port", "smtp_secure", "smtp_user", "smtp_pass", "smtp_from"];
   const map: Record<string, string> = {};
 
@@ -112,7 +115,7 @@ async function loadSmtpRuntime(): Promise<SmtpRuntime | null> {
     });
     for (const row of rows) map[row.key] = row.value;
   } catch {
-    // ignore DB read failures and fall back to env
+    // ignore
   }
 
   const host = map.smtp_host || process.env.SMTP_HOST;
@@ -123,8 +126,14 @@ async function loadSmtpRuntime(): Promise<SmtpRuntime | null> {
   const user = map.smtp_user || process.env.SMTP_USER;
   const pass = map.smtp_pass || process.env.SMTP_PASS;
   const from = map.smtp_from || process.env.SMTP_FROM || user;
-
   if (!from) return null;
+
+  const hash = JSON.stringify({ host, port, secure, user, pass, from });
+
+  if (cachedSmtp && cachedSmtp.hash === hash) {
+    cachedSmtp.expiresAt = now + 30_000;
+    return cachedSmtp.runtime;
+  }
 
   const transporter = nodemailer.createTransport({
     host,
@@ -133,30 +142,7 @@ async function loadSmtpRuntime(): Promise<SmtpRuntime | null> {
     ...(user && pass ? { auth: { user, pass } } : {}),
   });
 
-  return { transporter, from };
-}
-
-async function getSmtpRuntime(): Promise<SmtpRuntime | null> {
-  const now = Date.now();
-  if (cachedSmtp && cachedSmtp.expiresAt > now) return cachedSmtp.runtime;
-
-  const runtime = await loadSmtpRuntime();
-  if (!runtime) return null;
-
-  const transport = runtime.transporter.options;
-  const hash = JSON.stringify({
-    host: transport.host,
-    port: transport.port,
-    secure: transport.secure,
-    authUser: typeof transport.auth === "object" ? (transport.auth as { user?: string }).user : undefined,
-    from: runtime.from,
-  });
-
-  if (cachedSmtp && cachedSmtp.hash === hash) {
-    cachedSmtp.expiresAt = now + 30_000;
-    return cachedSmtp.runtime;
-  }
-
+  const runtime: SmtpRuntime = { transporter, from };
   cachedSmtp = { hash, runtime, expiresAt: now + 30_000 };
   return runtime;
 }

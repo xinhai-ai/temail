@@ -73,7 +73,10 @@ export default function MailboxesPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    const run = async () => {
+      await fetchData();
+    };
+    run();
   }, [search]);
 
   const handleCreate = async () => {

@@ -1,22 +1,10 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
+import type { Domain, ImapConfig } from "@prisma/client";
 import prisma from "../src/lib/prisma";
 import { executeForwards } from "../src/services/forward";
 
-type ImapDomain = {
-  id: string;
-  name: string;
-  status: "ACTIVE" | "INACTIVE" | "PENDING" | "ERROR";
-  imapConfig: {
-    host: string;
-    port: number;
-    secure: boolean;
-    username: string;
-    password: string;
-    syncInterval: number;
-    lastSync: Date | null;
-  };
-};
+type ImapDomain = Domain & { imapConfig: ImapConfig };
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,6 +57,7 @@ async function pollDomain(domain: ImapDomain) {
     const lock = await client.getMailboxLock("INBOX");
     try {
       const uids = await client.search({ since });
+      if (!uids || uids.length === 0) return;
 
       for await (const message of client.fetch(uids, { uid: true, source: true, envelope: true })) {
         const uid = typeof message.uid === "number" ? message.uid : null;

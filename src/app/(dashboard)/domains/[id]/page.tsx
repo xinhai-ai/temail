@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,7 +35,6 @@ interface Domain {
 
 export default function DomainConfigPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [domain, setDomain] = useState<Domain | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,7 +73,10 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   };
 
   useEffect(() => {
-    fetchDomain();
+    const run = async () => {
+      await fetchDomain();
+    };
+    run();
   }, [id]);
 
   const saveImapConfig = async () => {

@@ -53,7 +53,10 @@ export default function DomainsPage() {
   };
 
   useEffect(() => {
-    fetchDomains();
+    const run = async () => {
+      await fetchDomains();
+    };
+    run();
   }, []);
 
   const handleCreate = async () => {
@@ -90,16 +93,6 @@ export default function DomainsPage() {
       fetchDomains();
     } else {
       toast.error("Failed to delete domain");
-    }
-  };
-
-  const statusColor = (status: string) => {
-    switch (status) {
-      case "ACTIVE": return "bg-green-500";
-      case "INACTIVE": return "bg-gray-500";
-      case "PENDING": return "bg-yellow-500";
-      case "ERROR": return "bg-red-500";
-      default: return "bg-gray-500";
     }
   };
 
