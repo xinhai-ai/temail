@@ -38,12 +38,19 @@ interface Mailbox {
   address: string;
 }
 
+interface ForwardTarget {
+  id: string;
+  type: string;
+  config: string;
+}
+
 interface ForwardRule {
   id: string;
   name: string;
   type: string;
   status: string;
   config: string;
+  targets?: ForwardTarget[];
   mailbox?: { address: string };
   mailboxId?: string;
   lastTriggered?: string;
@@ -66,6 +73,18 @@ type ConditionRow = {
   value: string;
 };
 
+type TargetType = "EMAIL" | "TELEGRAM" | "DISCORD" | "SLACK" | "WEBHOOK";
+
+type TargetDraft = {
+  clientId: string;
+  type: TargetType;
+  to?: string;
+  token?: string;
+  chatId?: string;
+  url?: string;
+  headers?: string;
+};
+
 export default function ForwardsPage() {
   const ALL_MAILBOXES_SELECT_VALUE = "__all__";
   const [rules, setRules] = useState<ForwardRule[]>([]);
@@ -80,15 +99,29 @@ export default function ForwardsPage() {
 
   // Form state
   const [name, setName] = useState("");
-  const [type, setType] = useState("WEBHOOK");
   const [mailboxId, setMailboxId] = useState<string>("");
 
-  // Type-specific config
-  const [emailTo, setEmailTo] = useState("");
-  const [telegramToken, setTelegramToken] = useState("");
-  const [telegramChatId, setTelegramChatId] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookHeaders, setWebhookHeaders] = useState("");
+  const createClientId = () => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
+  const createTargetDraft = (type: TargetType): TargetDraft => {
+    switch (type) {
+      case "EMAIL":
+        return { clientId: createClientId(), type, to: "" };
+      case "TELEGRAM":
+        return { clientId: createClientId(), type, token: "", chatId: "" };
+      case "DISCORD":
+      case "SLACK":
+      case "WEBHOOK":
+        return { clientId: createClientId(), type, url: "", headers: "" };
+    }
+  };
+
+  const [targets, setTargets] = useState<TargetDraft[]>([createTargetDraft("WEBHOOK")]);
 
   // Conditions (optional)
   const [conditionLogic, setConditionLogic] = useState<"and" | "or">("and");
@@ -122,9 +155,9 @@ export default function ForwardsPage() {
     run();
   }, []);
 
-  const parseHeaders = () => {
-    if (!webhookHeaders.trim()) return {};
-    const parsed = JSON.parse(webhookHeaders);
+  const parseHeadersJson = (raw: string | undefined) => {
+    if (!raw || !raw.trim()) return {};
+    const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("Headers must be a JSON object");
     }
@@ -138,7 +171,7 @@ export default function ForwardsPage() {
     return headers;
   };
 
-  const buildConfig = () => {
+  const buildRuleConfig = () => {
     const trimmedConditions = conditions
       .map((c) => ({
         field: c.field,
@@ -162,59 +195,54 @@ export default function ForwardsPage() {
 
     const template: Record<string, string> = {};
 
-    if (type === "EMAIL") {
-      if (templateSubject.trim()) template.subject = templateSubject.trim();
-      if (templateText.trim()) template.text = templateText;
-      if (templateHtml.trim()) template.html = templateHtml;
-    } else if (type === "WEBHOOK") {
-      if (templateWebhookBody.trim()) template.webhookBody = templateWebhookBody;
-      if (templateContentType.trim()) template.contentType = templateContentType.trim();
-    } else {
-      if (templateText.trim()) template.text = templateText;
+    if (templateSubject.trim()) template.subject = templateSubject.trim();
+    if (templateText.trim()) template.text = templateText;
+    if (templateHtml.trim()) template.html = templateHtml;
+    if (templateWebhookBody.trim()) template.webhookBody = templateWebhookBody;
+    if (templateContentType.trim()) template.contentType = templateContentType.trim();
+
+    return JSON.stringify({
+      version: 3,
+      ...(conditionTree ? { conditions: conditionTree } : {}),
+      ...(Object.keys(template).length > 0 ? { template } : {}),
+    });
+  };
+
+  const buildTargets = () => {
+    if (targets.length === 0) {
+      throw new Error("At least one target is required");
     }
 
-    switch (type) {
-      case "EMAIL":
-        return JSON.stringify({
-          version: 2,
-          destination: { type: "EMAIL", to: emailTo },
-          ...(conditionTree ? { conditions: conditionTree } : {}),
-          ...(Object.keys(template).length > 0 ? { template } : {}),
-        });
-      case "TELEGRAM":
-        return JSON.stringify({
-          version: 2,
-          destination: { type: "TELEGRAM", token: telegramToken, chatId: telegramChatId },
-          ...(conditionTree ? { conditions: conditionTree } : {}),
-          ...(Object.keys(template).length > 0 ? { template } : {}),
-        });
-      case "DISCORD":
-      case "SLACK":
-      case "WEBHOOK":
-        return JSON.stringify({
-          version: 2,
-          destination: {
-            type,
-            url: webhookUrl,
-            headers: parseHeaders(),
-          },
-          ...(conditionTree ? { conditions: conditionTree } : {}),
-          ...(Object.keys(template).length > 0 ? { template } : {}),
-        });
-      default:
-        return JSON.stringify({ version: 2, destination: { type, url: webhookUrl, headers: {} } });
-    }
+    return targets.map((t, index) => {
+      const prefix = `Target #${index + 1}`;
+      switch (t.type) {
+        case "EMAIL": {
+          const to = t.to?.trim() || "";
+          if (!to) throw new Error(`${prefix}: email recipient is required`);
+          return { type: "EMAIL", config: JSON.stringify({ type: "EMAIL", to }) };
+        }
+        case "TELEGRAM": {
+          const token = t.token?.trim() || "";
+          const chatId = t.chatId?.trim() || "";
+          if (!token || !chatId) throw new Error(`${prefix}: Telegram token and chat ID are required`);
+          return { type: "TELEGRAM", config: JSON.stringify({ type: "TELEGRAM", token, chatId }) };
+        }
+        case "DISCORD":
+        case "SLACK":
+        case "WEBHOOK": {
+          const url = t.url?.trim() || "";
+          if (!url) throw new Error(`${prefix}: webhook URL is required`);
+          const headers = parseHeadersJson(t.headers);
+          return { type: t.type, config: JSON.stringify({ type: t.type, url, headers }) };
+        }
+      }
+    });
   };
 
   const resetForm = () => {
     setName("");
-    setType("WEBHOOK");
     setMailboxId("");
-    setEmailTo("");
-    setTelegramToken("");
-    setTelegramChatId("");
-    setWebhookUrl("");
-    setWebhookHeaders("");
+    setTargets([createTargetDraft("WEBHOOK")]);
     setConditionLogic("and");
     setConditions([]);
     setTemplateText("");
@@ -230,30 +258,18 @@ export default function ForwardsPage() {
       return;
     }
 
-    if (type === "EMAIL" && !emailTo.trim()) {
-      toast.error("Email recipient is required");
-      return;
-    }
-    if (type === "TELEGRAM" && (!telegramToken.trim() || !telegramChatId.trim())) {
-      toast.error("Telegram token and chat ID are required");
-      return;
-    }
-    if ((type === "DISCORD" || type === "SLACK" || type === "WEBHOOK") && !webhookUrl.trim()) {
-      toast.error("Webhook URL is required");
-      return;
-    }
-
     try {
-      const config = buildConfig();
+      const config = buildRuleConfig();
+      const builtTargets = buildTargets();
 
       const res = await fetch("/api/forwards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          type,
           config,
           mailboxId: mailboxId || null,
+          targets: builtTargets,
         }),
       });
 
@@ -336,6 +352,10 @@ export default function ForwardsPage() {
     }
   };
 
+  const hasEmailTarget = targets.some((t) => t.type === "EMAIL");
+  const hasWebhookTarget = targets.some((t) => t.type === "WEBHOOK");
+  const hasTextTarget = targets.some((t) => t.type === "TELEGRAM" || t.type === "DISCORD" || t.type === "SLACK");
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-12">
@@ -359,7 +379,7 @@ export default function ForwardsPage() {
               <Plus className="mr-2 h-4 w-4" /> New Rule
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+	          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Forward Rule</DialogTitle>
             </DialogHeader>
@@ -395,81 +415,158 @@ export default function ForwardsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Forward Type</Label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {forwardTypes.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        <div className="flex items-center gap-2">
-                          <t.icon className="h-4 w-4" />
-                          {t.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-                            {/* Email Config */}
-              {type === "EMAIL" && (
-                <div className="space-y-2">
-                  <Label>Forward to Email Address</Label>
-                  <Input
-                    type="email"
-                    placeholder="forward@example.com"
-                    value={emailTo}
-                    onChange={(e) => setEmailTo(e.target.value)}
-                  />
-                </div>
-              )}
-
-              {/* Telegram Config */}
-              {type === "TELEGRAM" && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Bot Token</Label>
-                    <Input
-                      placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                      value={telegramToken}
-                      onChange={(e) => setTelegramToken(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Chat ID</Label>
-                    <Input
-                      placeholder="-1001234567890"
-                      value={telegramChatId}
-                      onChange={(e) => setTelegramChatId(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Discord/Slack/Webhook Config */}
-              {(type === "DISCORD" || type === "SLACK" || type === "WEBHOOK") && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Webhook URL</Label>
-                    <Input
-                      placeholder="https://..."
-                      value={webhookUrl}
-                      onChange={(e) => setWebhookUrl(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Custom Headers (JSON, optional)</Label>
-                    <Textarea
-                      placeholder='{"Authorization": "Bearer xxx"}'
-                      value={webhookHeaders}
-                      onChange={(e) => setWebhookHeaders(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                </>
-              )}
+	              <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+	                <div className="flex items-center justify-between">
+	                  <Label className="text-sm">Targets</Label>
+	                  <Button
+	                    type="button"
+	                    variant="outline"
+	                    size="sm"
+	                    onClick={() => setTargets((prev) => [...prev, createTargetDraft("WEBHOOK")])}
+	                  >
+	                    Add target
+	                  </Button>
+	                </div>
+	
+	                <div className="space-y-3">
+	                  {targets.map((t) => (
+	                    <div key={t.clientId} className="rounded-md border bg-background p-3 space-y-3">
+	                      <div className="flex items-center gap-2">
+	                        <div className="flex-1">
+	                          <Label className="text-xs text-muted-foreground">Type</Label>
+	                          <Select
+	                            value={t.type}
+	                            onValueChange={(value) =>
+	                              setTargets((prev) =>
+	                                prev.map((row) =>
+	                                  row.clientId === t.clientId
+	                                    ? { ...createTargetDraft(value as TargetType), clientId: row.clientId }
+	                                    : row
+	                                )
+	                              )
+	                            }
+	                          >
+	                            <SelectTrigger className="h-9">
+	                              <SelectValue />
+	                            </SelectTrigger>
+	                            <SelectContent>
+	                              {forwardTypes.map((ft) => (
+	                                <SelectItem key={ft.value} value={ft.value}>
+	                                  <div className="flex items-center gap-2">
+	                                    <ft.icon className="h-4 w-4" />
+	                                    {ft.label}
+	                                  </div>
+	                                </SelectItem>
+	                              ))}
+	                            </SelectContent>
+	                          </Select>
+	                        </div>
+	
+	                        <div className="pt-5">
+	                          <Button
+	                            type="button"
+	                            size="sm"
+	                            variant="ghost"
+	                            onClick={() =>
+	                              setTargets((prev) =>
+	                                prev.length <= 1 ? prev : prev.filter((row) => row.clientId !== t.clientId)
+	                              )
+	                            }
+	                            disabled={targets.length <= 1}
+	                          >
+	                            Remove
+	                          </Button>
+	                        </div>
+	                      </div>
+	
+	                      {t.type === "EMAIL" && (
+	                        <div className="space-y-2">
+	                          <Label>Forward to Email Address</Label>
+	                          <Input
+	                            type="email"
+	                            placeholder="forward@example.com"
+	                            value={t.to || ""}
+	                            onChange={(e) =>
+	                              setTargets((prev) =>
+	                                prev.map((row) =>
+	                                  row.clientId === t.clientId ? { ...row, to: e.target.value } : row
+	                                )
+	                              )
+	                            }
+	                          />
+	                        </div>
+	                      )}
+	
+	                      {t.type === "TELEGRAM" && (
+	                        <>
+	                          <div className="space-y-2">
+	                            <Label>Bot Token</Label>
+	                            <Input
+	                              placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+	                              value={t.token || ""}
+	                              onChange={(e) =>
+	                                setTargets((prev) =>
+	                                  prev.map((row) =>
+	                                    row.clientId === t.clientId ? { ...row, token: e.target.value } : row
+	                                  )
+	                                )
+	                              }
+	                            />
+	                          </div>
+	                          <div className="space-y-2">
+	                            <Label>Chat ID</Label>
+	                            <Input
+	                              placeholder="-1001234567890"
+	                              value={t.chatId || ""}
+	                              onChange={(e) =>
+	                                setTargets((prev) =>
+	                                  prev.map((row) =>
+	                                    row.clientId === t.clientId ? { ...row, chatId: e.target.value } : row
+	                                  )
+	                                )
+	                              }
+	                            />
+	                          </div>
+	                        </>
+	                      )}
+	
+	                      {(t.type === "DISCORD" || t.type === "SLACK" || t.type === "WEBHOOK") && (
+	                        <>
+	                          <div className="space-y-2">
+	                            <Label>Webhook URL</Label>
+	                            <Input
+	                              placeholder="https://..."
+	                              value={t.url || ""}
+	                              onChange={(e) =>
+	                                setTargets((prev) =>
+	                                  prev.map((row) =>
+	                                    row.clientId === t.clientId ? { ...row, url: e.target.value } : row
+	                                  )
+	                                )
+	                              }
+	                            />
+	                          </div>
+	                          <div className="space-y-2">
+	                            <Label>Custom Headers (JSON, optional)</Label>
+	                            <Textarea
+	                              placeholder='{"Authorization": "Bearer xxx"}'
+	                              value={t.headers || ""}
+	                              onChange={(e) =>
+	                                setTargets((prev) =>
+	                                  prev.map((row) =>
+	                                    row.clientId === t.clientId ? { ...row, headers: e.target.value } : row
+	                                  )
+	                                )
+	                              }
+	                              rows={3}
+	                            />
+	                          </div>
+	                        </>
+	                      )}
+	                    </div>
+	                  ))}
+	                </div>
+	              </div>
 
               <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
                 <div className="flex items-center justify-between">
@@ -572,57 +669,48 @@ export default function ForwardsPage() {
 
               <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
                 <Label className="text-sm">Template (optional)</Label>
-                <div className="text-xs text-muted-foreground">
-                  Variables: <span className="font-mono">{`{{subject}} {{fromAddress}} {{fromName}} {{toAddress}} {{textBody}} {{receivedAt}} {{mailboxId}}`}</span>
-                </div>
-
-                {(type === "TELEGRAM" || type === "DISCORD" || type === "SLACK") && (
-                  <div className="space-y-2">
-                    <Label>Text Template</Label>
-                    <Textarea
-                      placeholder="New email: {{subject}}"
-                      value={templateText}
+	                <div className="text-xs text-muted-foreground">
+	                  Variables: <span className="font-mono">{`{{subject}} {{fromAddress}} {{fromName}} {{toAddress}} {{textBody}} {{receivedAt}} {{mailboxId}}`}</span>
+	                </div>
+	
+	                {(hasEmailTarget || hasTextTarget) && (
+	                  <div className="space-y-2">
+	                    <Label>Text Template</Label>
+	                    <Textarea
+	                      placeholder="New email: {{subject}}"
+	                      value={templateText}
                       onChange={(e) => setTemplateText(e.target.value)}
                       rows={5}
-                    />
-                  </div>
-                )}
-
-                {type === "EMAIL" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Subject Template</Label>
-                      <Input
+	                    />
+	                  </div>
+	                )}
+	
+	                {hasEmailTarget && (
+	                  <>
+	                    <div className="space-y-2">
+	                      <Label>Subject Template</Label>
+	                      <Input
                         placeholder="[TEmail] {{subject}}"
-                        value={templateSubject}
-                        onChange={(e) => setTemplateSubject(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Text Template</Label>
-                      <Textarea
-                        placeholder="{{textBody}}"
-                        value={templateText}
-                        onChange={(e) => setTemplateText(e.target.value)}
-                        rows={5}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>HTML Template (optional)</Label>
-                      <Textarea
+	                        value={templateSubject}
+	                        onChange={(e) => setTemplateSubject(e.target.value)}
+	                      />
+	                    </div>
+	                    <div className="space-y-2">
+	                      <Label>HTML Template (optional)</Label>
+	                      <Textarea
                         placeholder="{{htmlBody}}"
                         value={templateHtml}
                         onChange={(e) => setTemplateHtml(e.target.value)}
                         rows={5}
                       />
                     </div>
-                  </>
-                )}
-
-                {type === "WEBHOOK" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Webhook Body Template</Label>
+	                  </>
+	                )}
+	
+	                {hasWebhookTarget && (
+	                  <>
+	                    <div className="space-y-2">
+	                      <Label>Webhook Body Template</Label>
                       <Textarea
                         placeholder='{"subject": "{{subject}}", "from": "{{fromAddress}}"}'
                         value={templateWebhookBody}
@@ -704,10 +792,18 @@ export default function ForwardsPage() {
             <TableBody>
               {rules.map((rule) => (
                 <TableRow key={rule.id}>
-                  <TableCell className="font-medium">{rule.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{rule.type}</Badge>
-                  </TableCell>
+	                  <TableCell className="font-medium">{rule.name}</TableCell>
+	                  <TableCell>
+	                    <Badge variant="outline">
+	                      {(() => {
+	                        const types = rule.targets?.map((t) => t.type) || [];
+	                        const unique = Array.from(new Set(types));
+	                        if (unique.length === 0) return rule.type;
+	                        if (unique.length === 1) return unique[0];
+	                        return `MULTI (${types.length})`;
+	                      })()}
+	                    </Badge>
+	                  </TableCell>
                   <TableCell>
                     <Badge
                       className={
