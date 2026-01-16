@@ -59,9 +59,11 @@ export function EmailsPanel({
   onPrevPage,
   onNextPage,
 }: EmailsPanelProps) {
+  const safePages = Math.max(1, pages);
+
   return (
-    <Card className="border-border/50 overflow-hidden flex flex-col">
-      <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
+    <Card className="border-border/50 overflow-hidden min-h-0 py-0 gap-0">
+      <div className="p-4 space-y-3 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -107,182 +109,188 @@ export function EmailsPanel({
             )}
           </div>
         )}
+      </div>
 
-        {loadingEmails ? (
-          <div className="divide-y rounded-md border">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-5 w-12 rounded-full" />
-                    <Skeleton className="h-4 w-48" />
+      <CardContent className="flex-1 min-h-0 overflow-y-auto p-0">
+        <div className="p-4 pt-3">
+          {loadingEmails ? (
+            <div className="divide-y rounded-md border">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                    <Skeleton className="h-4 w-16" />
                   </div>
-                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-3 w-64" />
                 </div>
-                <Skeleton className="h-3 w-64" />
-              </div>
-            ))}
-          </div>
-        ) : emails.length === 0 ? (
-          <EmptyState
-            icon={<Mail className="h-8 w-8 text-muted-foreground" />}
-            title={emailSearch ? "No results found" : "No emails"}
-            description={
-              emailSearch
-                ? `No emails matching "${emailSearch}"`
-                : "Incoming emails will appear here automatically"
-            }
-            action={
-              emailSearch
-                ? { label: "Clear search", onClick: () => onEmailSearchChange("") }
-                : undefined
-            }
-          />
-        ) : (
-          <div className="divide-y rounded-md border">
-            {emails.map((email) => {
-              const active = selectedEmailId === email.id;
-              const isUnread = email.status === "UNREAD";
-              return (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={active}
-                  key={email.id}
-                  onClick={() => onSelectEmail(email)}
-                  onKeyDown={(e) => {
-                    if (e.target !== e.currentTarget) return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelectEmail(email);
-                    }
-                  }}
-                  className={cn(
-                    "w-full text-left p-3 transition-all duration-150 group",
-                    "cursor-pointer hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                    active && "bg-accent ring-1 ring-primary/20",
-                    isUnread && !active && "bg-primary/[0.03]"
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="pt-1">
-                      <input
-                        type="checkbox"
-                        checked={selectedEmailIdSet.has(email.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => onToggleEmailSelection(email.id, e.target.checked)}
-                      />
-                    </div>
-                    <div className="pt-1.5 w-2 flex-shrink-0">
-                      {isUnread && <div className="w-2 h-2 rounded-full bg-primary" />}
-                    </div>
-
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "truncate",
-                            isUnread
-                              ? "font-semibold text-foreground"
-                              : "font-medium text-foreground/90"
-                          )}
-                        >
-                          {email.subject || "(No subject)"}
-                        </span>
+              ))}
+            </div>
+          ) : emails.length === 0 ? (
+            <EmptyState
+              icon={<Mail className="h-8 w-8 text-muted-foreground" />}
+              title={emailSearch ? "No results found" : "No emails"}
+              description={
+                emailSearch
+                  ? `No emails matching "${emailSearch}"`
+                  : "Incoming emails will appear here automatically"
+              }
+              action={
+                emailSearch
+                  ? { label: "Clear search", onClick: () => onEmailSearchChange("") }
+                  : undefined
+              }
+            />
+          ) : (
+            <div className="divide-y rounded-md border">
+              {emails.map((email) => {
+                const active = selectedEmailId === email.id;
+                const isUnread = email.status === "UNREAD";
+                return (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={active}
+                    key={email.id}
+                    onClick={() => onSelectEmail(email)}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSelectEmail(email);
+                      }
+                    }}
+                    className={cn(
+                      "w-full text-left p-3 transition-all duration-150 group",
+                      "cursor-pointer hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                      active && "bg-accent ring-1 ring-primary/20",
+                      isUnread && !active && "bg-primary/[0.03]"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="pt-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedEmailIdSet.has(email.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            onToggleEmailSelection(email.id, e.target.checked)
+                          }
+                        />
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="truncate">
-                          {email.fromName || email.fromAddress}
-                        </span>
-                        <span className="text-muted-foreground/50">·</span>
-                        <span className="flex-shrink-0">
-                          {formatDistanceToNow(new Date(email.receivedAt), {
-                            addSuffix: true,
-                          })}
-                        </span>
+                      <div className="pt-1.5 w-2 flex-shrink-0">
+                        {isUnread && <div className="w-2 h-2 rounded-full bg-primary" />}
                       </div>
-                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                        {email.mailbox.address.split("@")[0]}
-                      </Badge>
-                    </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onStarEmail(email.id, email.isStarred);
-                            }}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "truncate",
+                              isUnread
+                                ? "font-semibold text-foreground"
+                                : "font-medium text-foreground/90"
+                            )}
                           >
-                            <Star
-                              className={cn(
-                                "h-4 w-4",
-                                email.isStarred
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : ""
-                              )}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {email.isStarred ? "Unstar" : "Star"}
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onDeleteEmail(email.id);
-                            }}
-                            className="hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Delete</TooltipContent>
-                      </Tooltip>
+                            {email.subject || "(No subject)"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="truncate">
+                            {email.fromName || email.fromAddress}
+                          </span>
+                          <span className="text-muted-foreground/50">·</span>
+                          <span className="flex-shrink-0">
+                            {formatDistanceToNow(new Date(email.receivedAt), {
+                              addSuffix: true,
+                            })}
+                          </span>
+                        </div>
+                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                          {email.mailbox.address.split("@")[0]}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onStarEmail(email.id, email.isStarred);
+                              }}
+                            >
+                              <Star
+                                className={cn(
+                                  "h-4 w-4",
+                                  email.isStarred
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : ""
+                                )}
+                              />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {email.isStarred ? "Unstar" : "Star"}
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDeleteEmail(email.id);
+                              }}
+                              className="hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="pt-2 flex items-center justify-between gap-2">
-          <div className="text-xs text-muted-foreground">
-            Page {page} / {Math.max(1, pages)}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onPrevPage}
-              disabled={loadingEmails || page <= 1}
-            >
-              Prev
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onNextPage}
-              disabled={loadingEmails || page >= Math.max(1, pages)}
-            >
-              Next
-            </Button>
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </CardContent>
+
+      <div className="p-3 border-t border-border/50 flex items-center justify-between gap-2 flex-shrink-0">
+        <div className="text-xs text-muted-foreground">
+          Page {page} / {safePages}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onPrevPage}
+            disabled={loadingEmails || page <= 1}
+          >
+            Prev
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onNextPage}
+            disabled={loadingEmails || page >= safePages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </Card>
   );
 }
