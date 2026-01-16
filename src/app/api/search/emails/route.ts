@@ -22,7 +22,12 @@ function buildFtsQuery(input: string) {
     .map((token) => token.replace(/\"/g, "\"\""));
 
   if (tokens.length === 0) return null;
-  return tokens.map((t) => `"${t}"`).join(" AND ");
+  return tokens
+    .map((t, index) => {
+      const isLast = index === tokens.length - 1;
+      return isLast ? `"${t}"*` : `"${t}"`;
+    })
+    .join(" AND ");
 }
 
 function isFtsMissingError(error: unknown) {
