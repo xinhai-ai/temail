@@ -3,6 +3,11 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import { isAdminRole } from "@/lib/rbac";
+import { z } from "zod";
+
+const updateWebhookSchema = z.object({
+  isActive: z.boolean(),
+});
 
 export async function POST(
   request: NextRequest,
@@ -71,7 +76,11 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
+  const parsed = updateWebhookSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid request" }, { status: 400 });
+  }
 
   const domain = await prisma.domain.findFirst({
     where: { id },
@@ -81,10 +90,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Domain not found" }, { status: 404 });
   }
 
-  const config = await prisma.domainWebhookConfig.update({
-    where: { domainId: id },
-    data: { isActive: body.isActive },
-  });
+  try {
+    const config = await prisma.domainWebhookConfig.update({
+      where: { domainId: id },
+      data: { isActive: parsed.data.isActive },
+    });
+    return NextResponse.json(config);
+  } catch {
+    return NextResponse.json({ error: "Webhook config not found" }, { status: 404 });
+  }
 
-  return NextResponse.json(config);
+  
 }

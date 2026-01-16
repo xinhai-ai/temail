@@ -40,6 +40,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingDomain, setSavingDomain] = useState(false);
+  const [savingWebhook, setSavingWebhook] = useState(false);
 
   // IMAP config state
   const [imapHost, setImapHost] = useState("");
@@ -140,6 +141,36 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
       fetchDomain();
     } else {
       toast.error("Failed to generate webhook");
+    }
+  };
+
+  const handleWebhookActiveChange = async (checked: boolean) => {
+    if (!domain?.webhookConfig) return;
+    if (savingWebhook) return;
+
+    const previous = webhookActive;
+    setWebhookActive(checked);
+    setSavingWebhook(true);
+
+    try {
+      const res = await fetch(`/api/domains/${id}/webhook`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: checked }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setWebhookActive(previous);
+        toast.error(data?.error || "Failed to update webhook status");
+        return;
+      }
+      toast.success("Webhook status updated");
+      fetchDomain();
+    } catch {
+      setWebhookActive(previous);
+      toast.error("Failed to update webhook status");
+    } finally {
+      setSavingWebhook(false);
     }
   };
 
@@ -293,7 +324,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
                         Enable or disable webhook receiving
                       </p>
                     </div>
-                    <Switch checked={webhookActive} onCheckedChange={setWebhookActive} />
+                    <Switch checked={webhookActive} onCheckedChange={handleWebhookActiveChange} disabled={savingWebhook} />
                   </div>
 
                   <div className="pt-4 border-t">
