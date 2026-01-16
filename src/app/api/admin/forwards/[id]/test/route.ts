@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/rbac";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
+import { normalizeForwardRuleConfig, normalizeForwardTargetConfig, type ForwardDestination } from "@/services/forward-config";
 
 export async function POST(
   request: NextRequest,
@@ -16,6 +17,7 @@ export async function POST(
 
   const rule = await prisma.forwardRule.findUnique({
     where: { id },
+    include: { targets: true },
   });
 
   if (!rule) {
@@ -23,7 +25,6 @@ export async function POST(
   }
 
   try {
-    const config = JSON.parse(rule.config);
     const testMessage = {
       subject: "Test Forward - TEmail (Admin)",
       from: "test@temail.local",
@@ -32,40 +33,78 @@ export async function POST(
       timestamp: new Date().toISOString(),
     };
 
-    let result;
+    type RuntimeTarget = { targetId?: string; destination: ForwardDestination } | { targetId?: string; error: string };
 
-    switch (rule.type) {
-      case "TELEGRAM":
-        result = await sendTelegram(config, testMessage);
-        break;
-      case "DISCORD":
-        result = await sendDiscord(config, testMessage);
-        break;
-      case "SLACK":
-        result = await sendSlack(config, testMessage);
-        break;
-      case "WEBHOOK":
-        result = await sendWebhook(config, testMessage);
-        break;
-      case "EMAIL":
-        result = { success: true, message: "Email forward test skipped" };
-        break;
-      default:
-        return NextResponse.json({ error: "Unknown type" }, { status: 400 });
-    }
+    const runtimeTargets: RuntimeTarget[] = (() => {
+      if (rule.targets.length > 0) {
+        return rule.targets.map((t) => {
+          const normalized = normalizeForwardTargetConfig(t.type, t.config);
+          if (!normalized.ok) return { targetId: t.id, error: normalized.error };
+          return { targetId: t.id, destination: normalized.destination };
+        });
+      }
 
-    await prisma.forwardLog.create({
-      data: {
-        ruleId: id,
+      const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
+      if (!normalized.ok) return [{ error: normalized.error }];
+      return [{ destination: normalized.config.destination }];
+    })();
+
+    const results: Array<{ targetId?: string; type?: string; success: boolean; message: string; responseCode?: number }> = [];
+
+    for (const t of runtimeTargets) {
+      if ("error" in t) {
+        results.push({ targetId: t.targetId, success: false, message: t.error });
+        await prisma.forwardLog.create({
+          data: { ruleId: id, ...(t.targetId ? { targetId: t.targetId } : {}), success: false, message: t.error },
+        });
+        continue;
+      }
+
+      const destination = t.destination;
+      const result = await (async () => {
+        switch (destination.type) {
+          case "TELEGRAM":
+            return sendTelegram(destination, testMessage);
+          case "DISCORD":
+            return sendDiscord(destination, testMessage);
+          case "SLACK":
+            return sendSlack(destination, testMessage);
+          case "WEBHOOK":
+            return sendWebhook(destination, testMessage);
+          case "EMAIL":
+            return { success: true, message: "Email forward test skipped" };
+        }
+      })();
+
+      await prisma.forwardLog.create({
+        data: {
+          ruleId: id,
+          ...(t.targetId ? { targetId: t.targetId } : {}),
+          success: result.success,
+          message: result.message,
+          ...(typeof result.code === "number" ? { responseCode: result.code } : {}),
+        },
+      });
+
+      results.push({
+        targetId: t.targetId,
+        type: destination.type,
         success: result.success,
         message: result.message,
-      },
+        ...(typeof result.code === "number" ? { responseCode: result.code } : {}),
+      });
+    }
+
+    await prisma.forwardRule.update({
+      where: { id: rule.id },
+      data: { lastTriggered: new Date() },
+    }).catch(() => {
+      // ignore
     });
 
-    if (result.success) {
-      return NextResponse.json({ success: true });
-    }
-    return NextResponse.json({ error: result.message }, { status: 400 });
+    const allOk = results.every((r) => r.success);
+    const status = allOk ? 200 : 400;
+    return NextResponse.json({ success: allOk, results }, { status });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Test failed" },
@@ -82,21 +121,23 @@ interface TestMessage {
   timestamp: string;
 }
 
+type SendResult = { success: boolean; message: string; code?: number };
+
 async function sendTelegram(
-  config: { token: string; chatId: string },
+  destination: Extract<ForwardDestination, { type: "TELEGRAM" }>,
   message: TestMessage
-) {
+): Promise<SendResult> {
   const text = `📧 *Test Email*\\n\\n*From:* ${message.from}\\n*To:* ${message.to}\\n*Subject:* ${message.subject}\\n\\n${message.text}`;
 
   const res = await fetch(
-    `https://api.telegram.org/bot${config.token}/sendMessage`,
+    `https://api.telegram.org/bot${destination.token}/sendMessage`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       redirect: "error",
       signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
-        chat_id: config.chatId,
+        chat_id: destination.chatId,
         text,
         parse_mode: "Markdown",
       }),
@@ -104,21 +145,24 @@ async function sendTelegram(
   );
 
   if (res.ok) {
-    return { success: true, message: "Telegram message sent" };
+    return { success: true, message: "Telegram message sent", code: res.status };
   }
   const data = await res.json();
-  return { success: false, message: data.description || "Telegram failed" };
+  return { success: false, message: data.description || "Telegram failed", code: res.status };
 }
 
-async function sendDiscord(config: { url: string }, message: TestMessage) {
-  const validated = await validateEgressUrl(config.url);
+async function sendDiscord(
+  destination: Extract<ForwardDestination, { type: "DISCORD" }>,
+  message: TestMessage
+): Promise<SendResult> {
+  const validated = await validateEgressUrl(destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
   const res = await fetch(validated.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...destination.headers },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify({
@@ -138,19 +182,22 @@ async function sendDiscord(config: { url: string }, message: TestMessage) {
   });
 
   return res.ok
-    ? { success: true, message: "Discord message sent" }
-    : { success: false, message: "Discord webhook failed" };
+    ? { success: true, message: "Discord message sent", code: res.status }
+    : { success: false, message: "Discord webhook failed", code: res.status };
 }
 
-async function sendSlack(config: { url: string }, message: TestMessage) {
-  const validated = await validateEgressUrl(config.url);
+async function sendSlack(
+  destination: Extract<ForwardDestination, { type: "SLACK" }>,
+  message: TestMessage
+): Promise<SendResult> {
+  const validated = await validateEgressUrl(destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
   const res = await fetch(validated.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...destination.headers },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify({
@@ -175,15 +222,15 @@ async function sendSlack(config: { url: string }, message: TestMessage) {
   });
 
   return res.ok
-    ? { success: true, message: "Slack message sent" }
-    : { success: false, message: "Slack webhook failed" };
+    ? { success: true, message: "Slack message sent", code: res.status }
+    : { success: false, message: "Slack webhook failed", code: res.status };
 }
 
 async function sendWebhook(
-  config: { url: string; headers?: Record<string, string> },
+  destination: Extract<ForwardDestination, { type: "WEBHOOK" }>,
   message: TestMessage
-) {
-  const validated = await validateEgressUrl(config.url);
+): Promise<SendResult> {
+  const validated = await validateEgressUrl(destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
@@ -192,7 +239,7 @@ async function sendWebhook(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...config.headers,
+      ...destination.headers,
     },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
@@ -200,6 +247,6 @@ async function sendWebhook(
   });
 
   return res.ok
-    ? { success: true, message: "Webhook sent" }
-    : { success: false, message: `Webhook failed: ${res.status}` };
+    ? { success: true, message: "Webhook sent", code: res.status }
+    : { success: false, message: `Webhook failed: ${res.status}`, code: res.status };
 }

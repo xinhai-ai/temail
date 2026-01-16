@@ -3,7 +3,15 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
-import { normalizeForwardRuleConfig } from "@/services/forward-config";
+import {
+  normalizeForwardRuleConfig,
+  normalizeForwardTargetConfig,
+  parseForwardRuleConfig,
+  type ForwardCondition,
+  type ForwardDestination,
+  type ForwardTemplate,
+  type ForwardType,
+} from "@/services/forward-config";
 import { buildForwardTemplateVars, matchesForwardConditions, renderForwardTemplate, type ForwardEmail } from "@/services/forward-runtime";
 import nodemailer from "nodemailer";
 
@@ -43,6 +51,17 @@ function buildDefaultTelegramText(email: ForwardEmail) {
   }`;
 }
 
+function extractRuntimeConfig(rule: { type: ForwardType; config: string }): { ok: true; conditions?: ForwardCondition; template?: ForwardTemplate } | { ok: false; error: string } {
+  const parsed = parseForwardRuleConfig(rule.config);
+  if (parsed.ok) {
+    return { ok: true, conditions: parsed.config.conditions, template: parsed.config.template };
+  }
+
+  const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
+  if (!normalized.ok) return normalized;
+  return { ok: true, conditions: normalized.config.conditions, template: normalized.config.template };
+}
+
 type PreviewResult =
   | {
       type: "TELEGRAM";
@@ -63,6 +82,10 @@ type PreviewResult =
       text: string;
       html?: string;
     };
+
+type TargetPreview =
+  | { targetId?: string; ok: true; preview: PreviewResult }
+  | { targetId?: string; ok: false; error: string };
 
 function buildWebhookPayload(config: {
   templateBody?: string;
@@ -170,7 +193,7 @@ export async function POST(
 
   const rule = await prisma.forwardRule.findFirst({
     where: { id, userId: session.user.id },
-    select: { id: true, type: true, config: true, mailboxId: true },
+    select: { id: true, type: true, config: true, mailboxId: true, targets: { select: { id: true, type: true, config: true } } },
   });
 
   if (!rule) {
@@ -188,12 +211,10 @@ export async function POST(
 
   const mode = parsed.data.mode || "send";
 
-  const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
-  if (!normalized.ok) {
-    return NextResponse.json({ error: normalized.error }, { status: 400 });
+  const runtime = extractRuntimeConfig(rule);
+  if (!runtime.ok) {
+    return NextResponse.json({ error: runtime.error }, { status: 400 });
   }
-
-  const config = normalized.config;
 
   let email: ForwardEmail;
   let mailboxId: string;
@@ -231,7 +252,7 @@ export async function POST(
   }
 
   const vars = buildForwardTemplateVars(email, mailboxId);
-  const matched = config.conditions ? matchesForwardConditions(email, config.conditions) : true;
+  const matched = runtime.conditions ? matchesForwardConditions(email, runtime.conditions) : true;
 
   if (!matched) {
     return NextResponse.json({
@@ -240,184 +261,222 @@ export async function POST(
     });
   }
 
-  let preview: PreviewResult;
-  try {
-    preview = await (async (): Promise<PreviewResult> => {
-      switch (rule.type) {
-        case "TELEGRAM": {
-          if (config.destination.type !== "TELEGRAM") throw new Error("Invalid destination type");
-          const text = config.template?.text
-            ? renderForwardTemplate(config.template.text, vars)
-            : buildDefaultTelegramText(email);
-          return {
-            type: "TELEGRAM",
-            url: `https://api.telegram.org/bot${config.destination.token}/sendMessage`,
-            headers: { "Content-Type": "application/json" },
-            body: { chat_id: config.destination.chatId, text, parse_mode: "Markdown" },
-          };
-        }
-        case "DISCORD": {
-          if (config.destination.type !== "DISCORD") throw new Error("Invalid destination type");
-          const validated = await validateEgressUrl(config.destination.url);
-          if (!validated.ok) throw new Error(validated.error);
-          const template = config.template?.text;
-          const body = template
-            ? { content: renderForwardTemplate(template, vars) }
-            : {
-                embeds: [
-                  {
-                    title: `📧 ${email.subject}`,
-                    description: email.textBody?.substring(0, 2000) || "(No content)",
-                    color: 0xf59e0b,
-                    fields: [
-                      { name: "From", value: email.fromName || email.fromAddress, inline: true },
-                      { name: "To", value: email.toAddress, inline: true },
-                    ],
-                    timestamp: email.receivedAt.toISOString(),
-                  },
-                ],
-              };
-          return {
-            type: "DISCORD",
-            url: validated.url.toString(),
-            headers: { "Content-Type": "application/json", ...config.destination.headers },
-            body,
-          };
-        }
-        case "SLACK": {
-          if (config.destination.type !== "SLACK") throw new Error("Invalid destination type");
-          const validated = await validateEgressUrl(config.destination.url);
-          if (!validated.ok) throw new Error(validated.error);
-          const template = config.template?.text;
-          const body = template
-            ? { text: renderForwardTemplate(template, vars) }
-            : {
-                blocks: [
-                  {
-                    type: "header",
-                    text: { type: "plain_text", text: `📧 ${email.subject}` },
-                  },
-                  {
-                    type: "section",
-                    fields: [
-                      { type: "mrkdwn", text: `*From:*\n${email.fromName || email.fromAddress}` },
-                      { type: "mrkdwn", text: `*To:*\n${email.toAddress}` },
-                    ],
-                  },
-                  {
-                    type: "section",
-                    text: {
-                      type: "plain_text",
-                      text: email.textBody?.substring(0, 2000) || "(No content)",
+  type RuntimeTarget = { targetId?: string; destination: ForwardDestination } | { targetId?: string; error: string };
+
+  const runtimeTargets: RuntimeTarget[] = (() => {
+    if (rule.targets.length > 0) {
+      return rule.targets.map((t) => {
+        const normalized = normalizeForwardTargetConfig(t.type, t.config);
+        if (!normalized.ok) return { targetId: t.id, error: normalized.error };
+        return { targetId: t.id, destination: normalized.destination };
+      });
+    }
+
+    const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
+    if (!normalized.ok) return [{ error: normalized.error }];
+    return [{ destination: normalized.config.destination }];
+  })();
+
+  const previews: TargetPreview[] = [];
+
+  for (const t of runtimeTargets) {
+    if ("error" in t) {
+      previews.push({ targetId: t.targetId, ok: false, error: t.error });
+      continue;
+    }
+
+    try {
+      const destination = t.destination;
+      const templateText = runtime.template?.text;
+
+      const preview = await (async (): Promise<PreviewResult> => {
+        switch (destination.type) {
+          case "TELEGRAM": {
+            const text = templateText ? renderForwardTemplate(templateText, vars) : buildDefaultTelegramText(email);
+            return {
+              type: "TELEGRAM",
+              url: `https://api.telegram.org/bot${destination.token}/sendMessage`,
+              headers: { "Content-Type": "application/json" },
+              body: { chat_id: destination.chatId, text, parse_mode: "Markdown" },
+            };
+          }
+          case "DISCORD": {
+            const validated = await validateEgressUrl(destination.url);
+            if (!validated.ok) throw new Error(validated.error);
+            const body = templateText
+              ? { content: renderForwardTemplate(templateText, vars) }
+              : {
+                  embeds: [
+                    {
+                      title: `📧 ${email.subject}`,
+                      description: email.textBody?.substring(0, 2000) || "(No content)",
+                      color: 0xf59e0b,
+                      fields: [
+                        { name: "From", value: email.fromName || email.fromAddress, inline: true },
+                        { name: "To", value: email.toAddress, inline: true },
+                      ],
+                      timestamp: email.receivedAt.toISOString(),
                     },
-                  },
-                ],
-              };
-          return {
-            type: "SLACK",
-            url: validated.url.toString(),
-            headers: { "Content-Type": "application/json", ...config.destination.headers },
-            body,
-          };
+                  ],
+                };
+            return {
+              type: "DISCORD",
+              url: validated.url.toString(),
+              headers: { "Content-Type": "application/json", ...destination.headers },
+              body,
+            };
+          }
+          case "SLACK": {
+            const validated = await validateEgressUrl(destination.url);
+            if (!validated.ok) throw new Error(validated.error);
+            const body = templateText
+              ? { text: renderForwardTemplate(templateText, vars) }
+              : {
+                  blocks: [
+                    {
+                      type: "header",
+                      text: { type: "plain_text", text: `📧 ${email.subject}` },
+                    },
+                    {
+                      type: "section",
+                      fields: [
+                        { type: "mrkdwn", text: `*From:*\n${email.fromName || email.fromAddress}` },
+                        { type: "mrkdwn", text: `*To:*\n${email.toAddress}` },
+                      ],
+                    },
+                    {
+                      type: "section",
+                      text: {
+                        type: "plain_text",
+                        text: email.textBody?.substring(0, 2000) || "(No content)",
+                      },
+                    },
+                  ],
+                };
+            return {
+              type: "SLACK",
+              url: validated.url.toString(),
+              headers: { "Content-Type": "application/json", ...destination.headers },
+              body,
+            };
+          }
+          case "WEBHOOK": {
+            const validated = await validateEgressUrl(destination.url);
+            if (!validated.ok) throw new Error(validated.error);
+            const payload = buildWebhookPayload({
+              templateBody: runtime.template?.webhookBody,
+              contentType: runtime.template?.contentType,
+              destinationHeaders: destination.headers,
+              email,
+              vars,
+            });
+            return {
+              type: "WEBHOOK",
+              url: validated.url.toString(),
+              headers: { "Content-Type": payload.contentType, ...payload.headers },
+              body: payload.body,
+            };
+          }
+          case "EMAIL": {
+            const subjectTemplate = runtime.template?.subject || "[TEmail] {{subject}}";
+            const textTemplate =
+              runtime.template?.text ||
+              (email.textBody
+                ? "{{textBody}}"
+                : `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`);
+            const htmlTemplate = runtime.template?.html || (email.htmlBody ? "{{htmlBody}}" : "");
+            const subject = renderForwardTemplate(subjectTemplate, vars);
+            const text = renderForwardTemplate(textTemplate, vars);
+            const html = htmlTemplate ? renderForwardTemplate(htmlTemplate, vars) : undefined;
+            return { type: "EMAIL", to: destination.to, subject, text, ...(html ? { html } : {}) };
+          }
         }
-        case "WEBHOOK": {
-          if (config.destination.type !== "WEBHOOK") throw new Error("Invalid destination type");
-          const validated = await validateEgressUrl(config.destination.url);
-          if (!validated.ok) throw new Error(validated.error);
-          const payload = buildWebhookPayload({
-            templateBody: config.template?.webhookBody,
-            contentType: config.template?.contentType,
-            destinationHeaders: config.destination.headers,
-            email,
-            vars,
-          });
-          return {
-            type: "WEBHOOK",
-            url: validated.url.toString(),
-            headers: { "Content-Type": payload.contentType, ...payload.headers },
-            body: payload.body,
-          };
-        }
-        case "EMAIL": {
-          if (config.destination.type !== "EMAIL") throw new Error("Invalid destination type");
-          const subjectTemplate = config.template?.subject || "[TEmail] {{subject}}";
-          const textTemplate =
-            config.template?.text ||
-            (email.textBody
-              ? "{{textBody}}"
-              : `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`);
-          const htmlTemplate = config.template?.html || (email.htmlBody ? "{{htmlBody}}" : "");
-          const subject = renderForwardTemplate(subjectTemplate, vars);
-          const text = renderForwardTemplate(textTemplate, vars);
-          const html = htmlTemplate ? renderForwardTemplate(htmlTemplate, vars) : undefined;
-          return { type: "EMAIL", to: config.destination.to, subject, text, ...(html ? { html } : {}) };
-        }
-      }
-    })();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to build preview";
-    return NextResponse.json({ error: message }, { status: 400 });
+      })();
+
+      previews.push({ targetId: t.targetId, ok: true, preview });
+    } catch (error) {
+      previews.push({
+        targetId: t.targetId,
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to build preview",
+      });
+    }
   }
 
   if (mode === "dry_run") {
-    return NextResponse.json({ matched: true, preview });
+    return NextResponse.json({ matched: true, previews });
   }
 
-  try {
-    let resStatus: number | undefined;
+  const sendable = previews.filter((p): p is Extract<TargetPreview, { ok: true }> => p.ok);
+  if (sendable.length === 0) {
+    return NextResponse.json({ matched: true, previews, error: "No valid targets to send" }, { status: 400 });
+  }
 
-    if (preview.type === "EMAIL") {
-      const smtp = await getSmtpRuntime();
-      if (!smtp) {
-        return NextResponse.json({ error: "SMTP is not configured" }, { status: 400 });
+  const results: Array<{ targetId?: string; success: boolean; message: string; responseCode?: number }> = [];
+
+  const smtp = await getSmtpRuntime();
+
+  for (const p of sendable) {
+    const preview = p.preview;
+    try {
+      let resStatus: number | undefined;
+
+      if (preview.type === "EMAIL") {
+        if (!smtp) throw new Error("SMTP is not configured");
+        await smtp.transporter.sendMail({
+          from: smtp.from,
+          to: preview.to,
+          subject: preview.subject,
+          text: preview.text,
+          ...(preview.html ? { html: preview.html } : {}),
+        });
+      } else {
+        const response = await fetch(preview.url, {
+          method: "POST",
+          headers: preview.headers,
+          redirect: "error",
+          signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+          body: typeof preview.body === "string" ? preview.body : JSON.stringify(preview.body),
+        });
+        resStatus = response.status;
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
       }
-      await smtp.transporter.sendMail({
-        from: smtp.from,
-        to: preview.to,
-        subject: preview.subject,
-        text: preview.text,
-        ...(preview.html ? { html: preview.html } : {}),
+
+      await prisma.forwardLog.create({
+        data: {
+          ruleId: rule.id,
+          ...(p.targetId ? { targetId: p.targetId } : {}),
+          success: true,
+          message: "Test sent",
+          ...(typeof resStatus === "number" ? { responseCode: resStatus } : {}),
+        },
       });
-    } else {
-      const response = await fetch(preview.url, {
-        method: "POST",
-        headers: preview.headers,
-        redirect: "error",
-        signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
-        body: typeof preview.body === "string" ? preview.body : JSON.stringify(preview.body),
+
+      results.push({ targetId: p.targetId, success: true, message: "Test sent", ...(resStatus ? { responseCode: resStatus } : {}) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Test failed";
+      await prisma.forwardLog.create({
+        data: {
+          ruleId: rule.id,
+          ...(p.targetId ? { targetId: p.targetId } : {}),
+          success: false,
+          message,
+        },
+      }).catch(() => {
+        // ignore
       });
-      resStatus = response.status;
-      if (!response.ok) {
-        return NextResponse.json({ error: `Request failed: ${response.status}` }, { status: 400 });
-      }
+      results.push({ targetId: p.targetId, success: false, message });
     }
-
-    await prisma.forwardLog.create({
-      data: {
-        ruleId: rule.id,
-        success: true,
-        message: "Test sent",
-        ...(typeof resStatus === "number" ? { responseCode: resStatus } : {}),
-      },
-    });
-
-    await prisma.forwardRule.update({
-      where: { id: rule.id },
-      data: { lastTriggered: new Date() },
-    });
-
-    return NextResponse.json({ success: true, matched: true, preview });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Test failed";
-    await prisma.forwardLog.create({
-      data: {
-        ruleId: rule.id,
-        success: false,
-        message,
-      },
-    }).catch(() => {
-      // ignore
-    });
-    return NextResponse.json({ error: message }, { status: 500 });
   }
+
+  await prisma.forwardRule.update({
+    where: { id: rule.id },
+    data: { lastTriggered: new Date() },
+  });
+
+  const allOk = results.every((r) => r.success);
+  const status = allOk ? 200 : 400;
+  return NextResponse.json({ success: allOk, matched: true, previews, results }, { status });
 }

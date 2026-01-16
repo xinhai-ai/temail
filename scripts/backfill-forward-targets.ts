@@ -57,7 +57,6 @@ async function main() {
     const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
     if (!normalized.ok) {
       failed += 1;
-      // eslint-disable-next-line no-console
       console.error(`Rule ${rule.id}: cannot normalize config: ${normalized.error}`);
       continue;
     }
@@ -77,7 +76,6 @@ async function main() {
     created += 1;
   }
 
-  // eslint-disable-next-line no-console
   console.log(
     JSON.stringify({ dryRun, checked, skipped, created, failed }, null, 2)
   );
@@ -85,11 +83,9 @@ async function main() {
 
 main()
   .catch((error) => {
-    // eslint-disable-next-line no-console
     console.error(error);
     process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-
