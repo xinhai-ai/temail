@@ -33,7 +33,7 @@ export default function InboxPage() {
   const [loadingDomains, setLoadingDomains] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingMailboxes, setLoadingMailboxes] = useState(true);
-  const [loadingEmails, setLoadingEmails] = useState(false);
+  const [loadingEmails, setLoadingEmails] = useState(true);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
@@ -177,6 +177,7 @@ export default function InboxPage() {
   }, [emailsPageSize, emailsPageSizeLoaded]);
 
   useEffect(() => {
+    if (!emailsPageSizeLoaded) return;
     const fetchEmails = async () => {
       setLoadingEmails(true);
       const params = new URLSearchParams();
@@ -202,7 +203,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize]);
+  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
