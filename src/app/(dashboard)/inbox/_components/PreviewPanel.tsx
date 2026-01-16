@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useState } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
+import { Switch } from "@/components/ui/switch";
 import { ExternalLink, Mail } from "lucide-react";
 import type { EmailDetail } from "../types";
 
@@ -24,6 +25,7 @@ export function PreviewPanel({
   loadingPreview,
 }: PreviewPanelProps) {
   const [previewMode, setPreviewMode] = useState<"text" | "html" | "raw">("text");
+  const [allowRemoteResources, setAllowRemoteResources] = useState(false);
 
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col">
@@ -144,8 +146,17 @@ export function PreviewPanel({
               </Button>
             </div>
 
+            {previewMode === "html" && selectedEmail.htmlBody && (
+              <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+                <div className="text-xs text-muted-foreground">
+                  Load remote images
+                </div>
+                <Switch checked={allowRemoteResources} onCheckedChange={setAllowRemoteResources} />
+              </div>
+            )}
+
             {previewMode === "html" && selectedEmail.htmlBody ? (
-              <EmailHtmlPreview html={selectedEmail.htmlBody} />
+              <EmailHtmlPreview html={selectedEmail.htmlBody} allowRemoteResources={allowRemoteResources} />
             ) : previewMode === "raw" && selectedEmail.rawContent ? (
               <pre className="whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
                 {selectedEmail.rawContent}
