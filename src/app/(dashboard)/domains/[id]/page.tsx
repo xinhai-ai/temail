@@ -18,6 +18,7 @@ interface Domain {
   sourceType: "IMAP" | "WEBHOOK";
   status: string;
   description?: string;
+  isPublic?: boolean;
   imapConfig?: {
     host: string;
     port: number;
@@ -38,6 +39,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   const [domain, setDomain] = useState<Domain | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingDomain, setSavingDomain] = useState(false);
 
   // IMAP config state
   const [imapHost, setImapHost] = useState("");
@@ -49,12 +51,16 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
 
   // Webhook config state
   const [webhookActive, setWebhookActive] = useState(true);
+  const [isPublic, setIsPublic] = useState(true);
+  const [description, setDescription] = useState("");
 
   const fetchDomain = async () => {
     const res = await fetch(`/api/domains/${id}`);
     if (res.ok) {
       const data = await res.json();
       setDomain(data);
+      setIsPublic(Boolean(data.isPublic));
+      setDescription(data.description || "");
 
       if (data.imapConfig) {
         setImapHost(data.imapConfig.host);
@@ -78,6 +84,24 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
     };
     run();
   }, [id]);
+
+  const saveDomainSettings = async () => {
+    setSavingDomain(true);
+    const res = await fetch(`/api/domains/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPublic, description: description.trim() ? description.trim() : undefined }),
+    });
+
+    if (res.ok) {
+      toast.success("Domain settings saved");
+      fetchDomain();
+    } else {
+      const data = await res.json().catch(() => null);
+      toast.error(data?.error || "Failed to save");
+    }
+    setSavingDomain(false);
+  };
 
   const saveImapConfig = async () => {
     setSaving(true);
@@ -173,6 +197,40 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
           {domain.status}
         </Badge>
       </div>
+
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle>General</CardTitle>
+          <CardDescription>Visibility and metadata</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Description (Optional)</Label>
+            <Input
+              placeholder="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-1">
+              <Label>Visible to users</Label>
+              <p className="text-sm text-muted-foreground">
+                When enabled, normal users can use this domain once it becomes ACTIVE.
+              </p>
+            </div>
+            <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={saveDomainSettings} disabled={savingDomain}>
+              <Save className="h-4 w-4 mr-2" />
+              {savingDomain ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue={domain.sourceType.toLowerCase()} className="space-y-6">
         <TabsList>

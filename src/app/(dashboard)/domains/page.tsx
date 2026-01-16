@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Globe, Trash2, Settings } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ interface Domain {
   sourceType: "IMAP" | "WEBHOOK";
   status: string;
   description?: string;
+  isPublic?: boolean;
   _count: { mailboxes: number };
 }
 
@@ -44,6 +46,7 @@ export default function DomainsPage() {
   const [name, setName] = useState("");
   const [sourceType, setSourceType] = useState<"IMAP" | "WEBHOOK">("WEBHOOK");
   const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
 
   const fetchDomains = async () => {
     const res = await fetch("/api/domains");
@@ -68,7 +71,7 @@ export default function DomainsPage() {
     const res = await fetch("/api/domains", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, sourceType, description }),
+      body: JSON.stringify({ name, sourceType, description, isPublic }),
     });
 
     if (res.ok) {
@@ -76,6 +79,7 @@ export default function DomainsPage() {
       setOpen(false);
       setName("");
       setDescription("");
+      setIsPublic(true);
       fetchDomains();
     } else {
       const data = await res.json();
@@ -153,6 +157,15 @@ export default function DomainsPage() {
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <Label>Visible to users</Label>
+                    <p className="text-xs text-muted-foreground">
+                      When enabled, normal users can use this domain once it becomes ACTIVE.
+                    </p>
+                  </div>
+                  <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+                </div>
                 <Button onClick={handleCreate} className="w-full">
                   Create Domain
                 </Button>
@@ -189,19 +202,26 @@ export default function DomainsPage() {
             <Card key={domain.id} className="border-border/50 hover:border-primary/30 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg font-semibold">{domain.name}</CardTitle>
-                <Badge
-                  className={
-                    domain.status === "ACTIVE"
-                      ? "bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20"
-                      : domain.status === "PENDING"
-                      ? "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-500/20"
-                      : domain.status === "ERROR"
-                      ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-500/20"
-                      : "bg-muted text-muted-foreground"
-                  }
-                >
-                  {domain.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <Badge variant={domain.isPublic ? "default" : "secondary"}>
+                      {domain.isPublic ? "Public" : "Private"}
+                    </Badge>
+                  )}
+                  <Badge
+                    className={
+                      domain.status === "ACTIVE"
+                        ? "bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20"
+                        : domain.status === "PENDING"
+                        ? "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-yellow-500/20"
+                        : domain.status === "ERROR"
+                        ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-500/20"
+                        : "bg-muted text-muted-foreground"
+                    }
+                  >
+                    {domain.status}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">

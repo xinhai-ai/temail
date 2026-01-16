@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
     const domain = await prisma.domain.create({
       data: {
         ...data,
+        isPublic: data.isPublic ?? true,
         userId: session.user.id,
       },
     });
