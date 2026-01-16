@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 type StepId = "basic" | "conditions" | "targets" | "template" | "review";
@@ -42,6 +44,46 @@ type CreateTargetPayload = { type: TargetType; config: string };
 type Mailbox = {
   id: string;
   address: string;
+};
+
+type EmailSummary = {
+  id: string;
+  subject: string;
+  fromAddress: string;
+  fromName?: string | null;
+  receivedAt: string;
+  mailbox?: { address: string } | null;
+};
+
+type TestEmailSource = "custom" | "existing";
+
+type TestEmailSampleDraft = {
+  subject: string;
+  fromAddress: string;
+  fromName: string;
+  toAddress: string;
+  textBody: string;
+  htmlBody: string;
+  receivedAt: string;
+};
+
+type ForwardTestSample = {
+  subject?: string;
+  fromAddress?: string;
+  fromName?: string;
+  toAddress?: string;
+  textBody?: string;
+  htmlBody?: string;
+  receivedAt?: string;
+};
+
+type ForwardTestPayload = {
+  config: string;
+  targets: CreateTargetPayload[];
+  ignoreConditions?: boolean;
+  mailboxId?: string;
+  emailId?: string;
+  sample?: ForwardTestSample;
 };
 
 type StepDef = {
@@ -89,6 +131,15 @@ const DEFAULT_WEBHOOK_BODY_TEMPLATE = `{
 }`;
 
 const DEFAULT_WEBHOOK_CONTENT_TYPE = "application/json";
+
+const DEFAULT_TEST_EMAIL_SAMPLE = {
+  subject: "Test Forward - TEmail",
+  fromAddress: "test@temail.local",
+  fromName: "TEmail",
+  toAddress: "test@temail.local",
+  textBody: "This is a test message from TEmail forward system.",
+  htmlBody: "<p>This is a <strong>test</strong> message from TEmail forward system.</p>",
+};
 
 function createClientId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -228,10 +279,23 @@ export default function NewForwardRulePage() {
 
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testResult, setTestResult] = useState<unknown>(null);
-  const [testPayload, setTestPayload] = useState<{ config: string; targets: CreateTargetPayload[] } | null>(null);
+  const [testPayload, setTestPayload] = useState<ForwardTestPayload | null>(null);
   const [testingTargetId, setTestingTargetId] = useState<string | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
   const [testTargetLabel, setTestTargetLabel] = useState<string | null>(null);
+
+  const [overallTestSource, setOverallTestSource] = useState<TestEmailSource>("custom");
+  const [overallTestEmailId, setOverallTestEmailId] = useState<string>("");
+  const [overallTestSample, setOverallTestSample] = useState<TestEmailSampleDraft>(() => ({
+    ...DEFAULT_TEST_EMAIL_SAMPLE,
+    receivedAt: new Date().toISOString(),
+  }));
+  const [overallIgnoreConditions, setOverallIgnoreConditions] = useState(false);
+  const [overallTesting, setOverallTesting] = useState(false);
+
+  const [recentEmails, setRecentEmails] = useState<EmailSummary[]>([]);
+  const [recentEmailsLoading, setRecentEmailsLoading] = useState(false);
+  const [recentEmailsError, setRecentEmailsError] = useState<string | null>(null);
 
   useEffect(() => {
     const run = async () => {
@@ -247,6 +311,33 @@ export default function NewForwardRulePage() {
     };
     run();
   }, []);
+
+  const fetchRecentEmails = useCallback(async () => {
+    setRecentEmailsLoading(true);
+    setRecentEmailsError(null);
+    try {
+      const params = new URLSearchParams({ mode: "cursor", limit: "20" });
+      if (mailboxId) params.set("mailboxId", mailboxId);
+      const res = await fetch(`/api/emails?${params.toString()}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setRecentEmails([]);
+        setRecentEmailsError(data?.error || "Failed to load emails");
+        return;
+      }
+      setRecentEmails(Array.isArray(data?.emails) ? (data.emails as EmailSummary[]) : []);
+    } catch {
+      setRecentEmails([]);
+      setRecentEmailsError("Failed to load emails");
+    } finally {
+      setRecentEmailsLoading(false);
+    }
+  }, [mailboxId]);
+
+  useEffect(() => {
+    if (step !== "review") return;
+    fetchRecentEmails();
+  }, [fetchRecentEmails, step]);
 
   const hasEmailTarget = targets.some((t) => t.type === "EMAIL");
   const hasWebhookTarget = targets.some((t) => t.type === "WEBHOOK");
@@ -413,6 +504,7 @@ export default function NewForwardRulePage() {
           config,
           targets: builtTargets,
           ignoreConditions: true,
+          ...(mailboxId ? { mailboxId } : {}),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -420,7 +512,7 @@ export default function NewForwardRulePage() {
         toast.error(data?.error || "Test failed");
         return;
       }
-      setTestPayload({ config, targets: builtTargets });
+      setTestPayload({ config, targets: builtTargets, ignoreConditions: true, ...(mailboxId ? { mailboxId } : {}) });
       setTestTargetLabel(label);
       setTestResult(data);
       setTestDialogOpen(true);
@@ -428,6 +520,116 @@ export default function NewForwardRulePage() {
       toast.error(error instanceof Error ? error.message : "Test failed");
     } finally {
       setTestingTargetId(null);
+    }
+  };
+
+  const resetOverallTestSample = useCallback(() => {
+    setOverallTestSample({ ...DEFAULT_TEST_EMAIL_SAMPLE, receivedAt: new Date().toISOString() });
+  }, []);
+
+  const handleOverallTest = async () => {
+    const targetsError = validateStep("targets");
+    if (targetsError) {
+      toast.error(targetsError);
+      return;
+    }
+
+    setOverallTesting(true);
+    try {
+      const config = buildRuleConfig({
+        conditionTree,
+        templateText,
+        templateSubject,
+        templateHtml,
+        templateWebhookBody,
+        templateContentType,
+      });
+
+      const builtTargets = buildTargets(targets);
+
+      const requestBody: {
+        mode: "dry_run";
+        config: string;
+        targets: CreateTargetPayload[];
+        ignoreConditions?: boolean;
+        mailboxId?: string;
+        emailId?: string;
+        sample?: ForwardTestSample;
+      } = {
+        mode: "dry_run",
+        config,
+        targets: builtTargets,
+        ...(overallIgnoreConditions ? { ignoreConditions: true } : {}),
+        ...(mailboxId ? { mailboxId } : {}),
+      };
+
+      const label = (() => {
+        if (overallTestSource === "existing") return "Overall Test (existing email)";
+        return "Overall Test";
+      })();
+
+      let samplePayload: ForwardTestSample | undefined;
+
+      if (overallTestSource === "existing") {
+        const emailId = overallTestEmailId.trim();
+        if (!emailId) {
+          toast.error("Please select an email to test");
+          return;
+        }
+        requestBody.emailId = emailId;
+      } else {
+        const receivedAtInput = overallTestSample.receivedAt.trim();
+        const receivedAt = receivedAtInput ? new Date(receivedAtInput) : null;
+        const receivedAtIso =
+          receivedAtInput && receivedAt && Number.isFinite(receivedAt.getTime())
+            ? receivedAt.toISOString()
+            : receivedAtInput
+              ? null
+              : undefined;
+
+        if (receivedAtIso === null) {
+          toast.error("ReceivedAt must be a valid ISO datetime");
+          return;
+        }
+
+        samplePayload = {
+          subject: overallTestSample.subject,
+          fromAddress: overallTestSample.fromAddress,
+          fromName: overallTestSample.fromName,
+          toAddress: overallTestSample.toAddress,
+          textBody: overallTestSample.textBody,
+          htmlBody: overallTestSample.htmlBody,
+          ...(receivedAtIso ? { receivedAt: receivedAtIso } : {}),
+        };
+        requestBody.sample = samplePayload;
+      }
+
+      const res = await fetch("/api/forwards/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Test failed");
+        setTestResult(data);
+        return;
+      }
+
+      setTestPayload({
+        config,
+        targets: builtTargets,
+        ...(overallIgnoreConditions ? { ignoreConditions: true } : {}),
+        ...(mailboxId ? { mailboxId } : {}),
+        ...(requestBody.emailId ? { emailId: requestBody.emailId } : samplePayload ? { sample: samplePayload } : {}),
+      });
+      setTestTargetLabel(label);
+      setTestResult(data);
+      setTestDialogOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Test failed");
+    } finally {
+      setOverallTesting(false);
     }
   };
 
@@ -442,7 +644,10 @@ export default function NewForwardRulePage() {
           mode: "send",
           config: testPayload.config,
           targets: testPayload.targets,
-          ignoreConditions: true,
+          ...(testPayload.ignoreConditions ? { ignoreConditions: true } : {}),
+          ...(testPayload.mailboxId ? { mailboxId: testPayload.mailboxId } : {}),
+          ...(testPayload.emailId ? { emailId: testPayload.emailId } : {}),
+          ...(testPayload.sample ? { sample: testPayload.sample } : {}),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -491,6 +696,25 @@ export default function NewForwardRulePage() {
     templateText,
     templateWebhookBody,
   ]);
+
+  const testResponse = useMemo(() => {
+    if (!testResult || typeof testResult !== "object") return null;
+    return testResult as {
+      matched?: boolean;
+      reason?: string;
+      success?: boolean;
+      error?: string;
+      previews?: Array<
+        | { index: number; ok: true; preview: { type: string; url?: string; headers?: Record<string, string>; body?: unknown; to?: string; subject?: string; text?: string; html?: string } }
+        | { index: number; ok: false; error: string }
+      >;
+      results?: Array<{ index: number; success: boolean; message: string; responseCode?: number }>;
+    };
+  }, [testResult]);
+
+  const testPreviews = useMemo(() => (Array.isArray(testResponse?.previews) ? testResponse!.previews : []), [testResponse]);
+  const testResults = useMemo(() => (Array.isArray(testResponse?.results) ? testResponse!.results : []), [testResponse]);
+  const canSendTest = Boolean(testPayload) && testPreviews.some((p) => p.ok);
 
   return (
     <div className="space-y-6">
@@ -1040,6 +1264,195 @@ export default function NewForwardRulePage() {
                 </div>
               </div>
 
+              <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-2">
+                    <TestTube className="h-4 w-4 text-muted-foreground" />
+                    <div className="text-sm font-medium">Overall Test</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Ignore conditions</Label>
+                    <Switch checked={overallIgnoreConditions} onCheckedChange={setOverallIgnoreConditions} />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <Tabs value={overallTestSource} onValueChange={(value) => setOverallTestSource(value as TestEmailSource)}>
+                  <TabsList>
+                    <TabsTrigger value="custom">Custom sample</TabsTrigger>
+                    <TabsTrigger value="existing">Existing email</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="custom">
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div className="text-xs text-muted-foreground">
+                          Edit the sample email fields (template provided) and run a dry-run preview.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={resetOverallTestSample}>
+                            Use template
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setOverallTestSample((prev) => ({ ...prev, receivedAt: new Date().toISOString() }))}
+                          >
+                            Now
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Subject</Label>
+                          <Input
+                            value={overallTestSample.subject}
+                            onChange={(e) => setOverallTestSample((prev) => ({ ...prev, subject: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>ReceivedAt (ISO)</Label>
+                          <Input
+                            placeholder={new Date().toISOString()}
+                            value={overallTestSample.receivedAt}
+                            onChange={(e) => setOverallTestSample((prev) => ({ ...prev, receivedAt: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>From name</Label>
+                          <Input
+                            value={overallTestSample.fromName}
+                            onChange={(e) => setOverallTestSample((prev) => ({ ...prev, fromName: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>From address</Label>
+                          <Input
+                            value={overallTestSample.fromAddress}
+                            onChange={(e) => setOverallTestSample((prev) => ({ ...prev, fromAddress: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>To address</Label>
+                        <Input
+                          value={overallTestSample.toAddress}
+                          onChange={(e) => setOverallTestSample((prev) => ({ ...prev, toAddress: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Text body</Label>
+                          <Textarea
+                            value={overallTestSample.textBody}
+                            onChange={(e) => setOverallTestSample((prev) => ({ ...prev, textBody: e.target.value }))}
+                            rows={6}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <Label>HTML body</Label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setOverallTestSample((prev) => ({ ...prev, htmlBody: "" }))}
+                              disabled={!overallTestSample.htmlBody.trim()}
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                          <Textarea
+                            value={overallTestSample.htmlBody}
+                            onChange={(e) => setOverallTestSample((prev) => ({ ...prev, htmlBody: e.target.value }))}
+                            rows={6}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="existing">
+                    <div className="space-y-3">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Email ID</Label>
+                          <Input
+                            placeholder="Select below or paste an email id"
+                            value={overallTestEmailId}
+                            onChange={(e) => setOverallTestEmailId(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <Label>Recent emails</Label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={fetchRecentEmails}
+                              disabled={recentEmailsLoading}
+                            >
+                              {recentEmailsLoading ? "Refreshing..." : "Refresh"}
+                            </Button>
+                          </div>
+                          <Select value={overallTestEmailId} onValueChange={setOverallTestEmailId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder={recentEmailsLoading ? "Loading..." : "Pick an email"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {recentEmails.length === 0 ? (
+                                <SelectItem value="__none__" disabled>
+                                  No emails found
+                                </SelectItem>
+                              ) : (
+                                recentEmails.map((email) => (
+                                  <SelectItem key={email.id} value={email.id}>
+                                    <div className="flex flex-col">
+                                      <span className="truncate text-sm">{email.subject || "(No subject)"}</span>
+                                      <span className="truncate text-xs text-muted-foreground">
+                                        {(email.fromName || email.fromAddress)} · {email.mailbox?.address || "Mailbox"} ·{" "}
+                                        {new Date(email.receivedAt).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {recentEmailsError && (
+                        <div className="text-xs text-destructive">{recentEmailsError}</div>
+                      )}
+
+                      <div className="text-xs text-muted-foreground">
+                        Uses the stored email body/HTML for a true end-to-end preview.
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    Dry-run builds previews only; use “Send Test” in the dialog to actually deliver.
+                  </div>
+                  <Button type="button" onClick={handleOverallTest} disabled={overallTesting}>
+                    <TestTube className="mr-2 h-4 w-4" />
+                    {overallTesting ? "Testing..." : "Run Dry-Run"}
+                  </Button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-2">
                 <Button variant="outline" asChild>
                   <Link href="/forwards">Cancel</Link>
@@ -1054,15 +1467,145 @@ export default function NewForwardRulePage() {
       </Card>
 
       <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{testTargetLabel ? `Test: ${testTargetLabel}` : "Test Target"}</DialogTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={testResponse?.matched === false ? "secondary" : "default"}>
+                {testResponse?.matched === false ? "Not matched" : "Matched"}
+              </Badge>
+              {typeof testResponse?.success === "boolean" && (
+                <Badge variant={testResponse.success ? "default" : "destructive"}>
+                  {testResponse.success ? "Sent" : "Failed"}
+                </Badge>
+              )}
+              {testResponse?.reason === "conditions_not_met" && (
+                <Badge variant="secondary">conditions_not_met</Badge>
+              )}
+            </div>
           </DialogHeader>
-          <div className="space-y-3">
-            <pre className="max-h-[60vh] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-50">
-              {testResult ? JSON.stringify(testResult, null, 2) : "No result"}
-            </pre>
-          </div>
+
+          <Tabs defaultValue="preview">
+            <TabsList>
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="raw">Raw</TabsTrigger>
+            </TabsList>
+            <TabsContent value="preview">
+              <ScrollArea className="max-h-[60vh] pr-4">
+                <div className="space-y-4">
+                  {testResponse?.error && (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                      {testResponse.error}
+                    </div>
+                  )}
+
+                  {testPreviews.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No previews.</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {testPreviews.map((p) => {
+                        const sendResult = testResults.find((r) => r.index === p.index);
+                        return (
+                          <div key={p.index} className="rounded-lg border bg-muted/20 p-4 space-y-3">
+                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                              <div className="text-sm font-medium">Target #{p.index + 1}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {"ok" in p && p.ok && <Badge variant="outline">{p.preview.type}</Badge>}
+                                <Badge variant={p.ok ? "default" : "destructive"}>{p.ok ? "OK" : "Error"}</Badge>
+                                {sendResult && (
+                                  <Badge variant={sendResult.success ? "default" : "destructive"}>
+                                    {sendResult.success ? "Sent" : "Failed"}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {!p.ok ? (
+                              <div className="text-sm text-destructive">{p.error}</div>
+                            ) : p.preview.type === "EMAIL" ? (
+                              <div className="space-y-3">
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">To</Label>
+                                    <div className="text-sm">{p.preview.to}</div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Subject</Label>
+                                    <div className="text-sm">{p.preview.subject}</div>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">Text</Label>
+                                  <pre className="max-h-[220px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50 whitespace-pre-wrap break-words">
+                                    {p.preview.text}
+                                  </pre>
+                                </div>
+                                {p.preview.html ? (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">HTML</Label>
+                                    <pre className="max-h-[220px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50 whitespace-pre-wrap break-words">
+                                      {p.preview.html}
+                                    </pre>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {"url" in p.preview && p.preview.url ? (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">URL</Label>
+                                    <div className="font-mono text-xs break-all">{p.preview.url}</div>
+                                  </div>
+                                ) : null}
+
+                                {"headers" in p.preview && p.preview.headers ? (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Headers</Label>
+                                    <pre className="max-h-[160px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50 whitespace-pre-wrap break-words">
+                                      {JSON.stringify(p.preview.headers, null, 2)}
+                                    </pre>
+                                  </div>
+                                ) : null}
+
+                                {"body" in p.preview ? (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Body</Label>
+                                    <pre className="max-h-[220px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50 whitespace-pre-wrap break-words">
+                                      {typeof p.preview.body === "string" ? p.preview.body : JSON.stringify(p.preview.body, null, 2)}
+                                    </pre>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+
+                            {sendResult ? (
+                              <div className="text-xs text-muted-foreground">
+                                {sendResult.message}
+                                {typeof sendResult.responseCode === "number" ? ` (HTTP ${sendResult.responseCode})` : ""}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {!canSendTest ? (
+                    <div className="text-xs text-muted-foreground">
+                      Fix target errors to enable sending a test.
+                    </div>
+                  ) : null}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="raw">
+              <ScrollArea className="max-h-[60vh] pr-4">
+                <pre className="overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-50 whitespace-pre-wrap break-words">
+                  {testResult ? JSON.stringify(testResult, null, 2) : "No result"}
+                </pre>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button
               type="button"
@@ -1074,7 +1617,7 @@ export default function NewForwardRulePage() {
             <Button
               type="button"
               onClick={handleSendTest}
-              disabled={!testPayload || sendingTest}
+              disabled={!canSendTest || sendingTest}
             >
               {sendingTest ? "Sending..." : "Send Test"}
             </Button>
