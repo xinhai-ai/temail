@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/rbac";
+import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 
 export async function POST(
   request: NextRequest,
@@ -92,6 +93,8 @@ async function sendTelegram(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
         chat_id: config.chatId,
         text,
@@ -108,9 +111,16 @@ async function sendTelegram(
 }
 
 async function sendDiscord(config: { url: string }, message: TestMessage) {
-  const res = await fetch(config.url, {
+  const validated = await validateEgressUrl(config.url);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const res = await fetch(validated.url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify({
       embeds: [
         {
@@ -133,9 +143,16 @@ async function sendDiscord(config: { url: string }, message: TestMessage) {
 }
 
 async function sendSlack(config: { url: string }, message: TestMessage) {
-  const res = await fetch(config.url, {
+  const validated = await validateEgressUrl(config.url);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const res = await fetch(validated.url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify({
       blocks: [
         {
@@ -166,12 +183,19 @@ async function sendWebhook(
   config: { url: string; headers?: Record<string, string> },
   message: TestMessage
 ) {
-  const res = await fetch(config.url, {
+  const validated = await validateEgressUrl(config.url);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const res = await fetch(validated.url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...config.headers,
     },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify(message),
   });
 
@@ -179,4 +203,3 @@ async function sendWebhook(
     ? { success: true, message: "Webhook sent" }
     : { success: false, message: `Webhook failed: ${res.status}` };
 }
-

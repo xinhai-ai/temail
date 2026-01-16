@@ -20,7 +20,14 @@ export async function GET() {
     orderBy: { key: "asc" },
   });
 
-  return NextResponse.json(settings);
+  const secretKeys = new Set(["smtp_pass"]);
+  const safeSettings = settings.map((row) =>
+    secretKeys.has(row.key)
+      ? { ...row, value: "", masked: Boolean(row.value) }
+      : row
+  );
+
+  return NextResponse.json(safeSettings);
 }
 
 export async function PUT(request: NextRequest) {
@@ -67,4 +74,3 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

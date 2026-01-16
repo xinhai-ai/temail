@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import crypto from "crypto";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   name: z.string().min(2, "Name must be at least 2 characters").optional(),
+  adminSecret: z.string().optional(),
 });
+
+function safeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +27,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { email, password, name } = registerSchema.parse(body);
+    const { email, password, name, adminSecret } = registerSchema.parse(body);
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -36,7 +43,13 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const userCount = await prisma.user.count();
-    const role = userCount === 0 ? "SUPER_ADMIN" : "USER";
+    const bootstrapSecret = process.env.BOOTSTRAP_SUPER_ADMIN_SECRET;
+    const isBootstrap =
+      userCount === 0 &&
+      typeof bootstrapSecret === "string" &&
+      typeof adminSecret === "string" &&
+      safeEqual(adminSecret, bootstrapSecret);
+    const role = isBootstrap ? "SUPER_ADMIN" : "USER";
 
     const user = await prisma.user.create({
       data: {

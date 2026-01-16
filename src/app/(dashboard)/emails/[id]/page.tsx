@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { ArrowLeft, Star, Trash2, Mail } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
@@ -158,14 +159,14 @@ export default function EmailDetailPage({
             </div>
           )}
 
-          <div className="min-h-[300px] p-4 bg-white rounded border">
+          <div className="min-h-[300px] rounded border bg-white overflow-hidden">
             {showHtml && email.htmlBody ? (
-              <div
-                className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: email.htmlBody }}
+              <EmailHtmlPreview
+                html={email.htmlBody}
+                className="w-full h-[600px] border-0"
               />
             ) : (
-              <pre className="whitespace-pre-wrap font-sans">
+              <pre className="whitespace-pre-wrap font-sans p-4">
                 {email.textBody || "No content"}
               </pre>
             )}

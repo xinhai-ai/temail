@@ -30,7 +30,18 @@ export async function GET(
   const domain = await prisma.domain.findFirst({
     where: { id },
     include: {
-      imapConfig: true,
+      imapConfig: {
+        select: {
+          host: true,
+          port: true,
+          secure: true,
+          username: true,
+          syncInterval: true,
+          lastSync: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
       webhookConfig: true,
       mailboxes: { take: 10 },
     },

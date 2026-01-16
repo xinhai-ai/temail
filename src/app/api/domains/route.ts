@@ -22,7 +22,6 @@ export async function GET() {
   const domains = await prisma.domain.findMany({
     where: isAdmin ? {} : { isPublic: true, status: "ACTIVE" },
     include: {
-      ...(isAdmin ? { imapConfig: true, webhookConfig: true } : {}),
       _count: { select: { mailboxes: true } },
     },
     orderBy: { createdAt: "desc" },

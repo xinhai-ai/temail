@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import nodemailer from "nodemailer";
+import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 
 interface EmailData {
   id: string;
@@ -165,6 +166,8 @@ ${email.textBody?.substring(0, 1000) || "(No text content)"}`;
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
         chat_id: config.chatId,
         text,
@@ -184,9 +187,16 @@ async function sendToDiscord(
   config: { url: string },
   email: EmailData
 ): Promise<ForwardResult> {
-  const res = await fetch(config.url, {
+  const validated = await validateEgressUrl(config.url);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const res = await fetch(validated.url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify({
       embeds: [
         {
@@ -214,9 +224,16 @@ async function sendToSlack(
   config: { url: string },
   email: EmailData
 ): Promise<ForwardResult> {
-  const res = await fetch(config.url, {
+  const validated = await validateEgressUrl(config.url);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const res = await fetch(validated.url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify({
       blocks: [
         {
@@ -252,12 +269,19 @@ async function sendToWebhook(
   config: { url: string; headers?: Record<string, string> },
   email: EmailData
 ): Promise<ForwardResult> {
-  const res = await fetch(config.url, {
+  const validated = await validateEgressUrl(config.url);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const res = await fetch(validated.url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...config.headers,
     },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify({
       id: email.id,
       subject: email.subject,

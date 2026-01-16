@@ -9,7 +9,7 @@ const imapSchema = z.object({
   port: z.number().default(993),
   secure: z.boolean().default(true),
   username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(1, "Password is required").optional(),
   syncInterval: z.number().default(60),
 });
 
@@ -41,12 +41,34 @@ export async function POST(
       return NextResponse.json({ error: "Domain not found" }, { status: 404 });
     }
 
+    const existingConfig = await prisma.imapConfig.findUnique({
+      where: { domainId: id },
+      select: { id: true },
+    });
+
+    if (!existingConfig && !data.password) {
+      return NextResponse.json(
+        { error: "Password is required" },
+        { status: 400 }
+      );
+    }
+
+    const updateData = {
+      host: data.host,
+      port: data.port,
+      secure: data.secure,
+      username: data.username,
+      syncInterval: data.syncInterval,
+      ...(data.password ? { password: data.password } : {}),
+    };
+
     // Upsert IMAP config
     const config = await prisma.imapConfig.upsert({
       where: { domainId: id },
-      update: data,
+      update: updateData,
       create: {
-        ...data,
+        ...updateData,
+        password: data.password!,
         domainId: id,
       },
     });

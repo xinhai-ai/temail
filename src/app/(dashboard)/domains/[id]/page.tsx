@@ -23,7 +23,7 @@ interface Domain {
     port: number;
     secure: boolean;
     username: string;
-    password: string;
+    password?: string;
     syncInterval: number;
   };
   webhookConfig?: {
@@ -61,7 +61,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
         setImapPort(String(data.imapConfig.port));
         setImapSecure(data.imapConfig.secure);
         setImapUsername(data.imapConfig.username);
-        setImapPassword(data.imapConfig.password);
+        setImapPassword("");
         setImapInterval(String(data.imapConfig.syncInterval));
       }
 
@@ -81,21 +81,23 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
 
   const saveImapConfig = async () => {
     setSaving(true);
+    const payload: Record<string, unknown> = {
+      host: imapHost,
+      port: parseInt(imapPort),
+      secure: imapSecure,
+      username: imapUsername,
+      syncInterval: parseInt(imapInterval),
+      ...(imapPassword.trim() ? { password: imapPassword } : {}),
+    };
     const res = await fetch(`/api/domains/${id}/imap`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        host: imapHost,
-        port: parseInt(imapPort),
-        secure: imapSecure,
-        username: imapUsername,
-        password: imapPassword,
-        syncInterval: parseInt(imapInterval),
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (res.ok) {
       toast.success("IMAP configuration saved");
+      setImapPassword("");
       fetchDomain();
     } else {
       const data = await res.json();
@@ -312,6 +314,9 @@ Content-Type: application/json
                     value={imapPassword}
                     onChange={(e) => setImapPassword(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank to keep the current password
+                  </p>
                 </div>
               </div>
 
