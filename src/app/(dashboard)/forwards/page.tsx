@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -373,13 +374,20 @@ export default function ForwardsPage() {
             Configure email forwarding to external services
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> New Rule
-            </Button>
-          </DialogTrigger>
-	          <DialogContent className="max-w-2xl">
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/forwards/new">
+              <Forward className="mr-2 h-4 w-4" />
+              Flow Builder
+            </Link>
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> New Rule
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Forward Rule</DialogTitle>
             </DialogHeader>
@@ -735,7 +743,8 @@ export default function ForwardsPage() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
