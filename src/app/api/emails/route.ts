@@ -35,7 +35,17 @@ export async function GET(request: NextRequest) {
 
     const items = await prisma.email.findMany({
       where,
-      include: { mailbox: { select: { address: true } } },
+      select: {
+        id: true,
+        subject: true,
+        fromAddress: true,
+        fromName: true,
+        status: true,
+        isStarred: true,
+        receivedAt: true,
+        mailboxId: true,
+        mailbox: { select: { address: true } },
+      },
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       take,
@@ -62,8 +72,18 @@ export async function GET(request: NextRequest) {
   const [emails, total] = await Promise.all([
     prisma.email.findMany({
       where,
-      include: { mailbox: { select: { address: true } } },
-      orderBy: { receivedAt: "desc" },
+      select: {
+        id: true,
+        subject: true,
+        fromAddress: true,
+        fromName: true,
+        status: true,
+        isStarred: true,
+        receivedAt: true,
+        mailboxId: true,
+        mailbox: { select: { address: true } },
+      },
+      orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * limit,
       take: limit,
     }),
