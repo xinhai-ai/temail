@@ -1,114 +1,15 @@
 import prisma from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
-import { normalizeForwardRuleConfig, type ForwardCondition, type ForwardRuleConfigV2 } from "@/services/forward-config";
+import { normalizeForwardRuleConfig, type ForwardRuleConfigV2 } from "@/services/forward-config";
+import {
+  buildForwardTemplateVars,
+  matchesForwardConditions,
+  renderForwardTemplate,
+  type ForwardEmail,
+} from "@/services/forward-runtime";
 
-const MAX_REGEX_PATTERN_LENGTH = 200;
-const MAX_MATCH_INPUT_LENGTH = 10_000;
-
-interface EmailData {
-  id: string;
-  subject: string;
-  fromAddress: string;
-  fromName?: string | null;
-  toAddress: string;
-  textBody?: string | null;
-  htmlBody?: string | null;
-  receivedAt: Date;
-}
-
-function getTemplateVars(email: EmailData, mailboxId: string) {
-  return {
-    id: email.id,
-    subject: email.subject,
-    fromAddress: email.fromAddress,
-    fromName: email.fromName || "",
-    toAddress: email.toAddress,
-    textBody: email.textBody || "",
-    htmlBody: email.htmlBody || "",
-    receivedAt: email.receivedAt.toISOString(),
-    mailboxId,
-  };
-}
-
-function readTemplatePath(vars: Record<string, unknown>, path: string) {
-  const parts = path.split(".").filter(Boolean);
-  let current: unknown = vars;
-  for (const part of parts) {
-    if (!current || typeof current !== "object") return "";
-    current = (current as Record<string, unknown>)[part];
-  }
-  if (current === null || current === undefined) return "";
-  return typeof current === "string" ? current : String(current);
-}
-
-function renderTemplate(template: string, vars: Record<string, unknown>) {
-  return template.replace(
-    /\{\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}\}|\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g,
-    (_, rawKey, escapedKey) => readTemplatePath(vars, rawKey || escapedKey)
-  );
-}
-
-function normalizeText(value: string, caseSensitive: boolean | undefined) {
-  return caseSensitive ? value : value.toLowerCase();
-}
-
-function matchesLeafCondition(
-  email: EmailData,
-  field: "subject" | "fromAddress" | "toAddress" | "textBody",
-  operator: "contains" | "equals" | "startsWith" | "endsWith" | "regex",
-  expectedValue: string,
-  caseSensitive: boolean | undefined
-) {
-  const raw = (() => {
-    if (field === "textBody") return email.textBody || "";
-    return email[field] || "";
-  })();
-
-  const candidate = raw.slice(0, MAX_MATCH_INPUT_LENGTH);
-  const normalizedCandidate = normalizeText(candidate, caseSensitive);
-  const normalizedExpected = normalizeText(expectedValue, caseSensitive);
-
-  switch (operator) {
-    case "contains":
-      return normalizedCandidate.includes(normalizedExpected);
-    case "equals":
-      return normalizedCandidate === normalizedExpected;
-    case "startsWith":
-      return normalizedCandidate.startsWith(normalizedExpected);
-    case "endsWith":
-      return normalizedCandidate.endsWith(normalizedExpected);
-    case "regex": {
-      const pattern = expectedValue;
-      if (!pattern || pattern.length > MAX_REGEX_PATTERN_LENGTH) return false;
-      try {
-        const re = new RegExp(pattern, caseSensitive ? "" : "i");
-        return re.test(candidate);
-      } catch {
-        return false;
-      }
-    }
-  }
-}
-
-function matchesConditions(email: EmailData, condition: ForwardCondition): boolean {
-  switch (condition.kind) {
-    case "and":
-      return condition.conditions.every((c) => matchesConditions(email, c));
-    case "or":
-      return condition.conditions.some((c) => matchesConditions(email, c));
-    case "not":
-      return !matchesConditions(email, condition.condition);
-    case "match":
-      return matchesLeafCondition(
-        email,
-        condition.field,
-        condition.operator,
-        condition.value,
-        condition.caseSensitive
-      );
-  }
-}
+type EmailData = ForwardEmail;
 
 export async function executeForwards(email: EmailData, mailboxId: string, userId?: string) {
   const ownerId =
@@ -146,12 +47,12 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
       }
 
       const config: ForwardRuleConfigV2 = normalized.config;
-      if (config.conditions && !matchesConditions(email, config.conditions)) {
+      if (config.conditions && !matchesForwardConditions(email, config.conditions)) {
         continue;
       }
 
       let result;
-      const vars = getTemplateVars(email, mailboxId);
+      const vars = buildForwardTemplateVars(email, mailboxId);
 
       switch (rule.type) {
         case "TELEGRAM":
@@ -278,7 +179,7 @@ async function sendToTelegram(
   }
 
   const template = config.template?.text;
-  const text = template ? renderTemplate(template, vars) : buildDefaultTelegramText(email);
+  const text = template ? renderForwardTemplate(template, vars) : buildDefaultTelegramText(email);
 
   const res = await fetch(
     `https://api.telegram.org/bot${config.destination.token}/sendMessage`,
@@ -319,7 +220,7 @@ async function sendToDiscord(
   const template = config.template?.text;
   const body = template
     ? {
-        content: renderTemplate(template, vars),
+        content: renderForwardTemplate(template, vars),
       }
     : {
         embeds: [
@@ -368,7 +269,7 @@ async function sendToSlack(
   const template = config.template?.text;
   const body = template
     ? {
-        text: renderTemplate(template, vars),
+        text: renderForwardTemplate(template, vars),
       }
     : {
         blocks: [
@@ -423,7 +324,7 @@ async function sendToWebhook(
   }
 
   const templateBody = config.template?.webhookBody;
-  const rendered = templateBody ? renderTemplate(templateBody, vars) : null;
+  const rendered = templateBody ? renderForwardTemplate(templateBody, vars) : null;
 
   const contentType =
     config.template?.contentType ||
@@ -496,9 +397,9 @@ async function sendToEmail(
     await smtp.transporter.sendMail({
       from: smtp.from,
       to: config.destination.to,
-      subject: renderTemplate(subjectTemplate, vars),
-      text: renderTemplate(textTemplate, vars),
-      html: htmlTemplate ? renderTemplate(htmlTemplate, vars) : undefined,
+      subject: renderForwardTemplate(subjectTemplate, vars),
+      text: renderForwardTemplate(textTemplate, vars),
+      html: htmlTemplate ? renderForwardTemplate(htmlTemplate, vars) : undefined,
     });
 
     return { success: true, message: `Sent to ${config.destination.to}` };
