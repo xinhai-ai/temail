@@ -1490,7 +1490,7 @@ export default function NewForwardRulePage() {
               <TabsTrigger value="preview">Preview</TabsTrigger>
               <TabsTrigger value="raw">Raw</TabsTrigger>
             </TabsList>
-            <TabsContent value="preview">
+            <TabsContent value="preview" className="min-w-0">
               <ScrollArea className="max-h-[60vh] pr-4">
                 <div className="space-y-4">
                   {testResponse?.error && (
@@ -1598,7 +1598,7 @@ export default function NewForwardRulePage() {
                 </div>
               </ScrollArea>
             </TabsContent>
-            <TabsContent value="raw">
+            <TabsContent value="raw" className="min-w-0">
               <ScrollArea className="max-h-[60vh] pr-4">
                 <pre className="overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-50 whitespace-pre-wrap break-words">
                   {testResult ? JSON.stringify(testResult, null, 2) : "No result"}
