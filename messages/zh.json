@@ -1,0 +1,40 @@
+{
+  "common": {
+    "appName": "TEmail",
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "search": "搜索",
+    "actions": "操作"
+  },
+  "auth": {
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出",
+    "email": "邮箱",
+    "password": "密码",
+    "name": "姓名",
+    "welcomeBack": "欢迎回来",
+    "createAccount": "创建账户"
+  },
+  "nav": {
+    "dashboard": "仪表盘",
+    "mailboxes": "邮箱",
+    "emails": "邮件",
+    "domains": "域名",
+    "forwards": "转发",
+    "settings": "设置",
+    "admin": "管理"
+  },
+  "dashboard": {
+    "title": "仪表盘",
+    "welcome": "欢迎回来",
+    "mailboxes": "邮箱",
+    "emails": "邮件",
+    "domains": "域名",
+    "forwards": "转发"
+  }
+}

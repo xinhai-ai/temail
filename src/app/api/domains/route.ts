@@ -1,0 +1,73 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { z } from "zod";
+
+const domainSchema = z.object({
+  name: z.string().min(1, "Domain name is required"),
+  sourceType: z.enum(["IMAP", "WEBHOOK"]),
+  description: z.string().optional(),
+  isPublic: z.boolean().optional(),
+});
+
+export async function GET() {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const domains = await prisma.domain.findMany({
+    where: { userId: session.user.id },
+    include: {
+      imapConfig: true,
+      webhookConfig: true,
+      _count: { select: { mailboxes: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json(domains);
+}
+
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const data = domainSchema.parse(body);
+
+    const existing = await prisma.domain.findUnique({
+      where: { name: data.name },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Domain already exists" },
+        { status: 400 }
+      );
+    }
+
+    const domain = await prisma.domain.create({
+      data: {
+        ...data,
+        userId: session.user.id,
+      },
+    });
+
+    return NextResponse.json(domain);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0].message },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

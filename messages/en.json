@@ -1,0 +1,40 @@
+{
+  "common": {
+    "appName": "TEmail",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "actions": "Actions"
+  },
+  "auth": {
+    "login": "Sign In",
+    "register": "Sign Up",
+    "logout": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "welcomeBack": "Welcome Back",
+    "createAccount": "Create Account"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "mailboxes": "Mailboxes",
+    "emails": "Emails",
+    "domains": "Domains",
+    "forwards": "Forwards",
+    "settings": "Settings",
+    "admin": "Admin"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "mailboxes": "Mailboxes",
+    "emails": "Emails",
+    "domains": "Domains",
+    "forwards": "Forwards"
+  }
+}
