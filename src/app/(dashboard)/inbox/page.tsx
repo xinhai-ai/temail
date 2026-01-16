@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { connectRealtime } from "@/lib/realtime/client";
 import {
   Inbox,
   Mail,
@@ -40,6 +41,8 @@ import {
   ExternalLink,
   Plus,
   MoreHorizontal,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -91,6 +94,7 @@ interface EmailListItem {
   status: string;
   isStarred: boolean;
   receivedAt: string;
+  mailboxId: string;
   mailbox: { address: string };
 }
 
@@ -119,6 +123,7 @@ function HtmlPreview({ html }: { html: string }) {
 
 export default function InboxPage() {
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
+  const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
 
@@ -135,6 +140,22 @@ export default function InboxPage() {
   const [loadingMailboxes, setLoadingMailboxes] = useState(true);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+  const [realtimeTick, setRealtimeTick] = useState(0);
+
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem(NOTIFICATIONS_ENABLED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
+    if (typeof window === "undefined") return "default";
+    if (typeof Notification === "undefined") return "default";
+    return Notification.permission;
+  });
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
@@ -244,7 +265,99 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch]);
+  }, [selectedMailboxId, emailSearch, realtimeTick]);
+
+  const toggleNotifications = async () => {
+    if (typeof Notification === "undefined") {
+      toast.error("Desktop notifications are not supported in this browser");
+      return;
+    }
+
+    if (notificationsEnabled) {
+      setNotificationsEnabled(false);
+      try {
+        localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, "0");
+      } catch {
+        // ignore
+      }
+      toast.message("Desktop notifications disabled");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    if (permission !== "granted") {
+      toast.error("Notification permission not granted");
+      return;
+    }
+
+    setNotificationsEnabled(true);
+    try {
+      localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, "1");
+    } catch {
+      // ignore
+    }
+    toast.success("Desktop notifications enabled");
+  };
+
+  useEffect(() => {
+    const disconnect = connectRealtime({
+      onEvent: (event) => {
+        if (event.type === "email.created") {
+          if (notificationsEnabled && notificationPermission === "granted") {
+            try {
+              const n = new Notification(event.data.email.subject || "(No subject)", {
+                body: event.data.email.fromName || event.data.email.fromAddress,
+                tag: event.data.email.id,
+              });
+              n.onclick = () => {
+                try {
+                  window.focus();
+                  window.location.href = `/emails/${event.data.email.id}`;
+                } catch {
+                  // ignore
+                }
+              };
+            } catch {
+              // ignore
+            }
+          }
+          setRealtimeTick((t) => t + 1);
+          return;
+        }
+
+        if (event.type === "email.updated") {
+          setSelectedEmail((prev) => {
+            if (!prev || prev.id !== event.data.id) return prev;
+            return {
+              ...prev,
+              ...(event.data.status ? { status: event.data.status } : {}),
+              ...(typeof event.data.isStarred === "boolean" ? { isStarred: event.data.isStarred } : {}),
+            };
+          });
+          setRealtimeTick((t) => t + 1);
+          return;
+        }
+
+        if (event.type === "email.deleted") {
+          setSelectedEmailId((current) => (current === event.data.id ? null : current));
+          setSelectedEmail((prev) => (prev?.id === event.data.id ? null : prev));
+          setRealtimeTick((t) => t + 1);
+          return;
+        }
+
+        if (event.type === "emails.bulk_updated") {
+          if (event.data.action === "delete") {
+            setSelectedEmailId((current) => (current && event.data.ids.includes(current) ? null : current));
+            setSelectedEmail((prev) => (prev && event.data.ids.includes(prev.id) ? null : prev));
+          }
+          setRealtimeTick((t) => t + 1);
+        }
+      },
+    });
+
+    return disconnect;
+  }, [notificationsEnabled, notificationPermission]);
 
   useEffect(() => {
     if (!selectedEmailId) {
@@ -537,6 +650,26 @@ export default function InboxPage() {
           <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Mailboxes</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={toggleNotifications}
+                    aria-label={notificationsEnabled ? "Disable desktop notifications" : "Enable desktop notifications"}
+                  >
+                    {notificationsEnabled ? (
+                      <BellOff className="h-4 w-4" />
+                    ) : (
+                      <Bell className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {notificationsEnabled ? "Disable desktop notifications" : "Enable desktop notifications"}
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
