@@ -151,12 +151,18 @@ export default function InboxPage() {
     const fetchEmails = async () => {
       setLoadingEmails(true);
       const params = new URLSearchParams();
-      params.set("mode", "cursor");
-      params.set("limit", String(EMAILS_PAGE_SIZE));
-      if (emailSearch) params.set("search", emailSearch);
+      let endpoint = "/api/emails";
+      if (emailSearch) {
+        endpoint = "/api/search/emails";
+        params.set("q", emailSearch);
+        params.set("limit", String(EMAILS_PAGE_SIZE));
+      } else {
+        params.set("mode", "cursor");
+        params.set("limit", String(EMAILS_PAGE_SIZE));
+      }
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
 
-      const res = await fetch(`/api/emails?${params.toString()}`);
+      const res = await fetch(`${endpoint}?${params.toString()}`);
       const data = await res.json();
       setEmails(Array.isArray(data?.emails) ? data.emails : []);
       setEmailsCursor(typeof data?.nextCursor === "string" ? data.nextCursor : null);
@@ -172,13 +178,19 @@ export default function InboxPage() {
     setLoadingMoreEmails(true);
 
     const params = new URLSearchParams();
-    params.set("mode", "cursor");
-    params.set("limit", String(EMAILS_PAGE_SIZE));
+    let endpoint = "/api/emails";
+    if (emailSearch) {
+      endpoint = "/api/search/emails";
+      params.set("q", emailSearch);
+      params.set("limit", String(EMAILS_PAGE_SIZE));
+    } else {
+      params.set("mode", "cursor");
+      params.set("limit", String(EMAILS_PAGE_SIZE));
+    }
     params.set("cursor", emailsCursor);
-    if (emailSearch) params.set("search", emailSearch);
     if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
 
-    const res = await fetch(`/api/emails?${params.toString()}`);
+    const res = await fetch(`${endpoint}?${params.toString()}`);
     const data = await res.json();
     const nextEmails = Array.isArray(data?.emails) ? data.emails : [];
 

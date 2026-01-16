@@ -1,0 +1,123 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { auth } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+
+const querySchema = z.object({
+  q: z.string().trim().min(1, "Query is required").max(200),
+  mailboxId: z.string().trim().min(1).optional(),
+  cursor: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+function buildFtsQuery(input: string) {
+  const tokens = input
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 10)
+    .map((token) => token.replace(/\"/g, "\"\""));
+
+  if (tokens.length === 0) return null;
+  return tokens.map((t) => `"${t}"`).join(" AND ");
+}
+
+export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const parsed = querySchema.parse({
+      q: searchParams.get("q") || "",
+      mailboxId: searchParams.get("mailboxId") || undefined,
+      cursor: searchParams.get("cursor") || undefined,
+      limit: searchParams.get("limit") || searchParams.get("take") || undefined,
+    });
+
+    const ftsQuery = buildFtsQuery(parsed.q);
+    if (!ftsQuery) {
+      return NextResponse.json({ emails: [], hasMore: false, nextCursor: null });
+    }
+
+    const cursorEmail = parsed.cursor
+      ? await prisma.email.findFirst({
+          where: {
+            id: parsed.cursor,
+            ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+            mailbox: { userId: session.user.id },
+          },
+          select: { id: true, receivedAt: true },
+        })
+      : null;
+
+    if (parsed.cursor && !cursorEmail) {
+      return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+    }
+
+    const rows = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        subject: string;
+        fromAddress: string;
+        fromName: string | null;
+        status: string;
+        isStarred: number;
+        receivedAt: string;
+        mailboxId: string;
+        mailboxAddress: string;
+      }>
+    >(Prisma.sql`
+      SELECT
+        e.id as id,
+        e.subject as subject,
+        e.fromAddress as fromAddress,
+        e.fromName as fromName,
+        e.status as status,
+        e.isStarred as isStarred,
+        e.receivedAt as receivedAt,
+        e.mailboxId as mailboxId,
+        m.address as mailboxAddress
+      FROM emails_fts
+      JOIN emails e ON e.id = emails_fts.emailId
+      JOIN mailboxes m ON m.id = e.mailboxId
+      WHERE m.userId = ${session.user.id}
+        AND emails_fts MATCH ${ftsQuery}
+        ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+        ${
+          cursorEmail
+            ? Prisma.sql`AND (e.receivedAt < ${cursorEmail.receivedAt} OR (e.receivedAt = ${cursorEmail.receivedAt} AND e.id < ${cursorEmail.id}))`
+            : Prisma.empty
+        }
+      ORDER BY e.receivedAt DESC, e.id DESC
+      LIMIT ${parsed.limit + 1}
+    `);
+
+    const hasMore = rows.length > parsed.limit;
+    const slice = hasMore ? rows.slice(0, parsed.limit) : rows;
+    const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1].id : null;
+
+    const emails = slice.map((row) => ({
+      id: row.id,
+      subject: row.subject,
+      fromAddress: row.fromAddress,
+      fromName: row.fromName,
+      status: row.status,
+      isStarred: Boolean(row.isStarred),
+      receivedAt: row.receivedAt,
+      mailboxId: row.mailboxId,
+      mailbox: { address: row.mailboxAddress },
+    }));
+
+    return NextResponse.json({ emails, hasMore, nextCursor });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
