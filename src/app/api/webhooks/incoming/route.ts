@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Execute forward rules asynchronously
-    executeForwards(email, mailbox.id).catch(console.error);
+    executeForwards(email, mailbox.id, mailbox.userId).catch(console.error);
 
     return NextResponse.json({ success: true, emailId: email.id });
   } catch (error) {

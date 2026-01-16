@@ -11,10 +11,22 @@ interface EmailData {
   receivedAt: Date;
 }
 
-export async function executeForwards(email: EmailData, mailboxId: string) {
-  // Get all active forward rules for this mailbox or global rules
+export async function executeForwards(email: EmailData, mailboxId: string, userId?: string) {
+  const ownerId =
+    userId ||
+    (
+      await prisma.mailbox.findUnique({
+        where: { id: mailboxId },
+        select: { userId: true },
+      })
+    )?.userId;
+
+  if (!ownerId) return;
+
+  // Get all active forward rules for this mailbox or user-global rules
   const rules = await prisma.forwardRule.findMany({
     where: {
+      userId: ownerId,
       status: "ACTIVE",
       OR: [{ mailboxId }, { mailboxId: null }],
     },
