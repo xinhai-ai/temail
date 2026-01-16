@@ -17,10 +17,12 @@ import { Button } from "@/components/ui/button";
 export default async function AdminLogsPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const resolvedSearchParams = (await searchParams) || {};
+
   const getParam = (key: string) => {
-    const value = searchParams?.[key];
+    const value = resolvedSearchParams[key];
     return Array.isArray(value) ? value[0] : value;
   };
 
