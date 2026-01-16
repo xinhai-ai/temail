@@ -10,6 +10,7 @@ const querySchema = z.object({
   q: z.string().trim().min(1, "Query is required").max(200),
   mailboxId: z.string().trim().min(1).optional(),
   cursor: z.string().trim().min(1).optional(),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
@@ -63,10 +64,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
+    const mode = searchParams.get("mode") || undefined;
     const parsed = querySchema.parse({
       q: searchParams.get("q") || "",
       mailboxId: searchParams.get("mailboxId") || undefined,
       cursor: searchParams.get("cursor") || undefined,
+      page: searchParams.get("page") || undefined,
       limit: searchParams.get("limit") || searchParams.get("take") || undefined,
     });
 
@@ -75,7 +78,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ emails: [], hasMore: false, nextCursor: null });
     }
 
-    const cursorEmail = parsed.cursor
+    const useCursor = mode === "cursor" || typeof parsed.cursor === "string";
+    const usePage = !useCursor && (mode === "page" || typeof parsed.page === "number");
+
+    const cursorEmail = useCursor
       ? await prisma.email.findFirst({
           where: {
             id: parsed.cursor,
@@ -86,11 +92,126 @@ export async function GET(request: NextRequest) {
         })
       : null;
 
-    if (parsed.cursor && !cursorEmail) {
+    if (useCursor && parsed.cursor && !cursorEmail) {
       return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
     }
 
     const shouldUseFts = await ensureFtsAvailable();
+
+    if (usePage) {
+      const page = parsed.page ?? 1;
+      const offset = (page - 1) * parsed.limit;
+
+      if (shouldUseFts) {
+        try {
+          const [rows, countRows] = await Promise.all([
+            prisma.$queryRaw<
+              Array<{
+                id: string;
+                subject: string;
+                fromAddress: string;
+                fromName: string | null;
+                status: string;
+                isStarred: number;
+                receivedAt: string;
+                mailboxId: string;
+                mailboxAddress: string;
+              }>
+            >(Prisma.sql`
+              SELECT
+                e.id as id,
+                e.subject as subject,
+                e.fromAddress as fromAddress,
+                e.fromName as fromName,
+                e.status as status,
+                e.isStarred as isStarred,
+                e.receivedAt as receivedAt,
+                e.mailboxId as mailboxId,
+                m.address as mailboxAddress
+              FROM emails_fts
+              JOIN emails e ON e.id = emails_fts.emailId
+              JOIN mailboxes m ON m.id = e.mailboxId
+              WHERE m.userId = ${session.user.id}
+                AND emails_fts MATCH ${ftsQuery}
+                ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+              ORDER BY e.receivedAt DESC, e.id DESC
+              LIMIT ${parsed.limit}
+              OFFSET ${offset}
+            `),
+            prisma.$queryRaw<Array<{ total: number }>>(Prisma.sql`
+              SELECT COUNT(*) as total
+              FROM emails_fts
+              JOIN emails e ON e.id = emails_fts.emailId
+              JOIN mailboxes m ON m.id = e.mailboxId
+              WHERE m.userId = ${session.user.id}
+                AND emails_fts MATCH ${ftsQuery}
+                ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+            `),
+          ]);
+
+          const total = Number(countRows?.[0]?.total ?? 0);
+
+          const emails = rows.map((row) => ({
+            id: row.id,
+            subject: row.subject,
+            fromAddress: row.fromAddress,
+            fromName: row.fromName,
+            status: row.status,
+            isStarred: Boolean(row.isStarred),
+            receivedAt: row.receivedAt,
+            mailboxId: row.mailboxId,
+            mailbox: { address: row.mailboxAddress },
+          }));
+
+          return NextResponse.json({
+            emails,
+            pagination: {
+              mode: "page",
+              page,
+              limit: parsed.limit,
+              total,
+              pages: Math.ceil(total / parsed.limit),
+            },
+            mode: "fts",
+          });
+        } catch (error) {
+          if (!isFtsMissingError(error)) {
+            console.error("Email search (FTS) failed:", error);
+            return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+          }
+          cachedFtsAvailable = false;
+        }
+      }
+
+      const fallbackWhere = {
+        mailbox: { userId: session.user.id },
+        ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+        textBody: { contains: parsed.q },
+      };
+
+      const [items, total] = await Promise.all([
+        prisma.email.findMany({
+          where: fallbackWhere,
+          include: { mailbox: { select: { address: true } } },
+          orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+          skip: offset,
+          take: parsed.limit,
+        }),
+        prisma.email.count({ where: fallbackWhere }),
+      ]);
+
+      return NextResponse.json({
+        emails: items,
+        pagination: {
+          mode: "page",
+          page,
+          limit: parsed.limit,
+          total,
+          pages: Math.ceil(total / parsed.limit),
+        },
+        mode: "fallback",
+      });
+    }
 
     if (shouldUseFts) {
       try {
