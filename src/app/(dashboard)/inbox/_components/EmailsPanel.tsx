@@ -136,13 +136,22 @@ export function EmailsPanel({
               const active = selectedEmailId === email.id;
               const isUnread = email.status === "UNREAD";
               return (
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={active}
                   key={email.id}
                   onClick={() => onSelectEmail(email)}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectEmail(email);
+                    }
+                  }}
                   className={cn(
                     "w-full text-left p-3 transition-all duration-150 group",
-                    "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                    "cursor-pointer hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                     active && "bg-accent ring-1 ring-primary/20",
                     isUnread && !active && "bg-primary/[0.03]"
                   )}
@@ -234,7 +243,7 @@ export function EmailsPanel({
                       </Tooltip>
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -243,4 +252,3 @@ export function EmailsPanel({
     </Card>
   );
 }
-

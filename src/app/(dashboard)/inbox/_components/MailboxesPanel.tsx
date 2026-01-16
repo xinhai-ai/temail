@@ -420,12 +420,22 @@ export function MailboxesPanel({
                       {groupItem.mailboxes.map((mailbox) => {
                         const active = selectedMailboxId === mailbox.id;
                         return (
-                          <button
-                            type="button"
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            aria-pressed={active}
                             key={mailbox.id}
                             onClick={() => onSelectMailbox(mailbox.id)}
+                            onKeyDown={(e) => {
+                              if (e.target !== e.currentTarget) return;
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onSelectMailbox(mailbox.id);
+                              }
+                            }}
                             className={cn(
                               "w-full flex items-center justify-between rounded-md px-2 py-2 text-sm transition-colors",
+                              "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                               active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
                             )}
                           >
@@ -513,7 +523,7 @@ export function MailboxesPanel({
                                 {mailbox._count.emails}
                               </Badge>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -527,4 +537,3 @@ export function MailboxesPanel({
     </Card>
   );
 }
-
