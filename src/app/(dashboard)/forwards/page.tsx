@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Forward, Plus, Power, PowerOff, PencilLine, TestTube, Trash2 } from "lucide-react";
+import { FileText, Forward, Plus, Power, PowerOff, PencilLine, TestTube, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -217,6 +217,11 @@ export default function ForwardsPage() {
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="sm" onClick={() => handleTest(rule.id)} disabled={testing === rule.id}>
                         <TestTube className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/forwards/${rule.id}/logs`}>
+                          <FileText className="h-4 w-4" />
+                        </Link>
                       </Button>
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/forwards/${rule.id}/edit`}>
