@@ -36,19 +36,8 @@ export default function InboxPage() {
   const [loadingEmails, setLoadingEmails] = useState(true);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return localStorage.getItem(NOTIFICATIONS_ENABLED_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
-    if (typeof window === "undefined") return "default";
-    if (typeof Notification === "undefined") return "default";
-    return Notification.permission;
-  });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
@@ -147,6 +136,23 @@ export default function InboxPage() {
   useEffect(() => {
     loadMailboxes(mailboxSearch);
   }, [mailboxSearch, loadMailboxes]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (typeof Notification !== "undefined") {
+      setNotificationPermission(Notification.permission);
+    }
+    try {
+      const enabled = localStorage.getItem(NOTIFICATIONS_ENABLED_KEY) === "1";
+      setNotificationsEnabled(enabled);
+      if (enabled && typeof Notification !== "undefined" && Notification.permission !== "granted") {
+        setNotificationsEnabled(false);
+        localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, "0");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
