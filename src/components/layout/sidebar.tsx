@@ -24,8 +24,8 @@ interface NavItem {
 
 const userNavItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Inbox", href: "/inbox", icon: Inbox },
   { title: "Mailboxes", href: "/mailboxes", icon: Inbox },
-  { title: "Emails", href: "/emails", icon: Mail },
   { title: "Domains", href: "/domains", icon: Globe },
   { title: "Forwards", href: "/forwards", icon: Forward },
   { title: "Settings", href: "/settings", icon: Settings },
