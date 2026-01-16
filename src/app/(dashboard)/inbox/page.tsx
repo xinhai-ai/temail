@@ -841,12 +841,6 @@ export default function InboxPage() {
                   className="pl-10 h-10 bg-muted/50 border-border/50 focus:bg-background transition-colors"
                 />
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/emails">
-                  Open full
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
             </div>
 
             {loadingEmails ? (
