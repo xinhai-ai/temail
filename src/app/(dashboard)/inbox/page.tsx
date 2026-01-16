@@ -180,6 +180,10 @@ export default function InboxPage() {
   const [deleteMailboxId, setDeleteMailboxId] = useState<string | null>(null);
   const [deleteGroup, setDeleteGroup] = useState<MailboxGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
 
   const groupedMailboxes = useMemo(() => {
     const grouped: Record<string, { group: MailboxGroup | null; mailboxes: Mailbox[] }> = {};
@@ -340,6 +344,7 @@ export default function InboxPage() {
         }
 
         if (event.type === "email.deleted") {
+          setSelectedEmailIds((prev) => prev.filter((id) => id !== event.data.id));
           setSelectedEmailId((current) => (current === event.data.id ? null : current));
           setSelectedEmail((prev) => (prev?.id === event.data.id ? null : prev));
           setRealtimeTick((t) => t + 1);
@@ -347,6 +352,7 @@ export default function InboxPage() {
         }
 
         if (event.type === "emails.bulk_updated") {
+          setSelectedEmailIds((prev) => prev.filter((id) => !event.data.ids.includes(id)));
           if (event.data.action === "delete") {
             setSelectedEmailId((current) => (current && event.data.ids.includes(current) ? null : current));
             setSelectedEmail((prev) => (prev && event.data.ids.includes(prev.id) ? null : prev));
@@ -358,6 +364,10 @@ export default function InboxPage() {
 
     return disconnect;
   }, [notificationsEnabled, notificationPermission]);
+
+  useEffect(() => {
+    setSelectedEmailIds([]);
+  }, [selectedMailboxId, emailSearch]);
 
   useEffect(() => {
     if (!selectedEmailId) {
@@ -417,6 +427,106 @@ export default function InboxPage() {
       setSelectedEmailId(null);
     }
     setDeleteEmailId(null);
+  };
+
+  const handleSelectEmail = async (email: EmailListItem) => {
+    setSelectedEmailId(email.id);
+
+    if (email.status !== "UNREAD") return;
+
+    // Optimistic UI update
+    setEmails((prev) => prev.map((e) => (e.id === email.id ? { ...e, status: "READ" } : e)));
+    setSelectedEmail((prev) => (prev?.id === email.id ? { ...prev, status: "READ" } : prev));
+
+    // Persist immediately (also triggers realtime update for other tabs)
+    fetch(`/api/emails/${email.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "READ" }),
+    }).catch(() => {
+      // ignore
+    });
+  };
+
+  const toggleEmailSelection = (id: string, checked: boolean) => {
+    setSelectedEmailIds((prev) => {
+      if (checked) {
+        if (prev.includes(id)) return prev;
+        return [...prev, id];
+      }
+      return prev.filter((x) => x !== id);
+    });
+  };
+
+  const toggleSelectAllOnPage = (checked: boolean) => {
+    setSelectedEmailIds((prev) => {
+      if (checked) {
+        const next = new Set(prev);
+        for (const e of emails) next.add(e.id);
+        return Array.from(next);
+      }
+      const emailIds = new Set(emails.map((e) => e.id));
+      return prev.filter((id) => !emailIds.has(id));
+    });
+  };
+
+  const selectedCountOnPage = useMemo(() => {
+    if (emails.length === 0) return 0;
+    let count = 0;
+    for (const e of emails) {
+      if (selectedEmailIdSet.has(e.id)) count++;
+    }
+    return count;
+  }, [emails, selectedEmailIdSet]);
+
+  const allSelectedOnPage = emails.length > 0 && selectedCountOnPage === emails.length;
+  const someSelectedOnPage = selectedCountOnPage > 0 && !allSelectedOnPage;
+
+  const handleBulkMarkRead = async () => {
+    const ids = selectedEmailIds;
+    if (ids.length === 0) return;
+
+    const res = await fetch("/api/emails/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "markRead", ids }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(data?.error || "Failed to mark emails as read");
+      return;
+    }
+
+    toast.success("Marked as read");
+    setEmails((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, status: "READ" } : e)));
+    setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? { ...prev, status: "READ" } : prev));
+    setSelectedEmailIds([]);
+  };
+
+  const confirmBulkDelete = async () => {
+    const ids = selectedEmailIds;
+    if (ids.length === 0) return;
+
+    setDeleting(true);
+    const res = await fetch("/api/emails/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", ids }),
+    });
+    const data = await res.json().catch(() => null);
+    setDeleting(false);
+
+    if (!res.ok) {
+      toast.error(data?.error || "Failed to delete emails");
+      return;
+    }
+
+    toast.success("Emails deleted");
+    setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
+    setSelectedEmailId((current) => (current && ids.includes(current) ? null : current));
+    setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? null : prev));
+    setSelectedEmailIds([]);
+    setBulkDeleteOpen(false);
   };
 
   const handleSelectMailbox = (mailboxId: string | null) => {
@@ -1045,6 +1155,38 @@ export default function InboxPage() {
               </div>
             </div>
 
+            {emails.length > 0 && (
+              <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                <label className="flex items-center gap-2 text-sm select-none">
+                  <input
+                    type="checkbox"
+                    checked={allSelectedOnPage}
+                    ref={(el) => {
+                      if (!el) return;
+                      el.indeterminate = someSelectedOnPage;
+                    }}
+                    onChange={(e) => toggleSelectAllOnPage(e.target.checked)}
+                  />
+                  <span className="text-muted-foreground">
+                    {selectedEmailIds.length > 0 ? `${selectedEmailIds.length} selected` : "Select"}
+                  </span>
+                </label>
+                {selectedEmailIds.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={handleBulkMarkRead}>
+                      Mark read
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+                      Delete
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedEmailIds([])}>
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {loadingEmails ? (
               <div className="divide-y rounded-md border">
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -1076,7 +1218,7 @@ export default function InboxPage() {
                     <button
                       type="button"
                       key={email.id}
-                      onClick={() => setSelectedEmailId(email.id)}
+                      onClick={() => handleSelectEmail(email)}
                       className={cn(
                         "w-full text-left p-3 transition-all duration-150 group",
                         "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
@@ -1085,6 +1227,14 @@ export default function InboxPage() {
                       )}
                     >
                       <div className="flex items-start gap-3">
+                        <div className="pt-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedEmailIdSet.has(email.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => toggleEmailSelection(email.id, e.target.checked)}
+                          />
+                        </div>
                         {/* Unread indicator */}
                         <div className="pt-1.5 w-2 flex-shrink-0">
                           {isUnread && (
@@ -1315,6 +1465,28 @@ export default function InboxPage() {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteEmail}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Emails</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete {selectedEmailIds.length} selected emails? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
