@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -67,8 +67,9 @@ export function EmailsPanel({
 }: EmailsPanelProps) {
   const safePages = Math.max(1, pages);
   const [pageSizeInput, setPageSizeInput] = useState(() => String(pageSize));
+  const pageSizeValue = String(pageSize);
   const isPresetPageSize = pageSize === 5 || pageSize === 10 || pageSize === 15;
-  const pageSizeSelectValue = isPresetPageSize ? String(pageSize) : "custom";
+  const [pageSizeOpen, setPageSizeOpen] = useState(false);
 
   useEffect(() => {
     setPageSizeInput(String(pageSize));
@@ -85,6 +86,7 @@ export function EmailsPanel({
     if (next !== pageSize) {
       onPageSizeChange(next);
     }
+    setPageSizeOpen(false);
   };
 
   return (
@@ -296,13 +298,15 @@ export function EmailsPanel({
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span>Per page</span>
           <Select
-            value={pageSizeSelectValue}
+            open={pageSizeOpen}
+            onOpenChange={setPageSizeOpen}
+            value={pageSizeValue}
             onValueChange={(value) => {
-              if (value === "custom") return;
               const parsed = Number.parseInt(value, 10);
               if (!Number.isFinite(parsed)) return;
               setPageSizeInput(String(parsed));
               if (parsed !== pageSize) onPageSizeChange(parsed);
+              setPageSizeOpen(false);
             }}
           >
             <SelectTrigger size="sm" className="w-[96px]">
@@ -312,24 +316,46 @@ export function EmailsPanel({
               <SelectItem value="5">5</SelectItem>
               <SelectItem value="10">10</SelectItem>
               <SelectItem value="15">15</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
+              {!isPresetPageSize && (
+                <>
+                  <SelectSeparator />
+                  <SelectItem value={pageSizeValue}>{pageSizeValue}</SelectItem>
+                </>
+              )}
+              <SelectSeparator />
+              <div className="p-2">
+                <div className="text-xs text-muted-foreground mb-1">Custom</div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={pageSizeInput}
+                    onChange={(e) => setPageSizeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      commitPageSize();
+                    }}
+                    className="h-8 w-[96px] px-2"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      commitPageSize();
+                    }}
+                  >
+                    Set
+                  </Button>
+                </div>
+              </div>
             </SelectContent>
           </Select>
-          <Input
-            type="number"
-            min={1}
-            max={100}
-            value={pageSizeInput}
-            onChange={(e) => setPageSizeInput(e.target.value)}
-            onBlur={commitPageSize}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
-              e.preventDefault();
-              commitPageSize();
-              e.currentTarget.blur();
-            }}
-            className="h-8 w-[72px] px-2"
-          />
           <span className="text-muted-foreground/50">·</span>
           <span>
             Page {page} / {safePages}
