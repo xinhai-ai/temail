@@ -39,10 +39,17 @@ export async function POST(request: NextRequest) {
       include: { domain: true },
     });
 
-    if (!webhookConfig || !webhookConfig.isActive) {
+    if (!webhookConfig) {
       return NextResponse.json(
         { error: "Invalid webhook secret" },
         { status: 401 }
+      );
+    }
+
+    if (!webhookConfig.isActive) {
+      return NextResponse.json(
+        { error: "Webhook is disabled" },
+        { status: 403 }
       );
     }
 
