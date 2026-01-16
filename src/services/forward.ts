@@ -1,7 +1,15 @@
 import prisma from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
-import { normalizeForwardRuleConfig, type ForwardRuleConfigV2 } from "@/services/forward-config";
+import {
+  normalizeForwardRuleConfig,
+  normalizeForwardTargetConfig,
+  parseForwardRuleConfig,
+  type ForwardCondition,
+  type ForwardDestination,
+  type ForwardTemplate,
+  type ForwardType,
+} from "@/services/forward-config";
 import {
   buildForwardTemplateVars,
   matchesForwardConditions,
@@ -10,6 +18,17 @@ import {
 } from "@/services/forward-runtime";
 
 type EmailData = ForwardEmail;
+
+function extractRuntimeConfig(rule: { type: ForwardType; config: string }): { ok: true; conditions?: ForwardCondition; template?: ForwardTemplate } | { ok: false; error: string } {
+  const parsed = parseForwardRuleConfig(rule.config);
+  if (parsed.ok) {
+    return { ok: true, conditions: parsed.config.conditions, template: parsed.config.template };
+  }
+
+  const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
+  if (!normalized.ok) return normalized;
+  return { ok: true, conditions: normalized.config.conditions, template: normalized.config.template };
+}
 
 export async function executeForwards(email: EmailData, mailboxId: string, userId?: string) {
   const ownerId =
@@ -30,61 +49,89 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
       status: "ACTIVE",
       OR: [{ mailboxId }, { mailboxId: null }],
     },
+    include: { targets: true },
   });
 
   for (const rule of rules) {
     try {
-      const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
-      if (!normalized.ok) {
+      const runtime = extractRuntimeConfig(rule);
+      if (!runtime.ok) {
         await prisma.forwardLog.create({
-          data: {
-            ruleId: rule.id,
-            success: false,
-            message: normalized.error,
-          },
+          data: { ruleId: rule.id, success: false, message: runtime.error },
         });
         continue;
       }
 
-      const config: ForwardRuleConfigV2 = normalized.config;
-      if (config.conditions && !matchesForwardConditions(email, config.conditions)) {
+      if (runtime.conditions && !matchesForwardConditions(email, runtime.conditions)) {
         continue;
       }
 
-      let result;
       const vars = buildForwardTemplateVars(email, mailboxId);
 
-      switch (rule.type) {
-        case "TELEGRAM":
-          result = await sendToTelegram(config, email, vars);
-          break;
-        case "DISCORD":
-          result = await sendToDiscord(config, email, vars);
-          break;
-        case "SLACK":
-          result = await sendToSlack(config, email, vars);
-          break;
-        case "WEBHOOK":
-          result = await sendToWebhook(config, email, vars);
-          break;
-        case "EMAIL":
-          result = await sendToEmail(config, email, vars);
-          break;
-        default:
-          result = { success: false, message: "Unknown forward type" };
+      let sentCount = 0;
+
+      if (rule.targets.length > 0) {
+        for (const target of rule.targets) {
+          const normalizedTarget = normalizeForwardTargetConfig(target.type, target.config);
+          if (!normalizedTarget.ok) {
+            await prisma.forwardLog.create({
+              data: { ruleId: rule.id, targetId: target.id, success: false, message: normalizedTarget.error },
+            });
+            continue;
+          }
+
+          sentCount += 1;
+          const result = await sendToDestination(normalizedTarget.destination, runtime.template, email, vars).catch(
+            (error) => ({
+              success: false,
+              message: error instanceof Error ? error.message : "Unknown error",
+            })
+          );
+
+          await prisma.forwardLog.create({
+            data: {
+              ruleId: rule.id,
+              targetId: target.id,
+              success: result.success,
+              message: result.message,
+              responseCode: result.code,
+            },
+          });
+        }
+      } else {
+        const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
+        if (!normalized.ok) {
+          await prisma.forwardLog.create({
+            data: { ruleId: rule.id, success: false, message: normalized.error },
+          });
+          continue;
+        }
+
+        sentCount += 1;
+        const result = await sendToDestination(normalized.config.destination, runtime.template, email, vars).catch(
+          (error) => ({
+            success: false,
+            message: error instanceof Error ? error.message : "Unknown error",
+          })
+        );
+
+        await prisma.forwardLog.create({
+          data: {
+            ruleId: rule.id,
+            success: result.success,
+            message: result.message,
+            responseCode: result.code,
+          },
+        });
       }
 
-      // Log the forward attempt
-      await prisma.forwardLog.create({
-        data: {
-          ruleId: rule.id,
-          success: result.success,
-          message: result.message,
-          responseCode: result.code,
-        },
-      });
+      if (sentCount === 0) {
+        await prisma.forwardLog.create({
+          data: { ruleId: rule.id, success: false, message: "No valid forward targets found" },
+        });
+        continue;
+      }
 
-      // Update last triggered
       await prisma.forwardRule.update({
         where: { id: rule.id },
         data: { lastTriggered: new Date() },
@@ -170,26 +217,27 @@ async function getSmtpRuntime(): Promise<SmtpRuntime | null> {
 }
 
 async function sendToTelegram(
-  config: ForwardRuleConfigV2,
+  destination: Extract<ForwardDestination, { type: "TELEGRAM" }>,
+  template: ForwardTemplate | undefined,
   email: EmailData,
   vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  if (config.destination.type !== "TELEGRAM") {
+  if (destination.type !== "TELEGRAM") {
     return { success: false, message: "Invalid destination type" };
   }
 
-  const template = config.template?.text;
-  const text = template ? renderForwardTemplate(template, vars) : buildDefaultTelegramText(email);
+  const templateText = template?.text;
+  const text = templateText ? renderForwardTemplate(templateText, vars) : buildDefaultTelegramText(email);
 
   const res = await fetch(
-    `https://api.telegram.org/bot${config.destination.token}/sendMessage`,
+    `https://api.telegram.org/bot${destination.token}/sendMessage`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       redirect: "error",
       signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
-        chat_id: config.destination.chatId,
+        chat_id: destination.chatId,
         text,
         parse_mode: "Markdown",
       }),
@@ -204,23 +252,24 @@ async function sendToTelegram(
 }
 
 async function sendToDiscord(
-  config: ForwardRuleConfigV2,
+  destination: Extract<ForwardDestination, { type: "DISCORD" }>,
+  template: ForwardTemplate | undefined,
   email: EmailData,
   vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  if (config.destination.type !== "DISCORD") {
+  if (destination.type !== "DISCORD") {
     return { success: false, message: "Invalid destination type" };
   }
 
-  const validated = await validateEgressUrl(config.destination.url);
+  const validated = await validateEgressUrl(destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
-  const template = config.template?.text;
-  const body = template
+  const templateText = template?.text;
+  const body = templateText
     ? {
-        content: renderForwardTemplate(template, vars),
+        content: renderForwardTemplate(templateText, vars),
       }
     : {
         embeds: [
@@ -239,7 +288,7 @@ async function sendToDiscord(
 
   const res = await fetch(validated.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...config.destination.headers },
+    headers: { "Content-Type": "application/json", ...destination.headers },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify(body),
@@ -253,23 +302,24 @@ async function sendToDiscord(
 }
 
 async function sendToSlack(
-  config: ForwardRuleConfigV2,
+  destination: Extract<ForwardDestination, { type: "SLACK" }>,
+  template: ForwardTemplate | undefined,
   email: EmailData,
   vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  if (config.destination.type !== "SLACK") {
+  if (destination.type !== "SLACK") {
     return { success: false, message: "Invalid destination type" };
   }
 
-  const validated = await validateEgressUrl(config.destination.url);
+  const validated = await validateEgressUrl(destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
-  const template = config.template?.text;
-  const body = template
+  const templateText = template?.text;
+  const body = templateText
     ? {
-        text: renderForwardTemplate(template, vars),
+        text: renderForwardTemplate(templateText, vars),
       }
     : {
         blocks: [
@@ -296,7 +346,7 @@ async function sendToSlack(
 
   const res = await fetch(validated.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...config.destination.headers },
+    headers: { "Content-Type": "application/json", ...destination.headers },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     body: JSON.stringify(body),
@@ -310,24 +360,25 @@ async function sendToSlack(
 }
 
 async function sendToWebhook(
-  config: ForwardRuleConfigV2,
+  destination: Extract<ForwardDestination, { type: "WEBHOOK" }>,
+  template: ForwardTemplate | undefined,
   email: EmailData,
   vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  if (config.destination.type !== "WEBHOOK") {
+  if (destination.type !== "WEBHOOK") {
     return { success: false, message: "Invalid destination type" };
   }
 
-  const validated = await validateEgressUrl(config.destination.url);
+  const validated = await validateEgressUrl(destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
-  const templateBody = config.template?.webhookBody;
+  const templateBody = template?.webhookBody;
   const rendered = templateBody ? renderForwardTemplate(templateBody, vars) : null;
 
   const contentType =
-    config.template?.contentType ||
+    template?.contentType ||
     (rendered && ["{", "["].includes(rendered.trim().charAt(0)) ? "application/json" : "text/plain");
 
   const body = (() => {
@@ -357,7 +408,7 @@ async function sendToWebhook(
     method: "POST",
     headers: {
       "Content-Type": contentType,
-      ...config.destination.headers,
+      ...destination.headers,
     },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
@@ -372,11 +423,12 @@ async function sendToWebhook(
 }
 
 async function sendToEmail(
-  config: ForwardRuleConfigV2,
+  destination: Extract<ForwardDestination, { type: "EMAIL" }>,
+  template: ForwardTemplate | undefined,
   email: EmailData,
   vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  if (config.destination.type !== "EMAIL") {
+  if (destination.type !== "EMAIL") {
     return { success: false, message: "Invalid destination type" };
   }
 
@@ -385,28 +437,48 @@ async function sendToEmail(
     return { success: false, message: "SMTP is not configured" };
   }
 
-  const subjectTemplate = config.template?.subject || "[TEmail] {{subject}}";
+  const subjectTemplate = template?.subject || "[TEmail] {{subject}}";
   const textTemplate =
-    config.template?.text ||
+    template?.text ||
     (email.textBody
       ? "{{textBody}}"
       : `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`);
-  const htmlTemplate = config.template?.html || (email.htmlBody ? "{{htmlBody}}" : "");
+  const htmlTemplate = template?.html || (email.htmlBody ? "{{htmlBody}}" : "");
 
   try {
     await smtp.transporter.sendMail({
       from: smtp.from,
-      to: config.destination.to,
+      to: destination.to,
       subject: renderForwardTemplate(subjectTemplate, vars),
       text: renderForwardTemplate(textTemplate, vars),
       html: htmlTemplate ? renderForwardTemplate(htmlTemplate, vars) : undefined,
     });
 
-    return { success: true, message: `Sent to ${config.destination.to}` };
+    return { success: true, message: `Sent to ${destination.to}` };
   } catch (error) {
     return {
       success: false,
       message: error instanceof Error ? error.message : "SMTP send failed",
     };
+  }
+}
+
+async function sendToDestination(
+  destination: ForwardDestination,
+  template: ForwardTemplate | undefined,
+  email: EmailData,
+  vars: Record<string, unknown>
+): Promise<ForwardResult> {
+  switch (destination.type) {
+    case "TELEGRAM":
+      return sendToTelegram(destination, template, email, vars);
+    case "DISCORD":
+      return sendToDiscord(destination, template, email, vars);
+    case "SLACK":
+      return sendToSlack(destination, template, email, vars);
+    case "WEBHOOK":
+      return sendToWebhook(destination, template, email, vars);
+    case "EMAIL":
+      return sendToEmail(destination, template, email, vars);
   }
 }

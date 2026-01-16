@@ -137,12 +137,67 @@ export const forwardRuleConfigV2Schema = z
 
 export type ForwardRuleConfigV2 = z.infer<typeof forwardRuleConfigV2Schema>;
 
+export const forwardRuleConfigV3Schema = z
+  .object({
+    version: z.literal(3),
+    conditions: forwardConditionSchema.optional(),
+    template: forwardTemplateSchema.optional(),
+  })
+  .strict();
+
+export type ForwardRuleConfigV3 = z.infer<typeof forwardRuleConfigV3Schema>;
+
 function parseConfigJson(rawConfig: string) {
   try {
     return { ok: true as const, value: JSON.parse(rawConfig) };
   } catch {
     return { ok: false as const, error: "Forward config must be valid JSON" };
   }
+}
+
+export function parseForwardRuleConfig(rawConfig: string): { ok: true; config: ForwardRuleConfigV2 | ForwardRuleConfigV3 } | { ok: false; error: string } {
+  const json = parseConfigJson(rawConfig);
+  if (!json.ok) return json;
+
+  const candidate = json.value;
+  if (!candidate || typeof candidate !== "object" || !("version" in candidate)) {
+    return { ok: false, error: "Forward config must include a version" };
+  }
+
+  const version = (candidate as { version?: unknown }).version;
+  if (version === 2) {
+    const parsed = forwardRuleConfigV2Schema.safeParse(candidate);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message || "Invalid forward config" };
+    }
+    return { ok: true, config: parsed.data };
+  }
+  if (version === 3) {
+    const parsed = forwardRuleConfigV3Schema.safeParse(candidate);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message || "Invalid forward config" };
+    }
+    return { ok: true, config: parsed.data };
+  }
+
+  return { ok: false, error: "Unsupported forward config version" };
+}
+
+export function normalizeForwardTargetConfig(
+  type: ForwardType,
+  rawConfig: string
+): { ok: true; destination: ForwardDestination } | { ok: false; error: string } {
+  const json = parseConfigJson(rawConfig);
+  if (!json.ok) return json;
+
+  const parsed = forwardDestinationSchema.safeParse(json.value);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message || "Invalid forward target config" };
+  }
+  if (parsed.data.type !== type) {
+    return { ok: false, error: "Forward target type does not match rule target type" };
+  }
+  return { ok: true, destination: parsed.data };
 }
 
 function wrapLegacyDestination(type: ForwardType, value: unknown): ForwardRuleConfigV2 {
