@@ -17,6 +17,7 @@ const targetSchema = z.object({
 const updateSchema = z.object({
   name: z.string().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "ERROR"]).optional(),
+  mailboxId: z.string().nullable().optional(),
   config: z.string().optional(),
   targets: z.array(targetSchema).min(1).optional(),
 });
@@ -74,11 +75,26 @@ export async function PATCH(
     const ruleUpdate: {
       name?: string;
       status?: "ACTIVE" | "INACTIVE" | "ERROR";
+      mailboxId?: string | null;
       config?: string;
       type?: "EMAIL" | "TELEGRAM" | "DISCORD" | "SLACK" | "WEBHOOK";
     } = {};
     if (typeof data.name === "string") ruleUpdate.name = data.name;
     if (typeof data.status === "string") ruleUpdate.status = data.status;
+    if (typeof data.mailboxId !== "undefined") {
+      if (typeof data.mailboxId === "string") {
+        const mailbox = await prisma.mailbox.findFirst({
+          where: { id: data.mailboxId, userId: session.user.id },
+          select: { id: true },
+        });
+        if (!mailbox) {
+          return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
+        }
+        ruleUpdate.mailboxId = mailbox.id;
+      } else {
+        ruleUpdate.mailboxId = null;
+      }
+    }
     if (typeof data.config === "string") {
       const parsed = parseForwardRuleConfig(data.config);
       if (parsed.ok) {

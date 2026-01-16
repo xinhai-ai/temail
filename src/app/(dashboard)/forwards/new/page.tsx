@@ -25,11 +25,13 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { parseForwardRuleConfig } from "@/services/forward-config";
 
 type StepId = "basic" | "conditions" | "targets" | "template" | "review";
 type TargetType = "EMAIL" | "TELEGRAM" | "DISCORD" | "SLACK" | "WEBHOOK";
 
 type TargetDraft = {
+  id?: string;
   clientId: string;
   type: TargetType;
   to?: string;
@@ -39,11 +41,25 @@ type TargetDraft = {
   headers?: string;
 };
 
-type CreateTargetPayload = { type: TargetType; config: string };
+type CreateTargetPayload = { id?: string; type: TargetType; config: string };
 
 type Mailbox = {
   id: string;
   address: string;
+};
+
+type ApiForwardTarget = {
+  id: string;
+  type: TargetType;
+  config: string;
+};
+
+type ApiForwardRule = {
+  id: string;
+  name: string;
+  mailboxId?: string | null;
+  config: string;
+  targets: ApiForwardTarget[];
 };
 
 type EmailSummary = {
@@ -212,13 +228,13 @@ function buildTargets(drafts: TargetDraft[]): CreateTargetPayload[] {
       case "EMAIL": {
         const to = t.to?.trim() || "";
         if (!to) throw new Error(`${prefix}: email recipient is required`);
-        return { type: "EMAIL", config: JSON.stringify({ type: "EMAIL", to }) };
+        return { ...(t.id ? { id: t.id } : {}), type: "EMAIL", config: JSON.stringify({ type: "EMAIL", to }) };
       }
       case "TELEGRAM": {
         const token = t.token?.trim() || "";
         const chatId = t.chatId?.trim() || "";
         if (!token || !chatId) throw new Error(`${prefix}: Telegram token and chat ID are required`);
-        return { type: "TELEGRAM", config: JSON.stringify({ type: "TELEGRAM", token, chatId }) };
+        return { ...(t.id ? { id: t.id } : {}), type: "TELEGRAM", config: JSON.stringify({ type: "TELEGRAM", token, chatId }) };
       }
       case "DISCORD":
       case "SLACK":
@@ -226,7 +242,7 @@ function buildTargets(drafts: TargetDraft[]): CreateTargetPayload[] {
         const url = t.url?.trim() || "";
         if (!url) throw new Error(`${prefix}: webhook URL is required`);
         const headers = parseHeadersJson(t.headers);
-        return { type: t.type, config: JSON.stringify({ type: t.type, url, headers }) };
+        return { ...(t.id ? { id: t.id } : {}), type: t.type, config: JSON.stringify({ type: t.type, url, headers }) };
       }
     }
   });
@@ -244,8 +260,9 @@ function summarizeTargets(targets: TargetDraft[]) {
     .join(" · ");
 }
 
-export default function NewForwardRulePage() {
+export function ForwardRuleBuilderPage({ mode = "create", ruleId }: { mode?: "create" | "edit"; ruleId?: string }) {
   const router = useRouter();
+  const isEdit = mode === "edit";
 
   const steps: StepDef[] = useMemo(
     () => [
@@ -260,6 +277,8 @@ export default function NewForwardRulePage() {
 
   const [step, setStep] = useState<StepId>("basic");
   const [saving, setSaving] = useState(false);
+  const [loadingRule, setLoadingRule] = useState(isEdit);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [mailboxesLoading, setMailboxesLoading] = useState(true);
@@ -311,6 +330,110 @@ export default function NewForwardRulePage() {
     };
     run();
   }, []);
+
+  useEffect(() => {
+    if (!isEdit) {
+      setLoadingRule(false);
+      setLoadError(null);
+      return;
+    }
+
+    if (!ruleId) {
+      setLoadingRule(false);
+      setLoadError("Missing rule id");
+      return;
+    }
+
+    const run = async () => {
+      setLoadingRule(true);
+      setLoadError(null);
+
+      try {
+        const res = await fetch(`/api/forwards/${ruleId}`);
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          setLoadError(data?.error || "Failed to load rule");
+          return;
+        }
+
+        const rule = data as ApiForwardRule;
+
+        setName(rule.name || "");
+        setMailboxId(rule.mailboxId || "");
+
+        const parsed = parseForwardRuleConfig(rule.config);
+        if (!parsed.ok) {
+          setLoadError(parsed.error);
+          return;
+        }
+
+        const template = parsed.config.template;
+
+        setTemplateSubject(template?.subject || "");
+        setTemplateText(template?.text || "");
+        setTemplateHtml(template?.html || "");
+        setTemplateWebhookBody(template?.webhookBody || "");
+        setTemplateContentType(template?.contentType || "");
+
+        const baseTree: ForwardConditionTree = { kind: "and", conditions: [] };
+        const conditions = parsed.config.conditions;
+        if (!conditions) {
+          setConditionTree(baseTree);
+        } else if (conditions.kind === "and" || conditions.kind === "or") {
+          setConditionTree(conditions);
+        } else {
+          setConditionTree({ kind: "and", conditions: [conditions] });
+        }
+
+        const nextTargets =
+          Array.isArray(rule.targets) && rule.targets.length > 0
+            ? rule.targets.map((t) => {
+                const clientId = createClientId();
+
+                try {
+                  const raw = JSON.parse(t.config) as Record<string, unknown> | null;
+                  const headers = raw?.headers && typeof raw.headers === "object" && !Array.isArray(raw.headers) ? raw.headers : null;
+
+                  switch (t.type) {
+                    case "EMAIL":
+                      return { id: t.id, clientId, type: t.type, to: typeof raw?.to === "string" ? raw.to : "" };
+                    case "TELEGRAM":
+                      return {
+                        id: t.id,
+                        clientId,
+                        type: t.type,
+                        token: typeof raw?.token === "string" ? raw.token : "",
+                        chatId: typeof raw?.chatId === "string" ? raw.chatId : "",
+                      };
+                    case "DISCORD":
+                    case "SLACK":
+                    case "WEBHOOK":
+                      return {
+                        id: t.id,
+                        clientId,
+                        type: t.type,
+                        url: typeof raw?.url === "string" ? raw.url : "",
+                        headers: headers ? JSON.stringify(headers, null, 2) : "",
+                      };
+                  }
+                } catch {
+                  // ignore
+                }
+
+                return { id: t.id, ...createTargetDraft(t.type) };
+              })
+            : [createTargetDraft("WEBHOOK")];
+
+        setTargets(nextTargets);
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : "Failed to load rule");
+      } finally {
+        setLoadingRule(false);
+      }
+    };
+
+    run();
+  }, [isEdit, ruleId]);
 
   const fetchRecentEmails = useCallback(async () => {
     setRecentEmailsLoading(true);
@@ -433,6 +556,11 @@ export default function NewForwardRulePage() {
 
     setSaving(true);
     try {
+      if (isEdit && !ruleId) {
+        toast.error("Missing rule id");
+        return;
+      }
+
       const config = buildRuleConfig({
         conditionTree,
         templateText,
@@ -443,8 +571,8 @@ export default function NewForwardRulePage() {
       });
       const builtTargets = buildTargets(targets);
 
-      const res = await fetch("/api/forwards", {
-        method: "POST",
+      const res = await fetch(isEdit ? `/api/forwards/${ruleId}` : "/api/forwards", {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
@@ -455,10 +583,10 @@ export default function NewForwardRulePage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to create rule");
+        toast.error(data?.error || (isEdit ? "Failed to update rule" : "Failed to create rule"));
         return;
       }
-      toast.success("Forward rule created");
+      toast.success(isEdit ? "Forward rule updated" : "Forward rule created");
       router.push("/forwards");
       router.refresh();
     } catch (error) {
@@ -716,12 +844,40 @@ export default function NewForwardRulePage() {
   const testResults = useMemo(() => (Array.isArray(testResponse?.results) ? testResponse!.results : []), [testResponse]);
   const canSendTest = Boolean(testPayload) && testPreviews.some((p) => p.ok);
 
+  if (isEdit && loadingRule) {
+    return (
+      <div className="flex justify-center items-center p-12">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isEdit && loadError) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Edit Forward Rule</h1>
+          <p className="text-muted-foreground">Unable to load the rule.</p>
+        </div>
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          {loadError}
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/forwards">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">New Forward Rule</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{isEdit ? "Edit Forward Rule" : "New Forward Rule"}</h1>
             <Badge variant="secondary" className="hidden sm:inline-flex">
               Flow Builder
             </Badge>
@@ -1234,7 +1390,7 @@ export default function NewForwardRulePage() {
               <div className="space-y-1">
                 <h2 className="text-lg font-semibold">Review</h2>
                 <p className="text-sm text-muted-foreground">
-                  Confirm everything looks right, then create the rule.
+                  Confirm everything looks right, then {isEdit ? "save the changes" : "create the rule"}.
                 </p>
               </div>
 
@@ -1458,7 +1614,7 @@ export default function NewForwardRulePage() {
                   <Link href="/forwards">Cancel</Link>
                 </Button>
                 <Button onClick={handleCreate} disabled={saving || !isStepComplete("review")}>
-                  {saving ? "Creating..." : "Create Rule"}
+                  {saving ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create Rule")}
                 </Button>
               </div>
             </div>
@@ -1637,7 +1793,7 @@ export default function NewForwardRulePage() {
 
         {step === "review" ? (
           <Button onClick={handleCreate} disabled={saving || !isStepComplete("review")}>
-            {saving ? "Creating..." : "Create Rule"}
+            {saving ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create Rule")}
           </Button>
         ) : (
           <Button onClick={goNext}>
@@ -1648,4 +1804,8 @@ export default function NewForwardRulePage() {
       </div>
     </div>
   );
+}
+
+export default function NewForwardRulePage() {
+  return <ForwardRuleBuilderPage mode="create" />;
 }

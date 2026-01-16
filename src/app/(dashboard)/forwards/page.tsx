@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Forward, Plus, Power, PowerOff, TestTube, Trash2 } from "lucide-react";
+import { Forward, Plus, Power, PowerOff, PencilLine, TestTube, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -218,6 +218,11 @@ export default function ForwardsPage() {
                       <Button variant="ghost" size="sm" onClick={() => handleTest(rule.id)} disabled={testing === rule.id}>
                         <TestTube className="h-4 w-4" />
                       </Button>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/forwards/${rule.id}/edit`}>
+                          <PencilLine className="h-4 w-4" />
+                        </Link>
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => handleToggle(rule.id, rule.status)}>
                         {rule.status === "ACTIVE" ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                       </Button>
@@ -240,4 +245,3 @@ export default function ForwardsPage() {
     </div>
   );
 }
-
