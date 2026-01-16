@@ -3,7 +3,7 @@ import { z } from "zod";
 export const forwardTypeSchema = z.enum(["EMAIL", "TELEGRAM", "DISCORD", "SLACK", "WEBHOOK"]);
 export type ForwardType = z.infer<typeof forwardTypeSchema>;
 
-const recordStringSchema = z.record(z.string()).default({});
+const recordStringSchema = z.record(z.string(), z.string()).default({});
 
 const legacyEmailDestinationSchema = z
   .object({

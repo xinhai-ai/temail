@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --test --import tsx src/**/*.test.ts",
     "imap:once": "tsx scripts/imap-poller.ts",
     "imap:watch": "tsx scripts/imap-poller.ts --watch"
   },
