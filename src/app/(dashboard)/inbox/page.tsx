@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   Inbox,
@@ -37,6 +44,11 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+
+interface Domain {
+  id: string;
+  name: string;
+}
 
 interface MailboxGroup {
   id: string;
@@ -92,6 +104,7 @@ export default function InboxPage() {
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
 
+  const [domains, setDomains] = useState<Domain[]>([]);
   const [groups, setGroups] = useState<MailboxGroup[]>([]);
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [emails, setEmails] = useState<EmailListItem[]>([]);
@@ -99,6 +112,7 @@ export default function InboxPage() {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<EmailDetail | null>(null);
 
+  const [loadingDomains, setLoadingDomains] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingMailboxes, setLoadingMailboxes] = useState(true);
   const [loadingEmails, setLoadingEmails] = useState(false);
@@ -109,6 +123,13 @@ export default function InboxPage() {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
+
+  const [mailboxDialogOpen, setMailboxDialogOpen] = useState(false);
+  const [creatingMailbox, setCreatingMailbox] = useState(false);
+  const [newMailboxPrefix, setNewMailboxPrefix] = useState("");
+  const [newMailboxDomainId, setNewMailboxDomainId] = useState("");
+  const [newMailboxGroupId, setNewMailboxGroupId] = useState<string>("");
+  const [newMailboxNote, setNewMailboxNote] = useState("");
 
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingGroup, setRenamingGroup] = useState(false);
@@ -149,27 +170,41 @@ export default function InboxPage() {
     return items;
   }, [groups, mailboxes]);
 
-  useEffect(() => {
-    const fetchGroups = async () => {
-      setLoadingGroups(true);
-      const res = await fetch("/api/mailbox-groups");
-      const data = await res.json();
-      setGroups(Array.isArray(data) ? data : []);
-      setLoadingGroups(false);
-    };
-    fetchGroups();
+  const loadDomains = useCallback(async () => {
+    setLoadingDomains(true);
+    const res = await fetch("/api/domains");
+    const data = await res.json();
+    setDomains(Array.isArray(data) ? data : []);
+    setLoadingDomains(false);
+  }, []);
+
+  const loadGroups = useCallback(async () => {
+    setLoadingGroups(true);
+    const res = await fetch("/api/mailbox-groups");
+    const data = await res.json();
+    setGroups(Array.isArray(data) ? data : []);
+    setLoadingGroups(false);
+  }, []);
+
+  const loadMailboxes = useCallback(async (search: string) => {
+    setLoadingMailboxes(true);
+    const res = await fetch(`/api/mailboxes?search=${encodeURIComponent(search)}`);
+    const data = await res.json();
+    setMailboxes(Array.isArray(data) ? data : []);
+    setLoadingMailboxes(false);
   }, []);
 
   useEffect(() => {
-    const fetchMailboxes = async () => {
-      setLoadingMailboxes(true);
-      const res = await fetch(`/api/mailboxes?search=${encodeURIComponent(mailboxSearch)}`);
-      const data = await res.json();
-      setMailboxes(Array.isArray(data) ? data : []);
-      setLoadingMailboxes(false);
-    };
-    fetchMailboxes();
-  }, [mailboxSearch]);
+    loadDomains();
+  }, [loadDomains]);
+
+  useEffect(() => {
+    loadGroups();
+  }, [loadGroups]);
+
+  useEffect(() => {
+    loadMailboxes(mailboxSearch);
+  }, [mailboxSearch, loadMailboxes]);
 
   useEffect(() => {
     const fetchEmails = async () => {
@@ -280,6 +315,58 @@ export default function InboxPage() {
     }
   };
 
+  const generateRandomPrefix = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewMailboxPrefix(result);
+  };
+
+  const handleCreateMailbox = async () => {
+    const prefix = newMailboxPrefix.trim();
+    if (!prefix || !newMailboxDomainId) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    const groupId = newMailboxGroupId || undefined;
+
+    setCreatingMailbox(true);
+    try {
+      const res = await fetch("/api/mailboxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prefix,
+          domainId: newMailboxDomainId,
+          note: newMailboxNote.trim() || undefined,
+          groupId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to create mailbox");
+        return;
+      }
+
+      toast.success("Mailbox created");
+      setMailboxDialogOpen(false);
+      setNewMailboxPrefix("");
+      setNewMailboxDomainId("");
+      setNewMailboxGroupId("");
+      setNewMailboxNote("");
+      await loadMailboxes("");
+      setMailboxSearch("");
+    } catch {
+      toast.error("Failed to create mailbox");
+    } finally {
+      setCreatingMailbox(false);
+    }
+  };
+
   const openRenameGroup = (group: MailboxGroup) => {
     setRenameGroupId(group.id);
     setRenameGroupName(group.name);
@@ -387,15 +474,94 @@ export default function InboxPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 variant={selectedMailboxId === null ? "default" : "outline"}
                 onClick={() => handleSelectMailbox(null)}
+                className="flex-1 min-w-[140px]"
               >
                 <Inbox className="mr-2 h-4 w-4" />
                 All Emails
               </Button>
+              <Dialog open={mailboxDialogOpen} onOpenChange={setMailboxDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={loadingDomains}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Mailbox
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Mailbox</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label>Domain</Label>
+                      <Select value={newMailboxDomainId} onValueChange={setNewMailboxDomainId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingDomains ? "Loading..." : "Select domain"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {domains.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Prefix</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="username"
+                          value={newMailboxPrefix}
+                          onChange={(e) => setNewMailboxPrefix(e.target.value)}
+                        />
+                        <Button variant="outline" onClick={generateRandomPrefix} type="button">
+                          Random
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Group (Optional)</Label>
+                      <Select value={newMailboxGroupId} onValueChange={setNewMailboxGroupId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Ungrouped" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Ungrouped</SelectItem>
+                          {groups.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>
+                              {g.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Note (Optional)</Label>
+                      <Input
+                        placeholder="Add a note"
+                        value={newMailboxNote}
+                        onChange={(e) => setNewMailboxNote(e.target.value)}
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleCreateMailbox}
+                      className="w-full"
+                      disabled={creatingMailbox}
+                    >
+                      {creatingMailbox ? "Creating..." : "Create"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline">
