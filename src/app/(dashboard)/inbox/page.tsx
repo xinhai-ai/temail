@@ -74,12 +74,14 @@ export default function InboxPage() {
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
 
+  const [groups, setGroups] = useState<MailboxGroup[]>([]);
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [emails, setEmails] = useState<EmailListItem[]>([]);
   const [selectedMailboxId, setSelectedMailboxId] = useState<string | null>(null);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<EmailDetail | null>(null);
 
+  const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingMailboxes, setLoadingMailboxes] = useState(true);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -88,12 +90,21 @@ export default function InboxPage() {
 
   const groupedMailboxes = useMemo(() => {
     const grouped: Record<string, { group: MailboxGroup | null; mailboxes: Mailbox[] }> = {};
+
+    for (const group of groups) {
+      grouped[group.id] = { group, mailboxes: [] };
+    }
+
     for (const mailbox of mailboxes) {
       const key = mailbox.group?.id || "__ungrouped__";
       if (!grouped[key]) {
         grouped[key] = { group: mailbox.group || null, mailboxes: [] };
       }
       grouped[key].mailboxes.push(mailbox);
+    }
+
+    if (!grouped["__ungrouped__"]) {
+      grouped["__ungrouped__"] = { group: null, mailboxes: [] };
     }
 
     const items = Object.entries(grouped).map(([key, value]) => ({
@@ -109,7 +120,18 @@ export default function InboxPage() {
     });
 
     return items;
-  }, [mailboxes]);
+  }, [groups, mailboxes]);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      setLoadingGroups(true);
+      const res = await fetch("/api/mailbox-groups");
+      const data = await res.json();
+      setGroups(Array.isArray(data) ? data : []);
+      setLoadingGroups(false);
+    };
+    fetchGroups();
+  }, []);
 
   useEffect(() => {
     const fetchMailboxes = async () => {
@@ -235,7 +257,9 @@ export default function InboxPage() {
                 All Emails
               </Button>
               <span className="text-xs text-muted-foreground">
-                {loadingMailboxes ? "Loading..." : `${mailboxes.length} mailboxes`}
+                {loadingGroups || loadingMailboxes
+                  ? "Loading..."
+                  : `${mailboxes.length} mailboxes • ${groups.length} groups`}
               </span>
             </div>
 
@@ -528,4 +552,3 @@ export default function InboxPage() {
     </div>
   );
 }
-
