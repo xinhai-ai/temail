@@ -16,6 +16,8 @@ export default function InboxPage() {
   const EMAILS_PAGE_SIZE = 20;
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
+  const [emailsPage, setEmailsPage] = useState(1);
+  const [emailsTotalPages, setEmailsTotalPages] = useState(1);
 
   const [domains, setDomains] = useState<Domain[]>([]);
   const [groups, setGroups] = useState<MailboxGroup[]>([]);
@@ -29,11 +31,7 @@ export default function InboxPage() {
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingMailboxes, setLoadingMailboxes] = useState(true);
   const [loadingEmails, setLoadingEmails] = useState(false);
-  const [loadingMoreEmails, setLoadingMoreEmails] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
-
-  const [emailsCursor, setEmailsCursor] = useState<string | null>(null);
-  const [emailsHasMore, setEmailsHasMore] = useState(false);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -155,57 +153,25 @@ export default function InboxPage() {
       if (emailSearch) {
         endpoint = "/api/search/emails";
         params.set("q", emailSearch);
-        params.set("limit", String(EMAILS_PAGE_SIZE));
-      } else {
-        params.set("mode", "cursor");
-        params.set("limit", String(EMAILS_PAGE_SIZE));
       }
+      params.set("page", String(emailsPage));
+      params.set("limit", String(EMAILS_PAGE_SIZE));
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
 
       const res = await fetch(`${endpoint}?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       setEmails(Array.isArray(data?.emails) ? data.emails : []);
-      setEmailsCursor(typeof data?.nextCursor === "string" ? data.nextCursor : null);
-      setEmailsHasMore(Boolean(data?.hasMore));
+      const pagesRaw = typeof data?.pagination?.pages === "number" ? data.pagination.pages : 1;
+      const pages = Math.max(1, pagesRaw);
+      setEmailsTotalPages(pages);
+      if (emailsPage > pages) {
+        setEmailsPage(pages);
+      }
       setLoadingEmails(false);
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch]);
-
-  const loadMoreEmails = async () => {
-    if (loadingEmails || loadingMoreEmails || !emailsHasMore || !emailsCursor) return;
-    setLoadingMoreEmails(true);
-
-    const params = new URLSearchParams();
-    let endpoint = "/api/emails";
-    if (emailSearch) {
-      endpoint = "/api/search/emails";
-      params.set("q", emailSearch);
-      params.set("limit", String(EMAILS_PAGE_SIZE));
-    } else {
-      params.set("mode", "cursor");
-      params.set("limit", String(EMAILS_PAGE_SIZE));
-    }
-    params.set("cursor", emailsCursor);
-    if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
-
-    const res = await fetch(`${endpoint}?${params.toString()}`);
-    const data = await res.json();
-    const nextEmails = Array.isArray(data?.emails) ? data.emails : [];
-
-    setEmails((prev) => {
-      const seen = new Set(prev.map((e) => e.id));
-      const merged = [...prev];
-      for (const e of nextEmails) {
-        if (!seen.has(e.id)) merged.push(e);
-      }
-      return merged;
-    });
-    setEmailsCursor(typeof data?.nextCursor === "string" ? data.nextCursor : null);
-    setEmailsHasMore(Boolean(data?.hasMore));
-    setLoadingMoreEmails(false);
-  };
+  }, [selectedMailboxId, emailSearch, emailsPage]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -265,7 +231,8 @@ export default function InboxPage() {
           const matchesMailbox =
             !selectedMailboxId || event.data.email.mailboxId === selectedMailboxId;
           const hasSearch = Boolean(emailSearch);
-          if (matchesMailbox && !hasSearch) {
+          const isFirstPage = emailsPage === 1;
+          if (matchesMailbox && !hasSearch && isFirstPage) {
             setEmails((prev) => {
               if (prev.some((e) => e.id === event.data.email.id)) return prev;
               return [
@@ -335,11 +302,11 @@ export default function InboxPage() {
     });
 
     return disconnect;
-  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch]);
+  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage]);
 
   useEffect(() => {
     setSelectedEmailIds([]);
-  }, [selectedMailboxId, emailSearch]);
+  }, [selectedMailboxId, emailSearch, emailsPage]);
 
   useEffect(() => {
     if (!selectedEmailId) {
@@ -501,10 +468,24 @@ export default function InboxPage() {
     setBulkDeleteOpen(false);
   };
 
+  const handleEmailSearchChange = (value: string) => {
+    setEmailSearch(value);
+    setEmailsPage(1);
+  };
+
+  const goPrevEmailsPage = () => {
+    setEmailsPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const goNextEmailsPage = () => {
+    setEmailsPage((prev) => Math.min(emailsTotalPages, prev + 1));
+  };
+
   const handleSelectMailbox = (mailboxId: string | null) => {
     setSelectedMailboxId(mailboxId);
     setSelectedEmailId(null);
     setEmailSearch("");
+    setEmailsPage(1);
   };
 
   const handleCreateGroup = async () => {
@@ -774,14 +755,14 @@ export default function InboxPage() {
             emailSearch={emailSearch}
             emails={emails}
             loadingEmails={loadingEmails}
-            loadingMore={loadingMoreEmails}
-            hasMore={emailsHasMore}
+            page={emailsPage}
+            pages={emailsTotalPages}
             selectedEmailId={selectedEmailId}
             selectedEmailIds={selectedEmailIds}
             selectedEmailIdSet={selectedEmailIdSet}
             allSelectedOnPage={allSelectedOnPage}
             someSelectedOnPage={someSelectedOnPage}
-            onEmailSearchChange={setEmailSearch}
+            onEmailSearchChange={handleEmailSearchChange}
             onSelectEmail={handleSelectEmail}
             onToggleSelectAllOnPage={toggleSelectAllOnPage}
             onToggleEmailSelection={toggleEmailSelection}
@@ -790,7 +771,8 @@ export default function InboxPage() {
             onClearSelection={() => setSelectedEmailIds([])}
             onStarEmail={handleStarEmail}
             onDeleteEmail={handleDeleteEmail}
-            onLoadMore={loadMoreEmails}
+            onPrevPage={goPrevEmailsPage}
+            onNextPage={goNextEmailsPage}
           />
 
           <PreviewPanel

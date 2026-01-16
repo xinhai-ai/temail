@@ -16,8 +16,8 @@ type EmailsPanelProps = {
   emailSearch: string;
   emails: EmailListItem[];
   loadingEmails: boolean;
-  loadingMore: boolean;
-  hasMore: boolean;
+  page: number;
+  pages: number;
   selectedEmailId: string | null;
   selectedEmailIds: string[];
   selectedEmailIdSet: Set<string>;
@@ -32,15 +32,16 @@ type EmailsPanelProps = {
   onClearSelection: () => void;
   onStarEmail: (emailId: string, isStarred: boolean) => void;
   onDeleteEmail: (emailId: string) => void;
-  onLoadMore: () => void;
+  onPrevPage: () => void;
+  onNextPage: () => void;
 };
 
 export function EmailsPanel({
   emailSearch,
   emails,
   loadingEmails,
-  loadingMore,
-  hasMore,
+  page,
+  pages,
   selectedEmailId,
   selectedEmailIds,
   selectedEmailIdSet,
@@ -55,7 +56,8 @@ export function EmailsPanel({
   onClearSelection,
   onStarEmail,
   onDeleteEmail,
-  onLoadMore,
+  onPrevPage,
+  onNextPage,
 }: EmailsPanelProps) {
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col">
@@ -255,19 +257,31 @@ export function EmailsPanel({
           </div>
         )}
 
-        {(hasMore || loadingMore) && (
-          <div className="pt-2 flex justify-center">
+        <div className="pt-2 flex items-center justify-between gap-2">
+          <div className="text-xs text-muted-foreground">
+            Page {page} / {Math.max(1, pages)}
+          </div>
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={onLoadMore}
-              disabled={loadingEmails || loadingMore || !hasMore}
+              onClick={onPrevPage}
+              disabled={loadingEmails || page <= 1}
             >
-              {loadingMore ? "Loading..." : "Load more"}
+              Prev
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onNextPage}
+              disabled={loadingEmails || page >= Math.max(1, pages)}
+            >
+              Next
             </Button>
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
