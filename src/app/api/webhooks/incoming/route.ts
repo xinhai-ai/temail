@@ -76,12 +76,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (messageId && typeof messageId === "string") {
-      const existing = await prisma.email.findUnique({
-        where: { messageId },
+      const existing = await prisma.email.findFirst({
+        where: { mailboxId: mailbox.id, messageId },
         select: { id: true },
       });
       if (existing) {
-        return NextResponse.json({ success: true, emailId: existing.id, duplicate: true });
+        return NextResponse.json({
+          success: true,
+          emailId: existing.id,
+          duplicate: true,
+        });
       }
     }
 

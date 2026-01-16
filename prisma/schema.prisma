@@ -108,6 +108,7 @@ model Domain {
   imapConfig  ImapConfig?
   webhookConfig DomainWebhookConfig?
   mailboxes   Mailbox[]
+  inboundEmails InboundEmail[]
 
   @@map("domains")
 }
@@ -188,6 +189,7 @@ model Mailbox {
   group       MailboxGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   emails      Email[]
+  inboundEmails InboundEmail[]
   forwardRules ForwardRule[]
 
   @@unique([prefix, domainId])
@@ -207,7 +209,7 @@ enum EmailStatus {
 
 model Email {
   id          String      @id @default(cuid())
-  messageId   String?     @unique
+  messageId   String?
   fromAddress String
   fromName    String?
   toAddress   String
@@ -226,10 +228,40 @@ model Email {
   attachments Attachment[]
   headers     EmailHeader[]
 
+  @@unique([mailboxId, messageId])
   @@index([mailboxId])
+  @@index([messageId])
   @@index([receivedAt])
   @@index([status])
   @@map("emails")
+}
+
+model InboundEmail {
+  id          String           @id @default(cuid())
+  sourceType  DomainSourceType
+  messageId   String?
+  fromAddress String?
+  fromName    String?
+  toAddress   String
+  subject     String
+  textBody    String?
+  htmlBody    String?
+  rawContent  String?
+  receivedAt  DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+
+  domainId    String
+  domain      Domain           @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  mailboxId   String?
+  mailbox     Mailbox?         @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceType, domainId, messageId, toAddress])
+  @@index([domainId])
+  @@index([mailboxId])
+  @@index([messageId])
+  @@index([receivedAt])
+  @@map("inbound_emails")
 }
 
 model EmailHeader {
