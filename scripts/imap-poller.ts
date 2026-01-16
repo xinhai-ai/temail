@@ -1,6 +1,6 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
-import type { Domain, ImapConfig } from "@prisma/client";
+import { Prisma, type Domain, type ImapConfig } from "@prisma/client";
 import prisma from "../src/lib/prisma";
 import { executeForwards } from "../src/services/forward";
 
@@ -79,11 +79,44 @@ async function pollDomain(domain: ImapDomain) {
 
         if (recipients.length === 0) continue;
 
+        const fromEntry = Array.isArray(parsed.from?.value) ? parsed.from.value[0] : undefined;
+        const fromAddress =
+          typeof fromEntry?.address === "string" ? fromEntry.address : "unknown@unknown.com";
+        const fromName = typeof fromEntry?.name === "string" ? fromEntry.name : null;
+        const receivedAt = parsed.date ? new Date(parsed.date) : now;
+        const normalizedSubject = parsed.subject || "(No subject)";
+        const textBody = parsed.text || undefined;
+        const htmlBody = typeof parsed.html === "string" ? parsed.html : undefined;
+
         for (const toAddress of recipients) {
           const mailbox = await prisma.mailbox.findFirst({
             where: { address: toAddress, domainId: domain.id, status: "ACTIVE" },
             select: { id: true, userId: true },
           });
+
+          try {
+            await prisma.inboundEmail.create({
+              data: {
+                sourceType: "IMAP",
+                messageId: parsedMessageId || undefined,
+                fromAddress,
+                fromName,
+                toAddress,
+                subject: normalizedSubject,
+                textBody,
+                htmlBody,
+                rawContent: raw || undefined,
+                receivedAt,
+                domainId: domain.id,
+                mailboxId: mailbox?.id,
+              },
+            });
+          } catch (error) {
+            if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+              throw error;
+            }
+          }
+
           if (!mailbox) continue;
 
           if (parsedMessageId) {
@@ -94,22 +127,18 @@ async function pollDomain(domain: ImapDomain) {
             if (existing) continue;
           }
 
-          const fromEntry = Array.isArray(parsed.from?.value) ? parsed.from.value[0] : undefined;
-          const fromAddress = typeof fromEntry?.address === "string" ? fromEntry.address : "unknown@unknown.com";
-          const fromName = typeof fromEntry?.name === "string" ? fromEntry.name : null;
-
           const email = await prisma.email.create({
             data: {
               messageId: parsedMessageId || undefined,
               fromAddress,
               fromName,
               toAddress,
-              subject: parsed.subject || "(No subject)",
-              textBody: parsed.text || undefined,
-              htmlBody: typeof parsed.html === "string" ? parsed.html : undefined,
+              subject: normalizedSubject,
+              textBody,
+              htmlBody,
               rawContent: raw || undefined,
               mailboxId: mailbox.id,
-              receivedAt: parsed.date ? new Date(parsed.date) : now,
+              receivedAt,
             },
           });
 
