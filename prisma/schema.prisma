@@ -322,10 +322,28 @@ model ForwardRule {
   mailboxId     String?
   mailbox       Mailbox?      @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
 
+  targets       ForwardTarget[]
   logs          ForwardLog[]
 
   @@index([userId])
   @@map("forward_rules")
+}
+
+model ForwardTarget {
+  id        String      @id @default(cuid())
+  type      ForwardType
+  config    String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  ruleId    String
+  rule      ForwardRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  logs      ForwardLog[]
+
+  @@index([ruleId])
+  @@index([ruleId, type])
+  @@map("forward_targets")
 }
 
 model ForwardLog {
@@ -338,7 +356,11 @@ model ForwardLog {
   ruleId       String
   rule         ForwardRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
+  targetId     String?
+  target       ForwardTarget? @relation(fields: [targetId], references: [id], onDelete: SetNull)
+
   @@index([ruleId])
+  @@index([targetId])
   @@index([createdAt])
   @@map("forward_logs")
 }
