@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
+import { isAdminRole } from "@/lib/rbac";
 
 const imapSchema = z.object({
   host: z.string().min(1, "Host is required"),
@@ -21,6 +22,10 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   try {
@@ -29,7 +34,7 @@ export async function POST(
 
     // Verify domain ownership
     const domain = await prisma.domain.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id },
     });
 
     if (!domain) {
@@ -79,10 +84,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   const domain = await prisma.domain.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id },
   });
 
   if (!domain) {

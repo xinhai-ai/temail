@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { isAdminRole } from "@/lib/rbac";
 
 export async function POST(
   request: NextRequest,
@@ -12,10 +13,14 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   const domain = await prisma.domain.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id },
   });
 
   if (!domain) {
@@ -61,11 +66,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
   const body = await request.json();
 
   const domain = await prisma.domain.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id },
   });
 
   if (!domain) {

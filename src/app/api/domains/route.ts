@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const domainSchema = z.object({
@@ -16,11 +17,12 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const isAdmin = isAdminRole(session.user.role);
+
   const domains = await prisma.domain.findMany({
-    where: { userId: session.user.id },
+    where: isAdmin ? {} : { isPublic: true, status: "ACTIVE" },
     include: {
-      imapConfig: true,
-      webhookConfig: true,
+      ...(isAdmin ? { imapConfig: true, webhookConfig: true } : {}),
       _count: { select: { mailboxes: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -33,6 +35,10 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

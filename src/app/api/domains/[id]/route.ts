@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -20,10 +21,14 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   const domain = await prisma.domain.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id },
     include: {
       imapConfig: true,
       webhookConfig: true,
@@ -47,6 +52,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   try {
@@ -54,7 +63,7 @@ export async function PATCH(
     const data = updateSchema.parse(body);
 
     const domain = await prisma.domain.updateMany({
-      where: { id, userId: session.user.id },
+      where: { id },
       data,
     });
 
@@ -87,10 +96,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isAdminRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   const result = await prisma.domain.deleteMany({
-    where: { id, userId: session.user.id },
+    where: { id },
   });
 
   if (result.count === 0) {

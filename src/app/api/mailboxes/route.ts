@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const mailboxSchema = z.object({
@@ -52,8 +53,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = mailboxSchema.parse(body);
 
+    const isAdmin = isAdminRole(session.user.role);
     const domain = await prisma.domain.findFirst({
-      where: { id: data.domainId, userId: session.user.id },
+      where: isAdmin
+        ? { id: data.domainId }
+        : { id: data.domainId, isPublic: true, status: "ACTIVE" },
     });
 
     if (!domain) {

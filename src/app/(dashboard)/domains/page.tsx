@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,9 @@ interface Domain {
 }
 
 export default function DomainsPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
+
   const [domains, setDomains] = useState<Domain[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -53,6 +57,11 @@ export default function DomainsPage() {
   }, []);
 
   const handleCreate = async () => {
+    if (!isAdmin) {
+      toast.error("Only admins can create domains");
+      return;
+    }
+
     const res = await fetch("/api/domains", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -72,6 +81,7 @@ export default function DomainsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isAdmin) return;
     if (!confirm("Are you sure you want to delete this domain?")) return;
 
     const res = await fetch(`/api/domains/${id}`, { method: "DELETE" });
@@ -106,53 +116,57 @@ export default function DomainsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Domains</h1>
-          <p className="text-muted-foreground mt-1">Manage your email domains</p>
+          <p className="text-muted-foreground mt-1">
+            {isAdmin ? "Manage inbound domains" : "Available inbound domains"}
+          </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Add Domain
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Domain</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>Domain Name</Label>
-                <Input
-                  placeholder="example.com"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Source Type</Label>
-                <Select value={sourceType} onValueChange={(v) => setSourceType(v as "IMAP" | "WEBHOOK")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="WEBHOOK">Webhook</SelectItem>
-                    <SelectItem value="IMAP">IMAP</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Description (Optional)</Label>
-                <Input
-                  placeholder="Description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <Button onClick={handleCreate} className="w-full">
-                Create Domain
+        {isAdmin && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Add Domain
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Domain</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Domain Name</Label>
+                  <Input
+                    placeholder="example.com"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Source Type</Label>
+                  <Select value={sourceType} onValueChange={(v) => setSourceType(v as "IMAP" | "WEBHOOK")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="WEBHOOK">Webhook</SelectItem>
+                      <SelectItem value="IMAP">IMAP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description (Optional)</Label>
+                  <Input
+                    placeholder="Description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <Button onClick={handleCreate} className="w-full">
+                  Create Domain
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {domains.length === 0 ? (
@@ -161,11 +175,19 @@ export default function DomainsPage() {
             <div className="p-4 rounded-full bg-muted mb-4">
               <Globe className="h-8 w-8 text-muted-foreground" />
             </div>
-            <p className="text-muted-foreground font-medium">No domains configured yet</p>
-            <p className="text-sm text-muted-foreground/60 mt-1">Add a domain to start receiving emails</p>
-            <Button className="mt-6" onClick={() => setOpen(true)}>
-              Add Your First Domain
-            </Button>
+            <p className="text-muted-foreground font-medium">
+              {isAdmin ? "No domains configured yet" : "No domains available"}
+            </p>
+            <p className="text-sm text-muted-foreground/60 mt-1">
+              {isAdmin
+                ? "Add a domain to start receiving emails"
+                : "Ask an administrator to enable a domain"}
+            </p>
+            {isAdmin && (
+              <Button className="mt-6" onClick={() => setOpen(true)}>
+                Add Your First Domain
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -200,19 +222,23 @@ export default function DomainsPage() {
                     <p className="text-sm">{domain.description}</p>
                   )}
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/domains/${domain.id}`}>
-                        <Settings className="h-4 w-4 mr-1" /> Configure
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(domain.id)}
-                      className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {isAdmin && (
+                      <>
+                        <Button variant="outline" size="sm" className="flex-1" asChild>
+                          <Link href={`/domains/${domain.id}`}>
+                            <Settings className="h-4 w-4 mr-1" /> Configure
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(domain.id)}
+                          className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
