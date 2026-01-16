@@ -13,12 +13,14 @@ import type { Domain, EmailDetail, EmailListItem, Mailbox, MailboxGroup } from "
 export default function InboxPage() {
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
   const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
-  const DEFAULT_EMAILS_PAGE_SIZE = 20;
+  const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
+  const DEFAULT_EMAILS_PAGE_SIZE = 15;
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
   const [emailsPage, setEmailsPage] = useState(1);
   const [emailsTotalPages, setEmailsTotalPages] = useState(1);
   const [emailsPageSize, setEmailsPageSize] = useState(DEFAULT_EMAILS_PAGE_SIZE);
+  const [emailsPageSizeLoaded, setEmailsPageSizeLoaded] = useState(false);
 
   const [domains, setDomains] = useState<Domain[]>([]);
   const [groups, setGroups] = useState<MailboxGroup[]>([]);
@@ -145,6 +147,34 @@ export default function InboxPage() {
   useEffect(() => {
     loadMailboxes(mailboxSearch);
   }, [mailboxSearch, loadMailboxes]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(EMAILS_PAGE_SIZE_STORAGE_KEY);
+      if (raw) {
+        const parsed = Number.parseInt(raw, 10);
+        if (Number.isFinite(parsed)) {
+          const next = Math.min(100, Math.max(1, parsed));
+          setEmailsPageSize(next);
+          setEmailsPage(1);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setEmailsPageSizeLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!emailsPageSizeLoaded) return;
+    try {
+      localStorage.setItem(EMAILS_PAGE_SIZE_STORAGE_KEY, String(emailsPageSize));
+    } catch {
+      // ignore
+    }
+  }, [emailsPageSize, emailsPageSizeLoaded]);
 
   useEffect(() => {
     const fetchEmails = async () => {

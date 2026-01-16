@@ -290,8 +290,25 @@ export function EmailsPanel({
       </CardContent>
 
       <div className="p-3 border-t border-border/50 flex items-center justify-between gap-2 flex-shrink-0">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span>Per page</span>
+          <div className="flex items-center gap-1">
+            {[5, 10, 15].map((preset) => (
+              <Button
+                key={preset}
+                type="button"
+                variant={pageSize === preset ? "secondary" : "outline"}
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => {
+                  setPageSizeInput(String(preset));
+                  if (preset !== pageSize) onPageSizeChange(preset);
+                }}
+              >
+                {preset}
+              </Button>
+            ))}
+          </div>
           <Input
             type="number"
             min={1}
