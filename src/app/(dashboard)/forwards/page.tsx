@@ -57,6 +57,7 @@ const forwardTypes = [
 ];
 
 export default function ForwardsPage() {
+  const ALL_MAILBOXES_SELECT_VALUE = "__all__";
   const [rules, setRules] = useState<ForwardRule[]>([]);
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,12 +230,17 @@ export default function ForwardsPage() {
 
               <div className="space-y-2">
                 <Label>Apply to Mailbox (Optional)</Label>
-                <Select value={mailboxId} onValueChange={setMailboxId}>
+                <Select
+                  value={mailboxId}
+                  onValueChange={(value) =>
+                    setMailboxId(value === ALL_MAILBOXES_SELECT_VALUE ? "" : value)
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="All mailboxes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All mailboxes</SelectItem>
+                    <SelectItem value={ALL_MAILBOXES_SELECT_VALUE}>All mailboxes</SelectItem>
                     {mailboxes.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.address}

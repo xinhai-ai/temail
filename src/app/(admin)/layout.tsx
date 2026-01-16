@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SessionProvider } from "@/components/providers/session-provider";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
+import { AppShell } from "@/components/layout/app-shell";
 
 export default async function AdminLayout({
   children,
@@ -19,15 +19,14 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const initialSidebarCollapsed = cookieStore.get("temail_sidebar_collapsed")?.value === "1";
+
   return (
     <SessionProvider>
-      <div className="min-h-screen bg-slate-50">
-        <Sidebar isAdmin={true} />
-        <div className="md:pl-64">
-          <Header />
-          <main className="p-4 md:p-6">{children}</main>
-        </div>
-      </div>
+      <AppShell isAdmin={true} initialSidebarCollapsed={initialSidebarCollapsed}>
+        {children}
+      </AppShell>
     </SessionProvider>
   );
 }

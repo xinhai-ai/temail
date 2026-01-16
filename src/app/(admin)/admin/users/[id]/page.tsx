@@ -117,6 +117,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const { id } = use(params);
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const ALL_MAILBOXES_SELECT_VALUE = "__all__";
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserDetail | null>(null);
@@ -874,12 +875,17 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
                       <div className="space-y-2">
                         <Label>Apply to Mailbox (Optional)</Label>
-                        <Select value={forwardMailboxId} onValueChange={setForwardMailboxId}>
+                        <Select
+                          value={forwardMailboxId}
+                          onValueChange={(value) =>
+                            setForwardMailboxId(value === ALL_MAILBOXES_SELECT_VALUE ? "" : value)
+                          }
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="All mailboxes" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All mailboxes</SelectItem>
+                            <SelectItem value={ALL_MAILBOXES_SELECT_VALUE}>All mailboxes</SelectItem>
                             {mailboxes.map((m) => (
                               <SelectItem key={m.id} value={m.id}>
                                 {m.address}
@@ -1058,4 +1064,3 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
-

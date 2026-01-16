@@ -4,8 +4,8 @@
  * Or: npx tsx scripts/test-webhook.ts
  */
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
-
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const TEST_WEBHOOK_SECRET = process.env.TEST_WEBHOOK_SECRET || "f686a0741a441bca72121eeb3f7dcab56b871f08df435ca7162a725e24d3e5e1"
 interface WebhookPayload {
   to: string;
   from: string;
@@ -56,7 +56,7 @@ const testPayload: WebhookPayload = {
   subject: "Test Email via Webhook",
   text: "This is a plain text test email sent via webhook.",
   html: "<h1>Test Email</h1><p>This is an <strong>HTML</strong> test email sent via webhook.</p>",
-  secret: "your-webhook-secret", // Change to your webhook secret key
+  secret: TEST_WEBHOOK_SECRET, // Change to your webhook secret key
 };
 
 // Run the test

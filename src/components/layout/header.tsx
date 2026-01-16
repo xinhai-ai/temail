@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,8 +15,30 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, User, Settings } from "lucide-react";
 import Link from "next/link";
 
+const pageTitles: Record<string, { title: string; description?: string }> = {
+  "/dashboard": { title: "Dashboard", description: "Overview of your email activity" },
+  "/inbox": { title: "Inbox", description: "Mailboxes, grouped — with instant email preview" },
+  "/domains": { title: "Domains", description: "Manage your email domains" },
+  "/forwards": { title: "Forwards", description: "Configure email forwarding rules" },
+  "/settings": { title: "Settings", description: "Manage your account settings" },
+  "/emails": { title: "Emails", description: "View all your emails" },
+  "/admin": { title: "Admin", description: "System administration" },
+};
+
 export function Header() {
   const { data: session } = useSession();
+  const pathname = usePathname();
+
+  // Get page info based on pathname
+  const getPageInfo = () => {
+    // Check exact match first
+    if (pageTitles[pathname]) return pageTitles[pathname];
+    // Check prefix match for nested routes
+    const basePath = "/" + pathname.split("/")[1];
+    return pageTitles[basePath] || null;
+  };
+
+  const pageInfo = getPageInfo();
 
   const initials = session?.user?.name
     ? session.user.name
@@ -27,12 +50,17 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="md:hidden">
-          <span className="text-xl font-bold">TEmail</span>
+      <div className="flex h-14 items-center justify-between px-4 md:px-6">
+        <div className="flex items-center gap-4">
+          <div className="md:hidden">
+            <span className="text-xl font-bold">TEmail</span>
+          </div>
+          {pageInfo && (
+            <div className="hidden md:block">
+              <h1 className="text-lg font-semibold">{pageInfo.title}</h1>
+            </div>
+          )}
         </div>
-
-        <div className="flex-1" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

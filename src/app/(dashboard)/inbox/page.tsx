@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +43,24 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Domain {
   id: string;
@@ -101,6 +118,7 @@ function HtmlPreview({ html }: { html: string }) {
 }
 
 export default function InboxPage() {
+  const UNGROUPED_SELECT_VALUE = "__ungrouped__";
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
 
@@ -135,6 +153,12 @@ export default function InboxPage() {
   const [renamingGroup, setRenamingGroup] = useState(false);
   const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
   const [renameGroupName, setRenameGroupName] = useState("");
+
+  // Delete confirmation dialog states
+  const [deleteEmailId, setDeleteEmailId] = useState<string | null>(null);
+  const [deleteMailboxId, setDeleteMailboxId] = useState<string | null>(null);
+  const [deleteGroup, setDeleteGroup] = useState<MailboxGroup | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const groupedMailboxes = useMemo(() => {
     const grouped: Record<string, { group: MailboxGroup | null; mailboxes: Mailbox[] }> = {};
@@ -262,14 +286,24 @@ export default function InboxPage() {
   };
 
   const handleDeleteEmail = async (id: string) => {
-    if (!confirm("Delete this email?")) return;
-    const res = await fetch(`/api/emails/${id}`, { method: "DELETE" });
-    if (!res.ok) return;
+    setDeleteEmailId(id);
+  };
+
+  const confirmDeleteEmail = async () => {
+    if (!deleteEmailId) return;
+    setDeleting(true);
+    const res = await fetch(`/api/emails/${deleteEmailId}`, { method: "DELETE" });
+    setDeleting(false);
+    if (!res.ok) {
+      toast.error("Failed to delete email");
+      return;
+    }
     toast.success("Email deleted");
-    setEmails((prev) => prev.filter((e) => e.id !== id));
-    if (selectedEmailId === id) {
+    setEmails((prev) => prev.filter((e) => e.id !== deleteEmailId));
+    if (selectedEmailId === deleteEmailId) {
       setSelectedEmailId(null);
     }
+    setDeleteEmailId(null);
   };
 
   const handleSelectMailbox = (mailboxId: string | null) => {
@@ -410,23 +444,30 @@ export default function InboxPage() {
     }
   };
 
-  const handleDeleteGroup = async (group: MailboxGroup) => {
-    if (!confirm(`Delete group \"${group.name}\"? Mailboxes will become ungrouped.`)) return;
-    const res = await fetch(`/api/mailbox-groups/${group.id}`, { method: "DELETE" });
+  const handleDeleteGroup = (group: MailboxGroup) => {
+    setDeleteGroup(group);
+  };
+
+  const confirmDeleteGroup = async () => {
+    if (!deleteGroup) return;
+    setDeleting(true);
+    const res = await fetch(`/api/mailbox-groups/${deleteGroup.id}`, { method: "DELETE" });
     const data = await res.json().catch(() => null);
+    setDeleting(false);
     if (!res.ok) {
       toast.error(data?.error || "Failed to delete group");
       return;
     }
 
-    setGroups((prev) => prev.filter((g) => g.id !== group.id));
-    setMailboxes((prev) => prev.map((m) => (m.group?.id === group.id ? { ...m, group: null } : m)));
+    setGroups((prev) => prev.filter((g) => g.id !== deleteGroup.id));
+    setMailboxes((prev) => prev.map((m) => (m.group?.id === deleteGroup.id ? { ...m, group: null } : m)));
     setCollapsedGroups((prev) => {
       const next = { ...prev };
-      delete next[group.id];
+      delete next[deleteGroup.id];
       return next;
     });
     toast.success("Group deleted");
+    setDeleteGroup(null);
   };
 
   const handleMoveMailboxToGroup = async (mailboxId: string, groupId: string | null) => {
@@ -465,37 +506,38 @@ export default function InboxPage() {
     );
   };
 
-  const handleDeleteMailbox = async (mailboxId: string) => {
-    const mailbox = mailboxes.find((m) => m.id === mailboxId);
-    if (!confirm(`Delete mailbox \"${mailbox?.address || mailboxId}\"?`)) return;
-    const res = await fetch(`/api/mailboxes/${mailboxId}`, { method: "DELETE" });
+  const handleDeleteMailbox = (mailboxId: string) => {
+    setDeleteMailboxId(mailboxId);
+  };
+
+  const confirmDeleteMailbox = async () => {
+    if (!deleteMailboxId) return;
+    setDeleting(true);
+    const res = await fetch(`/api/mailboxes/${deleteMailboxId}`, { method: "DELETE" });
     const data = await res.json().catch(() => null);
+    setDeleting(false);
     if (!res.ok) {
       toast.error(data?.error || "Failed to delete mailbox");
       return;
     }
     toast.success("Mailbox deleted");
-    setMailboxes((prev) => prev.filter((m) => m.id !== mailboxId));
-    if (selectedMailboxId === mailboxId) {
+    setMailboxes((prev) => prev.filter((m) => m.id !== deleteMailboxId));
+    if (selectedMailboxId === deleteMailboxId) {
       handleSelectMailbox(null);
     }
+    setDeleteMailboxId(null);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inbox</h1>
-          <p className="text-muted-foreground mt-1">
-            Mailboxes, grouped — with instant email preview
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr_520px]">
+    <TooltipProvider delayDuration={300}>
+      <div className="space-y-4">
+        <div className="grid gap-4 h-[calc(100vh-theme(spacing.24))] lg:grid-cols-[280px_minmax(320px,420px)_minmax(420px,1fr)]">
         {/* Left: groups + mailboxes */}
-        <Card className="border-border/50">
-          <CardContent className="p-4 space-y-3">
+        <Card className="border-border/50 overflow-hidden flex flex-col">
+          <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Mailboxes</p>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -516,13 +558,26 @@ export default function InboxPage() {
                 <Inbox className="mr-2 h-4 w-4" />
                 All Emails
               </Button>
-              <Dialog open={mailboxDialogOpen} onOpenChange={setMailboxDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" disabled={loadingDomains}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
                     <Plus className="mr-2 h-4 w-4" />
-                    New Mailbox
+                    New
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
-                </DialogTrigger>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setMailboxDialogOpen(true)} disabled={loadingDomains}>
+                    New Mailbox
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setGroupDialogOpen(true)}>
+                    New Group
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <Dialog open={mailboxDialogOpen} onOpenChange={setMailboxDialogOpen}>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create Mailbox</DialogTitle>
@@ -560,12 +615,17 @@ export default function InboxPage() {
 
                     <div className="space-y-2">
                       <Label>Group (Optional)</Label>
-                      <Select value={newMailboxGroupId} onValueChange={setNewMailboxGroupId}>
+                      <Select
+                        value={newMailboxGroupId}
+                        onValueChange={(value) =>
+                          setNewMailboxGroupId(value === UNGROUPED_SELECT_VALUE ? "" : value)
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Ungrouped" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Ungrouped</SelectItem>
+                          <SelectItem value={UNGROUPED_SELECT_VALUE}>Ungrouped</SelectItem>
                           {groups.map((g) => (
                             <SelectItem key={g.id} value={g.id}>
                               {g.name}
@@ -594,13 +654,8 @@ export default function InboxPage() {
                   </div>
                 </DialogContent>
               </Dialog>
+
               <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Group
-                  </Button>
-                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create Group</DialogTitle>
@@ -625,7 +680,6 @@ export default function InboxPage() {
                   </div>
                 </DialogContent>
               </Dialog>
-            </div>
 
             <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
               <DialogContent>
@@ -660,7 +714,22 @@ export default function InboxPage() {
 
             <div className="space-y-2">
               {loadingMailboxes ? (
-                <div className="text-sm text-muted-foreground">Loading mailboxes...</div>
+                <div className="space-y-3">
+                  {[1, 2].map((group) => (
+                    <div key={group} className="space-y-2">
+                      <Skeleton className="h-4 w-20" />
+                      {[1, 2, 3].map((item) => (
+                        <div key={item} className="flex items-center gap-3 px-2 py-2">
+                          <div className="flex-1 space-y-1">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                          <Skeleton className="h-5 w-8 rounded-full" />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               ) : (
                 groupedMailboxes.map((groupItem) => {
                   const label =
@@ -829,8 +898,8 @@ export default function InboxPage() {
         </Card>
 
         {/* Middle: email list */}
-        <Card className="border-border/50">
-          <CardContent className="p-4 space-y-3">
+        <Card className="border-border/50 overflow-hidden flex flex-col">
+          <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
             <div className="flex items-center justify-between gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -844,79 +913,119 @@ export default function InboxPage() {
             </div>
 
             {loadingEmails ? (
-              <div className="text-sm text-muted-foreground">Loading emails...</div>
-            ) : emails.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="p-4 rounded-full bg-muted mb-4">
-                  <Mail className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground font-medium">No emails</p>
-                <p className="text-sm text-muted-foreground/60 mt-1">
-                  Incoming emails will appear here
-                </p>
+              <div className="divide-y rounded-md border">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-5 w-12 rounded-full" />
+                        <Skeleton className="h-4 w-48" />
+                      </div>
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                    <Skeleton className="h-3 w-64" />
+                  </div>
+                ))}
               </div>
+            ) : emails.length === 0 ? (
+              <EmptyState
+                icon={<Mail className="h-8 w-8 text-muted-foreground" />}
+                title={emailSearch ? "No results found" : "No emails"}
+                description={emailSearch ? `No emails matching "${emailSearch}"` : "Incoming emails will appear here automatically"}
+                action={emailSearch ? { label: "Clear search", onClick: () => setEmailSearch("") } : undefined}
+              />
             ) : (
               <div className="divide-y rounded-md border">
                 {emails.map((email) => {
                   const active = selectedEmailId === email.id;
+                  const isUnread = email.status === "UNREAD";
                   return (
                     <button
                       type="button"
                       key={email.id}
                       onClick={() => setSelectedEmailId(email.id)}
                       className={cn(
-                        "w-full text-left p-3 hover:bg-accent transition-colors",
-                        active ? "bg-accent" : ""
+                        "w-full text-left p-3 transition-all duration-150 group",
+                        "hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                        active && "bg-accent ring-1 ring-primary/20",
+                        isUnread && !active && "bg-primary/[0.03]"
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
+                      <div className="flex items-start gap-3">
+                        {/* Unread indicator */}
+                        <div className="pt-1.5 w-2 flex-shrink-0">
+                          {isUnread && (
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                          )}
+                        </div>
+
+                        {/* Main content */}
+                        <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex items-center gap-2">
-                            {email.status === "UNREAD" && (
-                              <Badge className="text-xs bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">
-                                New
-                              </Badge>
-                            )}
-                            <span className="font-medium truncate">
+                            <span className={cn(
+                              "truncate",
+                              isUnread ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+                            )}>
                               {email.subject || "(No subject)"}
                             </span>
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1 truncate">
-                            {email.fromName || email.fromAddress} • {email.mailbox.address}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="truncate">
+                              {email.fromName || email.fromAddress}
+                            </span>
+                            <span className="text-muted-foreground/50">·</span>
+                            <span className="flex-shrink-0">
+                              {formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}
+                            </span>
                           </div>
+                          {/* Mailbox badge */}
+                          <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                            {email.mailbox.address.split('@')[0]}
+                          </Badge>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleStarEmail(email.id, email.isStarred);
-                            }}
-                          >
-                            <Star
-                              className={cn(
-                                "h-4 w-4",
-                                email.isStarred ? "fill-yellow-400 text-yellow-400" : ""
-                              )}
-                            />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleDeleteEmail(email.id);
-                            }}
-                            className="hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+
+                        {/* Action buttons - show on hover */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleStarEmail(email.id, email.isStarred);
+                                }}
+                              >
+                                <Star
+                                  className={cn(
+                                    "h-4 w-4",
+                                    email.isStarred ? "fill-yellow-400 text-yellow-400" : ""
+                                  )}
+                                />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {email.isStarred ? "Unstar" : "Star"}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDeleteEmail(email.id);
+                                }}
+                                className="hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete</TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                     </button>
@@ -928,57 +1037,93 @@ export default function InboxPage() {
         </Card>
 
         {/* Right: preview */}
-        <Card className="border-border/50">
-          <CardContent className="p-4 space-y-3">
+        <Card className="border-border/50 overflow-hidden flex flex-col">
+          <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Preview</p>
-              {selectedEmailId && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/emails/${selectedEmailId}`}>
-                    Open
-                    <ExternalLink className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {selectedEmailId && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/emails/${selectedEmailId}`}>
+                      Open
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
 
             {!selectedEmailId ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="p-4 rounded-full bg-muted mb-4">
-                  <Mail className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground font-medium">Select an email</p>
-                <p className="text-sm text-muted-foreground/60 mt-1">
-                  Preview content without opening a new page
-                </p>
-              </div>
+              <EmptyState
+                icon={<Mail className="h-8 w-8 text-muted-foreground" />}
+                title="Select an email"
+                description="Choose an email from the list to preview its content"
+              />
             ) : loadingPreview ? (
-              <div className="text-sm text-muted-foreground">Loading preview...</div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+                <Skeleton className="h-[400px] w-full rounded-md" />
+              </div>
             ) : !selectedEmail ? (
               <div className="text-sm text-muted-foreground">Email not found</div>
             ) : (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-base font-semibold leading-snug">
-                      {selectedEmail.subject || "(No subject)"}
-                    </h2>
-                    <Badge variant="secondary">{selectedEmail.status}</Badge>
+              <div className="space-y-4">
+                {/* Subject and status */}
+                <div className="flex items-start justify-between gap-4">
+                  <h2 className="text-lg font-semibold leading-tight flex-1">
+                    {selectedEmail.subject || "(No subject)"}
+                  </h2>
+                  <Badge
+                    variant={selectedEmail.status === 'UNREAD' ? 'default' : 'secondary'}
+                    className={cn(
+                      selectedEmail.status === 'UNREAD' && "bg-primary/10 text-primary border-primary/20"
+                    )}
+                  >
+                    {selectedEmail.status === 'UNREAD' ? 'New' : 'Read'}
+                  </Badge>
+                </div>
+
+                {/* Sender info card */}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                    {(selectedEmail.fromName || selectedEmail.fromAddress || "?")[0].toUpperCase()}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    From:{" "}
-                    <span className="font-mono">
-                      {selectedEmail.fromAddress || "-"}
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">
+                      {selectedEmail.fromName || selectedEmail.fromAddress}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {selectedEmail.fromAddress}
+                    </p>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    To:{" "}
+                  <div className="text-right text-xs text-muted-foreground">
+                    <p>{new Date(selectedEmail.receivedAt).toLocaleDateString()}</p>
+                    <p>{new Date(selectedEmail.receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+
+                {/* Recipient info */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>
+                    <span className="text-muted-foreground/60">To:</span>{' '}
                     <span className="font-mono">{selectedEmail.toAddress}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Mailbox:{" "}
+                  </span>
+                  <span>
+                    <span className="text-muted-foreground/60">Mailbox:</span>{' '}
                     <span className="font-mono">{selectedEmail.mailbox.address}</span>
-                  </div>
+                  </span>
                 </div>
 
                 <div className="flex gap-2">
@@ -1023,6 +1168,75 @@ export default function InboxPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+
+      {/* Delete Email Confirmation Dialog */}
+      <AlertDialog open={!!deleteEmailId} onOpenChange={(open) => !open && setDeleteEmailId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Email</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this email? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteEmail}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Mailbox Confirmation Dialog */}
+      <AlertDialog open={!!deleteMailboxId} onOpenChange={(open) => !open && setDeleteMailboxId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Mailbox</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete mailbox &quot;{mailboxes.find(m => m.id === deleteMailboxId)?.address}&quot;?
+              All emails in this mailbox will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteMailbox}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Group Confirmation Dialog */}
+      <AlertDialog open={!!deleteGroup} onOpenChange={(open) => !open && setDeleteGroup(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Group</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete group &quot;{deleteGroup?.name}&quot;?
+              Mailboxes in this group will become ungrouped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteGroup}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 }
