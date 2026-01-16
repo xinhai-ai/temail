@@ -92,27 +92,73 @@ interface ForwardResult {
 }
 
 type SmtpTransporter = ReturnType<typeof nodemailer.createTransport>;
-let cachedTransporter: SmtpTransporter | null = null;
+type SmtpRuntime = { transporter: SmtpTransporter; from: string };
 
-function getSmtpTransporter(): SmtpTransporter | null {
-  if (cachedTransporter) return cachedTransporter;
+let cachedSmtp: { hash: string; runtime: SmtpRuntime; expiresAt: number } | null = null;
 
-  const host = process.env.SMTP_HOST;
+function parsePort(value: string | undefined, fallback: number) {
+  const parsed = parseInt(value || "");
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+async function loadSmtpRuntime(): Promise<SmtpRuntime | null> {
+  const keys = ["smtp_host", "smtp_port", "smtp_secure", "smtp_user", "smtp_pass", "smtp_from"];
+  const map: Record<string, string> = {};
+
+  try {
+    const rows = await prisma.systemSetting.findMany({
+      where: { key: { in: keys } },
+      select: { key: true, value: true },
+    });
+    for (const row of rows) map[row.key] = row.value;
+  } catch {
+    // ignore DB read failures and fall back to env
+  }
+
+  const host = map.smtp_host || process.env.SMTP_HOST;
   if (!host) return null;
 
-  const port = parseInt(process.env.SMTP_PORT || "587");
-  const secure = process.env.SMTP_SECURE === "true" || port === 465;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const port = parsePort(map.smtp_port || process.env.SMTP_PORT, 587);
+  const secure = (map.smtp_secure || process.env.SMTP_SECURE) === "true" || port === 465;
+  const user = map.smtp_user || process.env.SMTP_USER;
+  const pass = map.smtp_pass || process.env.SMTP_PASS;
+  const from = map.smtp_from || process.env.SMTP_FROM || user;
 
-  cachedTransporter = nodemailer.createTransport({
+  if (!from) return null;
+
+  const transporter = nodemailer.createTransport({
     host,
     port,
     secure,
     ...(user && pass ? { auth: { user, pass } } : {}),
   });
 
-  return cachedTransporter;
+  return { transporter, from };
+}
+
+async function getSmtpRuntime(): Promise<SmtpRuntime | null> {
+  const now = Date.now();
+  if (cachedSmtp && cachedSmtp.expiresAt > now) return cachedSmtp.runtime;
+
+  const runtime = await loadSmtpRuntime();
+  if (!runtime) return null;
+
+  const transport = runtime.transporter.options;
+  const hash = JSON.stringify({
+    host: transport.host,
+    port: transport.port,
+    secure: transport.secure,
+    authUser: typeof transport.auth === "object" ? (transport.auth as { user?: string }).user : undefined,
+    from: runtime.from,
+  });
+
+  if (cachedSmtp && cachedSmtp.hash === hash) {
+    cachedSmtp.expiresAt = now + 30_000;
+    return cachedSmtp.runtime;
+  }
+
+  cachedSmtp = { hash, runtime, expiresAt: now + 30_000 };
+  return runtime;
 }
 
 async function sendToTelegram(
@@ -249,19 +295,14 @@ async function sendToEmail(
   config: { to: string },
   email: EmailData
 ): Promise<ForwardResult> {
-  const transporter = getSmtpTransporter();
-  if (!transporter) {
+  const smtp = await getSmtpRuntime();
+  if (!smtp) {
     return { success: false, message: "SMTP is not configured" };
   }
 
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  if (!from) {
-    return { success: false, message: "SMTP_FROM (or SMTP_USER) is required" };
-  }
-
   try {
-    await transporter.sendMail({
-      from,
+    await smtp.transporter.sendMail({
+      from: smtp.from,
       to: config.to,
       subject: `[TEmail] ${email.subject}`,
       text:
