@@ -82,7 +82,7 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
 
           sentCount += 1;
           const result = await sendToDestination(normalizedTarget.destination, runtime.template, email, vars).catch(
-            (error) => ({
+            (error): ForwardResult => ({
               success: false,
               message: error instanceof Error ? error.message : "Unknown error",
             })
@@ -109,7 +109,7 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
 
         sentCount += 1;
         const result = await sendToDestination(normalized.config.destination, runtime.template, email, vars).catch(
-          (error) => ({
+          (error): ForwardResult => ({
             success: false,
             message: error instanceof Error ? error.message : "Unknown error",
           })
