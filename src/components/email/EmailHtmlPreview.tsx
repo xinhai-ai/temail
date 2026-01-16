@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import DOMPurify from "dompurify";
 
 type EmailHtmlPreviewProps = {
   html: string;
@@ -16,7 +17,17 @@ export function EmailHtmlPreview({
   allowRemoteResources = false,
 }: EmailHtmlPreviewProps) {
   const srcDoc = useMemo(() => {
-    const safeHtml = html || "";
+    const safeHtml = (() => {
+      const input = html || "";
+      try {
+        return DOMPurify.sanitize(input, {
+          USE_PROFILES: { html: true },
+          FORBID_TAGS: ["base", "embed", "frame", "iframe", "link", "meta", "object", "script"],
+        });
+      } catch {
+        return input;
+      }
+    })();
     const csp = [
       "default-src 'none'",
       allowRemoteResources ? "img-src https: http: data:" : "img-src data:",
@@ -31,7 +42,7 @@ export function EmailHtmlPreview({
   return (
     <iframe
       title={title}
-      sandbox=""
+      sandbox="allow-popups allow-popups-to-escape-sandbox"
       referrerPolicy="no-referrer"
       srcDoc={srcDoc}
       className={className ?? "w-full h-[480px] rounded-md border bg-white"}

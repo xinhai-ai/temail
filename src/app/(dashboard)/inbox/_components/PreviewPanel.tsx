@@ -12,6 +12,7 @@ import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { Switch } from "@/components/ui/switch";
 import { ExternalLink, Mail } from "lucide-react";
 import type { EmailDetail } from "../types";
+import { toast } from "sonner";
 
 type PreviewPanelProps = {
   selectedEmailId: string | null;
@@ -24,8 +25,39 @@ export function PreviewPanel({
   selectedEmail,
   loadingPreview,
 }: PreviewPanelProps) {
+  const REMOTE_RESOURCES_KEY = "temail.preview.allowRemoteResources";
+  const REMOTE_RESOURCES_WARNED_KEY = "temail.preview.remoteResourcesWarned";
+
   const [previewMode, setPreviewMode] = useState<"text" | "html" | "raw">("text");
-  const [allowRemoteResources, setAllowRemoteResources] = useState(false);
+  const [allowRemoteResources, setAllowRemoteResources] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem(REMOTE_RESOURCES_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const handleAllowRemoteResourcesChange = (checked: boolean) => {
+    setAllowRemoteResources(checked);
+    try {
+      localStorage.setItem(REMOTE_RESOURCES_KEY, checked ? "1" : "0");
+    } catch {
+      // ignore
+    }
+
+    if (!checked) return;
+
+    try {
+      const warned = localStorage.getItem(REMOTE_RESOURCES_WARNED_KEY) === "1";
+      if (!warned) {
+        toast.warning("Loading remote images may reveal your IP address to the sender.");
+        localStorage.setItem(REMOTE_RESOURCES_WARNED_KEY, "1");
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col">
@@ -151,7 +183,7 @@ export function PreviewPanel({
                 <div className="text-xs text-muted-foreground">
                   Load remote images
                 </div>
-                <Switch checked={allowRemoteResources} onCheckedChange={setAllowRemoteResources} />
+                <Switch checked={allowRemoteResources} onCheckedChange={handleAllowRemoteResourcesChange} />
               </div>
             )}
 
