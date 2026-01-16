@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Filter, Forward, PencilLine } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Filter, Forward, Globe, Hash, Mail, MessageCircle, PencilLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   ForwardConditionTreeEditor,
@@ -52,12 +52,20 @@ type StepDef = {
 const ALL_MAILBOXES_SELECT_VALUE = "__all__";
 
 const forwardTypes: Array<{ value: TargetType; label: string; icon: LucideIcon }> = [
-  { value: "EMAIL", label: "Email", icon: ArrowRight },
-  { value: "TELEGRAM", label: "Telegram", icon: ArrowRight },
-  { value: "DISCORD", label: "Discord", icon: ArrowRight },
-  { value: "SLACK", label: "Slack", icon: ArrowRight },
-  { value: "WEBHOOK", label: "Webhook", icon: ArrowRight },
+  { value: "EMAIL", label: "Email", icon: Mail },
+  { value: "TELEGRAM", label: "Telegram", icon: MessageCircle },
+  { value: "DISCORD", label: "Discord", icon: Hash },
+  { value: "SLACK", label: "Slack", icon: Hash },
+  { value: "WEBHOOK", label: "Webhook", icon: Globe },
 ];
+
+const forwardTypeLabels: Record<TargetType, string> = {
+  EMAIL: "Email",
+  TELEGRAM: "Telegram",
+  DISCORD: "Discord",
+  SLACK: "Slack",
+  WEBHOOK: "Webhook",
+};
 
 function createClientId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -158,7 +166,7 @@ function summarizeTargets(targets: TargetDraft[]) {
 
   return Array.from(counts.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([type, count]) => `${type}×${count}`)
+    .map(([type, count]) => `${forwardTypeLabels[type]}×${count}`)
     .join(" · ");
 }
 
@@ -568,7 +576,10 @@ export default function NewForwardRulePage() {
                             <SelectContent>
                               {forwardTypes.map((ft) => (
                                 <SelectItem key={ft.value} value={ft.value}>
-                                  {ft.label}
+                                  <div className="flex items-center gap-2">
+                                    <ft.icon className="h-4 w-4" />
+                                    {ft.label}
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
