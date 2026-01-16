@@ -34,6 +34,7 @@ const userNavItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { title: "Admin", href: "/admin", icon: Shield },
   { title: "Users", href: "/admin/users", icon: Users },
+  { title: "Inbound", href: "/admin/inbound", icon: Inbox },
   { title: "Logs", href: "/admin/logs", icon: FileText },
   { title: "System", href: "/admin/settings", icon: Cog },
 ];
