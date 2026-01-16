@@ -13,11 +13,12 @@ import type { Domain, EmailDetail, EmailListItem, Mailbox, MailboxGroup } from "
 export default function InboxPage() {
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
   const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
-  const EMAILS_PAGE_SIZE = 20;
+  const DEFAULT_EMAILS_PAGE_SIZE = 20;
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
   const [emailsPage, setEmailsPage] = useState(1);
   const [emailsTotalPages, setEmailsTotalPages] = useState(1);
+  const [emailsPageSize, setEmailsPageSize] = useState(DEFAULT_EMAILS_PAGE_SIZE);
 
   const [domains, setDomains] = useState<Domain[]>([]);
   const [groups, setGroups] = useState<MailboxGroup[]>([]);
@@ -155,7 +156,7 @@ export default function InboxPage() {
         params.set("q", emailSearch);
       }
       params.set("page", String(emailsPage));
-      params.set("limit", String(EMAILS_PAGE_SIZE));
+      params.set("limit", String(emailsPageSize));
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
 
       const res = await fetch(`${endpoint}?${params.toString()}`);
@@ -171,7 +172,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch, emailsPage]);
+  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -248,7 +249,7 @@ export default function InboxPage() {
                   receivedAt: event.data.email.receivedAt,
                 },
                 ...prev,
-              ];
+              ].slice(0, emailsPageSize);
             });
           }
           return;
@@ -302,11 +303,11 @@ export default function InboxPage() {
     });
 
     return disconnect;
-  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage]);
+  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize]);
 
   useEffect(() => {
     setSelectedEmailIds([]);
-  }, [selectedMailboxId, emailSearch, emailsPage]);
+  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize]);
 
   useEffect(() => {
     if (!selectedEmailId) {
@@ -470,6 +471,12 @@ export default function InboxPage() {
 
   const handleEmailSearchChange = (value: string) => {
     setEmailSearch(value);
+    setEmailsPage(1);
+  };
+
+  const handleEmailsPageSizeChange = (value: number) => {
+    const next = Math.min(100, Math.max(1, value));
+    setEmailsPageSize(next);
     setEmailsPage(1);
   };
 
@@ -757,12 +764,14 @@ export default function InboxPage() {
             loadingEmails={loadingEmails}
             page={emailsPage}
             pages={emailsTotalPages}
+            pageSize={emailsPageSize}
             selectedEmailId={selectedEmailId}
             selectedEmailIds={selectedEmailIds}
             selectedEmailIdSet={selectedEmailIdSet}
             allSelectedOnPage={allSelectedOnPage}
             someSelectedOnPage={someSelectedOnPage}
             onEmailSearchChange={handleEmailSearchChange}
+            onPageSizeChange={handleEmailsPageSizeChange}
             onSelectEmail={handleSelectEmail}
             onToggleSelectAllOnPage={toggleSelectAllOnPage}
             onToggleEmailSelection={toggleEmailSelection}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,12 +19,14 @@ type EmailsPanelProps = {
   loadingEmails: boolean;
   page: number;
   pages: number;
+  pageSize: number;
   selectedEmailId: string | null;
   selectedEmailIds: string[];
   selectedEmailIdSet: Set<string>;
   allSelectedOnPage: boolean;
   someSelectedOnPage: boolean;
   onEmailSearchChange: (value: string) => void;
+  onPageSizeChange: (pageSize: number) => void;
   onSelectEmail: (email: EmailListItem) => void;
   onToggleSelectAllOnPage: (checked: boolean) => void;
   onToggleEmailSelection: (emailId: string, checked: boolean) => void;
@@ -42,12 +45,14 @@ export function EmailsPanel({
   loadingEmails,
   page,
   pages,
+  pageSize,
   selectedEmailId,
   selectedEmailIds,
   selectedEmailIdSet,
   allSelectedOnPage,
   someSelectedOnPage,
   onEmailSearchChange,
+  onPageSizeChange,
   onSelectEmail,
   onToggleSelectAllOnPage,
   onToggleEmailSelection,
@@ -60,6 +65,24 @@ export function EmailsPanel({
   onNextPage,
 }: EmailsPanelProps) {
   const safePages = Math.max(1, pages);
+  const [pageSizeInput, setPageSizeInput] = useState(() => String(pageSize));
+
+  useEffect(() => {
+    setPageSizeInput(String(pageSize));
+  }, [pageSize]);
+
+  const commitPageSize = () => {
+    const parsed = Number.parseInt(pageSizeInput, 10);
+    if (!Number.isFinite(parsed)) {
+      setPageSizeInput(String(pageSize));
+      return;
+    }
+    const next = Math.min(100, Math.max(1, parsed));
+    setPageSizeInput(String(next));
+    if (next !== pageSize) {
+      onPageSizeChange(next);
+    }
+  };
 
   return (
     <Card className="border-border/50 overflow-hidden min-h-0 py-0 gap-0">
@@ -267,8 +290,27 @@ export function EmailsPanel({
       </CardContent>
 
       <div className="p-3 border-t border-border/50 flex items-center justify-between gap-2 flex-shrink-0">
-        <div className="text-xs text-muted-foreground">
-          Page {page} / {safePages}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Per page</span>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={pageSizeInput}
+            onChange={(e) => setPageSizeInput(e.target.value)}
+            onBlur={commitPageSize}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              commitPageSize();
+              e.currentTarget.blur();
+            }}
+            className="h-8 w-[72px] px-2"
+          />
+          <span className="text-muted-foreground/50">·</span>
+          <span>
+            Page {page} / {safePages}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <Button
