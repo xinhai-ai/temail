@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,8 @@ export function EmailsPanel({
 }: EmailsPanelProps) {
   const safePages = Math.max(1, pages);
   const [pageSizeInput, setPageSizeInput] = useState(() => String(pageSize));
+  const isPresetPageSize = pageSize === 5 || pageSize === 10 || pageSize === 15;
+  const pageSizeSelectValue = isPresetPageSize ? String(pageSize) : "custom";
 
   useEffect(() => {
     setPageSizeInput(String(pageSize));
@@ -292,23 +295,26 @@ export function EmailsPanel({
       <div className="p-3 border-t border-border/50 flex items-center justify-between gap-2 flex-shrink-0">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span>Per page</span>
-          <div className="flex items-center gap-1">
-            {[5, 10, 15].map((preset) => (
-              <Button
-                key={preset}
-                type="button"
-                variant={pageSize === preset ? "secondary" : "outline"}
-                size="sm"
-                className="h-8 px-2"
-                onClick={() => {
-                  setPageSizeInput(String(preset));
-                  if (preset !== pageSize) onPageSizeChange(preset);
-                }}
-              >
-                {preset}
-              </Button>
-            ))}
-          </div>
+          <Select
+            value={pageSizeSelectValue}
+            onValueChange={(value) => {
+              if (value === "custom") return;
+              const parsed = Number.parseInt(value, 10);
+              if (!Number.isFinite(parsed)) return;
+              setPageSizeInput(String(parsed));
+              if (parsed !== pageSize) onPageSizeChange(parsed);
+            }}
+          >
+            <SelectTrigger size="sm" className="w-[96px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="15">15</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
           <Input
             type="number"
             min={1}
