@@ -449,6 +449,38 @@ export default function InboxPage() {
     toast.success("Mailbox updated");
   };
 
+  const handleStarMailbox = async (mailboxId: string, isStarred: boolean) => {
+    const res = await fetch(`/api/mailboxes/${mailboxId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isStarred: !isStarred }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(data?.error || "Failed to update mailbox");
+      return;
+    }
+    setMailboxes((prev) =>
+      prev.map((m) => (m.id === mailboxId ? { ...m, isStarred: !isStarred } : m))
+    );
+  };
+
+  const handleDeleteMailbox = async (mailboxId: string) => {
+    const mailbox = mailboxes.find((m) => m.id === mailboxId);
+    if (!confirm(`Delete mailbox \"${mailbox?.address || mailboxId}\"?`)) return;
+    const res = await fetch(`/api/mailboxes/${mailboxId}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(data?.error || "Failed to delete mailbox");
+      return;
+    }
+    toast.success("Mailbox deleted");
+    setMailboxes((prev) => prev.filter((m) => m.id !== mailboxId));
+    if (selectedMailboxId === mailboxId) {
+      handleSelectMailbox(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-2">
@@ -738,6 +770,13 @@ export default function InboxPage() {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                      <DropdownMenuLabel>Mailbox</DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleStarMailbox(mailbox.id, mailbox.isStarred)}>
+                                        {mailbox.isStarred ? "Unstar" : "Star"}
+                                      </DropdownMenuItem>
+
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuLabel>Move to group</DropdownMenuLabel>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
@@ -759,6 +798,14 @@ export default function InboxPage() {
                                           </DropdownMenuItem>
                                         ))
                                       )}
+
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => handleDeleteMailbox(mailbox.id)}
+                                      >
+                                        Delete
+                                      </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                   <Badge
