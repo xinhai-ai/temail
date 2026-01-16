@@ -70,7 +70,19 @@ export type ForwardMatchOperator = z.infer<typeof forwardMatchOperatorSchema>;
 const forwardMatchFieldSchema = z.enum(["subject", "fromAddress", "toAddress", "textBody"]);
 export type ForwardMatchField = z.infer<typeof forwardMatchFieldSchema>;
 
-const forwardConditionSchema: z.ZodTypeAny = z.lazy(() =>
+export type ForwardCondition =
+  | { kind: "and"; conditions: ForwardCondition[] }
+  | { kind: "or"; conditions: ForwardCondition[] }
+  | { kind: "not"; condition: ForwardCondition }
+  | {
+      kind: "match";
+      field: ForwardMatchField;
+      operator: ForwardMatchOperator;
+      value: string;
+      caseSensitive?: boolean;
+    };
+
+const forwardConditionSchema: z.ZodType<ForwardCondition> = z.lazy(() =>
   z.discriminatedUnion("kind", [
     z
       .object({
@@ -101,8 +113,6 @@ const forwardConditionSchema: z.ZodTypeAny = z.lazy(() =>
       .strict(),
   ])
 );
-
-export type ForwardCondition = z.infer<typeof forwardConditionSchema>;
 
 const forwardTemplateSchema = z
   .object({

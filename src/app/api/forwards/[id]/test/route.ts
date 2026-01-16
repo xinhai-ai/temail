@@ -240,120 +240,123 @@ export async function POST(
     });
   }
 
-  const preview: PreviewResult = await (async () => {
-    switch (rule.type) {
-      case "TELEGRAM": {
-        if (config.destination.type !== "TELEGRAM") throw new Error("Invalid destination type");
-        const text = config.template?.text ? renderForwardTemplate(config.template.text, vars) : buildDefaultTelegramText(email);
-        return {
-          type: "TELEGRAM",
-          url: `https://api.telegram.org/bot${config.destination.token}/sendMessage`,
-          headers: { "Content-Type": "application/json" },
-          body: { chat_id: config.destination.chatId, text, parse_mode: "Markdown" },
-        };
-      }
-      case "DISCORD": {
-        if (config.destination.type !== "DISCORD") throw new Error("Invalid destination type");
-        const validated = await validateEgressUrl(config.destination.url);
-        if (!validated.ok) throw new Error(validated.error);
-        const template = config.template?.text;
-        const body = template
-          ? { content: renderForwardTemplate(template, vars) }
-          : {
-              embeds: [
-                {
-                  title: `📧 ${email.subject}`,
-                  description: email.textBody?.substring(0, 2000) || "(No content)",
-                  color: 0xf59e0b,
-                  fields: [
-                    { name: "From", value: email.fromName || email.fromAddress, inline: true },
-                    { name: "To", value: email.toAddress, inline: true },
-                  ],
-                  timestamp: email.receivedAt.toISOString(),
-                },
-              ],
-            };
-        return {
-          type: "DISCORD",
-          url: validated.url,
-          headers: { "Content-Type": "application/json", ...config.destination.headers },
-          body,
-        };
-      }
-      case "SLACK": {
-        if (config.destination.type !== "SLACK") throw new Error("Invalid destination type");
-        const validated = await validateEgressUrl(config.destination.url);
-        if (!validated.ok) throw new Error(validated.error);
-        const template = config.template?.text;
-        const body = template
-          ? { text: renderForwardTemplate(template, vars) }
-          : {
-              blocks: [
-                {
-                  type: "header",
-                  text: { type: "plain_text", text: `📧 ${email.subject}` },
-                },
-                {
-                  type: "section",
-                  fields: [
-                    { type: "mrkdwn", text: `*From:*\n${email.fromName || email.fromAddress}` },
-                    { type: "mrkdwn", text: `*To:*\n${email.toAddress}` },
-                  ],
-                },
-                {
-                  type: "section",
-                  text: {
-                    type: "plain_text",
-                    text: email.textBody?.substring(0, 2000) || "(No content)",
+  let preview: PreviewResult;
+  try {
+    preview = await (async (): Promise<PreviewResult> => {
+      switch (rule.type) {
+        case "TELEGRAM": {
+          if (config.destination.type !== "TELEGRAM") throw new Error("Invalid destination type");
+          const text = config.template?.text
+            ? renderForwardTemplate(config.template.text, vars)
+            : buildDefaultTelegramText(email);
+          return {
+            type: "TELEGRAM",
+            url: `https://api.telegram.org/bot${config.destination.token}/sendMessage`,
+            headers: { "Content-Type": "application/json" },
+            body: { chat_id: config.destination.chatId, text, parse_mode: "Markdown" },
+          };
+        }
+        case "DISCORD": {
+          if (config.destination.type !== "DISCORD") throw new Error("Invalid destination type");
+          const validated = await validateEgressUrl(config.destination.url);
+          if (!validated.ok) throw new Error(validated.error);
+          const template = config.template?.text;
+          const body = template
+            ? { content: renderForwardTemplate(template, vars) }
+            : {
+                embeds: [
+                  {
+                    title: `📧 ${email.subject}`,
+                    description: email.textBody?.substring(0, 2000) || "(No content)",
+                    color: 0xf59e0b,
+                    fields: [
+                      { name: "From", value: email.fromName || email.fromAddress, inline: true },
+                      { name: "To", value: email.toAddress, inline: true },
+                    ],
+                    timestamp: email.receivedAt.toISOString(),
                   },
-                },
-              ],
-            };
-        return {
-          type: "SLACK",
-          url: validated.url,
-          headers: { "Content-Type": "application/json", ...config.destination.headers },
-          body,
-        };
+                ],
+              };
+          return {
+            type: "DISCORD",
+            url: validated.url.toString(),
+            headers: { "Content-Type": "application/json", ...config.destination.headers },
+            body,
+          };
+        }
+        case "SLACK": {
+          if (config.destination.type !== "SLACK") throw new Error("Invalid destination type");
+          const validated = await validateEgressUrl(config.destination.url);
+          if (!validated.ok) throw new Error(validated.error);
+          const template = config.template?.text;
+          const body = template
+            ? { text: renderForwardTemplate(template, vars) }
+            : {
+                blocks: [
+                  {
+                    type: "header",
+                    text: { type: "plain_text", text: `📧 ${email.subject}` },
+                  },
+                  {
+                    type: "section",
+                    fields: [
+                      { type: "mrkdwn", text: `*From:*\n${email.fromName || email.fromAddress}` },
+                      { type: "mrkdwn", text: `*To:*\n${email.toAddress}` },
+                    ],
+                  },
+                  {
+                    type: "section",
+                    text: {
+                      type: "plain_text",
+                      text: email.textBody?.substring(0, 2000) || "(No content)",
+                    },
+                  },
+                ],
+              };
+          return {
+            type: "SLACK",
+            url: validated.url.toString(),
+            headers: { "Content-Type": "application/json", ...config.destination.headers },
+            body,
+          };
+        }
+        case "WEBHOOK": {
+          if (config.destination.type !== "WEBHOOK") throw new Error("Invalid destination type");
+          const validated = await validateEgressUrl(config.destination.url);
+          if (!validated.ok) throw new Error(validated.error);
+          const payload = buildWebhookPayload({
+            templateBody: config.template?.webhookBody,
+            contentType: config.template?.contentType,
+            destinationHeaders: config.destination.headers,
+            email,
+            vars,
+          });
+          return {
+            type: "WEBHOOK",
+            url: validated.url.toString(),
+            headers: { "Content-Type": payload.contentType, ...payload.headers },
+            body: payload.body,
+          };
+        }
+        case "EMAIL": {
+          if (config.destination.type !== "EMAIL") throw new Error("Invalid destination type");
+          const subjectTemplate = config.template?.subject || "[TEmail] {{subject}}";
+          const textTemplate =
+            config.template?.text ||
+            (email.textBody
+              ? "{{textBody}}"
+              : `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`);
+          const htmlTemplate = config.template?.html || (email.htmlBody ? "{{htmlBody}}" : "");
+          const subject = renderForwardTemplate(subjectTemplate, vars);
+          const text = renderForwardTemplate(textTemplate, vars);
+          const html = htmlTemplate ? renderForwardTemplate(htmlTemplate, vars) : undefined;
+          return { type: "EMAIL", to: config.destination.to, subject, text, ...(html ? { html } : {}) };
+        }
       }
-      case "WEBHOOK": {
-        if (config.destination.type !== "WEBHOOK") throw new Error("Invalid destination type");
-        const validated = await validateEgressUrl(config.destination.url);
-        if (!validated.ok) throw new Error(validated.error);
-        const payload = buildWebhookPayload({
-          templateBody: config.template?.webhookBody,
-          contentType: config.template?.contentType,
-          destinationHeaders: config.destination.headers,
-          email,
-          vars,
-        });
-        return {
-          type: "WEBHOOK",
-          url: validated.url,
-          headers: { "Content-Type": payload.contentType, ...payload.headers },
-          body: payload.body,
-        };
-      }
-      case "EMAIL": {
-        if (config.destination.type !== "EMAIL") throw new Error("Invalid destination type");
-        const subjectTemplate = config.template?.subject || "[TEmail] {{subject}}";
-        const textTemplate =
-          config.template?.text ||
-          (email.textBody ? "{{textBody}}" : `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`);
-        const htmlTemplate = config.template?.html || (email.htmlBody ? "{{htmlBody}}" : "");
-        const subject = renderForwardTemplate(subjectTemplate, vars);
-        const text = renderForwardTemplate(textTemplate, vars);
-        const html = htmlTemplate ? renderForwardTemplate(htmlTemplate, vars) : undefined;
-        return { type: "EMAIL", to: config.destination.to, subject, text, ...(html ? { html } : {}) };
-      }
-    }
-  })().catch((error) => {
+    })();
+  } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to build preview";
-    return NextResponse.json({ error: message }, { status: 400 }) as unknown as PreviewResult;
-  });
-
-  if ((preview as unknown as { type: string }).type === undefined) {
-    return preview as unknown as NextResponse;
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   if (mode === "dry_run") {
