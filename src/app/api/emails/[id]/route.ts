@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -33,10 +34,22 @@ export async function GET(
   }
 
   if (email.status === "UNREAD") {
-    await prisma.email.update({
+    const updated = await prisma.email.update({
       where: { id },
       data: { status: "READ" },
+      include: {
+        mailbox: true,
+        attachments: true,
+        headers: true,
+      },
     });
+
+    publishRealtimeEvent(session.user.id, {
+      type: "email.updated",
+      data: { id, mailboxId: updated.mailboxId, status: "READ" },
+    });
+
+    return NextResponse.json(updated);
   }
 
   return NextResponse.json(email);
@@ -68,6 +81,16 @@ export async function PATCH(
     const updated = await prisma.email.update({
       where: { id },
       data,
+    });
+
+    publishRealtimeEvent(session.user.id, {
+      type: "email.updated",
+      data: {
+        id: updated.id,
+        mailboxId: updated.mailboxId,
+        ...(data.status ? { status: data.status } : {}),
+        ...(typeof data.isStarred === "boolean" ? { isStarred: data.isStarred } : {}),
+      },
     });
 
     return NextResponse.json(updated);
@@ -105,6 +128,11 @@ export async function DELETE(
   }
 
   await prisma.email.delete({ where: { id } });
+
+  publishRealtimeEvent(session.user.id, {
+    type: "email.deleted",
+    data: { id, mailboxId: email.mailboxId },
+  });
 
   return NextResponse.json({ success: true });
 }

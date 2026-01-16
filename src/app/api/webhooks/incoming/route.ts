@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { executeForwards } from "@/services/forward";
+import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { Prisma } from "@prisma/client";
 
 function extractEmailAddress(value: unknown) {
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
         domainId: webhookConfig.domainId,
         status: "ACTIVE",
       },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, address: true },
     });
 
     const parsedMessageId = typeof messageId === "string" ? messageId : null;
@@ -132,6 +133,23 @@ export async function POST(request: NextRequest) {
         textBody: typeof text === "string" ? text : undefined,
         htmlBody: typeof html === "string" ? html : undefined,
         mailboxId: mailbox.id,
+      },
+    });
+
+    publishRealtimeEvent(mailbox.userId, {
+      type: "email.created",
+      data: {
+        email: {
+          id: email.id,
+          mailboxId: email.mailboxId,
+          mailboxAddress: mailbox.address,
+          subject: email.subject,
+          fromAddress: email.fromAddress,
+          fromName: email.fromName,
+          status: email.status,
+          isStarred: email.isStarred,
+          receivedAt: email.receivedAt.toISOString(),
+        },
       },
     });
 
