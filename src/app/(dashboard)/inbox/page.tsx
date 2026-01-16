@@ -110,6 +110,11 @@ export default function InboxPage() {
   const [newGroupName, setNewGroupName] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
 
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renamingGroup, setRenamingGroup] = useState(false);
+  const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
+  const [renameGroupName, setRenameGroupName] = useState("");
+
   const groupedMailboxes = useMemo(() => {
     const grouped: Record<string, { group: MailboxGroup | null; mailboxes: Mailbox[] }> = {};
 
@@ -275,6 +280,68 @@ export default function InboxPage() {
     }
   };
 
+  const openRenameGroup = (group: MailboxGroup) => {
+    setRenameGroupId(group.id);
+    setRenameGroupName(group.name);
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameGroup = async () => {
+    const groupId = renameGroupId;
+    if (!groupId) return;
+    const name = renameGroupName.trim();
+    if (!name) {
+      toast.error("Group name is required");
+      return;
+    }
+
+    setRenamingGroup(true);
+    try {
+      const res = await fetch(`/api/mailbox-groups/${groupId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to rename group");
+        return;
+      }
+
+      setGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, name } : g)).sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setMailboxes((prev) =>
+        prev.map((m) => (m.group?.id === groupId ? { ...m, group: { ...m.group, name } } : m))
+      );
+      toast.success("Group renamed");
+      setRenameDialogOpen(false);
+    } catch {
+      toast.error("Failed to rename group");
+    } finally {
+      setRenamingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async (group: MailboxGroup) => {
+    if (!confirm(`Delete group \"${group.name}\"? Mailboxes will become ungrouped.`)) return;
+    const res = await fetch(`/api/mailbox-groups/${group.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(data?.error || "Failed to delete group");
+      return;
+    }
+
+    setGroups((prev) => prev.filter((g) => g.id !== group.id));
+    setMailboxes((prev) => prev.map((m) => (m.group?.id === group.id ? { ...m, group: null } : m)));
+    setCollapsedGroups((prev) => {
+      const next = { ...prev };
+      delete next[group.id];
+      return next;
+    });
+    toast.success("Group deleted");
+  };
+
   const handleMoveMailboxToGroup = async (mailboxId: string, groupId: string | null) => {
     const res = await fetch(`/api/mailboxes/${mailboxId}`, {
       method: "PATCH",
@@ -320,7 +387,7 @@ export default function InboxPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Button
                 size="sm"
                 variant={selectedMailboxId === null ? "default" : "outline"}
@@ -360,12 +427,38 @@ export default function InboxPage() {
                   </div>
                 </DialogContent>
               </Dialog>
-              <span className="text-xs text-muted-foreground">
-                {loadingGroups || loadingMailboxes
-                  ? "Loading..."
-                  : `${mailboxes.length} mailboxes • ${groups.length} groups`}
-              </span>
             </div>
+
+            <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Rename Group</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="renameGroupName">Name</Label>
+                    <Input
+                      id="renameGroupName"
+                      value={renameGroupName}
+                      onChange={(e) => setRenameGroupName(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleRenameGroup}
+                    className="w-full"
+                    disabled={renamingGroup}
+                  >
+                    {renamingGroup ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <span className="text-xs text-muted-foreground">
+              {loadingGroups || loadingMailboxes
+                ? "Loading..."
+                : `${mailboxes.length} mailboxes • ${groups.length} groups`}
+            </span>
 
             <div className="space-y-2">
               {loadingMailboxes ? (
@@ -379,23 +472,52 @@ export default function InboxPage() {
                   const collapsed = Boolean(collapsedGroups[groupItem.key]);
                   return (
                     <div key={groupItem.key} className="space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => toggleGroup(groupItem.key)}
-                        className="w-full flex items-center justify-between text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider px-1 py-1 hover:text-muted-foreground"
-                      >
-                        <span className="flex items-center gap-1">
+                      <div className="flex items-center justify-between px-1 py-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(groupItem.key)}
+                          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider hover:text-muted-foreground"
+                        >
                           {collapsed ? (
                             <ChevronRight className="h-3 w-3" />
                           ) : (
                             <ChevronDown className="h-3 w-3" />
                           )}
                           {label}
-                        </span>
-                        <span className="text-[11px]">
-                          {groupItem.mailboxes.length}
-                        </span>
-                      </button>
+                        </button>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-muted-foreground">
+                            {groupItem.mailboxes.length}
+                          </span>
+                          {groupItem.group && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => openRenameGroup(groupItem.group as MailboxGroup)}
+                                >
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handleDeleteGroup(groupItem.group as MailboxGroup)}
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </div>
 
                       {!collapsed && (
                         <div className="space-y-1">
