@@ -1,6 +1,10 @@
 import prisma from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
+import { normalizeForwardRuleConfig, type ForwardCondition, type ForwardRuleConfigV2 } from "@/services/forward-config";
+
+const MAX_REGEX_PATTERN_LENGTH = 200;
+const MAX_MATCH_INPUT_LENGTH = 10_000;
 
 interface EmailData {
   id: string;
@@ -11,6 +15,99 @@ interface EmailData {
   textBody?: string | null;
   htmlBody?: string | null;
   receivedAt: Date;
+}
+
+function getTemplateVars(email: EmailData, mailboxId: string) {
+  return {
+    id: email.id,
+    subject: email.subject,
+    fromAddress: email.fromAddress,
+    fromName: email.fromName || "",
+    toAddress: email.toAddress,
+    textBody: email.textBody || "",
+    htmlBody: email.htmlBody || "",
+    receivedAt: email.receivedAt.toISOString(),
+    mailboxId,
+  };
+}
+
+function readTemplatePath(vars: Record<string, unknown>, path: string) {
+  const parts = path.split(".").filter(Boolean);
+  let current: unknown = vars;
+  for (const part of parts) {
+    if (!current || typeof current !== "object") return "";
+    current = (current as Record<string, unknown>)[part];
+  }
+  if (current === null || current === undefined) return "";
+  return typeof current === "string" ? current : String(current);
+}
+
+function renderTemplate(template: string, vars: Record<string, unknown>) {
+  return template.replace(
+    /\{\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}\}|\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g,
+    (_, rawKey, escapedKey) => readTemplatePath(vars, rawKey || escapedKey)
+  );
+}
+
+function normalizeText(value: string, caseSensitive: boolean | undefined) {
+  return caseSensitive ? value : value.toLowerCase();
+}
+
+function matchesLeafCondition(
+  email: EmailData,
+  field: "subject" | "fromAddress" | "toAddress" | "textBody",
+  operator: "contains" | "equals" | "startsWith" | "endsWith" | "regex",
+  expectedValue: string,
+  caseSensitive: boolean | undefined
+) {
+  const raw = (() => {
+    if (field === "textBody") return email.textBody || "";
+    return email[field] || "";
+  })();
+
+  const candidate = raw.slice(0, MAX_MATCH_INPUT_LENGTH);
+  const normalizedCandidate = normalizeText(candidate, caseSensitive);
+  const normalizedExpected = normalizeText(expectedValue, caseSensitive);
+
+  switch (operator) {
+    case "contains":
+      return normalizedCandidate.includes(normalizedExpected);
+    case "equals":
+      return normalizedCandidate === normalizedExpected;
+    case "startsWith":
+      return normalizedCandidate.startsWith(normalizedExpected);
+    case "endsWith":
+      return normalizedCandidate.endsWith(normalizedExpected);
+    case "regex": {
+      const pattern = expectedValue;
+      if (!pattern || pattern.length > MAX_REGEX_PATTERN_LENGTH) return false;
+      try {
+        const re = new RegExp(pattern, caseSensitive ? "" : "i");
+        return re.test(candidate);
+      } catch {
+        return false;
+      }
+    }
+  }
+}
+
+function matchesConditions(email: EmailData, condition: ForwardCondition): boolean {
+  switch (condition.kind) {
+    case "and":
+      return condition.conditions.every((c) => matchesConditions(email, c));
+    case "or":
+      return condition.conditions.some((c) => matchesConditions(email, c));
+    case "not":
+      return !matchesConditions(email, condition.condition);
+    case "match":
+      return matchesLeafCondition(
+        email,
+        condition.field,
+        condition.operator,
+        condition.value,
+        condition.caseSensitive
+      );
+  }
 }
 
 export async function executeForwards(email: EmailData, mailboxId: string, userId?: string) {
@@ -36,24 +133,41 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
 
   for (const rule of rules) {
     try {
-      const config = JSON.parse(rule.config);
+      const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
+      if (!normalized.ok) {
+        await prisma.forwardLog.create({
+          data: {
+            ruleId: rule.id,
+            success: false,
+            message: normalized.error,
+          },
+        });
+        continue;
+      }
+
+      const config: ForwardRuleConfigV2 = normalized.config;
+      if (config.conditions && !matchesConditions(email, config.conditions)) {
+        continue;
+      }
+
       let result;
+      const vars = getTemplateVars(email, mailboxId);
 
       switch (rule.type) {
         case "TELEGRAM":
-          result = await sendToTelegram(config, email);
+          result = await sendToTelegram(config, email, vars);
           break;
         case "DISCORD":
-          result = await sendToDiscord(config, email);
+          result = await sendToDiscord(config, email, vars);
           break;
         case "SLACK":
-          result = await sendToSlack(config, email);
+          result = await sendToSlack(config, email, vars);
           break;
         case "WEBHOOK":
-          result = await sendToWebhook(config, email);
+          result = await sendToWebhook(config, email, vars);
           break;
         case "EMAIL":
-          result = await sendToEmail(config, email);
+          result = await sendToEmail(config, email, vars);
           break;
         default:
           result = { success: false, message: "Unknown forward type" };
@@ -90,6 +204,12 @@ interface ForwardResult {
   success: boolean;
   message: string;
   code?: number;
+}
+
+function buildDefaultTelegramText(email: EmailData) {
+  return `📧 *New Email*\n\n*From:* ${email.fromName || email.fromAddress}\n*To:* ${email.toAddress}\n*Subject:* ${email.subject}\n*Time:* ${email.receivedAt.toISOString()}\n\n${
+    email.textBody?.substring(0, 1000) || "(No text content)"
+  }`;
 }
 
 type SmtpTransporter = ReturnType<typeof nodemailer.createTransport>;
@@ -149,27 +269,26 @@ async function getSmtpRuntime(): Promise<SmtpRuntime | null> {
 }
 
 async function sendToTelegram(
-  config: { token: string; chatId: string },
-  email: EmailData
+  config: ForwardRuleConfigV2,
+  email: EmailData,
+  vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  const text = `📧 *New Email*
+  if (config.destination.type !== "TELEGRAM") {
+    return { success: false, message: "Invalid destination type" };
+  }
 
-*From:* ${email.fromName || email.fromAddress}
-*To:* ${email.toAddress}
-*Subject:* ${email.subject}
-*Time:* ${email.receivedAt.toISOString()}
-
-${email.textBody?.substring(0, 1000) || "(No text content)"}`;
+  const template = config.template?.text;
+  const text = template ? renderTemplate(template, vars) : buildDefaultTelegramText(email);
 
   const res = await fetch(
-    `https://api.telegram.org/bot${config.token}/sendMessage`,
+    `https://api.telegram.org/bot${config.destination.token}/sendMessage`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       redirect: "error",
       signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
-        chat_id: config.chatId,
+        chat_id: config.destination.chatId,
         text,
         parse_mode: "Markdown",
       }),
@@ -184,33 +303,45 @@ ${email.textBody?.substring(0, 1000) || "(No text content)"}`;
 }
 
 async function sendToDiscord(
-  config: { url: string },
-  email: EmailData
+  config: ForwardRuleConfigV2,
+  email: EmailData,
+  vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  const validated = await validateEgressUrl(config.url);
+  if (config.destination.type !== "DISCORD") {
+    return { success: false, message: "Invalid destination type" };
+  }
+
+  const validated = await validateEgressUrl(config.destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
+  const template = config.template?.text;
+  const body = template
+    ? {
+        content: renderTemplate(template, vars),
+      }
+    : {
+        embeds: [
+          {
+            title: `📧 ${email.subject}`,
+            description: email.textBody?.substring(0, 2000) || "(No content)",
+            color: 0xf59e0b,
+            fields: [
+              { name: "From", value: email.fromName || email.fromAddress, inline: true },
+              { name: "To", value: email.toAddress, inline: true },
+            ],
+            timestamp: email.receivedAt.toISOString(),
+          },
+        ],
+      };
+
   const res = await fetch(validated.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...config.destination.headers },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
-    body: JSON.stringify({
-      embeds: [
-        {
-          title: `📧 ${email.subject}`,
-          description: email.textBody?.substring(0, 2000) || "(No content)",
-          color: 0xf59e0b,
-          fields: [
-            { name: "From", value: email.fromName || email.fromAddress, inline: true },
-            { name: "To", value: email.toAddress, inline: true },
-          ],
-          timestamp: email.receivedAt.toISOString(),
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
   });
 
   return {
@@ -221,41 +352,53 @@ async function sendToDiscord(
 }
 
 async function sendToSlack(
-  config: { url: string },
-  email: EmailData
+  config: ForwardRuleConfigV2,
+  email: EmailData,
+  vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  const validated = await validateEgressUrl(config.url);
+  if (config.destination.type !== "SLACK") {
+    return { success: false, message: "Invalid destination type" };
+  }
+
+  const validated = await validateEgressUrl(config.destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
+  const template = config.template?.text;
+  const body = template
+    ? {
+        text: renderTemplate(template, vars),
+      }
+    : {
+        blocks: [
+          {
+            type: "header",
+            text: { type: "plain_text", text: `📧 ${email.subject}` },
+          },
+          {
+            type: "section",
+            fields: [
+              { type: "mrkdwn", text: `*From:*\n${email.fromName || email.fromAddress}` },
+              { type: "mrkdwn", text: `*To:*\n${email.toAddress}` },
+            ],
+          },
+          {
+            type: "section",
+            text: {
+              type: "plain_text",
+              text: email.textBody?.substring(0, 2000) || "(No content)",
+            },
+          },
+        ],
+      };
+
   const res = await fetch(validated.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...config.destination.headers },
     redirect: "error",
     signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
-    body: JSON.stringify({
-      blocks: [
-        {
-          type: "header",
-          text: { type: "plain_text", text: `📧 ${email.subject}` },
-        },
-        {
-          type: "section",
-          fields: [
-            { type: "mrkdwn", text: `*From:*\n${email.fromName || email.fromAddress}` },
-            { type: "mrkdwn", text: `*To:*\n${email.toAddress}` },
-          ],
-        },
-        {
-          type: "section",
-          text: {
-            type: "plain_text",
-            text: email.textBody?.substring(0, 2000) || "(No content)",
-          },
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
   });
 
   return {
@@ -266,23 +409,38 @@ async function sendToSlack(
 }
 
 async function sendToWebhook(
-  config: { url: string; headers?: Record<string, string> },
-  email: EmailData
+  config: ForwardRuleConfigV2,
+  email: EmailData,
+  vars: Record<string, unknown>
 ): Promise<ForwardResult> {
-  const validated = await validateEgressUrl(config.url);
+  if (config.destination.type !== "WEBHOOK") {
+    return { success: false, message: "Invalid destination type" };
+  }
+
+  const validated = await validateEgressUrl(config.destination.url);
   if (!validated.ok) {
     return { success: false, message: validated.error };
   }
 
-  const res = await fetch(validated.url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...config.headers,
-    },
-    redirect: "error",
-    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
-    body: JSON.stringify({
+  const templateBody = config.template?.webhookBody;
+  const rendered = templateBody ? renderTemplate(templateBody, vars) : null;
+
+  const contentType =
+    config.template?.contentType ||
+    (rendered && ["{", "["].includes(rendered.trim().charAt(0)) ? "application/json" : "text/plain");
+
+  const body = (() => {
+    if (rendered) {
+      if (contentType.includes("json")) {
+        try {
+          return JSON.stringify(JSON.parse(rendered));
+        } catch {
+          return JSON.stringify({ text: rendered });
+        }
+      }
+      return rendered;
+    }
+    return JSON.stringify({
       id: email.id,
       subject: email.subject,
       from: email.fromAddress,
@@ -291,7 +449,18 @@ async function sendToWebhook(
       text: email.textBody,
       html: email.htmlBody,
       receivedAt: email.receivedAt.toISOString(),
-    }),
+    });
+  })();
+
+  const res = await fetch(validated.url, {
+    method: "POST",
+    headers: {
+      "Content-Type": contentType,
+      ...config.destination.headers,
+    },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+    body,
   });
 
   return {
@@ -302,26 +471,37 @@ async function sendToWebhook(
 }
 
 async function sendToEmail(
-  config: { to: string },
-  email: EmailData
+  config: ForwardRuleConfigV2,
+  email: EmailData,
+  vars: Record<string, unknown>
 ): Promise<ForwardResult> {
+  if (config.destination.type !== "EMAIL") {
+    return { success: false, message: "Invalid destination type" };
+  }
+
   const smtp = await getSmtpRuntime();
   if (!smtp) {
     return { success: false, message: "SMTP is not configured" };
   }
 
+  const subjectTemplate = config.template?.subject || "[TEmail] {{subject}}";
+  const textTemplate =
+    config.template?.text ||
+    (email.textBody
+      ? "{{textBody}}"
+      : `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`);
+  const htmlTemplate = config.template?.html || (email.htmlBody ? "{{htmlBody}}" : "");
+
   try {
     await smtp.transporter.sendMail({
       from: smtp.from,
-      to: config.to,
-      subject: `[TEmail] ${email.subject}`,
-      text:
-        email.textBody ||
-        `From: ${email.fromName || email.fromAddress}\nTo: ${email.toAddress}\n\n(No text content)`,
-      html: email.htmlBody || undefined,
+      to: config.destination.to,
+      subject: renderTemplate(subjectTemplate, vars),
+      text: renderTemplate(textTemplate, vars),
+      html: htmlTemplate ? renderTemplate(htmlTemplate, vars) : undefined,
     });
 
-    return { success: true, message: `Sent to ${config.to}` };
+    return { success: true, message: `Sent to ${config.destination.to}` };
   } catch (error) {
     return {
       success: false,
