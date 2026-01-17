@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { isAdminRole } from "@/lib/rbac";
+import { triggerImapReconcile, isImapServiceEnabled } from "@/lib/imap-client";
 
 const imapSchema = z.object({
   host: z.string().min(1, "Host is required"),
@@ -53,25 +54,29 @@ export async function POST(
       );
     }
 
-    const updateData = {
+    const baseConfigData = {
       host: data.host,
       port: data.port,
       secure: data.secure,
       username: data.username,
       syncInterval: data.syncInterval,
-      ...(data.password ? { password: data.password } : {}),
     };
 
-    // Upsert IMAP config
-    const config = await prisma.imapConfig.upsert({
-      where: { domainId: id },
-      update: updateData,
-      create: {
-        ...updateData,
-        password: data.password!,
-        domainId: id,
-      },
-    });
+    const config = existingConfig
+      ? await prisma.imapConfig.update({
+          where: { domainId: id },
+          data: {
+            ...baseConfigData,
+            ...(data.password ? { password: data.password } : {}),
+          },
+        })
+      : await prisma.imapConfig.create({
+          data: {
+            ...baseConfigData,
+            password: data.password!,
+            domainId: id,
+          },
+        });
 
     // Update domain source type and status
     await prisma.domain.update({
@@ -82,8 +87,20 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(config);
+    // Trigger reconcile in the IMAP service
+    if (isImapServiceEnabled()) {
+      triggerImapReconcile().catch((err) => {
+        console.error("[api/domains/imap] reconcile error:", err);
+      });
+    }
+
+    // Convert BigInt to string for JSON serialization
+    return NextResponse.json({
+      ...config,
+      lastUidValidity: config.lastUidValidity?.toString() ?? null,
+    });
   } catch (error) {
+    console.error("[api/domains/imap] POST error:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.issues[0].message },
@@ -91,7 +108,7 @@ export async function POST(
       );
     }
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
     );
   }
@@ -112,17 +129,32 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const domain = await prisma.domain.findFirst({
-    where: { id },
-  });
+  try {
+    const domain = await prisma.domain.findFirst({
+      where: { id },
+    });
 
-  if (!domain) {
-    return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+    if (!domain) {
+      return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+    }
+
+    await prisma.imapConfig.deleteMany({
+      where: { domainId: id },
+    });
+
+    // Trigger reconcile in the IMAP service
+    if (isImapServiceEnabled()) {
+      triggerImapReconcile().catch((err) => {
+        console.error("[api/domains/imap] reconcile error:", err);
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[api/domains/imap] DELETE error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 }
+    );
   }
-
-  await prisma.imapConfig.deleteMany({
-    where: { domainId: id },
-  });
-
-  return NextResponse.json({ success: true });
 }

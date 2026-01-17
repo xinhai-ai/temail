@@ -125,6 +125,15 @@ model ImapConfig {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // UID tracking for reliable sync
+  lastSyncedUid     Int?      // Last synced UID
+  lastUidValidity   BigInt?   // UIDVALIDITY for mailbox rebuild detection
+  lastFullSync      DateTime? // Last full sync time
+
+  // Error tracking
+  consecutiveErrors Int       @default(0)
+  lastError         String?
+
   domainId     String   @unique
   domain       Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
 

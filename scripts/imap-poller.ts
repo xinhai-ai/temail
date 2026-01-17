@@ -88,48 +88,78 @@ async function pollDomain(domain: ImapDomain) {
     const lock = await client.getMailboxLock("INBOX");
     try {
       const uids = await client.search({ since });
-      if (!uids || uids.length === 0) return;
+      if (uids && uids.length > 0) {
+        for await (const message of client.fetch(uids, { uid: true, source: true, envelope: true })) {
+          const uid = typeof message.uid === "number" ? message.uid : null;
+          const raw = message.source?.toString("utf8") || "";
 
-      for await (const message of client.fetch(uids, { uid: true, source: true, envelope: true })) {
-        const uid = typeof message.uid === "number" ? message.uid : null;
-        const raw = message.source?.toString("utf8") || "";
+          const parsed = await simpleParser(raw);
+          const parsedHeaders = extractEmailHeaders(parsed);
+          const parsedMessageId =
+            typeof parsed.messageId === "string" && parsed.messageId.trim()
+              ? parsed.messageId.trim()
+              : uid
+                ? `imap:${domain.id}:${uid}`
+                : null;
 
-        const parsed = await simpleParser(raw);
-        const parsedHeaders = extractEmailHeaders(parsed);
-        const parsedMessageId =
-          typeof parsed.messageId === "string" && parsed.messageId.trim()
-            ? parsed.messageId.trim()
-            : uid
-            ? `imap:${domain.id}:${uid}`
-            : null;
+          const recipients = uniqueStrings([
+            ...extractAddresses(parsed.to),
+            ...extractAddresses(parsed.cc),
+            ...extractAddresses(parsed.bcc),
+          ]).filter((addr) => addr.endsWith(`@${domain.name.toLowerCase()}`));
 
-        const recipients = uniqueStrings([
-          ...extractAddresses(parsed.to),
-          ...extractAddresses(parsed.cc),
-          ...extractAddresses(parsed.bcc),
-        ]).filter((addr) => addr.endsWith(`@${domain.name.toLowerCase()}`));
+          if (recipients.length === 0) continue;
 
-        if (recipients.length === 0) continue;
+          const fromEntry = Array.isArray(parsed.from?.value) ? parsed.from.value[0] : undefined;
+          const fromAddress =
+            typeof fromEntry?.address === "string" ? fromEntry.address : "unknown@unknown.com";
+          const fromName = typeof fromEntry?.name === "string" ? fromEntry.name : null;
+          const receivedAt = parsed.date ? new Date(parsed.date) : now;
+          const normalizedSubject = parsed.subject || "(No subject)";
+          const textBody = parsed.text || undefined;
+          const htmlBody = typeof parsed.html === "string" ? parsed.html : undefined;
 
-        const fromEntry = Array.isArray(parsed.from?.value) ? parsed.from.value[0] : undefined;
-        const fromAddress =
-          typeof fromEntry?.address === "string" ? fromEntry.address : "unknown@unknown.com";
-        const fromName = typeof fromEntry?.name === "string" ? fromEntry.name : null;
-        const receivedAt = parsed.date ? new Date(parsed.date) : now;
-        const normalizedSubject = parsed.subject || "(No subject)";
-        const textBody = parsed.text || undefined;
-        const htmlBody = typeof parsed.html === "string" ? parsed.html : undefined;
+          for (const toAddress of recipients) {
+            const mailbox = await prisma.mailbox.findFirst({
+              where: { address: toAddress, domainId: domain.id, status: "ACTIVE" },
+              select: { id: true, userId: true },
+            });
 
-        for (const toAddress of recipients) {
-          const mailbox = await prisma.mailbox.findFirst({
-            where: { address: toAddress, domainId: domain.id, status: "ACTIVE" },
-            select: { id: true, userId: true },
-          });
+            try {
+              await prisma.inboundEmail.create({
+                data: {
+                  sourceType: "IMAP",
+                  messageId: parsedMessageId || undefined,
+                  fromAddress,
+                  fromName,
+                  toAddress,
+                  subject: normalizedSubject,
+                  textBody,
+                  htmlBody,
+                  rawContent: raw || undefined,
+                  receivedAt,
+                  domainId: domain.id,
+                  mailboxId: mailbox?.id,
+                },
+              });
+            } catch (error) {
+              if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+                throw error;
+              }
+            }
 
-          try {
-            await prisma.inboundEmail.create({
+            if (!mailbox) continue;
+
+            if (parsedMessageId) {
+              const existing = await prisma.email.findFirst({
+                where: { messageId: parsedMessageId, mailboxId: mailbox.id },
+                select: { id: true },
+              });
+              if (existing) continue;
+            }
+
+            const email = await prisma.email.create({
               data: {
-                sourceType: "IMAP",
                 messageId: parsedMessageId || undefined,
                 fromAddress,
                 fromName,
@@ -138,44 +168,14 @@ async function pollDomain(domain: ImapDomain) {
                 textBody,
                 htmlBody,
                 rawContent: raw || undefined,
+                mailboxId: mailbox.id,
                 receivedAt,
-                domainId: domain.id,
-                mailboxId: mailbox?.id,
+                ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
               },
             });
-          } catch (error) {
-            if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
-              throw error;
-            }
+
+            executeForwards(email, mailbox.id, mailbox.userId).catch(console.error);
           }
-
-          if (!mailbox) continue;
-
-          if (parsedMessageId) {
-            const existing = await prisma.email.findFirst({
-              where: { messageId: parsedMessageId, mailboxId: mailbox.id },
-              select: { id: true },
-            });
-            if (existing) continue;
-          }
-
-          const email = await prisma.email.create({
-            data: {
-              messageId: parsedMessageId || undefined,
-              fromAddress,
-              fromName,
-              toAddress,
-              subject: normalizedSubject,
-              textBody,
-              htmlBody,
-              rawContent: raw || undefined,
-              mailboxId: mailbox.id,
-              receivedAt,
-              ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
-            },
-          });
-
-          executeForwards(email, mailbox.id, mailbox.userId).catch(console.error);
         }
       }
     } finally {
