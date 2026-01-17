@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
 
 const bulkSchema = z.object({
-  action: z.enum(["markRead", "delete"]),
+  action: z.enum(["markRead", "delete", "archive", "unarchive"]),
   ids: z.array(z.string().min(1)).min(1).max(200),
 });
 
@@ -33,6 +33,16 @@ export async function POST(request: Request) {
     }
 
     if (action === "markRead") {
+      await prisma.email.updateMany({
+        where: { id: { in: ownedIds } },
+        data: { status: "READ" },
+      });
+    } else if (action === "archive") {
+      await prisma.email.updateMany({
+        where: { id: { in: ownedIds } },
+        data: { status: "ARCHIVED" },
+      });
+    } else if (action === "unarchive") {
       await prisma.email.updateMany({
         where: { id: { in: ownedIds } },
         data: { status: "READ" },

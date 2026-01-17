@@ -27,7 +27,7 @@ export type RealtimeEvent =
   | {
       type: "emails.bulk_updated";
       data: {
-        action: "markRead" | "delete";
+        action: "markRead" | "delete" | "archive" | "unarchive";
         ids: string[];
         mailboxId?: string;
       };

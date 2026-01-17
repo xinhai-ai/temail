@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
   const status = searchParams.get("status");
+  const excludeArchived = searchParams.get("excludeArchived") === "true";
   const mailboxId = searchParams.get("mailboxId");
   const mode = searchParams.get("mode");
   const cursor = searchParams.get("cursor");
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
       ],
     }),
     ...(status && { status: status as "UNREAD" | "READ" | "ARCHIVED" | "DELETED" }),
+    ...(excludeArchived && !status && { status: { not: "ARCHIVED" as const } }),
     ...(mailboxId && { mailboxId }),
   };
 

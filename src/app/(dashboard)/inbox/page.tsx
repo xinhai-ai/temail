@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Inbox, Mail, Eye } from "lucide-react";
 import { ConfirmDialogs } from "./_components/ConfirmDialogs";
-import { EmailsPanel } from "./_components/EmailsPanel";
+import { EmailsPanel, type EmailStatusFilter } from "./_components/EmailsPanel";
 import { MailboxesPanel } from "./_components/MailboxesPanel";
 import { PreviewPanel } from "./_components/PreviewPanel";
 import type { Domain, EmailDetail, EmailListItem, Mailbox, MailboxGroup } from "./types";
@@ -70,6 +70,7 @@ export default function InboxPage() {
   const [refreshingImap, setRefreshingImap] = useState(false);
   const [refreshCooldown, setRefreshCooldown] = useState(0); // remaining seconds
   const [mobileTab, setMobileTab] = useState<"mailboxes" | "emails" | "preview">("emails");
+  const [statusFilter, setStatusFilter] = useState<EmailStatusFilter>("all");
 
   const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
 
@@ -202,6 +203,16 @@ export default function InboxPage() {
       params.set("limit", String(emailsPageSize));
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
 
+      // Apply status filter
+      if (statusFilter === "unread") {
+        params.set("status", "UNREAD");
+      } else if (statusFilter === "archived") {
+        params.set("status", "ARCHIVED");
+      } else {
+        // "all" - exclude archived emails
+        params.set("excludeArchived", "true");
+      }
+
       const res = await fetch(`${endpoint}?${params.toString()}`);
       const data = await res.json().catch(() => null);
       setEmails(Array.isArray(data?.emails) ? data.emails : []);
@@ -215,7 +226,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded]);
+  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -351,6 +362,16 @@ export default function InboxPage() {
             setEmails((prev) =>
               prev.map((e) => (event.data.ids.includes(e.id) ? { ...e, status: "READ" } : e))
             );
+          } else if (event.data.action === "archive") {
+            // Remove archived emails from list unless viewing archived
+            setSelectedEmailId((current) => (current && event.data.ids.includes(current) ? null : current));
+            setSelectedEmail((prev) => (prev && event.data.ids.includes(prev.id) ? null : prev));
+            setEmails((prev) => prev.filter((e) => !event.data.ids.includes(e.id)));
+          } else if (event.data.action === "unarchive") {
+            // Remove unarchived emails from archived view
+            setSelectedEmailId((current) => (current && event.data.ids.includes(current) ? null : current));
+            setSelectedEmail((prev) => (prev && event.data.ids.includes(prev.id) ? null : prev));
+            setEmails((prev) => prev.filter((e) => !event.data.ids.includes(e.id)));
           }
         }
       },
@@ -494,6 +515,109 @@ export default function InboxPage() {
   const allSelectedOnPage = emails.length > 0 && selectedCountOnPage === emails.length;
   const someSelectedOnPage = selectedCountOnPage > 0 && !allSelectedOnPage;
 
+  // Compute unread count from current emails list for display in status filter
+  const unreadCount = useMemo(() => {
+    return emails.filter((e) => e.status === "UNREAD").length;
+  }, [emails]);
+
+  const handleArchiveEmail = async (emailId: string) => {
+    const res = await fetch(`/api/emails/${emailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ARCHIVED" }),
+    });
+
+    if (!res.ok) {
+      toast.error("Failed to archive email");
+      return;
+    }
+
+    toast.success("Email archived");
+    // Remove from list if not viewing archived
+    if (statusFilter !== "archived") {
+      setEmails((prev) => prev.filter((e) => e.id !== emailId));
+      if (selectedEmailId === emailId) {
+        setSelectedEmailId(null);
+        setSelectedEmail(null);
+      }
+    } else {
+      setEmails((prev) =>
+        prev.map((e) => (e.id === emailId ? { ...e, status: "ARCHIVED" } : e))
+      );
+      if (selectedEmail?.id === emailId) {
+        setSelectedEmail({ ...selectedEmail, status: "ARCHIVED" });
+      }
+    }
+  };
+
+  const handleUnarchiveEmail = async (emailId: string) => {
+    const res = await fetch(`/api/emails/${emailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "READ" }),
+    });
+
+    if (!res.ok) {
+      toast.error("Failed to unarchive email");
+      return;
+    }
+
+    toast.success("Email unarchived");
+    // Remove from list if viewing archived
+    if (statusFilter === "archived") {
+      setEmails((prev) => prev.filter((e) => e.id !== emailId));
+      if (selectedEmailId === emailId) {
+        setSelectedEmailId(null);
+        setSelectedEmail(null);
+      }
+    } else {
+      setEmails((prev) =>
+        prev.map((e) => (e.id === emailId ? { ...e, status: "READ" } : e))
+      );
+      if (selectedEmail?.id === emailId) {
+        setSelectedEmail({ ...selectedEmail, status: "READ" });
+      }
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    const ids = selectedEmailIds;
+    if (ids.length === 0) return;
+
+    const res = await fetch("/api/emails/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "archive", ids }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(data?.error || "Failed to archive emails");
+      return;
+    }
+
+    toast.success("Emails archived");
+    // Remove from list if not viewing archived
+    if (statusFilter !== "archived") {
+      setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
+      setSelectedEmailId((current) => (current && ids.includes(current) ? null : current));
+      setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? null : prev));
+    } else {
+      setEmails((prev) =>
+        prev.map((e) => (ids.includes(e.id) ? { ...e, status: "ARCHIVED" } : e))
+      );
+      setSelectedEmail((prev) =>
+        prev && ids.includes(prev.id) ? { ...prev, status: "ARCHIVED" } : prev
+      );
+    }
+    setSelectedEmailIds([]);
+  };
+
+  const handleStatusFilterChange = (filter: EmailStatusFilter) => {
+    setStatusFilter(filter);
+    setEmailsPage(1);
+    setSelectedEmailIds([]);
+  };
+
   const handleBulkMarkRead = async () => {
     const ids = selectedEmailIds;
     if (ids.length === 0) return;
@@ -585,6 +709,7 @@ export default function InboxPage() {
     setSelectedEmailId(null);
     setEmailSearch("");
     setEmailsPage(1);
+    setStatusFilter("all");
   };
 
   const handleCreateGroup = async () => {
@@ -959,6 +1084,8 @@ export default function InboxPage() {
               selectedEmailIdSet={selectedEmailIdSet}
               allSelectedOnPage={allSelectedOnPage}
               someSelectedOnPage={someSelectedOnPage}
+              statusFilter={statusFilter}
+              unreadCount={unreadCount}
               onEmailSearchChange={handleEmailSearchChange}
               onPageSizeChange={handleEmailsPageSizeChange}
               onSelectEmail={(email) => {
@@ -968,14 +1095,18 @@ export default function InboxPage() {
               onToggleSelectAllOnPage={toggleSelectAllOnPage}
               onToggleEmailSelection={toggleEmailSelection}
               onBulkMarkRead={handleBulkMarkRead}
+              onBulkArchive={handleBulkArchive}
               onOpenBulkDelete={() => setBulkDeleteOpen(true)}
               onClearSelection={() => setSelectedEmailIds([])}
               onStarEmail={handleStarEmail}
               onDeleteEmail={handleDeleteEmail}
               onMarkEmailRead={handleMarkEmailRead}
+              onArchiveEmail={handleArchiveEmail}
+              onUnarchiveEmail={handleUnarchiveEmail}
               onCopySenderAddress={handleCopySenderAddress}
               onPrevPage={goPrevEmailsPage}
               onNextPage={goNextEmailsPage}
+              onStatusFilterChange={handleStatusFilterChange}
             />
           </TabsContent>
 
@@ -1056,20 +1187,26 @@ export default function InboxPage() {
             selectedEmailIdSet={selectedEmailIdSet}
             allSelectedOnPage={allSelectedOnPage}
             someSelectedOnPage={someSelectedOnPage}
+            statusFilter={statusFilter}
+            unreadCount={unreadCount}
             onEmailSearchChange={handleEmailSearchChange}
             onPageSizeChange={handleEmailsPageSizeChange}
             onSelectEmail={handleSelectEmail}
             onToggleSelectAllOnPage={toggleSelectAllOnPage}
             onToggleEmailSelection={toggleEmailSelection}
             onBulkMarkRead={handleBulkMarkRead}
+            onBulkArchive={handleBulkArchive}
             onOpenBulkDelete={() => setBulkDeleteOpen(true)}
             onClearSelection={() => setSelectedEmailIds([])}
             onStarEmail={handleStarEmail}
             onDeleteEmail={handleDeleteEmail}
             onMarkEmailRead={handleMarkEmailRead}
+            onArchiveEmail={handleArchiveEmail}
+            onUnarchiveEmail={handleUnarchiveEmail}
             onCopySenderAddress={handleCopySenderAddress}
             onPrevPage={goPrevEmailsPage}
             onNextPage={goNextEmailsPage}
+            onStatusFilterChange={handleStatusFilterChange}
           />
 
           <PreviewPanel

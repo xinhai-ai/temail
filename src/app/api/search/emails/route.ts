@@ -9,6 +9,8 @@ let cachedFtsAvailable: boolean | null = null;
 const querySchema = z.object({
   q: z.string().trim().min(1, "Query is required").max(200),
   mailboxId: z.string().trim().min(1).optional(),
+  status: z.enum(["UNREAD", "READ", "ARCHIVED", "DELETED"]).optional(),
+  excludeArchived: z.coerce.boolean().optional(),
   cursor: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -68,6 +70,8 @@ export async function GET(request: NextRequest) {
     const parsed = querySchema.parse({
       q: searchParams.get("q") || "",
       mailboxId: searchParams.get("mailboxId") || undefined,
+      status: searchParams.get("status") || undefined,
+      excludeArchived: searchParams.get("excludeArchived") || undefined,
       cursor: searchParams.get("cursor") || undefined,
       page: searchParams.get("page") || undefined,
       limit: searchParams.get("limit") || searchParams.get("take") || undefined,
@@ -134,6 +138,8 @@ export async function GET(request: NextRequest) {
               WHERE m.userId = ${session.user.id}
                 AND emails_fts MATCH ${ftsQuery}
                 ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+                ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
+                ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
               ORDER BY e.receivedAt DESC, e.id DESC
               LIMIT ${parsed.limit}
               OFFSET ${offset}
@@ -146,6 +152,8 @@ export async function GET(request: NextRequest) {
               WHERE m.userId = ${session.user.id}
                 AND emails_fts MATCH ${ftsQuery}
                 ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+                ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
+                ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
             `),
           ]);
 
@@ -186,6 +194,8 @@ export async function GET(request: NextRequest) {
       const fallbackWhere = {
         mailbox: { userId: session.user.id },
         ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+        ...(parsed.status ? { status: parsed.status } : {}),
+        ...(parsed.excludeArchived && !parsed.status ? { status: { not: "ARCHIVED" as const } } : {}),
         textBody: { contains: parsed.q },
       };
 
@@ -254,6 +264,8 @@ export async function GET(request: NextRequest) {
           WHERE m.userId = ${session.user.id}
             AND emails_fts MATCH ${ftsQuery}
             ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+            ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
+            ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
             ${
               cursorEmail
                 ? Prisma.sql`AND (e.receivedAt < ${cursorEmail.receivedAt} OR (e.receivedAt = ${cursorEmail.receivedAt} AND e.id < ${cursorEmail.id}))`
@@ -292,6 +304,8 @@ export async function GET(request: NextRequest) {
     const fallbackWhere = {
       mailbox: { userId: session.user.id },
       ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+      ...(parsed.status ? { status: parsed.status } : {}),
+      ...(parsed.excludeArchived && !parsed.status ? { status: { not: "ARCHIVED" as const } } : {}),
       textBody: { contains: parsed.q },
       ...(cursorEmail
         ? {

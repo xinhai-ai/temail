@@ -16,10 +16,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { Copy, Mail, MailOpen, Search, Star, StarOff, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, Mail, MailOpen, Search, Star, StarOff, Trash2, X } from "lucide-react";
 import type { EmailListItem } from "../types";
+
+export type EmailStatusFilter = "all" | "unread" | "archived";
 
 type EmailsPanelProps = {
   emailSearch: string;
@@ -33,20 +37,26 @@ type EmailsPanelProps = {
   selectedEmailIdSet: Set<string>;
   allSelectedOnPage: boolean;
   someSelectedOnPage: boolean;
+  statusFilter: EmailStatusFilter;
+  unreadCount: number;
   onEmailSearchChange: (value: string) => void;
   onPageSizeChange: (pageSize: number) => void;
   onSelectEmail: (email: EmailListItem) => void;
   onToggleSelectAllOnPage: (checked: boolean) => void;
   onToggleEmailSelection: (emailId: string, checked: boolean) => void;
   onBulkMarkRead: () => void;
+  onBulkArchive: () => void;
   onOpenBulkDelete: () => void;
   onClearSelection: () => void;
   onStarEmail: (emailId: string, isStarred: boolean) => void;
   onDeleteEmail: (emailId: string) => void;
   onMarkEmailRead: (emailId: string) => void;
+  onArchiveEmail: (emailId: string) => void;
+  onUnarchiveEmail: (emailId: string) => void;
   onCopySenderAddress: (address: string) => void;
   onPrevPage: () => void;
   onNextPage: () => void;
+  onStatusFilterChange: (filter: EmailStatusFilter) => void;
 };
 
 export function EmailsPanel({
@@ -61,20 +71,26 @@ export function EmailsPanel({
   selectedEmailIdSet,
   allSelectedOnPage,
   someSelectedOnPage,
+  statusFilter,
+  unreadCount,
   onEmailSearchChange,
   onPageSizeChange,
   onSelectEmail,
   onToggleSelectAllOnPage,
   onToggleEmailSelection,
   onBulkMarkRead,
+  onBulkArchive,
   onOpenBulkDelete,
   onClearSelection,
   onStarEmail,
   onDeleteEmail,
   onMarkEmailRead,
+  onArchiveEmail,
+  onUnarchiveEmail,
   onCopySenderAddress,
   onPrevPage,
   onNextPage,
+  onStatusFilterChange,
 }: EmailsPanelProps) {
   const safePages = Math.max(1, pages);
   const [pageSizeInput, setPageSizeInput] = useState(() => String(pageSize));
@@ -115,6 +131,16 @@ export function EmailsPanel({
           </div>
         </div>
 
+        <Tabs value={statusFilter} onValueChange={(v) => onStatusFilterChange(v as EmailStatusFilter)}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="unread">
+              Unread{unreadCount > 0 && ` (${unreadCount})`}
+            </TabsTrigger>
+            <TabsTrigger value="archived">Archived</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {emails.length > 0 && (
           <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
             <label className="flex items-center gap-2 text-sm select-none">
@@ -135,15 +161,64 @@ export function EmailsPanel({
             </label>
             {selectedEmailIds.length > 0 && (
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={onBulkMarkRead}>
-                  Mark read
-                </Button>
-                <Button size="sm" variant="destructive" onClick={onOpenBulkDelete}>
-                  Delete
-                </Button>
-                <Button size="sm" variant="ghost" onClick={onClearSelection}>
-                  Clear
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="outline"
+                      onClick={onBulkMarkRead}
+                      aria-label="Mark selected as read"
+                    >
+                      <MailOpen className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Mark read</TooltipContent>
+                </Tooltip>
+                {statusFilter !== "archived" ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        onClick={onBulkArchive}
+                        aria-label="Archive selected"
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Archive</TooltipContent>
+                  </Tooltip>
+                ) : null}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="destructive"
+                      onClick={onOpenBulkDelete}
+                      aria-label="Delete selected"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={onClearSelection}
+                      aria-label="Clear selection"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Clear</TooltipContent>
+                </Tooltip>
               </div>
             )}
           </div>
@@ -290,6 +365,21 @@ export function EmailsPanel({
                           </>
                         )}
                       </ContextMenuItem>
+                      {email.status === "ARCHIVED" ? (
+                        <ContextMenuItem
+                          onClick={() => onUnarchiveEmail(email.id)}
+                        >
+                          <ArchiveRestore />
+                          Unarchive
+                        </ContextMenuItem>
+                      ) : (
+                        <ContextMenuItem
+                          onClick={() => onArchiveEmail(email.id)}
+                        >
+                          <Archive />
+                          Archive
+                        </ContextMenuItem>
+                      )}
                       <ContextMenuSeparator />
                       <ContextMenuItem
                         variant="destructive"
