@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { ArrowLeft, Star, Trash2, Mail } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
@@ -15,14 +16,18 @@ interface Email {
   id: string;
   subject: string;
   fromAddress: string;
-  fromName?: string;
+  fromName?: string | null;
   toAddress: string;
-  textBody?: string;
-  htmlBody?: string;
+  textBody?: string | null;
+  htmlBody?: string | null;
+  rawContent?: string | null;
+  messageId?: string | null;
   status: string;
   isStarred: boolean;
   receivedAt: string;
   mailbox: { address: string };
+  headers?: Array<{ id: string; name: string; value: string }>;
+  attachments?: Array<{ id: string; filename: string; contentType: string; size: number }>;
 }
 
 export default function EmailDetailPage({
@@ -171,6 +176,79 @@ export default function EmailDetailPage({
               </pre>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Metadata</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">Message-Id</span>
+              <span className="font-mono text-xs break-all">{email.messageId || "-"}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">Mailbox</span>
+              <span className="font-mono text-xs break-all">{email.mailbox.address}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">From</span>
+              <span className="font-mono text-xs break-all">{email.fromAddress}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">To</span>
+              <span className="font-mono text-xs break-all">{email.toAddress}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">Headers</span>
+              <span>{email.headers?.length || 0}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">Attachments</span>
+              <span>{email.attachments?.length || 0}</span>
+            </div>
+          </div>
+
+          {Boolean(email.headers?.length) && (
+            <details className="rounded-md border bg-muted/30 p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                Headers ({email.headers?.length})
+              </summary>
+              <div className="mt-3 max-h-[360px] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(email.headers || []).map((header) => (
+                      <TableRow key={header.id}>
+                        <TableCell className="font-mono text-xs whitespace-normal break-words align-top">
+                          {header.name}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs whitespace-normal break-words align-top">
+                          {header.value}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </details>
+          )}
+
+          {email.rawContent && (
+            <details className="rounded-md border bg-muted/30 p-3">
+              <summary className="cursor-pointer text-sm font-medium">Raw content</summary>
+              <pre className="mt-3 whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
+                {email.rawContent}
+              </pre>
+            </details>
+          )}
         </CardContent>
       </Card>
     </div>

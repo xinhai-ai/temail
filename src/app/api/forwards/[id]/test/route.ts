@@ -261,6 +261,17 @@ export async function POST(
     });
   }
 
+  const emailFrom =
+    email.fromName && email.fromAddress ? `${email.fromName} <${email.fromAddress}>` : email.fromAddress || email.fromName;
+  const emailTextBrief = (email.textBody || "").replace(/\s+/g, " ").trim().slice(0, 240) || undefined;
+  const logEmailFields = {
+    ...(parsed.data.emailId ? { emailId: email.id } : {}),
+    emailFrom,
+    emailTo: email.toAddress,
+    emailSubject: email.subject,
+    emailTextBrief,
+  };
+
   type RuntimeTarget = { targetId?: string; destination: ForwardDestination } | { targetId?: string; error: string };
 
   const runtimeTargets: RuntimeTarget[] = (() => {
@@ -451,6 +462,7 @@ export async function POST(
           success: true,
           message: "Test sent",
           ...(typeof resStatus === "number" ? { responseCode: resStatus } : {}),
+          ...logEmailFields,
         },
       });
 
@@ -463,6 +475,7 @@ export async function POST(
           ...(p.targetId ? { targetId: p.targetId } : {}),
           success: false,
           message,
+          ...logEmailFields,
         },
       }).catch(() => {
         // ignore

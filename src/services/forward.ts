@@ -30,6 +30,31 @@ function extractRuntimeConfig(rule: { type: ForwardType; config: string }): { ok
   return { ok: true, conditions: normalized.config.conditions, template: normalized.config.template };
 }
 
+const MAX_FORWARD_LOG_EMAIL_TEXT_BRIEF_LENGTH = 240;
+
+function buildForwardLogEmailFrom(email: EmailData) {
+  const address = email.fromAddress?.trim();
+  const name = email.fromName?.trim();
+  if (name && address) return `${name} <${address}>`;
+  return address || name || undefined;
+}
+
+function buildForwardLogEmailTextBrief(email: EmailData) {
+  const raw = (email.textBody || "").replace(/\s+/g, " ").trim();
+  if (!raw) return undefined;
+  return raw.slice(0, MAX_FORWARD_LOG_EMAIL_TEXT_BRIEF_LENGTH);
+}
+
+function buildForwardLogEmailFields(email: EmailData) {
+  return {
+    emailId: email.id,
+    emailFrom: buildForwardLogEmailFrom(email),
+    emailTo: email.toAddress,
+    emailSubject: email.subject,
+    emailTextBrief: buildForwardLogEmailTextBrief(email),
+  };
+}
+
 export async function executeForwards(email: EmailData, mailboxId: string, userId?: string) {
   const ownerId =
     userId ||
@@ -52,12 +77,14 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
     include: { targets: true },
   });
 
+  const emailFields = buildForwardLogEmailFields(email);
+
   for (const rule of rules) {
     try {
       const runtime = extractRuntimeConfig(rule);
       if (!runtime.ok) {
         await prisma.forwardLog.create({
-          data: { ruleId: rule.id, success: false, message: runtime.error },
+          data: { ruleId: rule.id, success: false, message: runtime.error, ...emailFields },
         });
         continue;
       }
@@ -75,7 +102,7 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
           const normalizedTarget = normalizeForwardTargetConfig(target.type, target.config);
           if (!normalizedTarget.ok) {
             await prisma.forwardLog.create({
-              data: { ruleId: rule.id, targetId: target.id, success: false, message: normalizedTarget.error },
+              data: { ruleId: rule.id, targetId: target.id, success: false, message: normalizedTarget.error, ...emailFields },
             });
             continue;
           }
@@ -95,6 +122,7 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
               success: result.success,
               message: result.message,
               responseCode: result.code,
+              ...emailFields,
             },
           });
         }
@@ -102,7 +130,7 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
         const normalized = normalizeForwardRuleConfig(rule.type, rule.config);
         if (!normalized.ok) {
           await prisma.forwardLog.create({
-            data: { ruleId: rule.id, success: false, message: normalized.error },
+            data: { ruleId: rule.id, success: false, message: normalized.error, ...emailFields },
           });
           continue;
         }
@@ -121,13 +149,14 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
             success: result.success,
             message: result.message,
             responseCode: result.code,
+            ...emailFields,
           },
         });
       }
 
       if (sentCount === 0) {
         await prisma.forwardLog.create({
-          data: { ruleId: rule.id, success: false, message: "No valid forward targets found" },
+          data: { ruleId: rule.id, success: false, message: "No valid forward targets found", ...emailFields },
         });
         continue;
       }
@@ -142,6 +171,7 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
           ruleId: rule.id,
           success: false,
           message: error instanceof Error ? error.message : "Unknown error",
+          ...emailFields,
         },
       });
     }

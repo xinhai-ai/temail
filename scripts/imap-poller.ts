@@ -1,5 +1,5 @@
 import { ImapFlow } from "imapflow";
-import { simpleParser } from "mailparser";
+import { simpleParser, type ParsedMail } from "mailparser";
 import { Prisma, type Domain, type ImapConfig } from "@prisma/client";
 import prisma from "../src/lib/prisma";
 import { executeForwards } from "../src/services/forward";
@@ -22,6 +22,37 @@ function extractAddresses(value: unknown): string[] {
   return uniqueStrings(
     list.map((entry) => (typeof entry.address === "string" ? entry.address.toLowerCase() : null))
   );
+}
+
+const MAX_EMAIL_HEADER_COUNT = 200;
+const MAX_EMAIL_HEADER_VALUE_LENGTH = 4000;
+
+function normalizeHeaderValue(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value instanceof Date) return value.toISOString();
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function extractEmailHeaders(parsed: ParsedMail): Array<{ name: string; value: string }> {
+  const data: Array<{ name: string; value: string }> = [];
+  for (const [rawName, rawValue] of parsed.headers) {
+    const name = typeof rawName === "string" ? rawName.trim() : "";
+    if (!name) continue;
+
+    const value = normalizeHeaderValue(rawValue);
+    const trimmedValue = value?.trim();
+    if (!trimmedValue) continue;
+
+    data.push({ name, value: trimmedValue.slice(0, MAX_EMAIL_HEADER_VALUE_LENGTH) });
+    if (data.length >= MAX_EMAIL_HEADER_COUNT) break;
+  }
+  return data;
 }
 
 async function pollDomain(domain: ImapDomain) {
@@ -64,6 +95,7 @@ async function pollDomain(domain: ImapDomain) {
         const raw = message.source?.toString("utf8") || "";
 
         const parsed = await simpleParser(raw);
+        const parsedHeaders = extractEmailHeaders(parsed);
         const parsedMessageId =
           typeof parsed.messageId === "string" && parsed.messageId.trim()
             ? parsed.messageId.trim()
@@ -139,6 +171,7 @@ async function pollDomain(domain: ImapDomain) {
               rawContent: raw || undefined,
               mailboxId: mailbox.id,
               receivedAt,
+              ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
             },
           });
 

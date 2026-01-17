@@ -33,6 +33,14 @@ export async function POST(
       timestamp: new Date().toISOString(),
     };
 
+    const emailTextBrief = testMessage.text.replace(/\s+/g, " ").trim().slice(0, 240) || undefined;
+    const logEmailFields = {
+      emailFrom: testMessage.from,
+      emailTo: testMessage.to,
+      emailSubject: testMessage.subject,
+      emailTextBrief,
+    };
+
     type RuntimeTarget = { targetId?: string; destination: ForwardDestination } | { targetId?: string; error: string };
 
     const runtimeTargets: RuntimeTarget[] = (() => {
@@ -55,7 +63,7 @@ export async function POST(
       if ("error" in t) {
         results.push({ targetId: t.targetId, success: false, message: t.error });
         await prisma.forwardLog.create({
-          data: { ruleId: id, ...(t.targetId ? { targetId: t.targetId } : {}), success: false, message: t.error },
+          data: { ruleId: id, ...(t.targetId ? { targetId: t.targetId } : {}), success: false, message: t.error, ...logEmailFields },
         });
         continue;
       }
@@ -83,6 +91,7 @@ export async function POST(
           success: result.success,
           message: result.message,
           ...(typeof result.code === "number" ? { responseCode: result.code } : {}),
+          ...logEmailFields,
         },
       });
 

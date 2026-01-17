@@ -227,6 +227,7 @@ model Email {
 
   attachments Attachment[]
   headers     EmailHeader[]
+  forwardLogs ForwardLog[]
 
   @@unique([mailboxId, messageId])
   @@index([mailboxId])
@@ -359,8 +360,16 @@ model ForwardLog {
   targetId     String?
   target       ForwardTarget? @relation(fields: [targetId], references: [id], onDelete: SetNull)
 
+  emailId        String?
+  email          Email?    @relation(fields: [emailId], references: [id], onDelete: SetNull)
+  emailFrom      String?
+  emailTo        String?
+  emailSubject   String?
+  emailTextBrief String?
+
   @@index([ruleId])
   @@index([targetId])
+  @@index([emailId])
   @@index([createdAt])
   @@map("forward_logs")
 }

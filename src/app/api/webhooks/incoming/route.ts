@@ -17,10 +17,40 @@ function extractEmailAddress(value: unknown) {
   return candidate.toLowerCase();
 }
 
+const MAX_WEBHOOK_HEADER_COUNT = 200;
+const MAX_WEBHOOK_HEADER_VALUE_LENGTH = 4000;
+
+function extractWebhookHeaders(value: unknown): Array<{ name: string; value: string }> {
+  if (!value || typeof value !== "object") return [];
+
+  const entries = Object.entries(value as Record<string, unknown>);
+  const headers: Array<{ name: string; value: string }> = [];
+
+  for (const [rawName, rawValue] of entries) {
+    const name = typeof rawName === "string" ? rawName.trim() : "";
+    if (!name) continue;
+
+    const value =
+      typeof rawValue === "string"
+        ? rawValue
+        : typeof rawValue === "number" || typeof rawValue === "boolean"
+          ? String(rawValue)
+          : "";
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) continue;
+
+    headers.push({ name, value: trimmedValue.slice(0, MAX_WEBHOOK_HEADER_VALUE_LENGTH) });
+    if (headers.length >= MAX_WEBHOOK_HEADER_COUNT) break;
+  }
+
+  return headers;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { to, from, subject, text, html, secret, messageId } = body;
+    const { to, from, subject, text, html, secret, messageId, headers, raw } = body;
 
     if (!to || !secret) {
       return NextResponse.json(
@@ -83,6 +113,19 @@ export async function POST(request: NextRequest) {
       (typeof from === "string" ? from : null) ||
       "unknown@unknown.com";
     const normalizedSubject = typeof subject === "string" && subject.trim() ? subject.trim() : "(No subject)";
+    const parsedHeaders = extractWebhookHeaders(headers);
+    const providedRaw = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    const rawContent = providedRaw
+      ? providedRaw
+      : JSON.stringify({
+          to,
+          from,
+          subject,
+          text,
+          html,
+          messageId: parsedMessageId,
+          ...(parsedHeaders.length ? { headers: parsedHeaders } : {}),
+        });
 
     try {
       await prisma.inboundEmail.create({
@@ -94,14 +137,7 @@ export async function POST(request: NextRequest) {
           subject: normalizedSubject,
           textBody: typeof text === "string" ? text : undefined,
           htmlBody: typeof html === "string" ? html : undefined,
-          rawContent: JSON.stringify({
-            to,
-            from,
-            subject,
-            text,
-            html,
-            messageId: parsedMessageId,
-          }),
+          rawContent,
           domainId: webhookConfig.domainId,
           mailboxId: mailbox?.id,
         },
@@ -139,7 +175,9 @@ export async function POST(request: NextRequest) {
         subject: normalizedSubject,
         textBody: typeof text === "string" ? text : undefined,
         htmlBody: typeof html === "string" ? html : undefined,
+        rawContent: rawContent || undefined,
         mailboxId: mailbox.id,
+        ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
       },
     });
 

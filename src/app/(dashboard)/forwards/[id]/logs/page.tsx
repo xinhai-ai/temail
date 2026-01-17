@@ -113,6 +113,7 @@ export default async function ForwardRuleLogsPage({
               <TableRow>
                 <TableHead>Time</TableHead>
                 <TableHead>Target</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Result</TableHead>
                 <TableHead>HTTP</TableHead>
                 <TableHead>Message</TableHead>
@@ -123,6 +124,31 @@ export default async function ForwardRuleLogsPage({
                 <TableRow key={log.id}>
                   <TableCell>{format(new Date(log.createdAt), "PPpp")}</TableCell>
                   <TableCell>{log.target?.type || "-"}</TableCell>
+                  <TableCell className="whitespace-normal min-w-[320px] max-w-[560px]">
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted-foreground break-words">
+                        <span className="font-medium">From:</span>{" "}
+                        <span className="font-mono">{log.emailFrom || "-"}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground break-words">
+                        <span className="font-medium">To:</span>{" "}
+                        <span className="font-mono">{log.emailTo || "-"}</span>
+                      </div>
+                      <div className="font-medium break-words">{log.emailSubject || "-"}</div>
+                      {log.emailTextBrief && (
+                        <div className="text-xs text-muted-foreground break-words line-clamp-2">
+                          {log.emailTextBrief}
+                        </div>
+                      )}
+                      {log.emailId && (
+                        <div>
+                          <Link href={`/emails/${log.emailId}`} className="text-xs text-primary hover:underline">
+                            Open email
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={log.success ? "default" : "destructive"}>{log.success ? "SUCCESS" : "FAILED"}</Badge>
                   </TableCell>
@@ -137,4 +163,3 @@ export default async function ForwardRuleLogsPage({
     </div>
   );
 }
-
