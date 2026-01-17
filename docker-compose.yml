@@ -1,0 +1,32 @@
+services:
+  web:
+    image: ghcr.io/xinhai-ai/temail:latest
+    command: sh -c "npx prisma migrate deploy && npm run start"
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: file:/data/temail.db
+      IMAP_SERVICE_HOST: imap-service
+      IMAP_SERVICE_PORT: "3001"
+    volumes:
+      - temail-data:/data
+    restart: unless-stopped
+
+  imap-service:
+    image: ghcr.io/xinhai-ai/temail-imap-service:latest
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: file:/data/temail.db
+      NEXTJS_URL: http://web:3000
+      IMAP_SERVICE_PORT: "3001"
+    volumes:
+      - temail-data:/data
+    restart: unless-stopped
+
+volumes:
+  temail-data:
