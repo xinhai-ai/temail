@@ -8,6 +8,7 @@ services:
       - .env
     environment:
       DATABASE_URL: file:/data/temail.db
+      IMAP_SERVICE_ENABLED: "1"
       IMAP_SERVICE_HOST: imap-service
       IMAP_SERVICE_PORT: "3001"
     volumes:

@@ -56,7 +56,7 @@ node --conditions=react-server --import tsx scripts/imap-service.ts
 
 ## 环境变量
 
-请参考 `.env.example`（必须项与可选项都有注释）。
+请参考 `.env.example`
 
 ## Docker（推荐）
 
@@ -70,9 +70,19 @@ docker compose up -d
 
 访问 `http://localhost:3000`。
 
+### 快速下载（仅用镜像部署）
+
+如果你不想 `git clone`，可以直接下载配置文件并使用已发布镜像启动（将 `<OWNER>`/`<REPO>` 替换为你的仓库）：
+
+```bash
+wget -O docker-compose.yml https://raw.githubusercontent.com/xinhai-ai/temail/main/docker-compose.yml
+wget -O .env.example https://raw.githubusercontent.com/xinhai-ai/temail/main/.env.example
+cp .env.example .env
+```
+
 ### 启用 IMAP Service（Docker Compose）
 
-默认已启用（`.env.example` 里 `IMAP_SERVICE_ENABLED="1"`）。如需关闭可设为 `0`。
+默认已启用（`docker-compose.yml` 内置 `IMAP_SERVICE_ENABLED=1`；`.env.example` 也以注释形式提供该值）。如需关闭可设为 `0`。
 
 1) 在 `.env` 中确认：
 
@@ -87,14 +97,32 @@ docker compose up -d
 - 默认使用 SQLite：数据持久化在 compose 的 `temail-data` 卷中（可在 `docker-compose.yml` 调整）
 - 升级发布：`docker compose pull && docker compose up -d`（或重新 `--build`）
 
+### 常见问题（Prisma 迁移）
+
+如果你看到 `P3009/P3018`（例如 `no such table: workflow_executions`），通常是因为历史版本曾把某个迁移标记为失败：
+
+- 全新部署（无数据）：直接清空卷重新来一遍：
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+- 需要保留数据：先把失败迁移标记为回滚，再重新部署迁移：
+
+```bash
+docker compose exec web npx prisma migrate resolve --rolled-back 20260117180000_workflow_execution_logs
+docker compose exec web npx prisma migrate deploy
+```
+
 ## CI（GitHub Actions）
 
 已提供 GitHub Actions 工作流用于在 PR/Push 时构建 Docker 镜像（保证 `docker build` 可通过），并在默认分支推送到 GHCR：
 
-- `ghcr.io/<owner>/<repo>:latest`（Web）
-- `ghcr.io/<owner>/<repo>:sha-...`（Web）
-- `ghcr.io/<owner>/<repo>-imap-service:latest`（IMAP Service）
-- `ghcr.io/<owner>/<repo>-imap-service:sha-...`（IMAP Service）
+- `ghcr.io/xinhai-ai/temail:latest`（Web）
+- `ghcr.io/xinhai-ai/temail:sha-...`（Web）
+- `ghcr.io/xinhai-ai/temail-imap-service:latest`（IMAP Service）
+- `ghcr.io/xinhai-ai/temail-imap-service:sha-...`（IMAP Service）
 
 ## License
 
