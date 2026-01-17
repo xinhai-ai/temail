@@ -7,8 +7,11 @@ import type {
   MatchField,
   MatchOperator,
   ConditionKeywordData,
+  ConditionAiClassifierData,
+  KeywordSet,
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
+import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
 
 export async function executeNode(
   node: WorkflowNode,
@@ -32,6 +35,10 @@ export async function executeNode(
 
     case "condition:keyword":
       return evaluateKeywordCondition(data as ConditionKeywordData, context);
+
+    case "condition:ai-classifier":
+    case "condition:classifier":
+      return evaluateAiClassifier(data as ConditionAiClassifierData, context);
 
     case "control:branch":
       return evaluateMatch(
@@ -199,8 +206,17 @@ function evaluateCompositeCondition(
 function evaluateKeywordCondition(
   data: ConditionKeywordData,
   context: ExecutionContext
-): boolean {
+): string | boolean {
   if (!context.email) return false;
+
+  // Multi-classification mode
+  const hasMultiMode =
+    Array.isArray(data.categories) ||
+    Array.isArray(data.keywordSets) ||
+    typeof data.defaultCategory === "string";
+  if (hasMultiMode) {
+    return evaluateMultiKeywordClassification(data, context);
+  }
 
   // 高级模式 - 使用复合条件
   if (data.conditions) {
@@ -208,28 +224,62 @@ function evaluateKeywordCondition(
   }
 
   // 简单模式 - 关键字匹配
-  const { keywords = [], matchType = "any", fields = ["subject", "textBody"], caseSensitive = false } = data;
+  return evaluateSimpleKeywordMatch(data, context);
+}
 
+function evaluateMultiKeywordClassification(
+  data: ConditionKeywordData,
+  context: ExecutionContext
+): string {
+  const defaultCategory = data.defaultCategory || "default";
+  const keywordSets = (data.keywordSets || []) as KeywordSet[];
+
+  for (const set of keywordSets) {
+    if (!set.keywords?.length) continue;
+
+    const fields = set.fields || data.fields || ["subject", "textBody"];
+    const rawContent = fields.map((f) => getFieldValue(f, context)).join(" ");
+
+    const caseSensitive = set.caseSensitive ?? data.caseSensitive ?? false;
+    const content = caseSensitive ? rawContent : rawContent.toLowerCase();
+    const keywords = caseSensitive ? set.keywords : set.keywords.map((k) => k.toLowerCase());
+
+    const matchType = set.matchType || data.matchType || "any";
+    const matched =
+      matchType === "all"
+        ? keywords.every((kw) => content.includes(kw))
+        : keywords.some((kw) => content.includes(kw));
+
+    if (matched) return set.category;
+  }
+
+  return defaultCategory;
+}
+
+function evaluateSimpleKeywordMatch(
+  data: ConditionKeywordData,
+  context: ExecutionContext
+): boolean {
+  const {
+    keywords = [],
+    matchType = "any",
+    fields = ["subject", "textBody"],
+    caseSensitive = false,
+  } = data;
+
+  // Backward-compatibility: empty keyword list means "match"
   if (keywords.length === 0) return true;
 
-  // 收集要搜索的文本
-  const searchTexts: string[] = [];
-  for (const field of fields) {
-    const value = getFieldValue(field, context);
-    searchTexts.push(caseSensitive ? value : value.toLowerCase());
-  }
-  const combinedText = searchTexts.join(" ");
-
-  // 处理关键字
-  const processedKeywords = keywords.map((kw) =>
-    caseSensitive ? kw : kw.toLowerCase()
-  );
+  const searchTexts = fields.map((field) => getFieldValue(field, context));
+  const combinedText = caseSensitive
+    ? searchTexts.join(" ")
+    : searchTexts.join(" ").toLowerCase();
+  const processedKeywords = caseSensitive ? keywords : keywords.map((kw) => kw.toLowerCase());
 
   if (matchType === "all") {
     return processedKeywords.every((kw) => combinedText.includes(kw));
-  } else {
-    return processedKeywords.some((kw) => combinedText.includes(kw));
   }
+  return processedKeywords.some((kw) => combinedText.includes(kw));
 }
 
 // ==================== Action Executors ====================

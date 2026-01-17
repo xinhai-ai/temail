@@ -79,6 +79,11 @@ function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
 
   const Icon = iconMap[definition.icon] || Circle;
   const isConditional = isConditionalNode(type);
+  const keywordMultiMode =
+    type === "condition:keyword" &&
+    (Array.isArray((data as unknown as { categories?: unknown }).categories) ||
+      Array.isArray((data as unknown as { keywordSets?: unknown }).keywordSets) ||
+      typeof (data as unknown as { defaultCategory?: unknown }).defaultCategory === "string");
   const isTrigger = type.startsWith("trigger:");
   const label = data.label || definition.label;
   const preview = getNodePreview(type, data);
@@ -174,8 +179,8 @@ function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
       )}
 
       {/* 条件节点的双输出 */}
-      {isConditional && (
-        <div className="relative pb-6">
+      {(isConditional || (type === "condition:keyword" && !keywordMultiMode)) && (
+        <div className="relative pb-6 nodrag">
           <div className="absolute bottom-0 left-0 right-0 flex justify-between items-end px-4">
             <div className="flex flex-col items-center">
               <span className="text-[10px] font-medium text-green-600 mb-1">Yes</span>
@@ -210,6 +215,169 @@ function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
           </div>
         </div>
       )}
+
+      {/* 多路分类输出 */}
+      {definition.outputs === "multi" && type !== "condition:keyword" && (
+        <MultiOutputHandles data={data as unknown as Record<string, unknown>} />
+      )}
+      {definition.outputs === "multi" && type === "condition:keyword" && keywordMultiMode && (
+        <MultiOutputHandles data={data as unknown as Record<string, unknown>} />
+      )}
+    </div>
+  );
+}
+
+const multiColorClasses = [
+  {
+    text: "text-blue-600",
+    from: "!from-blue-400",
+    to: "!to-blue-500",
+    hoverFrom: "hover:!from-blue-500",
+    hoverTo: "hover:!to-blue-600",
+  },
+  {
+    text: "text-green-600",
+    from: "!from-green-400",
+    to: "!to-green-500",
+    hoverFrom: "hover:!from-green-500",
+    hoverTo: "hover:!to-green-600",
+  },
+  {
+    text: "text-purple-600",
+    from: "!from-purple-400",
+    to: "!to-purple-500",
+    hoverFrom: "hover:!from-purple-500",
+    hoverTo: "hover:!to-purple-600",
+  },
+  {
+    text: "text-orange-600",
+    from: "!from-orange-400",
+    to: "!to-orange-500",
+    hoverFrom: "hover:!from-orange-500",
+    hoverTo: "hover:!to-orange-600",
+  },
+  {
+    text: "text-pink-600",
+    from: "!from-pink-400",
+    to: "!to-pink-500",
+    hoverFrom: "hover:!from-pink-500",
+    hoverTo: "hover:!to-pink-600",
+  },
+  {
+    text: "text-cyan-600",
+    from: "!from-cyan-400",
+    to: "!to-cyan-500",
+    hoverFrom: "hover:!from-cyan-500",
+    hoverTo: "hover:!to-cyan-600",
+  },
+  {
+    text: "text-amber-700",
+    from: "!from-amber-400",
+    to: "!to-amber-500",
+    hoverFrom: "hover:!from-amber-500",
+    hoverTo: "hover:!to-amber-600",
+  },
+  {
+    text: "text-rose-600",
+    from: "!from-rose-400",
+    to: "!to-rose-500",
+    hoverFrom: "hover:!from-rose-500",
+    hoverTo: "hover:!to-rose-600",
+  },
+  {
+    text: "text-indigo-600",
+    from: "!from-indigo-400",
+    to: "!to-indigo-500",
+    hoverFrom: "hover:!from-indigo-500",
+    hoverTo: "hover:!to-indigo-600",
+  },
+  {
+    text: "text-teal-600",
+    from: "!from-teal-400",
+    to: "!to-teal-500",
+    hoverFrom: "hover:!from-teal-500",
+    hoverTo: "hover:!to-teal-600",
+  },
+] as const;
+
+function MultiOutputHandles({ data }: { data: Record<string, unknown> }) {
+  const categories = (data.categories as string[]) || [];
+
+  if (categories.length === 0) {
+    return (
+      <div className="relative pb-6 nodrag">
+        <div className="absolute bottom-0 left-0 right-0 flex justify-center items-end px-4">
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-medium text-gray-600 mb-1">default</span>
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="default"
+              className={cn(
+                "!relative !transform-none !w-4 !h-4 !cursor-crosshair !z-10",
+                "!bg-gradient-to-br !from-gray-400 !to-gray-500",
+                "!border-2 !border-background",
+                "hover:!from-gray-500 hover:!to-gray-600 transition-colors"
+              )}
+              style={{ position: "relative", left: 0, top: 0 }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative pb-6 nodrag">
+      <div className="absolute bottom-0 left-0 right-0 flex justify-around items-end px-2">
+        {categories.map((category, index) => {
+          const style = multiColorClasses[index % multiColorClasses.length];
+          return (
+            <div key={category} className="flex flex-col items-center min-w-0">
+              <span
+                className={cn(
+                  "text-[9px] font-medium mb-1 truncate max-w-[60px]",
+                  style.text
+                )}
+                title={category}
+              >
+                {category}
+              </span>
+              <Handle
+                type="source"
+                position={Position.Bottom}
+                id={category}
+                className={cn(
+                  "!relative !transform-none !w-4 !h-4 !cursor-crosshair !z-10",
+                  "!bg-gradient-to-br",
+                  style.from,
+                  style.to,
+                  "!border-2 !border-background",
+                  style.hoverFrom,
+                  style.hoverTo,
+                  "transition-colors"
+                )}
+                style={{ position: "relative", left: 0, top: 0 }}
+              />
+            </div>
+          );
+        })}
+        <div className="flex flex-col items-center">
+          <span className="text-[9px] font-medium text-gray-600 mb-1">default</span>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="default"
+            className={cn(
+              "!relative !transform-none !w-4 !h-4 !cursor-crosshair !z-10",
+              "!bg-gradient-to-br !from-gray-400 !to-gray-500",
+              "!border-2 !border-background",
+              "hover:!from-gray-500 hover:!to-gray-600 transition-colors"
+            )}
+            style={{ position: "relative", left: 0, top: 0 }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -233,7 +401,14 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
     case "condition:match":
       return !!(d.value as string);
     case "condition:keyword":
-      return ((d.keywords as string[])?.length > 0) || !!(d.conditions);
+      return (
+        ((d.keywords as string[])?.length > 0) ||
+        ((d.categories as string[])?.length > 0) ||
+        !!(d.conditions)
+      );
+    case "condition:ai-classifier":
+    case "condition:classifier":
+      return ((d.categories as string[])?.length > 0);
     case "forward:email":
       return !!(d.to as string);
     case "forward:telegram":
@@ -300,14 +475,36 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       );
 
     case "condition:keyword":
+      const kwCategories = d.categories as string[] | undefined;
+      if (kwCategories && kwCategories.length > 0) {
+        return (
+          <div className="space-y-1">
+            <div className="text-[11px] text-muted-foreground">
+              {kwCategories.length} categories
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {kwCategories.slice(0, 3).map((cat, i) => (
+                <span
+                  key={i}
+                  className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px]"
+                >
+                  {cat}
+                </span>
+              ))}
+              {kwCategories.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{kwCategories.length - 3}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      }
+
       const keywords = d.keywords as string[];
       const conditions = d.conditions;
       if (conditions) {
-        return (
-          <span className="text-amber-600 font-medium">
-            Advanced conditions
-          </span>
-        );
+        return <span className="text-amber-600 font-medium">Advanced conditions</span>;
       }
       if (!keywords?.length) return null;
       return (
@@ -325,6 +522,33 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
               +{keywords.length - 3} more
             </span>
           )}
+        </div>
+      );
+
+    case "condition:ai-classifier":
+    case "condition:classifier":
+      const aiCategories = d.categories as string[] | undefined;
+      if (!aiCategories?.length) return null;
+      return (
+        <div className="space-y-1">
+          <div className="text-[11px] text-muted-foreground">
+            AI Classification
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {aiCategories.slice(0, 3).map((cat, i) => (
+              <span
+                key={i}
+                className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px]"
+              >
+                {cat}
+              </span>
+            ))}
+            {aiCategories.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{aiCategories.length - 3}
+              </span>
+            )}
+          </div>
         </div>
       );
 
@@ -419,7 +643,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       return <span className="text-slate-500">Stop workflow</span>;
 
     default:
-      return definition?.description || "";
+      return NODE_DEFINITIONS[type]?.description || "";
   }
 }
 
@@ -430,8 +654,5 @@ function formatDuration(seconds: number): string {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
   return `${Math.floor(seconds / 86400)}d`;
 }
-
-// 访问 NODE_DEFINITIONS
-const definition = { description: "" };
 
 export const BaseNode = memo(BaseNodeComponent);

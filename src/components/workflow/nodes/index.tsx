@@ -25,6 +25,7 @@ export const nodeTypes: NodeTypes = {
   // 条件判断
   "condition:match": createNodeComponent("condition:match"),
   "condition:keyword": createNodeComponent("condition:keyword"),
+  "condition:ai-classifier": createNodeComponent("condition:ai-classifier"),
   "condition:classifier": createNodeComponent("condition:classifier"),
   "condition:custom": createNodeComponent("condition:custom"),
 

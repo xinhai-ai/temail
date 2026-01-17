@@ -67,7 +67,7 @@ const categories = [
     id: "condition",
     label: "Conditions",
     description: "Add logic branches",
-    types: ["condition:match", "condition:keyword", "condition:classifier", "condition:custom"] as NodeType[],
+    types: ["condition:match", "condition:keyword", "condition:ai-classifier", "condition:custom"] as NodeType[],
   },
   {
     id: "action",

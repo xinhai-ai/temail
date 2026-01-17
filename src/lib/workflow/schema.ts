@@ -2,13 +2,32 @@ import { z } from "zod";
 
 // ==================== 基础类型 ====================
 
-const matchFieldSchema = z.enum(["subject", "fromAddress", "toAddress", "textBody"]);
-const matchOperatorSchema = z.enum(["contains", "equals", "startsWith", "endsWith", "regex"]);
+const matchFieldSchema = z.enum([
+  "subject",
+  "fromAddress",
+  "fromName",
+  "toAddress",
+  "textBody",
+  "htmlBody",
+  "messageId",
+  "replyTo",
+]);
+const matchOperatorSchema = z.enum([
+  "contains",
+  "notContains",
+  "equals",
+  "notEquals",
+  "startsWith",
+  "endsWith",
+  "regex",
+  "isEmpty",
+  "isNotEmpty",
+]);
 
 const matchConditionSchema = z.object({
   field: matchFieldSchema,
   operator: matchOperatorSchema,
-  value: z.string(),
+  value: z.string().optional(),
   caseSensitive: z.boolean().optional(),
 });
 
@@ -36,21 +55,65 @@ const conditionMatchDataSchema = z.object({
   label: z.string().optional(),
   field: matchFieldSchema,
   operator: matchOperatorSchema,
-  value: z.string(),
+  value: z.string().optional(),
   caseSensitive: z.boolean().optional(),
+});
+
+// 复合条件 schema（递归）
+const compositeConditionSchema: z.ZodType = z.lazy(() =>
+  z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("and"),
+      conditions: z.array(compositeConditionSchema),
+    }),
+    z.object({
+      kind: z.literal("or"),
+      conditions: z.array(compositeConditionSchema),
+    }),
+    z.object({
+      kind: z.literal("not"),
+      condition: compositeConditionSchema,
+    }),
+    z.object({
+      kind: z.literal("match"),
+      field: matchFieldSchema,
+      operator: matchOperatorSchema,
+      value: z.string().optional(),
+      caseSensitive: z.boolean().optional(),
+    }),
+  ])
+);
+
+const keywordSetSchema = z.object({
+  category: z.string().min(1),
+  keywords: z.array(z.string()),
+  matchType: z.enum(["any", "all"]).optional(),
+  caseSensitive: z.boolean().optional(),
+  fields: z.array(matchFieldSchema).optional(),
 });
 
 const conditionKeywordDataSchema = z.object({
   label: z.string().optional(),
-  keywords: z.array(z.string()),
-  matchType: z.enum(["any", "all"]),
-  fields: z.array(matchFieldSchema),
+  // multi-classification mode
+  categories: z.array(z.string()).optional(),
+  keywordSets: z.array(keywordSetSchema).optional(),
+  defaultCategory: z.string().optional(),
+  // legacy simple mode (boolean)
+  keywords: z.array(z.string()).optional(),
+  matchType: z.enum(["any", "all"]).optional(),
+  fields: z.array(matchFieldSchema).optional(),
+  caseSensitive: z.boolean().optional(),
+  // advanced mode (boolean)
+  conditions: compositeConditionSchema.optional(),
 });
 
-const conditionClassifierDataSchema = z.object({
+const conditionAiClassifierDataSchema = z.object({
   label: z.string().optional(),
-  model: z.string().optional(),
   categories: z.array(z.string()),
+  customPrompt: z.string().optional(),
+  fields: z.array(matchFieldSchema).optional(),
+  confidenceThreshold: z.number().min(0).max(1).optional(),
+  defaultCategory: z.string().optional(),
 });
 
 const conditionCustomDataSchema = z.object({
@@ -130,7 +193,9 @@ const nodeTypeToDataSchema: Record<string, z.ZodType> = {
   "trigger:manual": triggerManualDataSchema,
   "condition:match": conditionMatchDataSchema,
   "condition:keyword": conditionKeywordDataSchema,
-  "condition:classifier": conditionClassifierDataSchema,
+  "condition:ai-classifier": conditionAiClassifierDataSchema,
+  // backward compatibility
+  "condition:classifier": conditionAiClassifierDataSchema,
   "condition:custom": conditionCustomDataSchema,
   "action:archive": actionSimpleDataSchema,
   "action:markRead": actionSimpleDataSchema,
@@ -157,6 +222,7 @@ const nodeTypeSchema = z.enum([
   "trigger:manual",
   "condition:match",
   "condition:keyword",
+  "condition:ai-classifier",
   "condition:classifier",
   "condition:custom",
   "action:archive",

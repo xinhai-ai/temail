@@ -10,10 +10,12 @@ import {
   VALUE_OPERATORS,
   DEFAULT_FORWARD_TEMPLATES,
   type CompositeCondition,
+  type KeywordSet,
   type MatchField,
   type MatchOperator,
 } from "@/lib/workflow/types";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,10 +39,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Trash2, Play, FileText, Settings2, ChevronDown, ChevronRight, Plus, Pencil, GitBranch } from "lucide-react";
+import { X, Trash2, Play, FileText, Settings2, ChevronDown, ChevronRight, Plus, Pencil, GitBranch, Info } from "lucide-react";
 import { ConditionBuilder, SimpleConditionEditor } from "./ConditionBuilder";
 import { ForwardTestButton, TemplateSelector } from "./ForwardTestPanel";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface NodeConfigPanelProps {
   mailboxes?: { id: string; address: string }[];
@@ -220,8 +224,20 @@ function renderNodeConfig(
         />
       );
 
-    case "condition:keyword":
+    case "condition:keyword": {
+      const keywordMultiMode =
+        Array.isArray(data.categories) ||
+        Array.isArray(data.keywordSets) ||
+        typeof data.defaultCategory === "string";
+      if (keywordMultiMode) {
+        return <KeywordMultiClassifierConfig data={data} onChange={onChange} />;
+      }
       return <KeywordConditionConfig data={data} onChange={onChange} />;
+    }
+
+    case "condition:ai-classifier":
+    case "condition:classifier":
+      return <AiClassifierConfig data={data} onChange={onChange} />;
 
     case "forward:email":
       return <ForwardEmailConfig data={data} onChange={onChange} />;
@@ -415,6 +431,29 @@ function KeywordConditionConfig({
 
   return (
     <>
+      <div className="rounded-lg border bg-card p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium">Need multiple categories?</p>
+            <p className="text-xs text-muted-foreground">
+              Switch this node to multi-category classification.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7"
+            onClick={() => {
+              onChange("categories", []);
+              onChange("keywordSets", []);
+              onChange("defaultCategory", "default");
+            }}
+          >
+            Enable Multi
+          </Button>
+        </div>
+      </div>
+
       <Tabs value={mode} onValueChange={(v) => handleModeChange(v as "simple" | "advanced")}>
         <TabsList className="grid w-full grid-cols-2 h-8">
           <TabsTrigger value="simple" className="text-xs">Simple</TabsTrigger>
@@ -603,6 +642,502 @@ function KeywordConditionConfig({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ==================== 关键词多元分类配置 ====================
+
+function KeywordMultiClassifierConfig({
+  data,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const categories = (data.categories as string[]) || [];
+  const keywordSets = (data.keywordSets as KeywordSet[]) || [];
+  const defaultCategory = (data.defaultCategory as string) || "default";
+  const fields = (data.fields as MatchField[]) || ["subject", "textBody"];
+
+  const [newCategory, setNewCategory] = useState("");
+
+  const addCategory = () => {
+    const category = newCategory.trim();
+    if (!category) return;
+    if (categories.includes(category)) {
+      toast.error("Category already exists");
+      return;
+    }
+
+    onChange("categories", [...categories, category]);
+    onChange("keywordSets", [
+      ...keywordSets,
+      {
+        category,
+        keywords: [],
+        matchType: "any" as const,
+        caseSensitive: false,
+      },
+    ]);
+    setNewCategory("");
+  };
+
+  const removeCategory = (category: string) => {
+    onChange("categories", categories.filter((c) => c !== category));
+    onChange("keywordSets", keywordSets.filter((s) => s.category !== category));
+    if (defaultCategory === category) {
+      onChange("defaultCategory", "default");
+    }
+  };
+
+  const updateKeywordSet = (category: string, updates: Partial<KeywordSet>) => {
+    const updated = keywordSets.map((set) =>
+      set.category === category ? { ...set, ...updates } : set
+    );
+    onChange("keywordSets", updated);
+  };
+
+  const addField = (field: MatchField) => {
+    if (!fields.includes(field)) {
+      onChange("fields", [...fields, field]);
+    }
+  };
+
+  const removeField = (field: MatchField) => {
+    onChange("fields", fields.filter((f) => f !== field));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-medium">Mode</Label>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7"
+          onClick={() => {
+            onChange("categories", undefined);
+            onChange("keywordSets", undefined);
+            onChange("defaultCategory", undefined);
+          }}
+        >
+          Use Boolean Mode
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Categories</Label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add category (e.g., urgent)"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addCategory()}
+            className="h-8 text-sm"
+          />
+          <Button onClick={addCategory} size="sm" className="h-8">
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mt-2">
+          {categories.map((category) => (
+            <Badge key={category} variant="secondary" className="gap-1">
+              {category}
+              <button
+                type="button"
+                onClick={() => removeCategory(category)}
+                className="ml-0.5 hover:text-destructive"
+                aria-label={`Remove category ${category}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+          {categories.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Add at least one category to create output handles.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Match Fields</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {fields.map((field) => (
+            <Badge key={field} variant="outline" className="gap-1 text-[10px]">
+              {MATCH_FIELD_LABELS[field]}
+              <button
+                type="button"
+                onClick={() => removeField(field)}
+                className="ml-0.5 hover:text-destructive"
+                aria-label={`Remove field ${MATCH_FIELD_LABELS[field]}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+        <Select onValueChange={(v) => addField(v as MatchField)}>
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder="Add field" />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(MATCH_FIELD_LABELS) as MatchField[])
+              .filter((f) => !fields.includes(f))
+              .map((f) => (
+                <SelectItem key={f} value={f}>
+                  {MATCH_FIELD_LABELS[f]}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-3">
+        <Label className="text-xs font-medium">Keywords per Category</Label>
+        {categories.map((category) => {
+          const set =
+            keywordSets.find((s) => s.category === category) || ({
+              category,
+              keywords: [],
+              matchType: "any" as const,
+              caseSensitive: false,
+            } satisfies KeywordSet);
+
+          return (
+            <Card key={category}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">{category}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">Keywords (comma-separated)</Label>
+                  <Textarea
+                    placeholder="urgent, asap, important"
+                    value={set.keywords.join(", ")}
+                    onChange={(e) => {
+                      const keywords = e.target.value
+                        .split(",")
+                        .map((k) => k.trim())
+                        .filter(Boolean);
+                      updateKeywordSet(category, { keywords });
+                    }}
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Match Type</Label>
+                    <Select
+                      value={set.matchType || "any"}
+                      onValueChange={(value) =>
+                        updateKeywordSet(category, { matchType: value as "any" | "all" })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any keyword</SelectItem>
+                        <SelectItem value="all">All keywords</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-end">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={Boolean(set.caseSensitive)}
+                        onCheckedChange={(checked) =>
+                          updateKeywordSet(category, { caseSensitive: checked })
+                        }
+                      />
+                      <Label className="text-xs">Case sensitive</Label>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Default Category</Label>
+        <Select
+          value={defaultCategory}
+          onValueChange={(value) => onChange("defaultCategory", value)}
+        >
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder="Select default category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">default (no match)</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Used when no keywords match
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ==================== AI 分类器配置 ====================
+
+function AiClassifierConfig({
+  data,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const categories = (data.categories as string[]) || [];
+  const customPrompt = (data.customPrompt as string) || "";
+  const fields = (data.fields as MatchField[]) || ["subject", "textBody"];
+  const confidenceThreshold = (data.confidenceThreshold as number) ?? 0.7;
+  const defaultCategory = (data.defaultCategory as string) || "default";
+
+  const [newCategory, setNewCategory] = useState("");
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+
+  const addCategory = () => {
+    const category = newCategory.trim();
+    if (!category) return;
+    if (categories.includes(category)) {
+      toast.error("Category already exists");
+      return;
+    }
+    onChange("categories", [...categories, category]);
+    setNewCategory("");
+  };
+
+  const removeCategory = (category: string) => {
+    onChange("categories", categories.filter((c) => c !== category));
+    if (defaultCategory === category) {
+      onChange("defaultCategory", "default");
+    }
+  };
+
+  const addField = (field: MatchField) => {
+    if (!fields.includes(field)) {
+      onChange("fields", [...fields, field]);
+    }
+  };
+
+  const removeField = (field: MatchField) => {
+    onChange("fields", fields.filter((f) => f !== field));
+  };
+
+  const updateThreshold = (value: number) => {
+    const normalized = Math.max(0, Math.min(1, value));
+    onChange("confidenceThreshold", normalized);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Categories</Label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add category (e.g., work, personal, spam)"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addCategory()}
+            className="h-8 text-sm"
+          />
+          <Button onClick={addCategory} size="sm" className="h-8">
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mt-2">
+          {categories.map((category) => (
+            <Badge key={category} variant="secondary" className="gap-1">
+              {category}
+              <button
+                type="button"
+                onClick={() => removeCategory(category)}
+                className="ml-0.5 hover:text-destructive"
+                aria-label={`Remove category ${category}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Fields to Analyze</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {fields.map((field) => (
+            <Badge key={field} variant="outline" className="gap-1 text-[10px]">
+              {MATCH_FIELD_LABELS[field]}
+              <button
+                type="button"
+                onClick={() => removeField(field)}
+                className="ml-0.5 hover:text-destructive"
+                aria-label={`Remove field ${MATCH_FIELD_LABELS[field]}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+        <Select onValueChange={(v) => addField(v as MatchField)}>
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder="Add field" />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(MATCH_FIELD_LABELS) as MatchField[])
+              .filter((f) => !fields.includes(f))
+              .map((f) => (
+                <SelectItem key={f} value={f}>
+                  {MATCH_FIELD_LABELS[f]}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Default Category</Label>
+        <Select
+          value={defaultCategory}
+          onValueChange={(value) => onChange("defaultCategory", value)}
+        >
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder="Select default category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">default (fallback)</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Used when confidence is too low or AI fails
+        </p>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium">Confidence Threshold</Label>
+          <span className="text-xs text-muted-foreground">
+            {confidenceThreshold.toFixed(2)}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={confidenceThreshold}
+          onChange={(e) => updateThreshold(parseFloat(e.target.value))}
+          className="w-full accent-primary"
+        />
+        <Input
+          type="number"
+          min={0}
+          max={1}
+          step={0.05}
+          value={confidenceThreshold}
+          onChange={(e) => updateThreshold(parseFloat(e.target.value) || 0)}
+          className="h-8 text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Minimum confidence to accept classification result
+        </p>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium">Custom Prompt (Optional)</Label>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7"
+            onClick={() => setShowPromptEditor(!showPromptEditor)}
+          >
+            {showPromptEditor ? "Hide" : "Show"}
+          </Button>
+        </div>
+
+        {showPromptEditor && (
+          <>
+            <Textarea
+              placeholder="Leave empty to use global default prompt from admin settings"
+              value={customPrompt}
+              onChange={(e) => onChange("customPrompt", e.target.value)}
+              rows={6}
+              className="text-sm font-mono"
+            />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Template variables:</p>
+              <ul className="list-disc list-inside pl-2 space-y-0.5">
+                <li>
+                  <code>{"{{categories}}"}</code> - List of categories
+                </li>
+                <li>
+                  <code>{"{{email.subject}}"}</code> - Email subject
+                </li>
+                <li>
+                  <code>{"{{email.fromAddress}}"}</code> - Sender email
+                </li>
+                <li>
+                  <code>{"{{email.fromName}}"}</code> - Sender name
+                </li>
+                <li>
+                  <code>{"{{email.textBody}}"}</code> - Email body (text)
+                </li>
+                <li>
+                  <code>{"{{email.htmlBody}}"}</code> - Email body (HTML)
+                </li>
+              </ul>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <div className="flex items-start gap-2">
+          <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+          <div className="text-xs text-blue-900 space-y-1">
+            <p className="font-medium">AI Classifier Configuration</p>
+            <p>
+              Configure base URL, model and API key in Admin Settings to enable AI classification.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

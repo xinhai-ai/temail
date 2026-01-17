@@ -28,6 +28,13 @@ function CustomEdgeComponent({
   // 根据 sourceHandle 确定边的颜色（用于条件分支）
   const isTrue = sourceHandleId === "true";
   const isFalse = sourceHandleId === "false";
+  const isMultiHandle = Boolean(sourceHandleId) && !isTrue && !isFalse;
+  const handleLabel =
+    typeof sourceHandleId === "string"
+      ? sourceHandleId === "default"
+        ? "default"
+        : sourceHandleId
+      : "";
 
   return (
     <>
@@ -62,6 +69,26 @@ function CustomEdgeComponent({
             )}
           >
             {isTrue ? "Yes" : "No"}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+
+      {/* 多路分类边的标签 */}
+      {isMultiHandle && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              pointerEvents: "all",
+            }}
+            className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-medium",
+              "bg-muted text-muted-foreground"
+            )}
+            title={handleLabel || undefined}
+          >
+            {handleLabel}
           </div>
         </EdgeLabelRenderer>
       )}

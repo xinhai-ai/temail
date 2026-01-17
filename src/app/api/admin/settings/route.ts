@@ -20,7 +20,7 @@ export async function GET() {
     orderBy: { key: "asc" },
   });
 
-  const secretKeys = new Set(["smtp_pass"]);
+  const secretKeys = new Set(["smtp_pass", "ai_classifier_api_key"]);
   const safeSettings = settings.map((row) =>
     secretKeys.has(row.key)
       ? { ...row, value: "", masked: Boolean(row.value) }

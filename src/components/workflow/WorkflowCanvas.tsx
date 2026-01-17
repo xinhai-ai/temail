@@ -10,6 +10,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
   Node,
+  Edge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useWorkflowStore } from "@/lib/workflow/store";
@@ -36,6 +37,11 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
     x: number;
     y: number;
   } | null>(null);
+  const [edgeContextMenu, setEdgeContextMenu] = useState<{
+    edge: Edge;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const nodes = useWorkflowStore((s) => s.nodes);
   const edges = useWorkflowStore((s) => s.edges);
@@ -44,11 +50,15 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
   const onConnect = useWorkflowStore((s) => s.onConnect);
   const addNode = useWorkflowStore((s) => s.addNode);
   const deleteNode = useWorkflowStore((s) => s.deleteNode);
+  const deleteEdge = useWorkflowStore((s) => s.deleteEdge);
   const setSelectedNodeId = useWorkflowStore((s) => s.setSelectedNodeId);
 
   // Close context menu when clicking outside
   useEffect(() => {
-    const handleClick = () => setContextMenu(null);
+    const handleClick = () => {
+      setContextMenu(null);
+      setEdgeContextMenu(null);
+    };
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
   }, []);
@@ -85,10 +95,12 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
     setContextMenu(null);
+    setEdgeContextMenu(null);
   }, [setSelectedNodeId]);
 
   const onNodeContextMenu = useCallback((event: ReactMouseEvent, node: Node) => {
     event.preventDefault();
+    setEdgeContextMenu(null);
     setContextMenu({
       node,
       x: event.clientX,
@@ -96,12 +108,32 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
     });
   }, []);
 
+  const onEdgeContextMenu = useCallback(
+    (event: ReactMouseEvent, edge: Edge) => {
+      event.preventDefault();
+      setContextMenu(null);
+      setEdgeContextMenu({
+        edge,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    },
+    []
+  );
+
   const handleDeleteNode = useCallback(() => {
     if (contextMenu) {
       deleteNode(contextMenu.node.id);
       setContextMenu(null);
     }
   }, [contextMenu, deleteNode]);
+
+  const handleDeleteEdge = useCallback(() => {
+    if (edgeContextMenu) {
+      deleteEdge(edgeContextMenu.edge.id);
+      setEdgeContextMenu(null);
+    }
+  }, [edgeContextMenu, deleteEdge]);
 
   const handleDuplicateNode = useCallback(() => {
     if (contextMenu) {
@@ -129,11 +161,13 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
           onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
           minZoom={0.2}
           maxZoom={2}
+          deleteKeyCode={["Backspace", "Delete"]}
           defaultEdgeOptions={{
             type: "default",
             animated: false,
@@ -183,6 +217,29 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete
+          </button>
+        </div>
+      )}
+
+      {/* Edge Context Menu */}
+      {edgeContextMenu && (
+        <div
+          className="fixed z-50 min-w-[160px] rounded-md border bg-popover p-1 shadow-md"
+          style={{
+            left: `${edgeContextMenu.x}px`,
+            top: `${edgeContextMenu.y}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={handleDeleteEdge}
+            className={cn(
+              "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+              "text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
+            )}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Disconnect
           </button>
         </div>
       )}

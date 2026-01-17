@@ -7,6 +7,7 @@ import type {
   EmailContext,
   NodeType,
 } from "@/lib/workflow/types";
+import { NODE_DEFINITIONS } from "@/lib/workflow/types";
 import { topologicalSort, getNextNodes } from "@/lib/workflow/utils";
 import { executeNode } from "./executor";
 import { WorkflowLogger } from "./logging";
@@ -51,10 +52,8 @@ export class WorkflowEngine {
       // Execute workflow starting from trigger
       await this.executeFromNode(triggerNode.id);
 
-      // Mark as success if not aborted
-      if (!this.aborted) {
-        await this.updateExecutionStatus("SUCCESS");
-      }
+      // Reaching `control:end` is a normal termination (still SUCCESS).
+      await this.updateExecutionStatus("SUCCESS");
     } catch (error) {
       console.error("Workflow execution error:", error);
       await this.updateExecutionStatus(
@@ -134,9 +133,27 @@ export class WorkflowEngine {
     node: WorkflowNode,
     executionResult: unknown
   ): string[] {
-    // For conditional nodes, choose path based on result
-    if (node.type === "condition:match" || node.type === "condition:keyword" || node.type === "control:branch") {
-      const matched = executionResult as boolean;
+    const definition = NODE_DEFINITIONS[node.type];
+
+    // Legacy keyword boolean mode (backward compatibility)
+    if (node.type === "condition:keyword" && typeof executionResult === "boolean") {
+      const handle = executionResult ? "true" : "false";
+      return getNextNodes(node.id, this.config.edges, handle);
+    }
+
+    // Multi-way classification nodes
+    if (definition?.outputs === "multi") {
+      const category = executionResult as string;
+      const categoryNodes = getNextNodes(node.id, this.config.edges, category);
+      if (categoryNodes.length > 0) {
+        return categoryNodes;
+      }
+      return getNextNodes(node.id, this.config.edges, "default");
+    }
+
+    // Binary conditional nodes
+    if (definition?.outputs === "conditional") {
+      const matched = Boolean(executionResult);
       const handle = matched ? "true" : "false";
       return getNextNodes(node.id, this.config.edges, handle);
     }

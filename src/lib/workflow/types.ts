@@ -32,7 +32,8 @@ export type NodeType =
   // 条件判断
   | "condition:match"
   | "condition:keyword"
-  | "condition:classifier"
+  | "condition:ai-classifier"
+  | "condition:classifier" // legacy alias for ai-classifier
   | "condition:custom"
   // 执行动作
   | "action:archive"
@@ -61,7 +62,7 @@ export type NodeData =
   | TriggerManualData
   | ConditionMatchData
   | ConditionKeywordData
-  | ConditionClassifierData
+  | ConditionAiClassifierData
   | ConditionCustomData
   | ActionArchiveData
   | ActionMarkReadData
@@ -132,20 +133,38 @@ export interface ConditionMatchData {
 
 export interface ConditionKeywordData {
   label?: string;
-  // 支持复合条件或简单关键字列表
-  conditions?: CompositeCondition;
-  // 向后兼容的简单模式
+  // 多元分类模式（新）
+  categories?: string[];
+  keywordSets?: KeywordSet[];
+  defaultCategory?: string;
+  // 向后兼容的简单模式（boolean）
   keywords?: string[];
   matchType?: "any" | "all";
   fields?: MatchField[];
   caseSensitive?: boolean;
+  // 高级复合条件模式（boolean，向后兼容）
+  conditions?: CompositeCondition;
 }
 
-export interface ConditionClassifierData {
-  label?: string;
-  model?: string;
-  categories: string[];
+export interface KeywordSet {
+  category: string;
+  keywords: string[];
+  matchType?: "any" | "all";
+  caseSensitive?: boolean;
+  fields?: MatchField[];
 }
+
+export interface ConditionAiClassifierData {
+  label?: string;
+  categories: string[];
+  customPrompt?: string;
+  fields?: MatchField[];
+  confidenceThreshold?: number;
+  defaultCategory?: string;
+}
+
+// Backward compatibility: old name used in schema/UI previously
+export type ConditionClassifierData = ConditionAiClassifierData;
 
 export interface ConditionCustomData {
   label?: string;
@@ -427,7 +446,7 @@ export interface NodeDefinition {
   icon: string;
   color: string;
   inputs: number;
-  outputs: number | "conditional";
+  outputs: number | "conditional" | "multi";
   defaultData: Partial<NodeData>;
 }
 
@@ -487,19 +506,45 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     icon: "Tag",
     color: "#f59e0b",
     inputs: 1,
-    outputs: "conditional",
-    defaultData: { keywords: [], matchType: "any", fields: ["subject"] },
+    outputs: "multi",
+    defaultData: {
+      keywords: [],
+      matchType: "any",
+      fields: ["subject"],
+      caseSensitive: false,
+    },
+  },
+  "condition:ai-classifier": {
+    type: "condition:ai-classifier",
+    category: "condition",
+    label: "AI Classifier",
+    description: "Classify email using AI with multiple categories",
+    icon: "Brain",
+    color: "#8b5cf6",
+    inputs: 1,
+    outputs: "multi",
+    defaultData: {
+      categories: [],
+      fields: ["subject", "textBody"],
+      confidenceThreshold: 0.7,
+      defaultCategory: "default",
+    },
   },
   "condition:classifier": {
     type: "condition:classifier",
     category: "condition",
-    label: "AI Classifier",
-    description: "Classify email using AI (future)",
+    label: "AI Classifier (Legacy)",
+    description: "Legacy AI classifier node (use AI Classifier)",
     icon: "Brain",
-    color: "#f59e0b",
+    color: "#8b5cf6",
     inputs: 1,
-    outputs: "conditional",
-    defaultData: { categories: [] },
+    outputs: "multi",
+    defaultData: {
+      categories: [],
+      fields: ["subject", "textBody"],
+      confidenceThreshold: 0.7,
+      defaultCategory: "default",
+    },
   },
   "condition:custom": {
     type: "condition:custom",

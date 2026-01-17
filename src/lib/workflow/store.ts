@@ -48,6 +48,7 @@ export interface WorkflowState {
   addNode: (type: NodeType, position: { x: number; y: number }) => void;
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   deleteNode: (nodeId: string) => void;
+  deleteEdge: (edgeId: string) => void;
 
   // 选择
   setSelectedNodeId: (nodeId: string | null) => void;
@@ -173,6 +174,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         (edge) => edge.source !== nodeId && edge.target !== nodeId
       ),
       selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+      isDirty: true,
+    }));
+  },
+
+  deleteEdge: (edgeId) => {
+    set((state) => ({
+      edges: state.edges.filter((edge) => edge.id !== edgeId),
       isDirty: true,
     }));
   },
