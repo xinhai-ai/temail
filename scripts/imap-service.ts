@@ -26,7 +26,7 @@ const FULL_SYNC_MS = parseEnvInt("IMAP_FULL_SYNC_MS", 5 * 60 * 1000);
 const HEALTH_CHECK_MS = parseEnvInt("IMAP_HEALTH_CHECK_MS", 60 * 1000);
 const RECONNECT_MIN_MS = parseEnvInt("IMAP_RECONNECT_MIN_MS", 1000);
 const RECONNECT_MAX_MS = parseEnvInt("IMAP_RECONNECT_MAX_MS", 5 * 60 * 1000);
-const DEBUG = parseEnvBool("IMAP_SERVICE_DEBUG", true);
+const DEBUG = parseEnvBool("IMAP_SERVICE_DEBUG", false);
 
 let manager: ImapServiceManager | null = null;
 

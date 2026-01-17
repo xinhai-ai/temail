@@ -64,6 +64,8 @@ export default function InboxPage() {
   const [deleting, setDeleting] = useState(false);
   const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [refreshingImap, setRefreshingImap] = useState(false);
+  const [refreshCooldown, setRefreshCooldown] = useState(0); // remaining seconds
 
   const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
 
@@ -345,6 +347,15 @@ export default function InboxPage() {
   useEffect(() => {
     setSelectedEmailIds([]);
   }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize]);
+
+  // Cooldown timer for refresh button
+  useEffect(() => {
+    if (refreshCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setRefreshCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [refreshCooldown]);
 
   useEffect(() => {
     if (!selectedEmailId) {
@@ -742,6 +753,38 @@ export default function InboxPage() {
     setDeleteMailboxId(null);
   };
 
+  const handleCopyMailboxAddress = (address: string) => {
+    navigator.clipboard.writeText(address);
+    toast.success("Copied to clipboard");
+  };
+
+  const handleRefreshImap = async () => {
+    if (refreshingImap || refreshCooldown > 0) return;
+    setRefreshingImap(true);
+    try {
+      const res = await fetch("/api/imap/sync", { method: "POST" });
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 429) {
+        // Rate limited - set cooldown timer
+        const remainingMs = data?.remainingMs || 30000;
+        setRefreshCooldown(Math.ceil(remainingMs / 1000));
+        toast.error(data?.message || "Please wait before refreshing again");
+        return;
+      }
+
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to refresh");
+        return;
+      }
+      toast.success(data?.message || "Refresh triggered");
+    } catch {
+      toast.error("Failed to refresh");
+    } finally {
+      setRefreshingImap(false);
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4">
@@ -793,6 +836,10 @@ export default function InboxPage() {
             onStarMailbox={handleStarMailbox}
             onMoveMailboxToGroup={handleMoveMailboxToGroup}
             onRequestDeleteMailbox={handleDeleteMailbox}
+            onCopyMailboxAddress={handleCopyMailboxAddress}
+            onRefreshImap={handleRefreshImap}
+            refreshingImap={refreshingImap}
+            refreshCooldown={refreshCooldown}
           />
 
           <EmailsPanel

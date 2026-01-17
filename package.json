@@ -13,10 +13,10 @@
     "start:all": "concurrently -n next,imap -c blue,green \"cross-env IMAP_SERVICE_ENABLED=1 next start\" \"npm run imap:service\"",
     "lint": "eslint",
     "test": "node --test --import tsx src/**/*.test.ts",
-    "imap:once": "node --conditions=react-server --import tsx scripts/imap-poller.ts",
-    "imap:watch": "node --conditions=react-server --import tsx scripts/imap-poller.ts --watch",
-    "imap:test": "node --conditions=react-server --import tsx scripts/imap-tester.ts",
-    "imap:service": "node --conditions=react-server --import tsx scripts/imap-service.ts"
+    "imap:once": "dotenv -- node --conditions=react-server --import tsx scripts/imap-poller.ts",
+    "imap:watch": "dotenv -- node --conditions=react-server --import tsx scripts/imap-poller.ts --watch",
+    "imap:test": "dotenv -- node --conditions=react-server --import tsx scripts/imap-tester.ts",
+    "imap:service": "dotenv -- node --conditions=react-server --import tsx scripts/imap-service.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -68,6 +68,7 @@
     "@types/react-dom": "^19",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.2",
     "tailwindcss": "^4",

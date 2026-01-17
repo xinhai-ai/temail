@@ -34,9 +34,11 @@ import {
   BellOff,
   ChevronDown,
   ChevronRight,
+  Copy,
   Inbox,
   MoreHorizontal,
   Plus,
+  RefreshCw,
   Search,
   Star,
 } from "lucide-react";
@@ -95,6 +97,10 @@ type MailboxesPanelProps = {
   onStarMailbox: (mailboxId: string, isStarred: boolean) => void;
   onMoveMailboxToGroup: (mailboxId: string, groupId: string | null) => void;
   onRequestDeleteMailbox: (mailboxId: string) => void;
+  onCopyMailboxAddress: (address: string) => void;
+  onRefreshImap: () => void;
+  refreshingImap: boolean;
+  refreshCooldown: number; // remaining seconds
 };
 
 export function MailboxesPanel({
@@ -144,38 +150,69 @@ export function MailboxesPanel({
   onStarMailbox,
   onMoveMailboxToGroup,
   onRequestDeleteMailbox,
+  onCopyMailboxAddress,
+  onRefreshImap,
+  refreshingImap,
+  refreshCooldown,
 }: MailboxesPanelProps) {
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col">
       <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Mailboxes</p>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={onToggleNotifications}
-                aria-label={
-                  notificationsEnabled
-                    ? "Disable desktop notifications"
-                    : "Enable desktop notifications"
-                }
-              >
-                {notificationsEnabled ? (
-                  <BellOff className="h-4 w-4" />
-                ) : (
-                  <Bell className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {notificationsEnabled
-                ? "Disable desktop notifications"
-                : "Enable desktop notifications"}
-            </TooltipContent>
-          </Tooltip>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onRefreshImap}
+                  disabled={refreshingImap || refreshCooldown > 0}
+                  aria-label="Refresh emails"
+                >
+                  {refreshCooldown > 0 ? (
+                    <span className="text-xs font-medium tabular-nums">{refreshCooldown}</span>
+                  ) : (
+                    <RefreshCw className={cn("h-4 w-4", refreshingImap && "animate-spin")} />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {refreshingImap
+                  ? "Refreshing..."
+                  : refreshCooldown > 0
+                    ? `Wait ${refreshCooldown}s`
+                    : "Refresh emails"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onToggleNotifications}
+                  aria-label={
+                    notificationsEnabled
+                      ? "Disable desktop notifications"
+                      : "Enable desktop notifications"
+                  }
+                >
+                  {notificationsEnabled ? (
+                    <BellOff className="h-4 w-4" />
+                  ) : (
+                    <Bell className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {notificationsEnabled
+                  ? "Disable desktop notifications"
+                  : "Enable desktop notifications"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -478,6 +515,12 @@ export function MailboxesPanel({
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Mailbox</DropdownMenuLabel>
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => onCopyMailboxAddress(mailbox.address)}
+                                  >
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy Address
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}
                                   >
