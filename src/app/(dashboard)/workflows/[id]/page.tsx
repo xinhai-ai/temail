@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Power, PowerOff } from "lucide-react";
+import { ArrowLeft, Save, Power, PowerOff, History } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
+import { ExecutionLogsPanel } from "@/components/workflow/panels/ExecutionLogsPanel";
+import { WorkflowTestDialog } from "@/components/workflow/WorkflowTestDialog";
 import { useWorkflowStore } from "@/lib/workflow/store";
 import { validateWorkflow } from "@/lib/workflow/utils";
 
@@ -24,6 +26,8 @@ export default function WorkflowEditorPage() {
   const [loading, setLoading] = useState(!isNew);
   const [mailboxes, setMailboxes] = useState<{ id: string; address: string }[]>([]);
   const [showMetaDialog, setShowMetaDialog] = useState(isNew);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showTestDialog, setShowTestDialog] = useState(false);
 
   // Extract stable function references from store
   const loadWorkflow = useWorkflowStore((s) => s.loadWorkflow);
@@ -208,6 +212,16 @@ export default function WorkflowEditorPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!isNew && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistoryDialog(true)}
+            >
+              <History className="h-3 w-3 mr-1.5" />
+              History
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -247,7 +261,11 @@ export default function WorkflowEditorPage() {
 
       {/* Canvas */}
       <div className="flex-1 overflow-hidden">
-        <WorkflowCanvas mailboxes={mailboxes} />
+        <WorkflowCanvas
+          mailboxes={mailboxes}
+          onTestClick={() => setShowTestDialog(true)}
+          canTest={!isNew && !!workflowId}
+        />
       </div>
 
       {/* Meta Dialog */}
@@ -303,6 +321,27 @@ export default function WorkflowEditorPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
+        <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+            <DialogTitle>Execution History</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-auto">
+            {workflowId && <ExecutionLogsPanel workflowId={workflowId} />}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Dialog */}
+      <WorkflowTestDialog
+        open={showTestDialog}
+        onOpenChange={setShowTestDialog}
+        workflowId={workflowId}
+        workflowName={name}
+        getConfig={getConfig}
+      />
     </div>
   );
 }

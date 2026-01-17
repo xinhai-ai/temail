@@ -24,9 +24,11 @@ import { cn } from "@/lib/utils";
 
 interface WorkflowCanvasProps {
   mailboxes?: { id: string; address: string }[];
+  onTestClick?: () => void;
+  canTest?: boolean;
 }
 
-function WorkflowCanvasInner({ mailboxes }: WorkflowCanvasProps) {
+function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const [contextMenu, setContextMenu] = useState<{
@@ -146,7 +148,7 @@ function WorkflowCanvasInner({ mailboxes }: WorkflowCanvasProps) {
             className="!bg-background !border !border-border"
           />
           <Panel position="top-center">
-            <WorkflowToolbar />
+            <WorkflowToolbar onTestClick={onTestClick} canTest={canTest} />
           </Panel>
         </ReactFlow>
       </div>
@@ -188,10 +190,10 @@ function WorkflowCanvasInner({ mailboxes }: WorkflowCanvasProps) {
   );
 }
 
-export function WorkflowCanvas({ mailboxes }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ mailboxes, onTestClick, canTest }: WorkflowCanvasProps) {
   return (
     <ReactFlowProvider>
-      <WorkflowCanvasInner mailboxes={mailboxes} />
+      <WorkflowCanvasInner mailboxes={mailboxes} onTestClick={onTestClick} canTest={canTest} />
     </ReactFlowProvider>
   );
 }

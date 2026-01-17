@@ -237,6 +237,11 @@ function evaluateKeywordCondition(
 async function executeArchive(context: ExecutionContext): Promise<boolean> {
   if (!context.email?.id) return false;
 
+  // 测试模式下跳过数据库操作
+  if (context.isTestMode) {
+    return true;
+  }
+
   await prisma.email.update({
     where: { id: context.email.id },
     data: { status: "ARCHIVED" },
@@ -247,6 +252,11 @@ async function executeArchive(context: ExecutionContext): Promise<boolean> {
 
 async function executeMarkRead(context: ExecutionContext): Promise<boolean> {
   if (!context.email?.id) return false;
+
+  // 测试模式下跳过数据库操作
+  if (context.isTestMode) {
+    return true;
+  }
 
   await prisma.email.update({
     where: { id: context.email.id },
@@ -259,6 +269,11 @@ async function executeMarkRead(context: ExecutionContext): Promise<boolean> {
 async function executeMarkUnread(context: ExecutionContext): Promise<boolean> {
   if (!context.email?.id) return false;
 
+  // 测试模式下跳过数据库操作
+  if (context.isTestMode) {
+    return true;
+  }
+
   await prisma.email.update({
     where: { id: context.email.id },
     data: { status: "UNREAD" },
@@ -269,6 +284,11 @@ async function executeMarkUnread(context: ExecutionContext): Promise<boolean> {
 
 async function executeStar(context: ExecutionContext): Promise<boolean> {
   if (!context.email?.id) return false;
+
+  // 测试模式下跳过数据库操作
+  if (context.isTestMode) {
+    return true;
+  }
 
   await prisma.email.update({
     where: { id: context.email.id },
@@ -281,6 +301,11 @@ async function executeStar(context: ExecutionContext): Promise<boolean> {
 async function executeUnstar(context: ExecutionContext): Promise<boolean> {
   if (!context.email?.id) return false;
 
+  // 测试模式下跳过数据库操作
+  if (context.isTestMode) {
+    return true;
+  }
+
   await prisma.email.update({
     where: { id: context.email.id },
     data: { isStarred: false },
@@ -291,6 +316,11 @@ async function executeUnstar(context: ExecutionContext): Promise<boolean> {
 
 async function executeDelete(context: ExecutionContext): Promise<boolean> {
   if (!context.email?.id) return false;
+
+  // 测试模式下跳过数据库操作
+  if (context.isTestMode) {
+    return true;
+  }
 
   await prisma.email.delete({
     where: { id: context.email.id },
@@ -327,7 +357,6 @@ async function executeForwardEmail(
 ): Promise<boolean> {
   if (!context.email) return false;
 
-  // TODO: Implement email forwarding via SMTP
   const templateCtx = buildTemplateContext(context);
   const subject = data.template?.subject
     ? replaceTemplateVariables(data.template.subject, templateCtx)
@@ -336,6 +365,13 @@ async function executeForwardEmail(
     ? replaceTemplateVariables(data.template.body, templateCtx)
     : context.email.textBody;
 
+  // 测试模式下跳过实际发送
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would forward email to:", data.to, "Subject:", subject);
+    return true;
+  }
+
+  // TODO: Implement email forwarding via SMTP
   console.log("Forward email to:", data.to, "Subject:", subject);
   return true;
 }
@@ -346,11 +382,17 @@ async function executeForwardTelegram(
 ): Promise<boolean> {
   if (!context.email) return false;
 
-  try {
-    const templateCtx = buildTemplateContext(context);
-    const template = data.template || `📧 New email: ${context.email.subject}`;
-    const message = replaceTemplateVariables(template, templateCtx);
+  const templateCtx = buildTemplateContext(context);
+  const template = data.template || `📧 New email: ${context.email.subject}`;
+  const message = replaceTemplateVariables(template, templateCtx);
 
+  // 测试模式下跳过实际发送
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would send to Telegram:", message);
+    return true;
+  }
+
+  try {
     const url = `https://api.telegram.org/bot${data.token}/sendMessage`;
     const response = await fetch(url, {
       method: "POST",
@@ -375,10 +417,16 @@ async function executeForwardDiscord(
 ): Promise<boolean> {
   if (!context.email) return false;
 
-  try {
-    const templateCtx = buildTemplateContext(context);
-    const template = data.template || `📧 New email: ${context.email.subject}`;
+  const templateCtx = buildTemplateContext(context);
+  const template = data.template || `📧 New email: ${context.email.subject}`;
 
+  // 测试模式下跳过实际发送
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would send to Discord:", replaceTemplateVariables(template, templateCtx));
+    return true;
+  }
+
+  try {
     let body: Record<string, unknown>;
 
     if (data.useEmbed && data.template) {
@@ -411,10 +459,16 @@ async function executeForwardSlack(
 ): Promise<boolean> {
   if (!context.email) return false;
 
-  try {
-    const templateCtx = buildTemplateContext(context);
-    const template = data.template || `📧 New email: ${context.email.subject}`;
+  const templateCtx = buildTemplateContext(context);
+  const template = data.template || `📧 New email: ${context.email.subject}`;
 
+  // 测试模式下跳过实际发送
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would send to Slack:", replaceTemplateVariables(template, templateCtx));
+    return true;
+  }
+
+  try {
     let body: Record<string, unknown>;
 
     if (data.useBlocks && data.template) {
@@ -445,8 +499,15 @@ async function executeForwardWebhook(
   data: { url: string; method: string; headers?: Record<string, string>; bodyTemplate?: string; contentType?: string },
   context: ExecutionContext
 ): Promise<boolean> {
+  const templateCtx = buildTemplateContext(context);
+
+  // 测试模式下跳过实际发送
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would call webhook:", data.url, data.method);
+    return true;
+  }
+
   try {
-    const templateCtx = buildTemplateContext(context);
     const contentType = data.contentType || "application/json";
 
     const headers: Record<string, string> = {

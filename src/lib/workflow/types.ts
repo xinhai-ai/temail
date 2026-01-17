@@ -392,6 +392,7 @@ export interface ExecutionContext {
   email?: EmailContext;
   variables: Record<string, unknown>;
   logs: ExecutionLog[];
+  isTestMode?: boolean; // 测试模式下跳过真实数据库操作
 }
 
 export interface EmailContext {

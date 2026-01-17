@@ -9,6 +9,7 @@ import type {
 } from "@/lib/workflow/types";
 import { topologicalSort, getNextNodes } from "@/lib/workflow/utils";
 import { executeNode } from "./executor";
+import { WorkflowLogger } from "./logging";
 
 export class WorkflowEngine {
   private workflowId: string;
@@ -16,15 +17,18 @@ export class WorkflowEngine {
   private config: WorkflowConfig;
   private context: ExecutionContext;
   private aborted: boolean = false;
+  private logger: WorkflowLogger;
 
-  constructor(workflowId: string, executionId: string, config: WorkflowConfig) {
+  constructor(workflowId: string, executionId: string, config: WorkflowConfig, isTestMode: boolean = false) {
     this.workflowId = workflowId;
     this.executionId = executionId;
     this.config = config;
     this.context = {
       variables: {},
       logs: [],
+      isTestMode,
     };
+    this.logger = new WorkflowLogger(executionId);
   }
 
   async execute(emailContext?: EmailContext): Promise<void> {
@@ -71,6 +75,22 @@ export class WorkflowEngine {
     }
 
     const startTime = Date.now();
+    const nodeLabel = (node.data as { label?: string })?.label;
+
+    // Build input for logging
+    const nodeInput = {
+      nodeConfig: node.data,
+      emailContext: this.context.email,
+      variables: this.context.variables,
+    };
+
+    // Start node logging
+    const logId = await this.logger.startNode(
+      node.id,
+      node.type,
+      nodeLabel,
+      nodeInput
+    );
 
     try {
       // Execute the node
@@ -78,6 +98,12 @@ export class WorkflowEngine {
 
       const duration = Date.now() - startTime;
       this.log(node.id, node.type, "success", "Executed successfully", duration, result);
+
+      // Complete node logging
+      await this.logger.completeNode(logId, result, {
+        duration,
+        nextNodes: this.getNextNodesToExecute(node, result),
+      });
 
       // Handle special cases
       if (node.type === "control:end") {
@@ -96,6 +122,10 @@ export class WorkflowEngine {
       const duration = Date.now() - startTime;
       const message = error instanceof Error ? error.message : "Execution failed";
       this.log(node.id, node.type, "failed", message, duration);
+
+      // Fail node logging
+      await this.logger.failNode(logId, message, { duration });
+
       throw error;
     }
   }
@@ -140,12 +170,17 @@ export class WorkflowEngine {
     status: "RUNNING" | "SUCCESS" | "FAILED" | "CANCELLED",
     error?: string
   ): Promise<void> {
+    // Ensure all logs are written
+    await this.logger.flush();
+
     const updateData: {
       status: "RUNNING" | "SUCCESS" | "FAILED" | "CANCELLED";
       logs?: string;
       output?: string;
       error?: string;
       finishedAt?: Date;
+      executionPath?: string;
+      nodesExecuted?: number;
     } = {
       status,
       logs: JSON.stringify(this.context.logs),
@@ -157,6 +192,8 @@ export class WorkflowEngine {
         variables: this.context.variables,
         logsCount: this.context.logs.length,
       });
+      updateData.executionPath = JSON.stringify(this.logger.getExecutionPath());
+      updateData.nodesExecuted = this.logger.getNodesExecuted();
     }
 
     if (error) {

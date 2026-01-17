@@ -54,7 +54,7 @@ const testPayload: WebhookPayload = {
   to: "test@example.com",        // Change to your mailbox address
   from: "sender@external.com",
   subject: "Test Email via Webhook",
-  text: "This is a plain text test email sent via webhook.",
+  text: "This is a plain text test email sent via webhook.chatgpt",
   html: "<h1>Test Email</h1><p>This is an <strong>HTML</strong> test email sent via webhook.</p>",
   secret: TEST_WEBHOOK_SECRET, // Change to your webhook secret key
 };

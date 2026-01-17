@@ -7,7 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Play, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 
-export function WorkflowToolbar() {
+interface WorkflowToolbarProps {
+  onTestClick?: () => void;
+  canTest?: boolean;
+}
+
+export function WorkflowToolbar({ onTestClick, canTest = false }: WorkflowToolbarProps) {
   const name = useWorkflowStore((s) => s.name);
   const status = useWorkflowStore((s) => s.status);
   const isDirty = useWorkflowStore((s) => s.isDirty);
@@ -21,6 +26,8 @@ export function WorkflowToolbar() {
     const errors = validateWorkflow(config);
     return errors.filter((e) => e.type === "error").length;
   }, [nodes, getConfig]);
+
+  const canRunTest = canTest && hasTrigger && validationErrors === 0;
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-background border rounded-lg shadow-sm">
@@ -68,7 +75,13 @@ export function WorkflowToolbar() {
         )}
 
         {/* Actions */}
-        <Button variant="outline" size="sm" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!canRunTest}
+          onClick={onTestClick}
+          title={!canTest ? "Save workflow first" : !hasTrigger ? "Add a trigger node" : validationErrors > 0 ? "Fix validation errors" : "Test workflow"}
+        >
           <Play className="h-3 w-3 mr-1.5" />
           Test
         </Button>
