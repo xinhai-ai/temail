@@ -16,7 +16,7 @@ export type Mailbox = {
   isStarred: boolean;
   status: string;
   group?: MailboxGroup | null;
-  _count: { emails: number };
+  _count: { emails: number }; // unread count
 };
 
 export type EmailListItem = {

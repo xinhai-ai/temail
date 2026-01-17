@@ -35,7 +35,11 @@ export async function GET(request: NextRequest) {
     include: {
       domain: true,
       group: true,
-      _count: { select: { emails: true } },
+      _count: {
+        select: {
+          emails: { where: { status: "UNREAD" } },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

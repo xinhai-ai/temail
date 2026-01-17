@@ -4,6 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -13,7 +24,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -35,12 +45,17 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  FolderInput,
+  FolderMinus,
   Inbox,
   MoreHorizontal,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Star,
+  StarOff,
+  Trash2,
 } from "lucide-react";
 import type { Domain, Mailbox, MailboxGroup } from "../types";
 
@@ -437,13 +452,15 @@ export function MailboxesPanel({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
+                              <Pencil />
                               Rename
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
+                              variant="destructive"
                               onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
                             >
+                              <Trash2 />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -457,116 +474,123 @@ export function MailboxesPanel({
                       {groupItem.mailboxes.map((mailbox) => {
                         const active = selectedMailboxId === mailbox.id;
                         return (
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            aria-pressed={active}
-                            key={mailbox.id}
-                            onClick={() => onSelectMailbox(mailbox.id)}
-                            onKeyDown={(e) => {
-                              if (e.target !== e.currentTarget) return;
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                onSelectMailbox(mailbox.id);
-                              }
-                            }}
-                            className={cn(
-                              "w-full flex items-center justify-between rounded-md px-2 py-2 text-sm transition-colors",
-                              "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                              active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-                            )}
-                          >
-                            <div className="text-left min-w-0">
-                              <div className="truncate font-medium">{mailbox.address}</div>
-                              {mailbox.note && (
-                                <div
-                                  className={cn(
-                                    "truncate text-xs",
-                                    active
-                                      ? "text-primary-foreground/80"
-                                      : "text-muted-foreground"
+                          <ContextMenu key={mailbox.id}>
+                            <ContextMenuTrigger asChild>
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={active}
+                                onClick={() => onSelectMailbox(mailbox.id)}
+                                onKeyDown={(e) => {
+                                  if (e.target !== e.currentTarget) return;
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    onSelectMailbox(mailbox.id);
+                                  }
+                                }}
+                                className={cn(
+                                  "w-full flex items-center justify-between rounded-md px-2 py-2 text-sm transition-colors",
+                                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                                  active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                                )}
+                              >
+                                <div className="text-left min-w-0">
+                                  <div className="truncate font-medium">{mailbox.address}</div>
+                                  {mailbox.note && (
+                                    <div
+                                      className={cn(
+                                        "truncate text-xs",
+                                        active
+                                          ? "text-primary-foreground/80"
+                                          : "text-muted-foreground"
+                                      )}
+                                    >
+                                      {mailbox.note}
+                                    </div>
                                   )}
-                                >
-                                  {mailbox.note}
                                 </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {mailbox.isStarred && (
-                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              )}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                    }}
-                                    className={cn(
-                                      "h-8 w-8 p-0",
-                                      active ? "hover:bg-white/15" : ""
-                                    )}
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Mailbox</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => onCopyMailboxAddress(mailbox.address)}
-                                  >
-                                    <Copy className="h-4 w-4 mr-2" />
-                                    Copy Address
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}
-                                  >
-                                    {mailbox.isStarred ? "Unstar" : "Star"}
-                                  </DropdownMenuItem>
-
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuLabel>Move to group</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {mailbox.isStarred && (
+                                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                  )}
+                                  {mailbox._count.emails > 0 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className={cn(active ? "bg-white/15 text-white" : "")}
+                                    >
+                                      {mailbox._count.emails}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-48">
+                              <ContextMenuLabel>Mailbox</ContextMenuLabel>
+                              <ContextMenuSeparator />
+                              <ContextMenuItem
+                                onClick={() => onCopyMailboxAddress(mailbox.address)}
+                              >
+                                <Copy />
+                                Copy Address
+                              </ContextMenuItem>
+                              <ContextMenuItem
+                                onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}
+                              >
+                                {mailbox.isStarred ? (
+                                  <>
+                                    <StarOff />
+                                    Unstar
+                                  </>
+                                ) : (
+                                  <>
+                                    <Star />
+                                    Star
+                                  </>
+                                )}
+                              </ContextMenuItem>
+                              <ContextMenuSeparator />
+                              <ContextMenuSub>
+                                <ContextMenuSubTrigger>
+                                  <FolderInput />
+                                  Move to Group
+                                </ContextMenuSubTrigger>
+                                <ContextMenuSubContent className="w-40">
+                                  <ContextMenuItem
                                     onClick={() => onMoveMailboxToGroup(mailbox.id, null)}
                                     disabled={!mailbox.group}
                                   >
+                                    <FolderMinus />
                                     Ungrouped
-                                  </DropdownMenuItem>
+                                  </ContextMenuItem>
                                   {groups.length === 0 ? (
-                                    <DropdownMenuItem disabled>No groups</DropdownMenuItem>
+                                    <ContextMenuItem disabled>
+                                      <FolderInput />
+                                      No groups
+                                    </ContextMenuItem>
                                   ) : (
                                     groups.map((group) => (
-                                      <DropdownMenuItem
+                                      <ContextMenuItem
                                         key={group.id}
                                         onClick={() => onMoveMailboxToGroup(mailbox.id, group.id)}
                                         disabled={mailbox.group?.id === group.id}
                                       >
+                                        <FolderInput />
                                         {group.name}
-                                      </DropdownMenuItem>
+                                      </ContextMenuItem>
                                     ))
                                   )}
-
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => onRequestDeleteMailbox(mailbox.id)}
-                                  >
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              <Badge
-                                variant="secondary"
-                                className={cn(active ? "bg-white/15 text-white" : "")}
+                                </ContextMenuSubContent>
+                              </ContextMenuSub>
+                              <ContextMenuSeparator />
+                              <ContextMenuItem
+                                variant="destructive"
+                                onClick={() => onRequestDeleteMailbox(mailbox.id)}
                               >
-                                {mailbox._count.emails}
-                              </Badge>
-                            </div>
-                          </div>
+                                <Trash2 />
+                                Delete
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
                         );
                       })}
                     </div>

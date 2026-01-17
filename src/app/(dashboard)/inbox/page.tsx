@@ -291,6 +291,17 @@ export default function InboxPage() {
               ].slice(0, emailsPageSize);
             });
           }
+
+          // Increment unread count for the mailbox (new emails are UNREAD)
+          if (event.data.email.status === "UNREAD") {
+            setMailboxes((prev) =>
+              prev.map((m) =>
+                m.id === event.data.email.mailboxId
+                  ? { ...m, _count: { emails: m._count.emails + 1 } }
+                  : m
+              )
+            );
+          }
           return;
         }
 
@@ -426,6 +437,15 @@ export default function InboxPage() {
     setEmails((prev) => prev.map((e) => (e.id === email.id ? { ...e, status: "READ" } : e)));
     setSelectedEmail((prev) => (prev?.id === email.id ? { ...prev, status: "READ" } : prev));
 
+    // Decrement unread count for the mailbox
+    setMailboxes((prev) =>
+      prev.map((m) =>
+        m.id === email.mailboxId
+          ? { ...m, _count: { emails: Math.max(0, m._count.emails - 1) } }
+          : m
+      )
+    );
+
     // Persist immediately (also triggers realtime update for other tabs)
     fetch(`/api/emails/${email.id}`, {
       method: "PATCH",
@@ -474,6 +494,14 @@ export default function InboxPage() {
     const ids = selectedEmailIds;
     if (ids.length === 0) return;
 
+    // Count unread emails per mailbox before marking
+    const unreadCountByMailbox = new Map<string, number>();
+    for (const e of emails) {
+      if (ids.includes(e.id) && e.status === "UNREAD") {
+        unreadCountByMailbox.set(e.mailboxId, (unreadCountByMailbox.get(e.mailboxId) || 0) + 1);
+      }
+    }
+
     const res = await fetch("/api/emails/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -488,6 +516,18 @@ export default function InboxPage() {
     toast.success("Marked as read");
     setEmails((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, status: "READ" } : e)));
     setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? { ...prev, status: "READ" } : prev));
+
+    // Update mailbox unread counts
+    setMailboxes((prev) =>
+      prev.map((m) => {
+        const decrement = unreadCountByMailbox.get(m.id) || 0;
+        if (decrement > 0) {
+          return { ...m, _count: { emails: Math.max(0, m._count.emails - decrement) } };
+        }
+        return m;
+      })
+    );
+
     setSelectedEmailIds([]);
   };
 
