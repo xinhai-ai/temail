@@ -293,7 +293,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
               {MATCH_OPERATOR_LABELS[operator as keyof typeof MATCH_OPERATOR_LABELS]?.toLowerCase() || operator}
             </span>
             <span className="font-mono bg-muted px-1 py-0.5 rounded text-[10px] truncate max-w-[100px]">
-              "{value}"
+              &quot;{value}&quot;
             </span>
           </div>
         </div>

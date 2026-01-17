@@ -424,8 +424,12 @@ function NodeLogItem({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const StatusIcon = getStatusIcon(log.status);
   const statusColor = getStatusColor(log.status);
+
+  const renderStatusIcon = () => {
+    const Icon = getStatusIcon(log.status);
+    return <Icon className="h-5 w-5" />;
+  };
 
   return (
     <div className="relative">
@@ -437,7 +441,7 @@ function NodeLogItem({
       <button onClick={onToggle} className="w-full text-left">
         <div className="flex items-start gap-3 p-2 rounded hover:bg-muted/50">
           <div className={cn("mt-0.5", statusColor)}>
-            <StatusIcon className="h-5 w-5" />
+            {renderStatusIcon()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">

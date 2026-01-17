@@ -188,7 +188,7 @@ function renderNodeConfig(
               className="h-8 text-sm font-mono"
             />
             <p className="text-xs text-muted-foreground">
-              Examples: "0 * * * *" (hourly), "0 9 * * *" (daily at 9am)
+              Examples: &quot;0 * * * *&quot; (hourly), &quot;0 9 * * *&quot; (daily at 9am)
             </p>
           </div>
           <div className="space-y-2">
@@ -648,7 +648,7 @@ function ConditionPreview({ condition, depth = 0 }: { condition: CompositeCondit
             {MATCH_OPERATOR_LABELS[condition.operator]?.toLowerCase()}
           </span>
           <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
-            "{condition.value}"
+            &quot;{condition.value}&quot;
           </span>
         </div>
       );
