@@ -25,12 +25,13 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
 }
 
-const userNavItems: NavItem[] = [
+const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Inbox", href: "/inbox", icon: Inbox },
-  { title: "Domains", href: "/domains", icon: Globe },
+  { title: "Domains", href: "/domains", icon: Globe, adminOnly: true },
   { title: "Forwards", href: "/forwards", icon: Forward },
   { title: "Settings", href: "/settings", icon: Settings },
 ];
@@ -53,6 +54,8 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
   const pathname = usePathname();
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const collapsed = collapsedProp ?? uncontrolledCollapsed;
+
+  const userNavItems = navItems.filter((item) => !item.adminOnly || isAdmin);
 
   const setCollapsed = (next: boolean) => {
     if (collapsedProp === undefined) {

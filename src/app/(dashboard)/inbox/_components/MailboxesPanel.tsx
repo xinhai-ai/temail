@@ -171,7 +171,7 @@ export function MailboxesPanel({
   refreshCooldown,
 }: MailboxesPanelProps) {
   return (
-    <Card className="border-border/50 overflow-hidden flex flex-col">
+    <Card className="border-border/50 overflow-hidden flex flex-col h-full">
       <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Mailboxes</p>

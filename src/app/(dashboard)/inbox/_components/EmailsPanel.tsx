@@ -4,14 +4,21 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { Mail, Search, Star, Trash2 } from "lucide-react";
+import { Copy, Mail, MailOpen, Search, Star, StarOff, Trash2 } from "lucide-react";
 import type { EmailListItem } from "../types";
 
 type EmailsPanelProps = {
@@ -36,6 +43,8 @@ type EmailsPanelProps = {
   onClearSelection: () => void;
   onStarEmail: (emailId: string, isStarred: boolean) => void;
   onDeleteEmail: (emailId: string) => void;
+  onMarkEmailRead: (emailId: string) => void;
+  onCopySenderAddress: (address: string) => void;
   onPrevPage: () => void;
   onNextPage: () => void;
 };
@@ -62,6 +71,8 @@ export function EmailsPanel({
   onClearSelection,
   onStarEmail,
   onDeleteEmail,
+  onMarkEmailRead,
+  onCopySenderAddress,
   onPrevPage,
   onNextPage,
 }: EmailsPanelProps) {
@@ -90,7 +101,7 @@ export function EmailsPanel({
   };
 
   return (
-    <Card className="border-border/50 overflow-hidden min-h-0 py-0 gap-0">
+    <Card className="border-border/50 overflow-hidden min-h-0 py-0 gap-0 h-full flex flex-col">
       <div className="p-4 space-y-3 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="relative flex-1">
@@ -177,116 +188,118 @@ export function EmailsPanel({
                 const active = selectedEmailId === email.id;
                 const isUnread = email.status === "UNREAD";
                 return (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={active}
-                    key={email.id}
-                    onClick={() => onSelectEmail(email)}
-                    onKeyDown={(e) => {
-                      if (e.target !== e.currentTarget) return;
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onSelectEmail(email);
-                      }
-                    }}
-                    className={cn(
-                      "w-full text-left p-3 transition-all duration-150 group",
-                      "cursor-pointer hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                      active && "bg-accent ring-1 ring-primary/20",
-                      isUnread && !active && "bg-primary/[0.03]"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="pt-1">
-                        <input
-                          type="checkbox"
-                          checked={selectedEmailIdSet.has(email.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) =>
-                            onToggleEmailSelection(email.id, e.target.checked)
+                  <ContextMenu key={email.id}>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={active}
+                        onClick={() => onSelectEmail(email)}
+                        onKeyDown={(e) => {
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelectEmail(email);
                           }
-                        />
-                      </div>
-                      <div className="pt-1.5 w-2 flex-shrink-0">
-                        {isUnread && <div className="w-2 h-2 rounded-full bg-primary" />}
-                      </div>
+                        }}
+                        className={cn(
+                          "w-full text-left p-3 transition-all duration-150 group",
+                          "cursor-pointer hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                          active && "bg-accent ring-1 ring-primary/20",
+                          isUnread && !active && "bg-primary/[0.03]"
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="pt-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedEmailIdSet.has(email.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) =>
+                                onToggleEmailSelection(email.id, e.target.checked)
+                              }
+                            />
+                          </div>
+                          <div className="pt-1.5 w-2 flex-shrink-0">
+                            {isUnread && <div className="w-2 h-2 rounded-full bg-primary" />}
+                          </div>
 
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "truncate",
-                              isUnread
-                                ? "font-semibold text-foreground"
-                                : "font-medium text-foreground/90"
-                            )}
-                          >
-                            {email.subject || "(No subject)"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="truncate">
-                            {email.fromName || email.fromAddress}
-                          </span>
-                          <span className="text-muted-foreground/50">·</span>
-                          <span className="flex-shrink-0">
-                            {formatDistanceToNow(new Date(email.receivedAt), {
-                              addSuffix: true,
-                            })}
-                          </span>
-                        </div>
-                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                          {email.mailbox.address.split("@")[0]}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onStarEmail(email.id, email.isStarred);
-                              }}
-                            >
-                              <Star
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span
                                 className={cn(
-                                  "h-4 w-4",
-                                  email.isStarred
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : ""
+                                  "truncate",
+                                  isUnread
+                                    ? "font-semibold text-foreground"
+                                    : "font-medium text-foreground/90"
                                 )}
-                              />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {email.isStarred ? "Unstar" : "Star"}
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onDeleteEmail(email.id);
-                              }}
-                              className="hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Delete</TooltipContent>
-                        </Tooltip>
+                              >
+                                {email.subject || "(No subject)"}
+                              </span>
+                              {email.isStarred && (
+                                <Star className="h-4 w-4 flex-shrink-0 fill-yellow-400 text-yellow-400" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="truncate">
+                                {email.fromName || email.fromAddress}
+                              </span>
+                              <span className="text-muted-foreground/50">·</span>
+                              <span className="flex-shrink-0">
+                                {formatDistanceToNow(new Date(email.receivedAt), {
+                                  addSuffix: true,
+                                })}
+                              </span>
+                            </div>
+                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                              {email.mailbox.address.split("@")[0]}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-48">
+                      <ContextMenuLabel>Email</ContextMenuLabel>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        onClick={() => onCopySenderAddress(email.fromAddress)}
+                      >
+                        <Copy />
+                        Copy Sender
+                      </ContextMenuItem>
+                      {isUnread && (
+                        <ContextMenuItem
+                          onClick={() => onMarkEmailRead(email.id)}
+                        >
+                          <MailOpen />
+                          Mark as Read
+                        </ContextMenuItem>
+                      )}
+                      <ContextMenuItem
+                        onClick={() => onStarEmail(email.id, email.isStarred)}
+                      >
+                        {email.isStarred ? (
+                          <>
+                            <StarOff />
+                            Unstar
+                          </>
+                        ) : (
+                          <>
+                            <Star />
+                            Star
+                          </>
+                        )}
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        variant="destructive"
+                        onClick={() => onDeleteEmail(email.id)}
+                      >
+                        <Trash2 />
+                        Delete
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 );
               })}
             </div>

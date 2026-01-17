@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { connectRealtime } from "@/lib/realtime/client";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { Inbox, Mail, Eye } from "lucide-react";
 import { ConfirmDialogs } from "./_components/ConfirmDialogs";
 import { EmailsPanel } from "./_components/EmailsPanel";
 import { MailboxesPanel } from "./_components/MailboxesPanel";
@@ -66,6 +69,7 @@ export default function InboxPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [refreshingImap, setRefreshingImap] = useState(false);
   const [refreshCooldown, setRefreshCooldown] = useState(0); // remaining seconds
+  const [mobileTab, setMobileTab] = useState<"mailboxes" | "emails" | "preview">("emails");
 
   const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
 
@@ -798,6 +802,38 @@ export default function InboxPage() {
     toast.success("Copied to clipboard");
   };
 
+  const handleCopySenderAddress = (address: string) => {
+    navigator.clipboard.writeText(address);
+    toast.success("Sender address copied");
+  };
+
+  const handleMarkEmailRead = async (emailId: string) => {
+    const email = emails.find((e) => e.id === emailId);
+    if (!email || email.status !== "UNREAD") return;
+
+    // Optimistic UI update
+    setEmails((prev) => prev.map((e) => (e.id === emailId ? { ...e, status: "READ" } : e)));
+    setSelectedEmail((prev) => (prev?.id === emailId ? { ...prev, status: "READ" } : prev));
+
+    // Decrement unread count for the mailbox
+    setMailboxes((prev) =>
+      prev.map((m) =>
+        m.id === email.mailboxId
+          ? { ...m, _count: { emails: Math.max(0, m._count.emails - 1) } }
+          : m
+      )
+    );
+
+    // Persist
+    fetch(`/api/emails/${emailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "READ" }),
+    }).catch(() => {
+      // ignore
+    });
+  };
+
   const handleRefreshImap = async () => {
     if (refreshingImap || refreshCooldown > 0) return;
     setRefreshingImap(true);
@@ -827,8 +863,134 @@ export default function InboxPage() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="space-y-4">
-        <div className="grid gap-4 h-[calc(100vh-theme(spacing.24))] lg:grid-cols-[280px_minmax(320px,420px)_minmax(420px,1fr)]">
+      <div className="h-[calc(100vh-theme(spacing.24))]">
+        {/* Mobile Layout - Tabs */}
+        <Tabs
+          value={mobileTab}
+          onValueChange={(v) => setMobileTab(v as typeof mobileTab)}
+          className="flex flex-col h-full lg:hidden"
+        >
+          <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+            <TabsTrigger value="mailboxes" className="gap-1.5">
+              <Inbox className="h-4 w-4" />
+              <span className="hidden sm:inline">Mailboxes</span>
+            </TabsTrigger>
+            <TabsTrigger value="emails" className="gap-1.5">
+              <Mail className="h-4 w-4" />
+              <span className="hidden sm:inline">Emails</span>
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="gap-1.5 relative">
+              <Eye className="h-4 w-4" />
+              <span className="hidden sm:inline">Preview</span>
+              {selectedEmailId && (
+                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="mailboxes" className="flex-1 min-h-0 mt-4 data-[state=inactive]:hidden">
+            <MailboxesPanel
+              ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
+              domains={domains}
+              groups={groups}
+              mailboxes={mailboxes}
+              groupedMailboxes={groupedMailboxes}
+              collapsedGroups={collapsedGroups}
+              loadingDomains={loadingDomains}
+              loadingGroups={loadingGroups}
+              loadingMailboxes={loadingMailboxes}
+              mailboxSearch={mailboxSearch}
+              selectedMailboxId={selectedMailboxId}
+              notificationsEnabled={notificationsEnabled}
+              mailboxDialogOpen={mailboxDialogOpen}
+              groupDialogOpen={groupDialogOpen}
+              renameDialogOpen={renameDialogOpen}
+              newMailboxPrefix={newMailboxPrefix}
+              newMailboxDomainId={newMailboxDomainId}
+              newMailboxGroupId={newMailboxGroupId}
+              newMailboxNote={newMailboxNote}
+              creatingMailbox={creatingMailbox}
+              newGroupName={newGroupName}
+              creatingGroup={creatingGroup}
+              renameGroupName={renameGroupName}
+              renamingGroup={renamingGroup}
+              onToggleNotifications={toggleNotifications}
+              onMailboxSearchChange={setMailboxSearch}
+              onSelectMailbox={(id) => {
+                handleSelectMailbox(id);
+                setMobileTab("emails");
+              }}
+              onMailboxDialogOpenChange={setMailboxDialogOpen}
+              onGroupDialogOpenChange={setGroupDialogOpen}
+              onRenameDialogOpenChange={setRenameDialogOpen}
+              onNewMailboxDomainIdChange={setNewMailboxDomainId}
+              onNewMailboxPrefixChange={setNewMailboxPrefix}
+              onGenerateRandomPrefix={generateRandomPrefix}
+              onNewMailboxGroupIdChange={setNewMailboxGroupId}
+              onNewMailboxNoteChange={setNewMailboxNote}
+              onCreateMailbox={handleCreateMailbox}
+              onNewGroupNameChange={setNewGroupName}
+              onCreateGroup={handleCreateGroup}
+              onRenameGroupNameChange={setRenameGroupName}
+              onRenameGroupSave={handleRenameGroup}
+              onToggleGroupCollapse={toggleGroup}
+              onOpenRenameGroup={openRenameGroup}
+              onRequestDeleteGroup={handleDeleteGroup}
+              onStarMailbox={handleStarMailbox}
+              onMoveMailboxToGroup={handleMoveMailboxToGroup}
+              onRequestDeleteMailbox={handleDeleteMailbox}
+              onCopyMailboxAddress={handleCopyMailboxAddress}
+              onRefreshImap={handleRefreshImap}
+              refreshingImap={refreshingImap}
+              refreshCooldown={refreshCooldown}
+            />
+          </TabsContent>
+
+          <TabsContent value="emails" className="flex-1 min-h-0 mt-4 data-[state=inactive]:hidden">
+            <EmailsPanel
+              emailSearch={emailSearch}
+              emails={emails}
+              loadingEmails={loadingEmails}
+              page={emailsPage}
+              pages={emailsTotalPages}
+              pageSize={emailsPageSize}
+              selectedEmailId={selectedEmailId}
+              selectedEmailIds={selectedEmailIds}
+              selectedEmailIdSet={selectedEmailIdSet}
+              allSelectedOnPage={allSelectedOnPage}
+              someSelectedOnPage={someSelectedOnPage}
+              onEmailSearchChange={handleEmailSearchChange}
+              onPageSizeChange={handleEmailsPageSizeChange}
+              onSelectEmail={(email) => {
+                handleSelectEmail(email);
+                setMobileTab("preview");
+              }}
+              onToggleSelectAllOnPage={toggleSelectAllOnPage}
+              onToggleEmailSelection={toggleEmailSelection}
+              onBulkMarkRead={handleBulkMarkRead}
+              onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+              onClearSelection={() => setSelectedEmailIds([])}
+              onStarEmail={handleStarEmail}
+              onDeleteEmail={handleDeleteEmail}
+              onMarkEmailRead={handleMarkEmailRead}
+              onCopySenderAddress={handleCopySenderAddress}
+              onPrevPage={goPrevEmailsPage}
+              onNextPage={goNextEmailsPage}
+            />
+          </TabsContent>
+
+          <TabsContent value="preview" className="flex-1 min-h-0 mt-4 data-[state=inactive]:hidden">
+            <PreviewPanel
+              key={selectedEmailId ?? "none"}
+              selectedEmailId={selectedEmailId}
+              selectedEmail={selectedEmail}
+              loadingPreview={loadingPreview}
+            />
+          </TabsContent>
+        </Tabs>
+
+        {/* Desktop Layout - Grid */}
+        <div className="hidden lg:grid gap-4 h-full grid-cols-[280px_minmax(320px,420px)_minmax(420px,1fr)]">
           <MailboxesPanel
             ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
             domains={domains}
@@ -904,6 +1066,8 @@ export default function InboxPage() {
             onClearSelection={() => setSelectedEmailIds([])}
             onStarEmail={handleStarEmail}
             onDeleteEmail={handleDeleteEmail}
+            onMarkEmailRead={handleMarkEmailRead}
+            onCopySenderAddress={handleCopySenderAddress}
             onPrevPage={goPrevEmailsPage}
             onNextPage={goNextEmailsPage}
           />

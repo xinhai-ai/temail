@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,10 @@ interface Domain {
 
 export default function DomainConfigPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
+
   const [domain, setDomain] = useState<Domain | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,6 +60,18 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   const [webhookActive, setWebhookActive] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
   const [description, setDescription] = useState("");
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      router.replace("/login");
+      return;
+    }
+    if (!isAdmin) {
+      router.replace("/inbox");
+    }
+  }, [status, isAdmin, router]);
 
   const fetchDomain = async () => {
     const res = await fetch(`/api/domains/${id}`);
@@ -80,11 +98,12 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   };
 
   useEffect(() => {
+    if (!isAdmin) return;
     const run = async () => {
       await fetchDomain();
     };
     run();
-  }, [id]);
+  }, [id, isAdmin]);
 
   const saveDomainSettings = async () => {
     setSavingDomain(true);
@@ -179,7 +198,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
     toast.success("Copied to clipboard");
   };
 
-  if (loading) {
+  if (status === "loading" || loading || !isAdmin) {
     return (
       <div className="flex justify-center items-center p-12">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

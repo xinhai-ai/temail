@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,8 @@ interface Domain {
 }
 
 export default function DomainsPage() {
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -48,6 +50,18 @@ export default function DomainsPage() {
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
 
+  // Redirect non-admin users
+  useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      router.replace("/login");
+      return;
+    }
+    if (!isAdmin) {
+      router.replace("/inbox");
+    }
+  }, [status, isAdmin, router]);
+
   const fetchDomains = async () => {
     const res = await fetch("/api/domains");
     const data = await res.json();
@@ -56,11 +70,12 @@ export default function DomainsPage() {
   };
 
   useEffect(() => {
+    if (!isAdmin) return;
     const run = async () => {
       await fetchDomains();
     };
     run();
-  }, []);
+  }, [isAdmin]);
 
   const handleCreate = async () => {
     if (!isAdmin) {
@@ -100,7 +115,7 @@ export default function DomainsPage() {
     }
   };
 
-  if (loading) {
+  if (status === "loading" || loading || !isAdmin) {
     return (
       <div className="flex justify-center items-center p-12">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
