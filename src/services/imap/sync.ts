@@ -3,6 +3,7 @@ import { simpleParser, type ParsedMail } from "mailparser";
 import { Prisma, type Domain, type ImapConfig } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { executeForwards } from "@/services/forward";
+import { triggerEmailWorkflows } from "@/services/workflow/trigger";
 
 export type ImapDomain = Domain & { imapConfig: ImapConfig };
 
@@ -230,6 +231,12 @@ async function processMessage(
     executeForwards(email, mailbox.id, mailbox.userId).catch((err) => {
       if (options.debug) {
         console.error(`[imap-sync] forward error for ${email.id}:`, err);
+      }
+    });
+
+    triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch((err) => {
+      if (options.debug) {
+        console.error(`[imap-sync] workflow trigger error for ${email.id}:`, err);
       }
     });
   }

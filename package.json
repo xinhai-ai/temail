@@ -13,8 +13,6 @@
     "start:all": "concurrently -n next,imap -c blue,green \"cross-env IMAP_SERVICE_ENABLED=1 next start\" \"npm run imap:service\"",
     "lint": "eslint",
     "test": "node --test --import tsx src/**/*.test.ts",
-    "imap:once": "dotenv -- node --conditions=react-server --import tsx scripts/imap-poller.ts",
-    "imap:watch": "dotenv -- node --conditions=react-server --import tsx scripts/imap-poller.ts --watch",
     "imap:test": "dotenv -- node --conditions=react-server --import tsx scripts/imap-tester.ts",
     "imap:service": "dotenv -- node --conditions=react-server --import tsx scripts/imap-service.ts"
   },
@@ -55,11 +53,13 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
+    "reactflow": "^11.11.4",
     "recharts": "^3.6.0",
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

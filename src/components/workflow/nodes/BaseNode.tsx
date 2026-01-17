@@ -1,0 +1,437 @@
+"use client";
+
+import { memo } from "react";
+import { Handle, Position, NodeProps } from "reactflow";
+import { cn } from "@/lib/utils";
+import type { NodeType, NodeData } from "@/lib/workflow/types";
+import {
+  NODE_DEFINITIONS,
+  isConditionalNode,
+  MATCH_FIELD_LABELS,
+  MATCH_OPERATOR_LABELS,
+} from "@/lib/workflow/types";
+import {
+  Mail,
+  Clock,
+  Hand,
+  Search,
+  Tag,
+  Brain,
+  Code,
+  Archive,
+  CheckCircle,
+  Circle,
+  Star,
+  Trash2,
+  Variable,
+  Send,
+  MessageCircle,
+  MessageSquare,
+  Hash,
+  Webhook,
+  GitBranch,
+  Timer,
+  CircleStop,
+  Zap,
+  AlertCircle,
+} from "lucide-react";
+
+// 图标映射
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Mail,
+  Clock,
+  Hand,
+  Search,
+  Tag,
+  Brain,
+  Code,
+  Archive,
+  CheckCircle,
+  Circle,
+  Star,
+  StarOff: Star,
+  Trash2,
+  Variable,
+  Send,
+  MessageCircle,
+  MessageSquare,
+  Hash,
+  Webhook,
+  GitBranch,
+  Timer,
+  CircleStop,
+};
+
+interface BaseNodeProps extends NodeProps<NodeData> {
+  type: NodeType;
+}
+
+function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
+  const definition = NODE_DEFINITIONS[type];
+  if (!definition) {
+    return (
+      <div className="p-4 bg-red-100 rounded-lg border-2 border-red-300">
+        <AlertCircle className="w-4 h-4 text-red-500" />
+        Unknown: {type}
+      </div>
+    );
+  }
+
+  const Icon = iconMap[definition.icon] || Circle;
+  const isConditional = isConditionalNode(type);
+  const isTrigger = type.startsWith("trigger:");
+  const label = data.label || definition.label;
+  const preview = getNodePreview(type, data);
+  const isConfigured = getIsConfigured(type, data);
+
+  return (
+    <div
+      className={cn(
+        "min-w-[200px] max-w-[240px] rounded-xl border-2 bg-card shadow-lg transition-all duration-200",
+        selected
+          ? "border-primary ring-4 ring-primary/20 shadow-xl scale-[1.02]"
+          : "border-border/60 hover:border-border hover:shadow-xl",
+        !isConfigured && "border-dashed border-amber-400/60"
+      )}
+    >
+      {/* 输入 Handle */}
+      {definition.inputs > 0 && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          className={cn(
+            "!w-4 !h-4 !-top-2 !border-2 !border-background",
+            "!bg-gradient-to-br !from-slate-400 !to-slate-500",
+            "hover:!from-primary hover:!to-primary/80 transition-colors"
+          )}
+        />
+      )}
+
+      {/* 触发器特殊标记 */}
+      {isTrigger && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-semibold rounded-full shadow-md">
+            <Zap className="w-2.5 h-2.5" />
+            TRIGGER
+          </div>
+        </div>
+      )}
+
+      {/* 节点头部 */}
+      <div
+        className="flex items-center gap-2.5 px-3 py-2.5 rounded-t-[10px]"
+        style={{
+          background: `linear-gradient(135deg, ${definition.color}15 0%, ${definition.color}08 100%)`,
+          borderBottom: `1px solid ${definition.color}20`,
+        }}
+      >
+        <div
+          className="p-2 rounded-lg shadow-sm"
+          style={{
+            background: `linear-gradient(135deg, ${definition.color} 0%, ${definition.color}cc 100%)`,
+          }}
+        >
+          <Icon className="w-4 h-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span
+            className="font-semibold text-sm block truncate"
+            title={label}
+          >
+            {label}
+          </span>
+          <span className="text-[10px] text-muted-foreground opacity-75">
+            {definition.description.slice(0, 30)}
+          </span>
+        </div>
+      </div>
+
+      {/* 节点内容区域 */}
+      <div className="px-3 py-2.5 min-h-[40px]">
+        {!isConfigured ? (
+          <div className="flex items-center gap-1.5 text-amber-600 text-xs">
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>Needs configuration</span>
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            {preview}
+          </div>
+        )}
+      </div>
+
+      {/* 输出 Handle - 单输出 */}
+      {definition.outputs === 1 && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className={cn(
+            "!w-4 !h-4 !-bottom-2 !border-2 !border-background",
+            "!bg-gradient-to-br !from-slate-400 !to-slate-500",
+            "hover:!from-primary hover:!to-primary/80 transition-colors"
+          )}
+        />
+      )}
+
+      {/* 条件节点的双输出 */}
+      {isConditional && (
+        <div className="relative pb-6">
+          <div className="absolute bottom-0 left-0 right-0 flex justify-between items-end px-4">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-medium text-green-600 mb-1">Yes</span>
+              <Handle
+                type="source"
+                position={Position.Bottom}
+                id="true"
+                className={cn(
+                  "!relative !transform-none !w-4 !h-4",
+                  "!bg-gradient-to-br !from-green-400 !to-green-500",
+                  "!border-2 !border-background",
+                  "hover:!from-green-500 hover:!to-green-600 transition-colors"
+                )}
+                style={{ position: "relative", left: 0, top: 0 }}
+              />
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-medium text-red-600 mb-1">No</span>
+              <Handle
+                type="source"
+                position={Position.Bottom}
+                id="false"
+                className={cn(
+                  "!relative !transform-none !w-4 !h-4",
+                  "!bg-gradient-to-br !from-red-400 !to-red-500",
+                  "!border-2 !border-background",
+                  "hover:!from-red-500 hover:!to-red-600 transition-colors"
+                )}
+                style={{ position: "relative", left: 0, top: 0 }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 检查节点是否已配置
+function getIsConfigured(type: NodeType, data: NodeData): boolean {
+  const d = data as Record<string, unknown>;
+  switch (type) {
+    case "trigger:email":
+    case "trigger:manual":
+    case "action:archive":
+    case "action:markRead":
+    case "action:markUnread":
+    case "action:star":
+    case "action:unstar":
+    case "action:delete":
+    case "control:end":
+      return true;
+    case "trigger:schedule":
+      return !!(d.cron as string);
+    case "condition:match":
+      return !!(d.value as string);
+    case "condition:keyword":
+      return ((d.keywords as string[])?.length > 0) || !!(d.conditions);
+    case "forward:email":
+      return !!(d.to as string);
+    case "forward:telegram":
+      return !!(d.token as string) && !!(d.chatId as string);
+    case "forward:discord":
+    case "forward:slack":
+      return !!(d.webhookUrl as string);
+    case "forward:webhook":
+      return !!(d.url as string);
+    case "control:delay":
+      return (d.duration as number) > 0;
+    case "action:setVariable":
+      return !!(d.name as string);
+    case "control:branch":
+      return !!((d.condition as { value?: string })?.value);
+    default:
+      return true;
+  }
+}
+
+// 获取节点预览文本
+function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
+  const d = data as Record<string, unknown>;
+
+  switch (type) {
+    case "trigger:email":
+      return d.mailboxId ? (
+        <span className="text-blue-600 font-medium">Specific mailbox</span>
+      ) : (
+        "All incoming emails"
+      );
+
+    case "trigger:schedule":
+      const cron = d.cron as string;
+      if (!cron) return "No schedule set";
+      return (
+        <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px]">
+          {cron}
+        </span>
+      );
+
+    case "trigger:manual":
+      return "Manual execution only";
+
+    case "condition:match":
+      const field = d.field as string;
+      const operator = d.operator as string;
+      const value = d.value as string;
+      if (!value) return null;
+      return (
+        <div className="space-y-0.5">
+          <div className="font-medium text-foreground">
+            {MATCH_FIELD_LABELS[field as keyof typeof MATCH_FIELD_LABELS] || field}
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-muted-foreground">
+              {MATCH_OPERATOR_LABELS[operator as keyof typeof MATCH_OPERATOR_LABELS]?.toLowerCase() || operator}
+            </span>
+            <span className="font-mono bg-muted px-1 py-0.5 rounded text-[10px] truncate max-w-[100px]">
+              "{value}"
+            </span>
+          </div>
+        </div>
+      );
+
+    case "condition:keyword":
+      const keywords = d.keywords as string[];
+      const conditions = d.conditions;
+      if (conditions) {
+        return (
+          <span className="text-amber-600 font-medium">
+            Advanced conditions
+          </span>
+        );
+      }
+      if (!keywords?.length) return null;
+      return (
+        <div className="flex flex-wrap gap-1">
+          {keywords.slice(0, 3).map((kw, i) => (
+            <span
+              key={i}
+              className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-medium"
+            >
+              {kw}
+            </span>
+          ))}
+          {keywords.length > 3 && (
+            <span className="text-muted-foreground text-[10px]">
+              +{keywords.length - 3} more
+            </span>
+          )}
+        </div>
+      );
+
+    case "forward:email":
+      const to = d.to as string;
+      return to ? (
+        <span className="font-mono text-[11px] truncate block">{to}</span>
+      ) : null;
+
+    case "forward:telegram":
+      const chatId = d.chatId as string;
+      return chatId ? (
+        <span className="font-mono text-[11px]">Chat: {chatId}</span>
+      ) : null;
+
+    case "forward:discord":
+    case "forward:slack":
+      const webhookUrl = d.webhookUrl as string;
+      return webhookUrl ? (
+        <span className="text-green-600 font-medium flex items-center gap-1">
+          <CheckCircle className="w-3 h-3" />
+          Webhook configured
+        </span>
+      ) : null;
+
+    case "forward:webhook":
+      const url = d.url as string;
+      const method = (d.method as string) || "POST";
+      if (!url) return null;
+      return (
+        <div className="space-y-0.5">
+          <span className="inline-block bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+            {method}
+          </span>
+          <div className="font-mono text-[10px] truncate opacity-75">
+            {url.replace(/^https?:\/\//, "")}
+          </div>
+        </div>
+      );
+
+    case "control:delay":
+      const duration = (d.duration as number) || 0;
+      const formatted = formatDuration(duration);
+      return (
+        <span className="flex items-center gap-1">
+          <Timer className="w-3 h-3 text-indigo-500" />
+          <span className="font-medium text-indigo-600">{formatted}</span>
+        </span>
+      );
+
+    case "action:setVariable":
+      const varName = d.name as string;
+      const varValue = d.value as string;
+      if (!varName) return null;
+      return (
+        <div className="font-mono text-[11px]">
+          <span className="text-green-600">{varName}</span>
+          <span className="text-muted-foreground"> = </span>
+          <span className="truncate">{varValue?.slice(0, 20) || "..."}</span>
+        </div>
+      );
+
+    case "control:branch":
+      const condition = d.condition as { field?: string; operator?: string; value?: string };
+      if (!condition?.value) return null;
+      return (
+        <div className="text-[11px]">
+          <span className="text-muted-foreground">if </span>
+          <span className="font-medium">
+            {MATCH_FIELD_LABELS[condition.field as keyof typeof MATCH_FIELD_LABELS] || condition.field}
+          </span>
+          <span className="text-muted-foreground">
+            {" "}
+            {MATCH_OPERATOR_LABELS[condition.operator as keyof typeof MATCH_OPERATOR_LABELS]?.toLowerCase()}
+          </span>
+        </div>
+      );
+
+    case "action:archive":
+      return <span className="text-orange-600">Archive email</span>;
+    case "action:markRead":
+      return <span className="text-green-600">Mark as read</span>;
+    case "action:markUnread":
+      return <span className="text-blue-600">Mark as unread</span>;
+    case "action:star":
+      return <span className="text-yellow-600">Add star</span>;
+    case "action:unstar":
+      return <span className="text-slate-600">Remove star</span>;
+    case "action:delete":
+      return <span className="text-red-600">Delete email</span>;
+    case "control:end":
+      return <span className="text-slate-500">Stop workflow</span>;
+
+    default:
+      return definition?.description || "";
+  }
+}
+
+// 格式化持续时间
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+
+// 访问 NODE_DEFINITIONS
+const definition = { description: "" };
+
+export const BaseNode = memo(BaseNodeComponent);

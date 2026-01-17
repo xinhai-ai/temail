@@ -19,6 +19,7 @@ import {
   Cog,
   PanelLeftClose,
   PanelLeftOpen,
+  Workflow,
 } from "lucide-react";
 
 interface NavItem {
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Inbox", href: "/inbox", icon: Inbox },
   { title: "Domains", href: "/domains", icon: Globe, adminOnly: true },
+  { title: "Workflows", href: "/workflows", icon: Workflow },
   { title: "Forwards", href: "/forwards", icon: Forward },
   { title: "Settings", href: "/settings", icon: Settings },
 ];

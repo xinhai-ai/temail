@@ -32,6 +32,7 @@ model User {
   domains       Domain[]
   mailboxes     Mailbox[]
   forwardRules  ForwardRule[]
+  workflows     Workflow[]
   logs          Log[]
   accounts      Account[]
   sessions      Session[]
@@ -200,6 +201,7 @@ model Mailbox {
   emails      Email[]
   inboundEmails InboundEmail[]
   forwardRules ForwardRule[]
+  workflows   Workflow[]
 
   @@unique([prefix, domainId])
   @@index([userId])
@@ -442,4 +444,69 @@ model SystemSetting {
   updatedAt   DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// ==================== 工作流系统 ====================
+
+enum WorkflowStatus {
+  DRAFT    // 草稿
+  ACTIVE   // 启用
+  INACTIVE // 停用
+  ERROR    // 错误
+}
+
+enum ExecutionStatus {
+  RUNNING   // 执行中
+  SUCCESS   // 成功
+  FAILED    // 失败
+  CANCELLED // 取消
+}
+
+model Workflow {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  status      WorkflowStatus @default(DRAFT)
+  config      String         // JSON: 节点和边的完整配置
+  version     Int            @default(1)
+
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 可选：绑定到特定邮箱
+  mailboxId   String?
+  mailbox     Mailbox?       @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+
+  executions  WorkflowExecution[]
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([mailboxId])
+  @@index([status])
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id          String          @id @default(cuid())
+  workflowId  String
+  workflow    Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  status      ExecutionStatus @default(RUNNING)
+  triggeredBy String          // 触发来源：email:{id}, schedule, manual
+
+  // 执行上下文和结果
+  input       String?         // JSON: 输入数据（如邮件信息）
+  output      String?         // JSON: 最终输出
+  logs        String?         // JSON: 节点执行日志数组
+  error       String?         // 错误信息
+
+  startedAt   DateTime        @default(now())
+  finishedAt  DateTime?
+
+  @@index([workflowId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("workflow_executions")
 }
