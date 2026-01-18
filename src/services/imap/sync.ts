@@ -257,10 +257,17 @@ export async function syncUnseenMessages(
     return { success: true, processed: 0, errors: 0 };
   }
 
+  // 获取当前的 lastSyncedUid，用于后续更新
+  const config = await prisma.imapConfig.findUnique({
+    where: { domainId: domain.id },
+    select: { lastSyncedUid: true },
+  });
+  const currentLastSyncedUid = config?.lastSyncedUid || 0;
+
   const batches = chunkArray(unseen, 200);
   let processedCount = 0;
   let errorCount = 0;
-  let highestUid = 0;
+  let highestUid = currentLastSyncedUid;
 
   for (const batch of batches) {
     if (batch.length === 0) continue;
@@ -298,7 +305,11 @@ export async function syncUnseenMessages(
 
   await prisma.imapConfig.update({
     where: { domainId: domain.id },
-    data: { lastSync: now },
+    data: {
+      lastSync: now,
+      // 更新 lastSyncedUid，避免重连时重复下载
+      ...(highestUid > currentLastSyncedUid ? { lastSyncedUid: highestUid } : {}),
+    },
   });
 
   if (domain.status === "PENDING" || domain.status === "ERROR") {
