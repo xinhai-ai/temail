@@ -58,8 +58,12 @@ export async function PATCH(
 
   try {
     const data = patchSchema.parse(bodyResult.data);
-    const addNames = (data.add || []).map((t) => t.trim()).filter(Boolean);
-    const removeIds = (data.remove || []).map((t) => t.trim()).filter(Boolean);
+    const addNames = Array.from(
+      new Set((data.add || []).map((t) => t.trim()).filter(Boolean))
+    );
+    const removeIds = Array.from(
+      new Set((data.remove || []).map((t) => t.trim()).filter(Boolean))
+    );
 
     const email = await prisma.email.findFirst({
       where: { id, mailbox: { userId: session.user.id } },
@@ -82,10 +86,20 @@ export async function PATCH(
             })
           )
         );
-        await tx.emailTag.createMany({
-          data: ensured.map((t) => ({ emailId: id, tagId: t.id })),
-          skipDuplicates: true,
-        });
+        const ensuredIds = Array.from(new Set(ensured.map((t) => t.id)));
+        if (ensuredIds.length > 0) {
+          const existing = await tx.emailTag.findMany({
+            where: { emailId: id, tagId: { in: ensuredIds } },
+            select: { tagId: true },
+          });
+          const existingIds = new Set(existing.map((row) => row.tagId));
+          const toCreate = ensuredIds.filter((tagId) => !existingIds.has(tagId));
+          if (toCreate.length > 0) {
+            await tx.emailTag.createMany({
+              data: toCreate.map((tagId) => ({ emailId: id, tagId })),
+            });
+          }
+        }
       }
 
       if (removeIds.length > 0) {

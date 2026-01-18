@@ -593,9 +593,13 @@ async function executeSetTags(
 
   const templateCtx = buildTemplateContext(context);
   const rawTags = Array.isArray(data.tags) ? data.tags : [];
-  const tags = rawTags
-    .map((t) => replaceTemplateVariables(String(t || ""), templateCtx).trim())
-    .filter(Boolean);
+  const tags = Array.from(
+    new Set(
+      rawTags
+        .map((t) => replaceTemplateVariables(String(t || ""), templateCtx).trim())
+        .filter(Boolean)
+    )
+  );
   const mode = (data.mode || "add") as string;
 
   if (context.isTestMode) {
@@ -619,11 +623,17 @@ async function executeSetTags(
       });
       const tagIds = existing.map((t) => t.id);
       if (tagIds.length > 0) {
-        await tx.emailTag.deleteMany({
+        const deleted = await tx.emailTag.deleteMany({
           where: { emailId, tagId: { in: tagIds } },
         });
+        return deleted.count;
       }
-      return tagIds.length;
+      return 0;
+    }
+
+    if (mode === "set" && tags.length === 0) {
+      await tx.emailTag.deleteMany({ where: { emailId } });
+      return 0;
     }
 
     const ensured = await Promise.all(
@@ -636,20 +646,36 @@ async function executeSetTags(
         })
       )
     );
-    const ensuredIds = ensured.map((t) => t.id);
+    const ensuredIds = Array.from(new Set(ensured.map((t) => t.id)));
 
     if (mode === "set") {
       await tx.emailTag.deleteMany({ where: { emailId } });
     }
 
     if (ensuredIds.length > 0) {
-      await tx.emailTag.createMany({
-        data: ensuredIds.map((tagId) => ({ emailId, tagId })),
-        skipDuplicates: true,
+      if (mode === "set") {
+        const created = await tx.emailTag.createMany({
+          data: ensuredIds.map((tagId) => ({ emailId, tagId })),
+        });
+        return created.count;
+      }
+
+      const existing = await tx.emailTag.findMany({
+        where: { emailId, tagId: { in: ensuredIds } },
+        select: { tagId: true },
       });
+      const existingIds = new Set(existing.map((row) => row.tagId));
+      const toCreate = ensuredIds.filter((tagId) => !existingIds.has(tagId));
+      if (toCreate.length > 0) {
+        const created = await tx.emailTag.createMany({
+          data: toCreate.map((tagId) => ({ emailId, tagId })),
+        });
+        return created.count;
+      }
+      return 0;
     }
 
-    return ensuredIds.length;
+    return 0;
   });
 
   return { mode, tags, emailId, updatedTagCount };
