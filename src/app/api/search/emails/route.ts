@@ -16,6 +16,23 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+function containsCjk(input: string) {
+  const value = input || "";
+  try {
+    return /\p{Script=Han}/u.test(value);
+  } catch {
+    return /[\u3400-\u9fff]/.test(value);
+  }
+}
+
+function buildFallbackTokens(input: string) {
+  return input
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
 function buildFtsQuery(input: string) {
   const tokens = input
     .trim()
@@ -82,6 +99,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ emails: [], hasMore: false, nextCursor: null });
     }
 
+    const fallbackTokens = buildFallbackTokens(parsed.q);
+
     const useCursor = mode === "cursor" || typeof parsed.cursor === "string";
     const usePage = !useCursor && (mode === "page" || typeof parsed.page === "number");
 
@@ -100,7 +119,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
     }
 
-    const shouldUseFts = await ensureFtsAvailable();
+    const shouldUseFts = (await ensureFtsAvailable()) && !containsCjk(parsed.q);
 
     if (usePage) {
       const page = parsed.page ?? 1;
@@ -192,11 +211,26 @@ export async function GET(request: NextRequest) {
       }
 
       const fallbackWhere = {
-        mailbox: { userId: session.user.id },
-        ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
-        ...(parsed.status ? { status: parsed.status } : {}),
-        ...(parsed.excludeArchived && !parsed.status ? { status: { not: "ARCHIVED" as const } } : {}),
-        textBody: { contains: parsed.q },
+        AND: [
+          {
+            mailbox: { userId: session.user.id },
+            ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+            ...(parsed.status ? { status: parsed.status } : {}),
+            ...(parsed.excludeArchived && !parsed.status
+              ? { status: { not: "ARCHIVED" as const } }
+              : {}),
+          },
+          ...fallbackTokens.map((token) => ({
+            OR: [
+              { subject: { contains: token } },
+              { fromAddress: { contains: token } },
+              { fromName: { contains: token } },
+              { toAddress: { contains: token } },
+              { textBody: { contains: token } },
+              { htmlBody: { contains: token } },
+            ],
+          })),
+        ],
       };
 
       const [items, total] = await Promise.all([
@@ -302,19 +336,36 @@ export async function GET(request: NextRequest) {
     }
 
     const fallbackWhere = {
-      mailbox: { userId: session.user.id },
-      ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
-      ...(parsed.status ? { status: parsed.status } : {}),
-      ...(parsed.excludeArchived && !parsed.status ? { status: { not: "ARCHIVED" as const } } : {}),
-      textBody: { contains: parsed.q },
-      ...(cursorEmail
-        ? {
-            OR: [
-              { receivedAt: { lt: cursorEmail.receivedAt } },
-              { receivedAt: cursorEmail.receivedAt, id: { lt: cursorEmail.id } },
-            ],
-          }
-        : {}),
+      AND: [
+        {
+          mailbox: { userId: session.user.id },
+          ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+          ...(parsed.status ? { status: parsed.status } : {}),
+          ...(parsed.excludeArchived && !parsed.status
+            ? { status: { not: "ARCHIVED" as const } }
+            : {}),
+        },
+        ...fallbackTokens.map((token) => ({
+          OR: [
+            { subject: { contains: token } },
+            { fromAddress: { contains: token } },
+            { fromName: { contains: token } },
+            { toAddress: { contains: token } },
+            { textBody: { contains: token } },
+            { htmlBody: { contains: token } },
+          ],
+        })),
+        ...(cursorEmail
+          ? [
+              {
+                OR: [
+                  { receivedAt: { lt: cursorEmail.receivedAt } },
+                  { receivedAt: cursorEmail.receivedAt, id: { lt: cursorEmail.id } },
+                ],
+              },
+            ]
+          : []),
+      ],
     };
 
     const items = await prisma.email.findMany({
