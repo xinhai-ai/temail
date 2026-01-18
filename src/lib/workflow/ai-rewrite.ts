@@ -7,7 +7,7 @@ const AiRewriteResultSchema = z.object({
   subject: z.string().nullable(),
   textBody: z.string().nullable(),
   htmlBody: z.string().nullable(),
-  variables: z.record(z.string(), z.string()).nullable(),
+  variables: z.record(z.string(), z.string().nullable()).nullable(),
   reasoning: z.string().nullable(),
 });
 
@@ -15,7 +15,7 @@ export interface AiRewriteResult {
   subject?: string;
   textBody?: string;
   htmlBody?: string;
-  variables?: Record<string, string>;
+  variables?: Record<string, string | null>;
   reasoning?: string;
 }
 
@@ -202,7 +202,7 @@ async function callOpenAiStructured(
   const allowsEmail = data.writeTarget === "email" || data.writeTarget === "both";
   const allowedEmailFields = getAllowedEmailFields(data);
   const variableProperties = allowsVariables
-    ? Object.fromEntries(requestedVariableKeys.map((key) => [key, { type: "string" }]))
+    ? Object.fromEntries(requestedVariableKeys.map((key) => [key, { type: ["string", "null"] }]))
     : {};
 
   const subjectSchema = allowsEmail && allowedEmailFields.includes("subject") ? { type: ["string", "null"] } : { type: "null" };
@@ -217,7 +217,12 @@ async function callOpenAiStructured(
       htmlBody: htmlBodySchema,
       variables: {
         ...(allowsVariables && requestedVariableKeys.length > 0
-          ? { type: ["object", "null"], properties: variableProperties, additionalProperties: false }
+          ? {
+              type: ["object", "null"],
+              properties: variableProperties,
+              required: requestedVariableKeys,
+              additionalProperties: false,
+            }
           : { type: "null" }),
       },
       reasoning: { type: ["string", "null"] },
