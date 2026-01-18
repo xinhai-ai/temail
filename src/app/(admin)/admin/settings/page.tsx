@@ -37,6 +37,10 @@ Return a JSON object with this schema:
 Rules:
 - If you don't want to change a field, return null for that field.
 - If extracting data, put it into "variables" as a flat object of string values.
+- The workflow node write target is: {{writeTarget}}
+- Allowed email fields for rewriting (JSON array): {{allowedEmailFieldsJson}}
+- If writeTarget is "variables", you MUST set subject/textBody/htmlBody to null.
+- If writeTarget is "email", you MUST set variables to null.
 - You MUST NOT invent variable keys. Only use keys explicitly requested by the user.
 - Allowed variable keys (JSON array): {{requestedVariableKeysJson}}
 - If the allowed key list is empty, set "variables" to null.

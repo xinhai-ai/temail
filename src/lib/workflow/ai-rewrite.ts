@@ -41,6 +41,10 @@ Return a JSON object with this schema:
 Rules:
 - If you don't want to change a field, return null for that field.
 - If extracting data, put it into "variables" as a flat object of string values.
+- The workflow node write target is: {{writeTarget}}
+- Allowed email fields for rewriting (JSON array): {{allowedEmailFieldsJson}}
+- If writeTarget is "variables", you MUST set subject/textBody/htmlBody to null.
+- If writeTarget is "email", you MUST set variables to null.
 - You MUST NOT invent variable keys. Only use keys explicitly requested by the user.
 - Allowed variable keys (JSON array): {{requestedVariableKeysJson}}
 - If the allowed key list is empty, set "variables" to null.
@@ -110,6 +114,10 @@ function getFieldsForPrompt(data: ActionAiRewriteData): EmailContentField[] {
   return ["subject", "textBody"];
 }
 
+function getAllowedEmailFields(data: ActionAiRewriteData): EmailContentField[] {
+  return getFieldsForPrompt(data);
+}
+
 function extractRequestedVariableKeys(instruction: string): string[] {
   const keys = new Set<string>();
   const text = instruction || "";
@@ -150,6 +158,8 @@ function buildPrompt(data: ActionAiRewriteData, context: ExecutionContext, confi
 
   const variablesJson = JSON.stringify(context.variables || {}, null, 2);
   const instruction = (data.prompt || "").trim();
+  const writeTarget = data.writeTarget;
+  const allowedEmailFieldsJson = JSON.stringify(getAllowedEmailFields(data));
   const requestedVariableKeysJson = JSON.stringify(getAiRewriteRequestedVariableKeys(data));
 
   return replaceTemplateVariables(config.defaultPrompt, {
@@ -157,6 +167,8 @@ function buildPrompt(data: ActionAiRewriteData, context: ExecutionContext, confi
     variables: context.variables,
     variablesJson,
     instruction,
+    writeTarget,
+    allowedEmailFieldsJson,
     requestedVariableKeysJson,
   });
 }
@@ -187,20 +199,26 @@ async function callOpenAiStructured(
 ): Promise<AiRewriteResult> {
   const requestedVariableKeys = getAiRewriteRequestedVariableKeys(data);
   const allowsVariables = data.writeTarget === "variables" || data.writeTarget === "both";
+  const allowsEmail = data.writeTarget === "email" || data.writeTarget === "both";
+  const allowedEmailFields = getAllowedEmailFields(data);
   const variableProperties = allowsVariables
     ? Object.fromEntries(requestedVariableKeys.map((key) => [key, { type: "string" }]))
     : {};
 
+  const subjectSchema = allowsEmail && allowedEmailFields.includes("subject") ? { type: ["string", "null"] } : { type: "null" };
+  const textBodySchema = allowsEmail && allowedEmailFields.includes("textBody") ? { type: ["string", "null"] } : { type: "null" };
+  const htmlBodySchema = allowsEmail && allowedEmailFields.includes("htmlBody") ? { type: ["string", "null"] } : { type: "null" };
+
   const jsonSchema = {
     type: "object",
     properties: {
-      subject: { type: ["string", "null"] },
-      textBody: { type: ["string", "null"] },
-      htmlBody: { type: ["string", "null"] },
+      subject: subjectSchema,
+      textBody: textBodySchema,
+      htmlBody: htmlBodySchema,
       variables: {
-        type: ["object", "null"],
-        ...(requestedVariableKeys.length > 0 ? { properties: variableProperties } : {}),
-        additionalProperties: false,
+        ...(allowsVariables && requestedVariableKeys.length > 0
+          ? { type: ["object", "null"], properties: variableProperties, additionalProperties: false }
+          : { type: "null" }),
       },
       reasoning: { type: ["string", "null"] },
     },
@@ -256,13 +274,16 @@ async function callOpenAiStructured(
 function chooseTestModeResult(data: ActionAiRewriteData, context: ExecutionContext): AiRewriteResult {
   const email = context.email;
   const result: AiRewriteResult = { reasoning: "test mode" };
+  const allowedEmailFields = getAllowedEmailFields(data);
 
   if ((data.writeTarget === "email" || data.writeTarget === "both") && email) {
-    result.subject = email.subject ? `[AI] ${email.subject}` : "[AI] Rewritten subject";
-    if (getFieldsForPrompt(data).includes("textBody")) {
+    if (allowedEmailFields.includes("subject")) {
+      result.subject = email.subject ? `[AI] ${email.subject}` : "[AI] Rewritten subject";
+    }
+    if (allowedEmailFields.includes("textBody")) {
       result.textBody = `AI rewrite (test mode)\n\n${email.textBody || ""}`.trim();
     }
-    if (getFieldsForPrompt(data).includes("htmlBody")) {
+    if (allowedEmailFields.includes("htmlBody")) {
       result.htmlBody = `<p><strong>AI rewrite (test mode)</strong></p>\n${email.htmlBody || ""}`.trim();
     }
   }
