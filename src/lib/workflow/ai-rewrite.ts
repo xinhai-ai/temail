@@ -15,7 +15,7 @@ export interface AiRewriteResult {
   subject?: string;
   textBody?: string;
   htmlBody?: string;
-  variables?: Record<string, string | null>;
+  variables?: Record<string, string | null> | null;
   reasoning?: string;
 }
 
