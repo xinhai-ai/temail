@@ -26,6 +26,12 @@ export type Attachment = {
   size: number;
 };
 
+export type Tag = {
+  id: string;
+  name: string;
+  color?: string | null;
+};
+
 export type EmailListItem = {
   id: string;
   subject: string;
@@ -36,6 +42,7 @@ export type EmailListItem = {
   receivedAt: string;
   mailboxId: string;
   mailbox: { address: string };
+  tags?: Tag[];
 };
 
 export type EmailDetail = EmailListItem & {
@@ -46,4 +53,3 @@ export type EmailDetail = EmailListItem & {
   rawContentPath?: string | null;
   attachments?: Attachment[];
 };
-

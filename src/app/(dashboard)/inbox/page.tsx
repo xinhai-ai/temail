@@ -11,7 +11,7 @@ import { ConfirmDialogs } from "./_components/ConfirmDialogs";
 import { EmailsPanel, type EmailStatusFilter } from "./_components/EmailsPanel";
 import { MailboxesPanel } from "./_components/MailboxesPanel";
 import { PreviewPanel } from "./_components/PreviewPanel";
-import type { Domain, EmailDetail, EmailListItem, Mailbox, MailboxGroup } from "./types";
+import type { Domain, EmailDetail, EmailListItem, Mailbox, MailboxGroup, Tag } from "./types";
 
 export default function InboxPage() {
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
@@ -29,6 +29,8 @@ export default function InboxPage() {
   const [groups, setGroups] = useState<MailboxGroup[]>([]);
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [emails, setEmails] = useState<EmailListItem[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [selectedMailboxId, setSelectedMailboxId] = useState<string | null>(null);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<EmailDetail | null>(null);
@@ -133,6 +135,12 @@ export default function InboxPage() {
     setLoadingMailboxes(false);
   }, []);
 
+  const loadTags = useCallback(async () => {
+    const res = await fetch("/api/tags");
+    const data = await res.json().catch(() => null);
+    setAvailableTags(Array.isArray(data) ? data : []);
+  }, []);
+
   useEffect(() => {
     loadDomains();
   }, [loadDomains]);
@@ -144,6 +152,10 @@ export default function InboxPage() {
   useEffect(() => {
     loadMailboxes(mailboxSearch);
   }, [mailboxSearch, loadMailboxes]);
+
+  useEffect(() => {
+    loadTags();
+  }, [loadTags]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -203,6 +215,7 @@ export default function InboxPage() {
       params.set("page", String(emailsPage));
       params.set("limit", String(emailsPageSize));
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
+      if (selectedTagId) params.set("tagId", selectedTagId);
 
       // Apply status filter
       if (statusFilter === "unread") {
@@ -227,7 +240,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter, emailsRefreshKey]);
+  }, [selectedMailboxId, selectedTagId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter, emailsRefreshKey]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -383,7 +396,7 @@ export default function InboxPage() {
 
   useEffect(() => {
     setSelectedEmailIds([]);
-  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize]);
+  }, [selectedMailboxId, selectedTagId, emailSearch, emailsPage, emailsPageSize]);
 
   // Cooldown timer for refresh button
   useEffect(() => {
@@ -621,6 +634,37 @@ export default function InboxPage() {
     setEmailsPage(1);
     setSelectedEmailIds([]);
   };
+
+  const handleTagFilterChange = (tagId: string | null) => {
+    setSelectedTagId(tagId);
+    setEmailsPage(1);
+    setSelectedEmailIds([]);
+  };
+
+  const handleUpdateEmailTags = useCallback(async (
+    emailId: string,
+    patch: { add?: string[]; remove?: string[] }
+  ) => {
+    const res = await fetch(`/api/emails/${emailId}/tags`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      toast.error(data?.error || "Failed to update tags");
+      return false;
+    }
+
+    const nextTags = Array.isArray(data?.tags) ? data.tags : [];
+    setEmails((prev) => prev.map((e) => (e.id === emailId ? { ...e, tags: nextTags } : e)));
+    setSelectedEmail((prev) => (prev?.id === emailId ? { ...prev, tags: nextTags } : prev));
+
+    await loadTags();
+    setEmailsRefreshKey((k) => k + 1);
+    return true;
+  }, [loadTags]);
 
   const handleBulkMarkRead = async () => {
     const ids = selectedEmailIds;
@@ -1087,6 +1131,8 @@ export default function InboxPage() {
           <TabsContent value="emails" className="flex-1 min-h-0 mt-4 data-[state=inactive]:hidden">
             <EmailsPanel
               emailSearch={emailSearch}
+              tags={availableTags}
+              selectedTagId={selectedTagId}
               emails={emails}
               loadingEmails={loadingEmails}
               page={emailsPage}
@@ -1101,6 +1147,7 @@ export default function InboxPage() {
               unreadCount={unreadCount}
               onEmailSearchChange={handleEmailSearchChange}
               onPageSizeChange={handleEmailsPageSizeChange}
+              onTagFilterChange={handleTagFilterChange}
               onSelectEmail={(email) => {
                 handleSelectEmail(email);
                 setMobileTab("preview");
@@ -1124,13 +1171,15 @@ export default function InboxPage() {
           </TabsContent>
 
           <TabsContent value="preview" className="flex-1 min-h-0 mt-4 data-[state=inactive]:hidden">
-            <PreviewPanel
-              key={selectedEmailId ?? "none"}
-              selectedEmailId={selectedEmailId}
-              selectedEmail={selectedEmail}
-              loadingPreview={loadingPreview}
-            />
-          </TabsContent>
+          <PreviewPanel
+            key={selectedEmailId ?? "none"}
+            selectedEmailId={selectedEmailId}
+            selectedEmail={selectedEmail}
+            loadingPreview={loadingPreview}
+            availableTags={availableTags}
+            onUpdateEmailTags={handleUpdateEmailTags}
+          />
+        </TabsContent>
         </Tabs>
 
         {/* Desktop Layout - Grid */}
@@ -1190,6 +1239,8 @@ export default function InboxPage() {
 
           <EmailsPanel
             emailSearch={emailSearch}
+            tags={availableTags}
+            selectedTagId={selectedTagId}
             emails={emails}
             loadingEmails={loadingEmails}
             page={emailsPage}
@@ -1204,6 +1255,7 @@ export default function InboxPage() {
             unreadCount={unreadCount}
             onEmailSearchChange={handleEmailSearchChange}
             onPageSizeChange={handleEmailsPageSizeChange}
+            onTagFilterChange={handleTagFilterChange}
             onSelectEmail={handleSelectEmail}
             onToggleSelectAllOnPage={toggleSelectAllOnPage}
             onToggleEmailSelection={toggleEmailSelection}
@@ -1227,6 +1279,8 @@ export default function InboxPage() {
             selectedEmailId={selectedEmailId}
             selectedEmail={selectedEmail}
             loadingPreview={loadingPreview}
+            availableTags={availableTags}
+            onUpdateEmailTags={handleUpdateEmailTags}
           />
         </div>
 

@@ -22,12 +22,14 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { Archive, ArchiveRestore, Copy, ExternalLink, Mail, MailOpen, Search, Star, StarOff, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import type { EmailListItem } from "../types";
+import type { EmailListItem, Tag } from "../types";
 
 export type EmailStatusFilter = "all" | "unread" | "archived";
 
 type EmailsPanelProps = {
   emailSearch: string;
+  tags: Tag[];
+  selectedTagId: string | null;
   emails: EmailListItem[];
   loadingEmails: boolean;
   page: number;
@@ -42,6 +44,7 @@ type EmailsPanelProps = {
   unreadCount: number;
   onEmailSearchChange: (value: string) => void;
   onPageSizeChange: (pageSize: number) => void;
+  onTagFilterChange: (tagId: string | null) => void;
   onSelectEmail: (email: EmailListItem) => void;
   onToggleSelectAllOnPage: (checked: boolean) => void;
   onToggleEmailSelection: (emailId: string, checked: boolean) => void;
@@ -62,6 +65,8 @@ type EmailsPanelProps = {
 
 export function EmailsPanel({
   emailSearch,
+  tags,
+  selectedTagId,
   emails,
   loadingEmails,
   page,
@@ -76,6 +81,7 @@ export function EmailsPanel({
   unreadCount,
   onEmailSearchChange,
   onPageSizeChange,
+  onTagFilterChange,
   onSelectEmail,
   onToggleSelectAllOnPage,
   onToggleEmailSelection,
@@ -97,6 +103,7 @@ export function EmailsPanel({
   const [emailSearchInput, setEmailSearchInput] = useState(() => emailSearch);
   const [pageSizeInput, setPageSizeInput] = useState(() => String(pageSize));
   const pageSizeValue = String(pageSize);
+  const tagFilterValue = selectedTagId || "__all__";
   const isPresetPageSize = pageSize === 5 || pageSize === 10 || pageSize === 15;
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
   const lastSearchSubmitAt = useRef<number>(0);
@@ -163,6 +170,29 @@ export function EmailsPanel({
             <TabsTrigger value="archived">Archived</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Tag</span>
+            <Select
+              value={tagFilterValue}
+              onValueChange={(value) => onTagFilterChange(value === "__all__" ? null : value)}
+            >
+              <SelectTrigger className="h-8 text-sm w-[180px]">
+                <SelectValue placeholder="All tags" />
+              </SelectTrigger>
+              <SelectContent align="start">
+                <SelectItem value="__all__">All tags</SelectItem>
+                {tags.length > 0 && <SelectSeparator />}
+                {tags.map((tag) => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         {emails.length > 0 && (
           <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
@@ -355,9 +385,25 @@ export function EmailsPanel({
                                 })}
                               </span>
                             </div>
-                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                              {email.mailbox.address.split("@")[0]}
-                            </Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                                {email.mailbox.address.split("@")[0]}
+                              </Badge>
+                              {email.tags && email.tags.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {email.tags.slice(0, 3).map((tag) => (
+                                    <Badge key={tag.id} variant="outline" className="text-[10px] h-5 px-1.5">
+                                      {tag.name}
+                                    </Badge>
+                                  ))}
+                                  {email.tags.length > 3 && (
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                      +{email.tags.length - 3}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       </div>
