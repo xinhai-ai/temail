@@ -4,8 +4,12 @@
  * Or: npx tsx scripts/test-webhook.ts
  */
 
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const TEST_WEBHOOK_SECRET = process.env.TEST_WEBHOOK_SECRET || "f686a0741a441bca72121eeb3f7dcab56b871f08df435ca7162a725e24d3e5e1"
+const TEST_WEBHOOK_SECRET = process.env.TEST_WEBHOOK_SECRET || "your-webhook-secret-key";
 interface WebhookPayload {
   to: string;
   from: string;

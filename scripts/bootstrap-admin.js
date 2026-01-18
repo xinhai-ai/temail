@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
@@ -164,4 +164,3 @@ main().catch((error) => {
   console.error("[bootstrap] fatal:", error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });
-
