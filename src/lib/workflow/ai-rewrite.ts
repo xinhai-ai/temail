@@ -58,7 +58,7 @@ Existing Variables (JSON):
 Instruction:
 {{instruction}}`;
 
-export async function getAiRewriteConfig(): Promise<AiRewriteConfig | null> {
+export async function getAiRewriteConfig(options?: { allowDisabled?: boolean }): Promise<AiRewriteConfig | null> {
   try {
     const settings = await prisma.systemSetting.findMany({
       where: {
@@ -77,7 +77,7 @@ export async function getAiRewriteConfig(): Promise<AiRewriteConfig | null> {
     const values = new Map(settings.map((s) => [s.key, s.value]));
 
     const enabled = values.get("ai_rewrite_enabled") === "true";
-    if (!enabled) return null;
+    if (!enabled && !options?.allowDisabled) return null;
 
     return {
       enabled,
@@ -240,7 +240,7 @@ export async function evaluateAiRewrite(
 ): Promise<AiRewriteResult> {
   if (!context.email) return {};
 
-  const config = await getAiRewriteConfig();
+  const config = await getAiRewriteConfig({ allowDisabled: Boolean(context.isTestMode) });
   if (!config || !config.apiKey) {
     if (context.isTestMode) {
       return chooseTestModeResult(data, context);
@@ -260,4 +260,3 @@ export async function evaluateAiRewrite(
     return {};
   }
 }
-
