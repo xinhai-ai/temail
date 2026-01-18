@@ -1,7 +1,7 @@
 services:
   web:
     image: ghcr.io/xinhai-ai/temail:latest
-    command: sh -c "npx prisma migrate deploy && npm run start"
+    command: sh -c "npx prisma migrate deploy && node scripts/bootstrap-admin.js && npm run start"
     ports:
       - "3000:3000"
     env_file:
@@ -15,8 +15,25 @@ services:
       - temail-data:/data
     restart: unless-stopped
 
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
   imap-service:
     image: ghcr.io/xinhai-ai/temail-imap-service:latest
+    depends_on:
+      web:
+        condition: service_healthy
+    command: ["node", "--conditions=react-server", "--import", "tsx", "scripts/imap-service.ts"]
     ports:
       - "3001:3001"
     env_file:

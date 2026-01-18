@@ -25,6 +25,7 @@ COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN npm ci --omit=dev
+COPY scripts/bootstrap-admin.js ./scripts/bootstrap-admin.js
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/next.config.ts ./next.config.ts

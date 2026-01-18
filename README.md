@@ -56,7 +56,7 @@ node --conditions=react-server --import tsx scripts/imap-service.ts
 
 ## 环境变量
 
-请参考 `.env.example`
+请参考 `.env.example`（默认均为注释），复制后按需取消注释并填写。
 
 ## Docker（推荐）
 
@@ -64,11 +64,25 @@ node --conditions=react-server --import tsx scripts/imap-service.ts
 
 ```bash
 cp .env.example .env
+# 编辑 .env：至少建议设置 AUTH_SECRET / AUTH_URL / NEXT_PUBLIC_APP_URL
 docker compose pull
 docker compose up -d
 ```
 
 访问 `http://localhost:3000`。
+
+### 首次启动自动创建管理员
+
+首次启动如果数据库里没有任何用户，`web` 服务会自动创建一个 `SUPER_ADMIN` 账号（默认邮箱 `admin@temail.local`）。如果你没有在 `.env` 中设置 `BOOTSTRAP_ADMIN_PASSWORD`，会生成随机密码并打印到日志：
+
+```bash
+docker compose logs -f web | grep '\\[bootstrap\\]'
+```
+
+可通过 `.env` 覆盖默认值（记得取消注释）：
+
+- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_PASSWORD`
 
 ### 快速下载（仅用镜像部署）
 
