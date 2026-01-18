@@ -14,19 +14,50 @@ export default function SettingsPage() {
   const [name, setName] = useState(session?.user?.name || "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const handleUpdateProfile = async () => {
     toast.success("Profile updated");
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error("Please fill in all fields");
       return;
     }
-    toast.success("Password changed");
-    setCurrentPassword("");
-    setNewPassword("");
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const res = await fetch("/api/users/me/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to change password");
+        return;
+      }
+
+      toast.success("Password changed");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      toast.error("Failed to change password");
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   return (
@@ -85,7 +116,17 @@ export default function SettingsPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
-            <Button onClick={handleChangePassword}>Change Password</Button>
+            <div className="space-y-2">
+              <Label>Confirm New Password</Label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            <Button onClick={handleChangePassword} disabled={changingPassword}>
+              {changingPassword ? "Changing..." : "Change Password"}
+            </Button>
           </CardContent>
         </Card>
       </div>
