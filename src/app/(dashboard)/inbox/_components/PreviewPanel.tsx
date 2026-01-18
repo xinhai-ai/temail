@@ -28,7 +28,7 @@ export function PreviewPanel({
   const REMOTE_RESOURCES_KEY = "temail.preview.allowRemoteResources";
   const REMOTE_RESOURCES_WARNED_KEY = "temail.preview.remoteResourcesWarned";
 
-  const [previewMode, setPreviewMode] = useState<"text" | "html" | "raw">("text");
+  const [manualPreviewMode, setManualPreviewMode] = useState<"text" | "html" | "raw" | null>(null);
   const [allowRemoteResources, setAllowRemoteResources] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -37,6 +37,8 @@ export function PreviewPanel({
       return false;
     }
   });
+
+  const previewMode: "text" | "html" | "raw" = manualPreviewMode ?? (selectedEmail?.htmlBody ? "html" : "text");
 
   const handleAllowRemoteResourcesChange = (checked: boolean) => {
     setAllowRemoteResources(checked);
@@ -156,14 +158,14 @@ export function PreviewPanel({
               <Button
                 size="sm"
                 variant={previewMode === "text" ? "default" : "outline"}
-                onClick={() => setPreviewMode("text")}
+                onClick={() => setManualPreviewMode("text")}
               >
                 Text
               </Button>
               <Button
                 size="sm"
                 variant={previewMode === "html" ? "default" : "outline"}
-                onClick={() => setPreviewMode("html")}
+                onClick={() => setManualPreviewMode("html")}
                 disabled={!selectedEmail.htmlBody}
               >
                 HTML
@@ -171,7 +173,7 @@ export function PreviewPanel({
               <Button
                 size="sm"
                 variant={previewMode === "raw" ? "default" : "outline"}
-                onClick={() => setPreviewMode("raw")}
+                onClick={() => setManualPreviewMode("raw")}
                 disabled={!selectedEmail.rawContent}
               >
                 Raw
