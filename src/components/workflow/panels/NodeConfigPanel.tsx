@@ -461,6 +461,54 @@ function renderNodeConfig(
       );
     }
 
+    case "action:setTags": {
+      const mode = (data.mode as string) || "add";
+      const tags = (data.tags as string[]) || [];
+      const tagsText = tags.join("\n");
+
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Mode</Label>
+            <Select value={mode} onValueChange={(v) => onChange("mode", v)}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Select mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="add">Add</SelectItem>
+                <SelectItem value="remove">Remove</SelectItem>
+                <SelectItem value="set">Set</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Add/remove/set tags on the current email
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tags" className="text-xs font-medium">Tags</Label>
+            <Textarea
+              id="tags"
+              value={tagsText}
+              onChange={(e) => {
+                const next = e.target.value
+                  .split(/\n/)
+                  .map((t) => t.trim())
+                  .filter(Boolean);
+                onChange("tags", next);
+              }}
+              placeholder={"urgent\nbilling"}
+              rows={5}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              One per line. Supports template variables.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     case "action:aiRewrite": {
       const writeTarget = (data.writeTarget as string) || "variables";
       const fields = (data.fields as EmailContentField[]) || ["subject", "textBody"];

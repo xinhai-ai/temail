@@ -41,6 +41,7 @@ export const nodeTypes: NodeTypes = {
   "action:cloneVariable": createNodeComponent("action:cloneVariable"),
   "action:rewriteEmail": createNodeComponent("action:rewriteEmail"),
   "action:regexReplace": createNodeComponent("action:regexReplace"),
+  "action:setTags": createNodeComponent("action:setTags"),
   "action:aiRewrite": createNodeComponent("action:aiRewrite"),
 
   // 转发

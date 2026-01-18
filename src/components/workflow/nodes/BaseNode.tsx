@@ -440,6 +440,8 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
       return !!((d.subject as string)?.trim()) || !!((d.textBody as string)?.trim()) || !!((d.htmlBody as string)?.trim());
     case "action:regexReplace":
       return !!((d.pattern as string)?.trim());
+    case "action:setTags":
+      return ((d.tags as string[])?.length ?? 0) > 0;
     case "action:aiRewrite":
       return typeof d.writeTarget === "string" && ((d.fields as string[])?.length ?? 0) > 0;
     case "control:branch":
@@ -676,6 +678,32 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
           <div className="text-[11px] text-muted-foreground">{field || "field"}</div>
           <div className="font-mono bg-muted px-1 py-0.5 rounded text-[10px] truncate max-w-[120px]">
             /{pattern}/
+          </div>
+        </div>
+      );
+    }
+
+    case "action:setTags": {
+      const mode = String(d.mode || "add");
+      const tags = (d.tags as string[]) || [];
+      if (tags.length === 0) return null;
+      return (
+        <div className="space-y-1">
+          <div className="text-[11px] text-muted-foreground">{mode}</div>
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 3).map((tag, i) => (
+              <span
+                key={i}
+                className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px]"
+              >
+                {tag}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{tags.length - 3}
+              </span>
+            )}
           </div>
         </div>
       );

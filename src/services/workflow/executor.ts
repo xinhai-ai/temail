@@ -11,6 +11,7 @@ import type {
   ConditionAiClassifierData,
   KeywordSet,
   EmailContentField,
+  ActionSetTagsData,
   ActionAiRewriteData,
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
@@ -119,6 +120,9 @@ export async function executeNode(
         data as { field: EmailContentField; pattern: string; replacement: string; flags?: string },
         context
       );
+
+    case "action:setTags":
+      return executeSetTags(data as ActionSetTagsData, context);
 
     case "action:aiRewrite":
       return executeAiRewrite(data as ActionAiRewriteData, context);
@@ -578,6 +582,77 @@ function executeRegexReplace(
     before: changed ? truncateForLog(before, 80) : undefined,
     after: changed ? truncateForLog(after, 80) : undefined,
   };
+}
+
+async function executeSetTags(
+  data: ActionSetTagsData,
+  context: ExecutionContext
+): Promise<{ mode: string; tags: string[]; emailId?: string; updatedTagCount?: number }> {
+  const emailId = context.email?.id;
+  if (!emailId) return { mode: data.mode, tags: [] };
+
+  const templateCtx = buildTemplateContext(context);
+  const rawTags = Array.isArray(data.tags) ? data.tags : [];
+  const tags = rawTags
+    .map((t) => replaceTemplateVariables(String(t || ""), templateCtx).trim())
+    .filter(Boolean);
+  const mode = (data.mode || "add") as string;
+
+  if (context.isTestMode) {
+    return { mode, tags, emailId, updatedTagCount: tags.length };
+  }
+
+  const email = await prisma.email.findUnique({
+    where: { id: emailId },
+    select: { mailbox: { select: { userId: true } } },
+  });
+  const userId = email?.mailbox?.userId;
+  if (!userId) {
+    return { mode, tags, emailId };
+  }
+
+  const updatedTagCount = await prisma.$transaction(async (tx) => {
+    if (mode === "remove") {
+      const existing = await tx.tag.findMany({
+        where: { userId, name: { in: tags } },
+        select: { id: true },
+      });
+      const tagIds = existing.map((t) => t.id);
+      if (tagIds.length > 0) {
+        await tx.emailTag.deleteMany({
+          where: { emailId, tagId: { in: tagIds } },
+        });
+      }
+      return tagIds.length;
+    }
+
+    const ensured = await Promise.all(
+      tags.map((name) =>
+        tx.tag.upsert({
+          where: { userId_name: { userId, name } },
+          create: { userId, name },
+          update: {},
+          select: { id: true },
+        })
+      )
+    );
+    const ensuredIds = ensured.map((t) => t.id);
+
+    if (mode === "set") {
+      await tx.emailTag.deleteMany({ where: { emailId } });
+    }
+
+    if (ensuredIds.length > 0) {
+      await tx.emailTag.createMany({
+        data: ensuredIds.map((tagId) => ({ emailId, tagId })),
+        skipDuplicates: true,
+      });
+    }
+
+    return ensuredIds.length;
+  });
+
+  return { mode, tags, emailId, updatedTagCount };
 }
 
 async function executeAiRewrite(

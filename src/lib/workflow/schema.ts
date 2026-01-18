@@ -161,6 +161,12 @@ const actionRegexReplaceDataSchema = z.object({
   flags: z.string().regex(/^[gimsuy]*$/).max(10).optional(),
 });
 
+const actionSetTagsDataSchema = z.object({
+  label: z.string().optional(),
+  mode: z.enum(["add", "remove", "set"]),
+  tags: z.array(z.string().trim().min(1).max(100)).min(1).max(50),
+});
+
 const actionAiRewriteDataSchema = z.object({
   label: z.string().optional(),
   writeTarget: z.enum(["email", "variables", "both"]),
@@ -245,6 +251,7 @@ const nodeTypeToDataSchema: Record<string, z.ZodType> = {
   "action:cloneVariable": actionCloneVariableDataSchema,
   "action:rewriteEmail": actionRewriteEmailDataSchema,
   "action:regexReplace": actionRegexReplaceDataSchema,
+  "action:setTags": actionSetTagsDataSchema,
   "action:aiRewrite": actionAiRewriteDataSchema,
   "forward:email": forwardEmailDataSchema,
   "forward:telegram": forwardTelegramDataSchema,
@@ -278,6 +285,7 @@ const nodeTypeSchema = z.enum([
   "action:cloneVariable",
   "action:rewriteEmail",
   "action:regexReplace",
+  "action:setTags",
   "action:aiRewrite",
   "forward:email",
   "forward:telegram",

@@ -85,6 +85,7 @@ const categories = [
       "action:cloneVariable",
       "action:rewriteEmail",
       "action:regexReplace",
+      "action:setTags",
       "action:aiRewrite",
     ] as NodeType[],
   },

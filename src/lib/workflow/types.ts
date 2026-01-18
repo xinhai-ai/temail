@@ -47,6 +47,7 @@ export type NodeType =
   | "action:cloneVariable"
   | "action:rewriteEmail"
   | "action:regexReplace"
+  | "action:setTags"
   | "action:aiRewrite"
   // 转发
   | "forward:email"
@@ -80,6 +81,7 @@ export type NodeData =
   | ActionCloneVariableData
   | ActionRewriteEmailData
   | ActionRegexReplaceData
+  | ActionSetTagsData
   | ActionAiRewriteData
   | ForwardEmailData
   | ForwardTelegramData
@@ -240,6 +242,14 @@ export interface ActionRegexReplaceData {
   pattern: string;
   replacement: string;
   flags?: string;
+}
+
+export type SetTagsMode = "add" | "remove" | "set";
+
+export interface ActionSetTagsData {
+  label?: string;
+  mode: SetTagsMode;
+  tags: string[];
 }
 
 export type AiRewriteWriteTarget = "email" | "variables" | "both";
@@ -740,6 +750,17 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     inputs: 1,
     outputs: 1,
     defaultData: { writeTarget: "variables", fields: ["subject", "textBody"], outputVariableKeys: [], prompt: "", resultVariable: "" },
+  },
+  "action:setTags": {
+    type: "action:setTags",
+    category: "action",
+    label: "Set Tags",
+    description: "Add/remove/set email tags",
+    icon: "Tag",
+    color: "#10b981",
+    inputs: 1,
+    outputs: 1,
+    defaultData: { mode: "add", tags: [] },
   },
 
   // 转发
