@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
+import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
 import { Switch } from "@/components/ui/switch";
 import { Mail } from "lucide-react";
 import type { EmailDetail } from "../types";
@@ -94,15 +95,18 @@ export function PreviewPanel({
               <h2 className="text-lg font-semibold leading-tight flex-1">
                 {selectedEmail.subject || "(No subject)"}
               </h2>
-              <Badge
-                variant={selectedEmail.status === "UNREAD" ? "default" : "secondary"}
-                className={cn(
-                  selectedEmail.status === "UNREAD" &&
-                    "bg-primary/10 text-primary border-primary/20"
-                )}
-              >
-                {selectedEmail.status === "UNREAD" ? "New" : "Read"}
-              </Badge>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <DkimStatusIndicator emailId={selectedEmail.id} />
+                <Badge
+                  variant={selectedEmail.status === "UNREAD" ? "default" : "secondary"}
+                  className={cn(
+                    selectedEmail.status === "UNREAD" &&
+                      "bg-primary/10 text-primary border-primary/20"
+                  )}
+                >
+                  {selectedEmail.status === "UNREAD" ? "New" : "Read"}
+                </Badge>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">

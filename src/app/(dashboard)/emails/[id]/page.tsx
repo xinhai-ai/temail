@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
+import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
 import { ArrowLeft, Star, Trash2, Mail } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
@@ -118,7 +119,10 @@ export default function EmailDetailPage({
                 To: {email.mailbox.address}
               </p>
             </div>
-            <Badge>{email.status}</Badge>
+            <div className="flex items-center gap-2">
+              <DkimStatusIndicator emailId={email.id} />
+              <Badge>{email.status}</Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
