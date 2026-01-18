@@ -89,15 +89,27 @@ function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
   const preview = getNodePreview(type, data);
   const isConfigured = getIsConfigured(type, data);
 
+  // 计算多路输出节点的动态宽度
+  const categories = (data as unknown as { categories?: string[] }).categories || [];
+  const isMultiOutput = definition.outputs === "multi" &&
+    (type !== "condition:keyword" || keywordMultiMode);
+  const categoryCount = isMultiOutput ? categories.length + 1 : 0; // +1 for default
+  // 每个分类约70px宽度，最小200px，最大500px
+  const dynamicWidth = isMultiOutput && categoryCount > 2
+    ? Math.min(500, Math.max(200, categoryCount * 70))
+    : undefined;
+
   return (
     <div
       className={cn(
-        "min-w-[200px] max-w-[240px] rounded-xl border-2 bg-card shadow-lg transition-all duration-200",
+        "rounded-xl border-2 bg-card shadow-lg transition-all duration-200",
+        !dynamicWidth && "min-w-[200px] max-w-[240px]",
         selected
           ? "border-primary ring-4 ring-primary/20 shadow-xl scale-[1.02]"
           : "border-border/60 hover:border-border hover:shadow-xl",
         !isConfigured && "border-dashed border-amber-400/60"
       )}
+      style={dynamicWidth ? { width: dynamicWidth } : undefined}
     >
       {/* 输入 Handle */}
       {definition.inputs > 0 && (
@@ -180,39 +192,37 @@ function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
 
       {/* 条件节点的双输出 */}
       {(isConditional || (type === "condition:keyword" && !keywordMultiMode)) && (
-        <div className="relative pb-6 nodrag">
-          <div className="absolute bottom-0 left-0 right-0 flex justify-between items-end px-4">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-medium text-green-600 mb-1">Yes</span>
-              <Handle
-                type="source"
-                position={Position.Bottom}
-                id="true"
-                className={cn(
-                  "!relative !transform-none !w-4 !h-4",
-                  "!bg-gradient-to-br !from-green-400 !to-green-500",
-                  "!border-2 !border-background",
-                  "hover:!from-green-500 hover:!to-green-600 transition-colors"
-                )}
-                style={{ position: "relative", left: 0, top: 0 }}
-              />
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-medium text-red-600 mb-1">No</span>
-              <Handle
-                type="source"
-                position={Position.Bottom}
-                id="false"
-                className={cn(
-                  "!relative !transform-none !w-4 !h-4",
-                  "!bg-gradient-to-br !from-red-400 !to-red-500",
-                  "!border-2 !border-background",
-                  "hover:!from-red-500 hover:!to-red-600 transition-colors"
-                )}
-                style={{ position: "relative", left: 0, top: 0 }}
-              />
-            </div>
+        <div className="relative pb-8 nodrag">
+          {/* 标签行 */}
+          <div className="flex justify-between px-6 mb-1">
+            <span className="text-[10px] font-medium text-green-600">Yes</span>
+            <span className="text-[10px] font-medium text-red-600">No</span>
           </div>
+          {/* Handle 使用绝对定位 */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="true"
+            className={cn(
+              "!w-4 !h-4 !cursor-crosshair !z-10",
+              "!bg-gradient-to-br !from-green-400 !to-green-500",
+              "!border-2 !border-background",
+              "hover:!from-green-500 hover:!to-green-600 transition-colors"
+            )}
+            style={{ left: "20%" }}
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="false"
+            className={cn(
+              "!w-4 !h-4 !cursor-crosshair !z-10",
+              "!bg-gradient-to-br !from-red-400 !to-red-500",
+              "!border-2 !border-background",
+              "hover:!from-red-500 hover:!to-red-600 transition-colors"
+            )}
+            style={{ left: "80%" }}
+          />
         </div>
       )}
 
@@ -305,79 +315,79 @@ function MultiOutputHandles({ data }: { data: Record<string, unknown> }) {
 
   if (categories.length === 0) {
     return (
-      <div className="relative pb-6 nodrag">
-        <div className="absolute bottom-0 left-0 right-0 flex justify-center items-end px-4">
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-medium text-gray-600 mb-1">default</span>
-            <Handle
-              type="source"
-              position={Position.Bottom}
-              id="default"
-              className={cn(
-                "!relative !transform-none !w-4 !h-4 !cursor-crosshair !z-10",
-                "!bg-gradient-to-br !from-gray-400 !to-gray-500",
-                "!border-2 !border-background",
-                "hover:!from-gray-500 hover:!to-gray-600 transition-colors"
-              )}
-              style={{ position: "relative", left: 0, top: 0 }}
-            />
-          </div>
+      <div className="relative pb-8 nodrag">
+        <div className="flex justify-center px-4 mb-1">
+          <span className="text-[9px] font-medium text-gray-600">default</span>
         </div>
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="default"
+          className={cn(
+            "!w-4 !h-4 !cursor-crosshair !z-10",
+            "!bg-gradient-to-br !from-gray-400 !to-gray-500",
+            "!border-2 !border-background",
+            "hover:!from-gray-500 hover:!to-gray-600 transition-colors"
+          )}
+          style={{ left: "50%" }}
+        />
       </div>
     );
   }
 
+  // 包含所有分类 + default
+  const allHandles = [...categories, "default"];
+  const handleCount = allHandles.length;
+
   return (
-    <div className="relative pb-6 nodrag">
-      <div className="absolute bottom-0 left-0 right-0 flex justify-around items-end px-2">
-        {categories.map((category, index) => {
-          const style = multiColorClasses[index % multiColorClasses.length];
+    <div className="relative pb-8 nodrag">
+      {/* 标签行 - 使用flex均匀分布 */}
+      <div className="flex justify-around px-2 mb-1">
+        {allHandles.map((category, index) => {
+          const style = category === "default"
+            ? null
+            : multiColorClasses[index % multiColorClasses.length];
           return (
-            <div key={category} className="flex flex-col items-center min-w-0">
-              <span
-                className={cn(
-                  "text-[9px] font-medium mb-1 truncate max-w-[60px]",
-                  style.text
-                )}
-                title={category}
-              >
-                {category}
-              </span>
-              <Handle
-                type="source"
-                position={Position.Bottom}
-                id={category}
-                className={cn(
-                  "!relative !transform-none !w-4 !h-4 !cursor-crosshair !z-10",
-                  "!bg-gradient-to-br",
-                  style.from,
-                  style.to,
-                  "!border-2 !border-background",
-                  style.hoverFrom,
-                  style.hoverTo,
-                  "transition-colors"
-                )}
-                style={{ position: "relative", left: 0, top: 0 }}
-              />
-            </div>
+            <span
+              key={category}
+              className={cn(
+                "text-[9px] font-medium truncate max-w-[60px] text-center",
+                style?.text || "text-gray-600"
+              )}
+              title={category}
+            >
+              {category}
+            </span>
           );
         })}
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] font-medium text-gray-600 mb-1">default</span>
+      </div>
+      {/* Handle 使用绝对定位，通过left百分比分布 */}
+      {allHandles.map((category, index) => {
+        const style = category === "default"
+          ? null
+          : multiColorClasses[index % multiColorClasses.length];
+        // 计算每个Handle的水平位置百分比
+        const leftPercent = ((index + 0.5) / handleCount) * 100;
+        return (
           <Handle
+            key={category}
             type="source"
             position={Position.Bottom}
-            id="default"
+            id={category}
             className={cn(
-              "!relative !transform-none !w-4 !h-4 !cursor-crosshair !z-10",
-              "!bg-gradient-to-br !from-gray-400 !to-gray-500",
+              "!w-4 !h-4 !cursor-crosshair !z-10",
+              "!bg-gradient-to-br",
+              style?.from || "!from-gray-400",
+              style?.to || "!to-gray-500",
               "!border-2 !border-background",
-              "hover:!from-gray-500 hover:!to-gray-600 transition-colors"
+              style?.hoverFrom || "hover:!from-gray-500",
+              style?.hoverTo || "hover:!to-gray-600",
+              "transition-colors"
             )}
-            style={{ position: "relative", left: 0, top: 0 }}
+            style={{ left: `${leftPercent}%` }}
           />
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }
