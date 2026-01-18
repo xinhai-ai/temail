@@ -25,7 +25,14 @@ export async function GET(
     where: { id, mailbox: { userId: session.user.id } },
     include: {
       mailbox: true,
-      attachments: true,
+      attachments: {
+        select: {
+          id: true,
+          filename: true,
+          contentType: true,
+          size: true,
+        },
+      },
       headers: true,
     },
   });
@@ -34,26 +41,32 @@ export async function GET(
     return NextResponse.json({ error: "Email not found" }, { status: 404 });
   }
 
+  // For lazy loading: exclude rawContent from response, but indicate if it's available
+  // - If rawContentPath exists: raw content is in file storage
+  // - If only rawContent exists (legacy): keep a flag so frontend knows raw is available
+  const { rawContent, ...emailWithoutRawContent } = email;
+  const response = {
+    ...emailWithoutRawContent,
+    // For backward compatibility: if no rawContentPath but rawContent exists,
+    // set rawContent to true (as a flag) so frontend knows to fetch from /raw
+    rawContent: !email.rawContentPath && rawContent ? true : undefined,
+  };
+
   if (email.status === "UNREAD") {
-    const updated = await prisma.email.update({
+    await prisma.email.update({
       where: { id },
       data: { status: "READ" },
-      include: {
-        mailbox: true,
-        attachments: true,
-        headers: true,
-      },
     });
 
     publishRealtimeEvent(session.user.id, {
       type: "email.updated",
-      data: { id, mailboxId: updated.mailboxId, status: "READ" },
+      data: { id, mailboxId: email.mailboxId, status: "READ" },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json({ ...response, status: "READ" });
   }
 
-  return NextResponse.json(email);
+  return NextResponse.json(response);
 }
 
 export async function PATCH(

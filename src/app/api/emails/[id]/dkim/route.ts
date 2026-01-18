@@ -50,14 +50,14 @@ export async function GET(
 
   const email = await prisma.email.findFirst({
     where: { id, mailbox: { userId: session.user.id } },
-    select: { id: true, rawContent: true },
+    select: { id: true, rawContent: true, rawContentPath: true },
   });
 
   if (!email) {
     return NextResponse.json({ error: "Email not found" }, { status: 404 });
   }
 
-  const value = await verifyDkim(email.rawContent);
+  const value = await verifyDkim(email);
   setCachedDkim(id, value);
   return NextResponse.json(value);
 }

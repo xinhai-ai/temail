@@ -1,29 +1,100 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import prisma from "@/lib/prisma";
+import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
-export default async function AdminInboundEmailDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+interface InboundEmail {
+  id: string;
+  sourceType: string;
+  messageId?: string | null;
+  fromAddress?: string | null;
+  fromName?: string | null;
+  toAddress: string;
+  subject: string;
+  textBody?: string | null;
+  htmlBody?: string | null;
+  rawContent?: boolean | null;
+  rawContentPath?: string | null;
+  receivedAt: string;
+  domain: { id: string; name: string };
+  mailbox?: { id: string; address: string; userId: string } | null;
+}
 
-  const inboundEmail = await prisma.inboundEmail.findUnique({
-    where: { id },
-    include: {
-      domain: { select: { id: true, name: true } },
-      mailbox: { select: { id: true, address: true, userId: true } },
-    },
-  });
+export default function AdminInboundEmailDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+
+  const [inboundEmail, setInboundEmail] = useState<InboundEmail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [rawContent, setRawContent] = useState<string | null>(null);
+  const [loadingRaw, setLoadingRaw] = useState(false);
+  const [rawExpanded, setRawExpanded] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/admin/inbound/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setInboundEmail(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch inbound email:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  const handleRawExpand = async () => {
+    const newExpanded = !rawExpanded;
+    setRawExpanded(newExpanded);
+
+    if (!newExpanded || rawContent || loadingRaw) return;
+
+    // Lazy load raw content from API
+    if (inboundEmail?.rawContent || inboundEmail?.rawContentPath) {
+      setLoadingRaw(true);
+      try {
+        const res = await fetch(`/api/admin/inbound/${id}/raw`);
+        if (res.ok) {
+          const text = await res.text();
+          setRawContent(text);
+        } else {
+          toast.error("Failed to load raw content");
+        }
+      } catch (error) {
+        console.error("Failed to load raw content:", error);
+        toast.error("Failed to load raw content");
+      } finally {
+        setLoadingRaw(false);
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center p-8">Loading...</div>;
+  }
 
   if (!inboundEmail) {
-    notFound();
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <p>Inbound email not found</p>
+        <Button className="mt-4" asChild>
+          <Link href="/admin/inbound">Back</Link>
+        </Button>
+      </div>
+    );
   }
+
+  const hasRawContent = inboundEmail.rawContent || inboundEmail.rawContentPath;
 
   return (
     <div className="space-y-6">
@@ -84,15 +155,26 @@ export default async function AdminInboundEmailDetailPage({
         </Card>
       )}
 
-      {inboundEmail.rawContent && (
+      {hasRawContent && (
         <Card className="p-6 space-y-2">
-          <h2 className="text-lg font-semibold">Raw</h2>
-          <pre className="whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
-            {inboundEmail.rawContent}
-          </pre>
+          <details open={rawExpanded} onToggle={handleRawExpand}>
+            <summary className="cursor-pointer text-lg font-semibold">Raw</summary>
+            {loadingRaw ? (
+              <div className="mt-3 flex items-center justify-center h-[200px] bg-slate-950 rounded-md">
+                <div className="text-slate-400">Loading raw content...</div>
+              </div>
+            ) : rawContent ? (
+              <pre className="mt-3 whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
+                {rawContent}
+              </pre>
+            ) : (
+              <div className="mt-3 flex items-center justify-center h-[200px] bg-slate-950 rounded-md">
+                <div className="text-slate-400">Click to load raw content</div>
+              </div>
+            )}
+          </details>
         </Card>
       )}
     </div>
   );
 }
-

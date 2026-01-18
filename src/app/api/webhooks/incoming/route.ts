@@ -6,6 +6,7 @@ import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { Prisma } from "@prisma/client";
 import { readJsonBody } from "@/lib/request";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getStorage, generateRawContentPath } from "@/lib/storage";
 
 function extractEmailAddress(value: unknown) {
   if (typeof value !== "string") return null;
@@ -152,6 +153,23 @@ export async function POST(request: NextRequest) {
           ...(parsedHeaders.length ? { headers: parsedHeaders } : {}),
         });
 
+    // Generate a unique ID for file storage
+    const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const now = new Date();
+
+    // Save raw content to file
+    let rawContentPath: string | undefined;
+    if (rawContent) {
+      try {
+        const storage = getStorage();
+        rawContentPath = generateRawContentPath(tempId, now);
+        await storage.write(rawContentPath, rawContent);
+      } catch (error) {
+        console.error("[webhook] failed to save raw content:", error);
+        // Fall back to not storing raw content if file storage fails
+      }
+    }
+
     try {
       await prisma.inboundEmail.create({
         data: {
@@ -162,7 +180,7 @@ export async function POST(request: NextRequest) {
           subject: normalizedSubject,
           textBody: typeof text === "string" ? text : undefined,
           htmlBody: typeof html === "string" ? html : undefined,
-          rawContent,
+          rawContentPath,
           domainId: webhookConfig.domainId,
           mailboxId: mailbox?.id,
         },
@@ -200,7 +218,7 @@ export async function POST(request: NextRequest) {
         subject: normalizedSubject,
         textBody: typeof text === "string" ? text : undefined,
         htmlBody: typeof html === "string" ? html : undefined,
-        rawContent: rawContent || undefined,
+        rawContentPath,
         mailboxId: mailbox.id,
         ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
       },

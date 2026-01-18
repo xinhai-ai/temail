@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
-import { ArrowLeft, Star, Trash2, Mail } from "lucide-react";
+import { ArrowLeft, Star, Trash2, Mail, Paperclip, Download } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 
@@ -21,7 +21,8 @@ interface Email {
   toAddress: string;
   textBody?: string | null;
   htmlBody?: string | null;
-  rawContent?: string | null;
+  rawContent?: string | boolean | null;  // true = available via /raw API, string = inline content
+  rawContentPath?: string | null;
   messageId?: string | null;
   status: string;
   isStarred: boolean;
@@ -29,6 +30,14 @@ interface Email {
   mailbox: { address: string };
   headers?: Array<{ id: string; name: string; value: string }>;
   attachments?: Array<{ id: string; filename: string; contentType: string; size: number }>;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const size = bytes / Math.pow(1024, i);
+  return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
 
 export default function EmailDetailPage({
@@ -41,6 +50,9 @@ export default function EmailDetailPage({
   const [email, setEmail] = useState<Email | null>(null);
   const [loading, setLoading] = useState(true);
   const [showHtml, setShowHtml] = useState(true);
+  const [rawContent, setRawContent] = useState<string | null>(null);
+  const [loadingRaw, setLoadingRaw] = useState(false);
+  const [rawExpanded, setRawExpanded] = useState(false);
 
   useEffect(() => {
     const fetchEmail = async () => {
@@ -73,6 +85,49 @@ export default function EmailDetailPage({
     }
   };
 
+  const handleRawExpand = async () => {
+    const newExpanded = !rawExpanded;
+    setRawExpanded(newExpanded);
+
+    // If already have content or not expanding, skip
+    if (!newExpanded || rawContent) return;
+
+    // If rawContent is a string (inline content from legacy), use it directly
+    if (typeof email?.rawContent === "string") {
+      setRawContent(email.rawContent);
+      return;
+    }
+
+    // Lazy load raw content from API (for both rawContentPath and rawContent=true cases)
+    if (email?.rawContentPath || email?.rawContent === true) {
+      setLoadingRaw(true);
+      try {
+        const res = await fetch(`/api/emails/${id}/raw`);
+        if (res.ok) {
+          const text = await res.text();
+          setRawContent(text);
+        } else {
+          toast.error("Failed to load raw content");
+        }
+      } catch (error) {
+        console.error("Failed to load raw content:", error);
+        toast.error("Failed to load raw content");
+      } finally {
+        setLoadingRaw(false);
+      }
+    }
+  };
+
+  const handleDownloadAttachment = (attachmentId: string, filename: string) => {
+    const url = `/api/emails/${id}/attachments/${attachmentId}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Loading...</div>;
   }
@@ -88,6 +143,9 @@ export default function EmailDetailPage({
       </div>
     );
   }
+
+  const hasRawContent = email.rawContent || email.rawContentPath;
+  const displayRawContent = rawContent || (typeof email.rawContent === "string" ? email.rawContent : null);
 
   return (
     <div className="space-y-6">
@@ -180,6 +238,38 @@ export default function EmailDetailPage({
               </pre>
             )}
           </div>
+
+          {/* Attachments section */}
+          {email.attachments && email.attachments.length > 0 && (
+            <div className="rounded-md border bg-muted/30 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium mb-3">
+                <Paperclip className="h-4 w-4" />
+                <span>Attachments ({email.attachments.length})</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {email.attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center justify-between gap-2 py-2 px-3 rounded border bg-background"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{attachment.filename}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(attachment.size)} - {attachment.contentType}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownloadAttachment(attachment.id, attachment.filename)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -245,12 +335,22 @@ export default function EmailDetailPage({
             </details>
           )}
 
-          {email.rawContent && (
-            <details className="rounded-md border bg-muted/30 p-3">
+          {hasRawContent && (
+            <details className="rounded-md border bg-muted/30 p-3" open={rawExpanded} onToggle={handleRawExpand}>
               <summary className="cursor-pointer text-sm font-medium">Raw content</summary>
-              <pre className="mt-3 whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
-                {email.rawContent}
-              </pre>
+              {loadingRaw ? (
+                <div className="mt-3 flex items-center justify-center h-[200px] bg-slate-950 rounded-md">
+                  <div className="text-slate-400">Loading raw content...</div>
+                </div>
+              ) : displayRawContent ? (
+                <pre className="mt-3 whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
+                  {displayRawContent}
+                </pre>
+              ) : (
+                <div className="mt-3 flex items-center justify-center h-[200px] bg-slate-950 rounded-md">
+                  <div className="text-slate-400">Raw content not available</div>
+                </div>
+              )}
             </details>
           )}
         </CardContent>

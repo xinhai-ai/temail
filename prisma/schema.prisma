@@ -228,6 +228,7 @@ model Email {
   textBody    String?
   htmlBody    String?
   rawContent  String?
+  rawContentPath String?   // File storage path for RFC822 content
   status      EmailStatus @default(UNREAD)
   isStarred   Boolean     @default(false)
   receivedAt  DateTime    @default(now())
@@ -260,6 +261,7 @@ model InboundEmail {
   textBody    String?
   htmlBody    String?
   rawContent  String?
+  rawContentPath String?       // File storage path for RFC822 content
   receivedAt  DateTime         @default(now())
   createdAt   DateTime         @default(now())
 

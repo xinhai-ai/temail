@@ -6,11 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
 import { Switch } from "@/components/ui/switch";
-import { Mail } from "lucide-react";
+import { Mail, Paperclip, Download } from "lucide-react";
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
 
@@ -19,6 +19,14 @@ type PreviewPanelProps = {
   selectedEmail: EmailDetail | null;
   loadingPreview: boolean;
 };
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const size = bytes / Math.pow(1024, i);
+  return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+}
 
 export function PreviewPanel({
   selectedEmailId,
@@ -38,7 +46,21 @@ export function PreviewPanel({
     }
   });
 
+  // Lazy loading state for raw content
+  const [rawContent, setRawContent] = useState<string | null>(null);
+  const [loadingRaw, setLoadingRaw] = useState(false);
+
+  // Reset raw content when email changes
+  useEffect(() => {
+    setRawContent(null);
+    setManualPreviewMode(null);
+  }, [selectedEmailId]);
+
   const previewMode: "text" | "html" | "raw" = manualPreviewMode ?? (selectedEmail?.htmlBody ? "html" : "text");
+
+  // Check if raw content is available (either in database or file)
+  // rawContent can be: string (inline), true (available via API), or rawContentPath (file storage)
+  const hasRawContent = selectedEmail?.rawContent || selectedEmail?.rawContentPath;
 
   const handleAllowRemoteResourcesChange = (checked: boolean) => {
     setAllowRemoteResources(checked);
@@ -60,6 +82,55 @@ export function PreviewPanel({
       // ignore
     }
   };
+
+  const handleRawClick = async () => {
+    setManualPreviewMode("raw");
+
+    // If raw content is already loaded from API, use it
+    if (rawContent) return;
+
+    // If rawContent is a string (inline content from legacy), use it directly
+    if (typeof selectedEmail?.rawContent === "string") {
+      setRawContent(selectedEmail.rawContent);
+      return;
+    }
+
+    // If already loading, skip
+    if (loadingRaw) return;
+
+    // Lazy load from API (for both rawContentPath and rawContent=true cases)
+    if (selectedEmailId && hasRawContent) {
+      setLoadingRaw(true);
+      try {
+        const res = await fetch(`/api/emails/${selectedEmailId}/raw`);
+        if (res.ok) {
+          const text = await res.text();
+          setRawContent(text);
+        } else {
+          toast.error("Failed to load raw content");
+        }
+      } catch (error) {
+        console.error("Failed to load raw content:", error);
+        toast.error("Failed to load raw content");
+      } finally {
+        setLoadingRaw(false);
+      }
+    }
+  };
+
+  const handleDownloadAttachment = (attachmentId: string, filename: string) => {
+    if (!selectedEmailId) return;
+    const url = `/api/emails/${selectedEmailId}/attachments/${attachmentId}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Get the raw content to display (only use selectedEmail.rawContent if it's a string)
+  const displayRawContent = rawContent || (typeof selectedEmail?.rawContent === "string" ? selectedEmail.rawContent : null);
 
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
@@ -170,8 +241,8 @@ export function PreviewPanel({
                   <Button
                     size="sm"
                     variant={previewMode === "raw" ? "default" : "outline"}
-                    onClick={() => setManualPreviewMode("raw")}
-                    disabled={!selectedEmail.rawContent}
+                    onClick={handleRawClick}
+                    disabled={!hasRawContent}
                   >
                     Raw
                   </Button>
@@ -188,14 +259,56 @@ export function PreviewPanel({
 
                 {previewMode === "html" && selectedEmail.htmlBody ? (
                   <EmailHtmlPreview html={selectedEmail.htmlBody} allowRemoteResources={allowRemoteResources} />
-                ) : previewMode === "raw" && selectedEmail.rawContent ? (
-                  <pre className="whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
-                    {selectedEmail.rawContent}
-                  </pre>
+                ) : previewMode === "raw" ? (
+                  loadingRaw ? (
+                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
+                      <div className="text-slate-400">Loading raw content...</div>
+                    </div>
+                  ) : displayRawContent ? (
+                    <pre className="whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
+                      {displayRawContent}
+                    </pre>
+                  ) : (
+                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
+                      <div className="text-slate-400">Raw content not available</div>
+                    </div>
+                  )
                 ) : (
                   <pre className="whitespace-pre-wrap break-words text-sm bg-white p-4 rounded-md border min-h-[360px]">
                     {selectedEmail.textBody || "No text content"}
                   </pre>
+                )}
+
+                {/* Attachments section */}
+                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                      <Paperclip className="h-4 w-4" />
+                      <span>Attachments ({selectedEmail.attachments.length})</span>
+                    </div>
+                    <div className="space-y-1">
+                      {selectedEmail.attachments.map((attachment) => (
+                        <div
+                          key={attachment.id}
+                          className="flex items-center justify-between gap-2 py-1.5 px-2 rounded hover:bg-muted/50"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm truncate">{attachment.filename}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(attachment.size)}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDownloadAttachment(attachment.id, attachment.filename)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </>
             )}

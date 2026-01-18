@@ -19,6 +19,13 @@ export type Mailbox = {
   _count: { emails: number }; // unread count
 };
 
+export type Attachment = {
+  id: string;
+  filename: string;
+  contentType: string;
+  size: number;
+};
+
 export type EmailListItem = {
   id: string;
   subject: string;
@@ -35,6 +42,8 @@ export type EmailDetail = EmailListItem & {
   toAddress: string;
   textBody?: string | null;
   htmlBody?: string | null;
-  rawContent?: string | null;
+  rawContent?: string | boolean | null;  // true = available via /raw API, string = inline content
+  rawContentPath?: string | null;
+  attachments?: Attachment[];
 };
 

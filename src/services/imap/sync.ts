@@ -1,9 +1,15 @@
 import { ImapFlow, type MailboxObject } from "imapflow";
-import { simpleParser, type ParsedMail } from "mailparser";
+import { simpleParser, type ParsedMail, type Attachment } from "mailparser";
 import { Prisma, type Domain, type ImapConfig } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { executeForwards } from "@/services/forward";
 import { triggerEmailWorkflows } from "@/services/workflow/trigger";
+import {
+  getStorage,
+  generateRawContentPath,
+  generateAttachmentPath,
+  getMaxAttachmentSize,
+} from "@/lib/storage";
 
 export type ImapDomain = Domain & { imapConfig: ImapConfig };
 
@@ -115,6 +121,79 @@ function chunkArray<T>(values: T[], chunkSize: number): T[][] {
   return chunks;
 }
 
+/**
+ * Saves raw email content to file storage.
+ * Returns the storage path.
+ */
+async function saveRawContent(
+  emailId: string,
+  raw: string,
+  date: Date
+): Promise<string> {
+  const storage = getStorage();
+  const path = generateRawContentPath(emailId, date);
+  await storage.write(path, raw);
+  return path;
+}
+
+/**
+ * Processes and saves email attachments.
+ * Returns attachment records for database creation.
+ */
+async function processAttachments(
+  attachments: Attachment[],
+  emailId: string,
+  date: Date,
+  debug?: boolean
+): Promise<Array<{ id: string; filename: string; contentType: string; size: number; path: string }>> {
+  if (!attachments || attachments.length === 0) {
+    return [];
+  }
+
+  const storage = getStorage();
+  const maxSize = getMaxAttachmentSize();
+  const records: Array<{ id: string; filename: string; contentType: string; size: number; path: string }> = [];
+
+  for (const attachment of attachments) {
+    // Skip attachments that are too large
+    if (attachment.size > maxSize) {
+      if (debug) {
+        console.log(`[imap-sync] skipping attachment ${attachment.filename}: size ${attachment.size} exceeds max ${maxSize}`);
+      }
+      continue;
+    }
+
+    // Skip if no content
+    if (!attachment.content) {
+      continue;
+    }
+
+    const attachmentId = `${emailId}-${records.length}`;
+    const filename = attachment.filename || "unnamed";
+    const contentType = attachment.contentType || "application/octet-stream";
+    const size = attachment.size || attachment.content.length;
+
+    try {
+      const path = generateAttachmentPath(attachmentId, filename, date);
+      await storage.write(path, attachment.content);
+
+      records.push({
+        id: attachmentId,
+        filename,
+        contentType,
+        size,
+        path,
+      });
+    } catch (error) {
+      if (debug) {
+        console.error(`[imap-sync] failed to save attachment ${filename}:`, error);
+      }
+    }
+  }
+
+  return records;
+}
+
 async function processMessage(
   domain: ImapDomain,
   uid: number | null,
@@ -158,6 +237,22 @@ async function processMessage(
       select: { id: true, userId: true, address: true },
     });
 
+    // Generate a unique ID for file storage (used for both InboundEmail and Email)
+    const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+    // Save raw content to file
+    let rawContentPath: string | undefined;
+    if (raw) {
+      try {
+        rawContentPath = await saveRawContent(tempId, raw, receivedAt);
+      } catch (error) {
+        if (options.debug) {
+          console.error(`[imap-sync] failed to save raw content:`, error);
+        }
+        // Fall back to database storage if file storage fails
+      }
+    }
+
     try {
       await prisma.inboundEmail.create({
         data: {
@@ -169,7 +264,7 @@ async function processMessage(
           subject: normalizedSubject,
           textBody,
           htmlBody,
-          rawContent: raw || undefined,
+          rawContentPath,
           receivedAt,
           domainId: domain.id,
           mailboxId: mailbox?.id,
@@ -191,6 +286,14 @@ async function processMessage(
       if (existing) continue;
     }
 
+    // Process attachments
+    const attachmentRecords = await processAttachments(
+      parsed.attachments || [],
+      tempId,
+      receivedAt,
+      options.debug
+    );
+
     const email = await prisma.email.create({
       data: {
         messageId: parsedMessageId || undefined,
@@ -200,10 +303,11 @@ async function processMessage(
         subject: normalizedSubject,
         textBody,
         htmlBody,
-        rawContent: raw || undefined,
+        rawContentPath,
         mailboxId: mailbox.id,
         receivedAt,
         ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
+        ...(attachmentRecords.length ? { attachments: { create: attachmentRecords } } : {}),
       },
     });
 

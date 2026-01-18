@@ -1,6 +1,7 @@
 import "server-only";
 
 import { dkimVerify } from "mailauth";
+import { getStorage } from "@/lib/storage";
 
 export type DkimUiStatus = "correct" | "error" | "unknown";
 
@@ -40,7 +41,33 @@ function getStatusFromResults(results: DkimUiSignature[]): DkimUiStatus {
   return "unknown";
 }
 
-export async function verifyDkim(rawContent: string | null | undefined): Promise<DkimUiResult> {
+/**
+ * Verifies DKIM signature.
+ * Supports reading raw content from file (rawContentPath) or directly from database (rawContent).
+ */
+export async function verifyDkim(email: {
+  rawContent?: string | null;
+  rawContentPath?: string | null;
+}): Promise<DkimUiResult> {
+  let rawContent: string | null = null;
+
+  // Try to read from file first if path is provided
+  if (email.rawContentPath) {
+    try {
+      const storage = getStorage();
+      const buffer = await storage.read(email.rawContentPath);
+      rawContent = buffer.toString("utf8");
+    } catch (error) {
+      // File not found or read error, fall back to database content
+      console.error("[dkim] failed to read raw content from file:", error);
+    }
+  }
+
+  // Fall back to database content for backward compatibility
+  if (!rawContent && email.rawContent) {
+    rawContent = email.rawContent;
+  }
+
   if (!rawContent || !rawContent.trim()) {
     return { status: "unknown", summary: "DKIM: Unknown (no raw message available)" };
   }
