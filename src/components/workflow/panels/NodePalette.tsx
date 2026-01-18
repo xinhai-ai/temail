@@ -81,6 +81,11 @@ const categories = [
       "action:unstar",
       "action:delete",
       "action:setVariable",
+      "action:unsetVariable",
+      "action:cloneVariable",
+      "action:rewriteEmail",
+      "action:regexReplace",
+      "action:aiRewrite",
     ] as NodeType[],
   },
   {

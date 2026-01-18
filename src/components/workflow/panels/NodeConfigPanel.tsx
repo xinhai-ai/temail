@@ -10,6 +10,7 @@ import {
   VALUE_OPERATORS,
   DEFAULT_FORWARD_TEMPLATES,
   type CompositeCondition,
+  type EmailContentField,
   type KeywordSet,
   type MatchField,
   type MatchOperator,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -306,6 +308,244 @@ function renderNodeConfig(
           </div>
         </div>
       );
+
+    case "action:unsetVariable":
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-xs font-medium">Variable Name</Label>
+            <Input
+              id="name"
+              value={(data.name as string) || ""}
+              onChange={(e) => onChange("name", e.target.value)}
+              placeholder="myVariable"
+              className="h-8 text-sm font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              Deletes the variable from the workflow context
+            </p>
+          </div>
+        </div>
+      );
+
+    case "action:cloneVariable":
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="source" className="text-xs font-medium">Source Variable</Label>
+            <Input
+              id="source"
+              value={(data.source as string) || ""}
+              onChange={(e) => onChange("source", e.target.value)}
+              placeholder="sourceVar"
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="target" className="text-xs font-medium">Target Variable</Label>
+            <Input
+              id="target"
+              value={(data.target as string) || ""}
+              onChange={(e) => onChange("target", e.target.value)}
+              placeholder="targetVar"
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+        </div>
+      );
+
+    case "action:rewriteEmail":
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="subject" className="text-xs font-medium">Subject Template</Label>
+            <Input
+              id="subject"
+              value={(data.subject as string) || ""}
+              onChange={(e) => onChange("subject", e.target.value)}
+              placeholder="Re: {{email.subject}}"
+              className="h-8 text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Leave empty to keep the current subject
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label htmlFor="textBody" className="text-xs font-medium">Text Body Template</Label>
+            <Textarea
+              id="textBody"
+              value={(data.textBody as string) || ""}
+              onChange={(e) => onChange("textBody", e.target.value)}
+              placeholder="{{email.textBody}}"
+              rows={6}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="htmlBody" className="text-xs font-medium">HTML Body Template</Label>
+            <Textarea
+              id="htmlBody"
+              value={(data.htmlBody as string) || ""}
+              onChange={(e) => onChange("htmlBody", e.target.value)}
+              placeholder="{{email.htmlBody}}"
+              rows={6}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Supports template variables like {"{{email.subject}}"} and {"{{variables.myVar}}"}
+          </p>
+        </div>
+      );
+
+    case "action:regexReplace": {
+      const field = ((data.field as EmailContentField) || "textBody") as EmailContentField;
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Field</Label>
+            <Select value={field} onValueChange={(v) => onChange("field", v)}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Select field" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="subject">Subject</SelectItem>
+                <SelectItem value="textBody">Body (Text)</SelectItem>
+                <SelectItem value="htmlBody">Body (HTML)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pattern" className="text-xs font-medium">Pattern</Label>
+            <Input
+              id="pattern"
+              value={(data.pattern as string) || ""}
+              onChange={(e) => onChange("pattern", e.target.value)}
+              placeholder="\\bfoo\\b"
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="flags" className="text-xs font-medium">Flags</Label>
+            <Input
+              id="flags"
+              value={(data.flags as string) || "g"}
+              onChange={(e) => onChange("flags", e.target.value)}
+              placeholder="gim"
+              className="h-8 text-sm font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              Allowed: g i m s u y (default: g)
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="replacement" className="text-xs font-medium">Replacement</Label>
+            <Textarea
+              id="replacement"
+              value={(data.replacement as string) || ""}
+              onChange={(e) => onChange("replacement", e.target.value)}
+              placeholder=""
+              rows={4}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Supports capture groups ($1) and template variables
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    case "action:aiRewrite": {
+      const writeTarget = (data.writeTarget as string) || "variables";
+      const fields = (data.fields as EmailContentField[]) || ["subject", "textBody"];
+
+      const toggleField = (field: EmailContentField, checked: boolean) => {
+        const next = new Set(fields);
+        if (checked) next.add(field);
+        else next.delete(field);
+        onChange("fields", Array.from(next));
+      };
+
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Write Target</Label>
+            <Select value={writeTarget} onValueChange={(v) => onChange("writeTarget", v)}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Select target" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="variables">Variables</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="both">Both</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Prompt Fields</Label>
+            <div className="space-y-2 rounded-md border bg-background p-2">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={fields.includes("subject")}
+                  onCheckedChange={(v) => toggleField("subject", Boolean(v))}
+                />
+                Subject
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={fields.includes("textBody")}
+                  onCheckedChange={(v) => toggleField("textBody", Boolean(v))}
+                />
+                Body (Text)
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={fields.includes("htmlBody")}
+                  onCheckedChange={(v) => toggleField("htmlBody", Boolean(v))}
+                />
+                Body (HTML)
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Select which email fields are sent to the AI (large bodies are truncated)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="prompt" className="text-xs font-medium">Instruction</Label>
+            <Textarea
+              id="prompt"
+              value={(data.prompt as string) || ""}
+              onChange={(e) => onChange("prompt", e.target.value)}
+              placeholder="Extract key points into variables, then rewrite subject and body."
+              rows={6}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="resultVariable" className="text-xs font-medium">Result Variable (optional)</Label>
+            <Input
+              id="resultVariable"
+              value={(data.resultVariable as string) || ""}
+              onChange={(e) => onChange("resultVariable", e.target.value)}
+              placeholder="aiResult"
+              className="h-8 text-sm font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              Stores the full JSON result into this workflow variable
+            </p>
+          </div>
+        </div>
+      );
+    }
 
     case "control:branch":
       return (

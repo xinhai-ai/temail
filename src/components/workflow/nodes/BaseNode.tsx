@@ -432,6 +432,16 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
       return (d.duration as number) > 0;
     case "action:setVariable":
       return !!(d.name as string);
+    case "action:unsetVariable":
+      return !!(d.name as string);
+    case "action:cloneVariable":
+      return !!(d.source as string) && !!(d.target as string);
+    case "action:rewriteEmail":
+      return !!((d.subject as string)?.trim()) || !!((d.textBody as string)?.trim()) || !!((d.htmlBody as string)?.trim());
+    case "action:regexReplace":
+      return !!((d.pattern as string)?.trim());
+    case "action:aiRewrite":
+      return typeof d.writeTarget === "string" && ((d.fields as string[])?.length ?? 0) > 0;
     case "control:branch":
       return !!((d.condition as { value?: string })?.value);
     default:
@@ -620,6 +630,71 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
           <span className="truncate">{varValue?.slice(0, 20) || "..."}</span>
         </div>
       );
+
+    case "action:unsetVariable":
+      const unsetName = d.name as string;
+      if (!unsetName) return null;
+      return (
+        <div className="font-mono text-[11px]">
+          <span className="text-red-600">unset</span>
+          <span className="text-muted-foreground"> </span>
+          <span className="text-green-600">{unsetName}</span>
+        </div>
+      );
+
+    case "action:cloneVariable":
+      const source = d.source as string;
+      const target = d.target as string;
+      if (!source || !target) return null;
+      return (
+        <div className="font-mono text-[11px]">
+          <span className="text-green-600">{source}</span>
+          <span className="text-muted-foreground"> → </span>
+          <span className="text-green-600">{target}</span>
+        </div>
+      );
+
+    case "action:rewriteEmail": {
+      const fields: string[] = [];
+      if ((d.subject as string)?.trim()) fields.push("subject");
+      if ((d.textBody as string)?.trim()) fields.push("text");
+      if ((d.htmlBody as string)?.trim()) fields.push("html");
+      if (fields.length === 0) return <span className="text-muted-foreground text-[11px]">No fields set</span>;
+      return (
+        <span className="text-muted-foreground text-[11px]">
+          {fields.join(", ")}
+        </span>
+      );
+    }
+
+    case "action:regexReplace": {
+      const field = d.field as string;
+      const pattern = d.pattern as string;
+      if (!pattern) return null;
+      return (
+        <div className="space-y-0.5">
+          <div className="text-[11px] text-muted-foreground">{field || "field"}</div>
+          <div className="font-mono bg-muted px-1 py-0.5 rounded text-[10px] truncate max-w-[120px]">
+            /{pattern}/
+          </div>
+        </div>
+      );
+    }
+
+    case "action:aiRewrite": {
+      const writeTarget = (d.writeTarget as string) || "variables";
+      const fields = (d.fields as string[]) || [];
+      return (
+        <div className="space-y-0.5">
+          <div className="text-[11px] text-muted-foreground">{writeTarget}</div>
+          {fields.length > 0 && (
+            <div className="text-[10px] text-muted-foreground truncate">
+              {fields.join(", ")}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     case "control:branch":
       const condition = d.condition as { field?: string; operator?: string; value?: string };

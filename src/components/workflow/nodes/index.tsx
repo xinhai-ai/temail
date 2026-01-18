@@ -37,6 +37,11 @@ export const nodeTypes: NodeTypes = {
   "action:unstar": createNodeComponent("action:unstar"),
   "action:delete": createNodeComponent("action:delete"),
   "action:setVariable": createNodeComponent("action:setVariable"),
+  "action:unsetVariable": createNodeComponent("action:unsetVariable"),
+  "action:cloneVariable": createNodeComponent("action:cloneVariable"),
+  "action:rewriteEmail": createNodeComponent("action:rewriteEmail"),
+  "action:regexReplace": createNodeComponent("action:regexReplace"),
+  "action:aiRewrite": createNodeComponent("action:aiRewrite"),
 
   // 转发
   "forward:email": createNodeComponent("forward:email"),
