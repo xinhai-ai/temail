@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Mail, Lock, Loader2 } from "lucide-react";
 
-export default function LoginForm() {
+export default function LoginForm({ showRegisterLink = true }: { showRegisterLink?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,19 +117,24 @@ export default function LoginForm() {
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/register"
-                className="text-primary hover:text-primary/80 font-medium transition-colors"
-              >
-                Sign up
-              </Link>
-            </p>
+            {showRegisterLink ? (
+              <p className="text-sm text-center text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <Link
+                  href="/register"
+                  className="text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  Sign up
+                </Link>
+              </p>
+            ) : (
+              <p className="text-sm text-center text-muted-foreground">
+                Registration is disabled on this server.
+              </p>
+            )}
           </CardFooter>
         </form>
       </Card>
     </div>
   );
 }
-

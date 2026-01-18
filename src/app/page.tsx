@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Mail, Shield, Zap, Globe } from "lucide-react";
+import { getRegistrationMode } from "@/lib/registration";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const canRegister = (await getRegistrationMode()) !== "closed";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <nav className="container mx-auto px-4 py-6 flex justify-between items-center">
@@ -14,9 +19,11 @@ export default function HomePage() {
           <Button variant="ghost" className="text-white" asChild>
             <Link href="/login">Sign In</Link>
           </Button>
-          <Button asChild>
-            <Link href="/register">Get Started</Link>
-          </Button>
+          {canRegister && (
+            <Button asChild>
+              <Link href="/register">Get Started</Link>
+            </Button>
+          )}
         </div>
       </nav>
 
@@ -29,9 +36,11 @@ export default function HomePage() {
             Create disposable email addresses instantly. Protect your privacy,
             avoid spam, and manage multiple inboxes with ease.
           </p>
-          <Button size="lg" asChild>
-            <Link href="/register">Start Free</Link>
-          </Button>
+          {canRegister && (
+            <Button size="lg" asChild>
+              <Link href="/register">Start Free</Link>
+            </Button>
+          )}
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mt-20">

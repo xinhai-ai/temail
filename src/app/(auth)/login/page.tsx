@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { getRegistrationMode } from "@/lib/registration";
 import LoginForm from "./LoginForm";
 
 export default async function LoginPage() {
@@ -8,5 +9,6 @@ export default async function LoginPage() {
     redirect("/dashboard");
   }
 
-  return <LoginForm />;
+  const mode = await getRegistrationMode();
+  return <LoginForm showRegisterLink={mode !== "closed"} />;
 }
