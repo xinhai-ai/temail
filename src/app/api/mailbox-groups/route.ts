@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { readJsonBody } from "@/lib/request";
 
 const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -31,15 +32,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 20_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = createSchema.parse(body);
+    const data = createSchema.parse(bodyResult.data);
 
     const created = await prisma.mailboxGroup.create({
       data: {
@@ -62,4 +61,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

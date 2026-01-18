@@ -7,6 +7,7 @@ import {
   normalizeForwardTargetConfig,
   parseForwardRuleConfig,
 } from "@/services/forward-config";
+import { readJsonBody } from "@/lib/request";
 
 const legacyCreateSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -49,10 +50,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const bodyResult = await readJsonBody(request, { maxBytes: 200_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
+
   try {
-    const body = await request.json();
+    const body = bodyResult.data;
     if (body && typeof body === "object" && "targets" in body) {
       const data = createSchema.parse(body);
+
+      if (typeof data.mailboxId === "string") {
+        const mailbox = await prisma.mailbox.findFirst({
+          where: { id: data.mailboxId, userId: session.user.id },
+          select: { id: true },
+        });
+        if (!mailbox) {
+          return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
+        }
+      }
 
       const ruleConfig = data.config ?? JSON.stringify({ version: 3 });
       const parsedConfig = parseForwardRuleConfig(ruleConfig);
@@ -85,6 +101,16 @@ export async function POST(request: NextRequest) {
     }
 
     const data = legacyCreateSchema.parse(body);
+
+    if (typeof data.mailboxId === "string") {
+      const mailbox = await prisma.mailbox.findFirst({
+        where: { id: data.mailboxId, userId: session.user.id },
+        select: { id: true },
+      });
+      if (!mailbox) {
+        return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
+      }
+    }
 
     const normalized = normalizeForwardRuleConfig(data.type, data.config);
     if (!normalized.ok) {

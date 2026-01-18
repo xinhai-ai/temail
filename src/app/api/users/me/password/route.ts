@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { readJsonBody } from "@/lib/request";
 
 const schema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -15,15 +16,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 10_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = schema.parse(body);
+    const data = schema.parse(bodyResult.data);
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -73,4 +72,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

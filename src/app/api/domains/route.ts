@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
+import { readJsonBody } from "@/lib/request";
 
 const domainSchema = z.object({
   name: z.string().min(1, "Domain name is required"),
@@ -40,9 +41,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const bodyResult = await readJsonBody(request, { maxBytes: 20_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
+
   try {
-    const body = await request.json();
-    const data = domainSchema.parse(body);
+    const data = domainSchema.parse(bodyResult.data);
 
     const existing = await prisma.domain.findUnique({
       where: { name: data.name },

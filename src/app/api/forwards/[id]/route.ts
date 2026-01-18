@@ -7,6 +7,7 @@ import {
   normalizeForwardTargetConfig,
   parseForwardRuleConfig,
 } from "@/services/forward-config";
+import { readJsonBody } from "@/lib/request";
 
 const targetSchema = z.object({
   id: z.string().optional(),
@@ -60,9 +61,13 @@ export async function PATCH(
 
   const { id } = await params;
 
+  const bodyResult = await readJsonBody(request, { maxBytes: 200_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
+
   try {
-    const body = await request.json();
-    const data = updateSchema.parse(body);
+    const data = updateSchema.parse(bodyResult.data);
 
     const existing = await prisma.forwardRule.findFirst({
       where: { id, userId: session.user.id },

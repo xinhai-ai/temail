@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 import type {
   WorkflowNode,
   ExecutionContext,
@@ -12,6 +13,39 @@ import type {
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
+
+const HOP_BY_HOP_HEADERS = new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "host",
+  "content-length",
+]);
+
+function sanitizeOutboundHeaders(headers: Record<string, string> | undefined) {
+  const sanitized: Record<string, string> = {};
+  if (!headers) return sanitized;
+  for (const [name, value] of Object.entries(headers)) {
+    const trimmedName = name.trim();
+    if (!trimmedName) continue;
+    if (HOP_BY_HOP_HEADERS.has(trimmedName.toLowerCase())) continue;
+    sanitized[trimmedName] = String(value);
+  }
+  return sanitized;
+}
+
+function normalizeWebhookMethod(method: string | undefined): "GET" | "POST" | "PUT" | "PATCH" | "DELETE" {
+  const candidate = (method || "").trim().toUpperCase();
+  if (candidate === "GET" || candidate === "POST" || candidate === "PUT" || candidate === "PATCH" || candidate === "DELETE") {
+    return candidate;
+  }
+  return "POST";
+}
 
 export async function executeNode(
   node: WorkflowNode,
@@ -447,6 +481,8 @@ async function executeForwardTelegram(
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
         chat_id: data.chatId,
         text: message,
@@ -477,6 +513,12 @@ async function executeForwardDiscord(
   }
 
   try {
+    const validated = await validateEgressUrl(data.webhookUrl);
+    if (!validated.ok) {
+      console.error("Discord forward error:", validated.error);
+      return false;
+    }
+
     let body: Record<string, unknown>;
 
     if (data.useEmbed && data.template) {
@@ -490,9 +532,11 @@ async function executeForwardDiscord(
       body = { content: replaceTemplateVariables(template, templateCtx) };
     }
 
-    const response = await fetch(data.webhookUrl, {
+    const response = await fetch(validated.url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -519,6 +563,12 @@ async function executeForwardSlack(
   }
 
   try {
+    const validated = await validateEgressUrl(data.webhookUrl);
+    if (!validated.ok) {
+      console.error("Slack forward error:", validated.error);
+      return false;
+    }
+
     let body: Record<string, unknown>;
 
     if (data.useBlocks && data.template) {
@@ -532,9 +582,11 @@ async function executeForwardSlack(
       body = { text: replaceTemplateVariables(template, templateCtx) };
     }
 
-    const response = await fetch(data.webhookUrl, {
+    const response = await fetch(validated.url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -558,19 +610,28 @@ async function executeForwardWebhook(
   }
 
   try {
+    const validated = await validateEgressUrl(data.url);
+    if (!validated.ok) {
+      console.error("Webhook forward error:", validated.error);
+      return false;
+    }
+
     const contentType = data.contentType || "application/json";
 
     const headers: Record<string, string> = {
       "Content-Type": contentType,
-      ...(data.headers || {}),
+      ...sanitizeOutboundHeaders(data.headers),
     };
 
+    const method = normalizeWebhookMethod(data.method);
     const options: RequestInit = {
-      method: data.method || "POST",
+      method,
       headers,
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     };
 
-    if (data.method !== "GET") {
+    if (method !== "GET") {
       if (data.bodyTemplate) {
         options.body = replaceTemplateVariables(data.bodyTemplate, templateCtx);
       } else {
@@ -589,7 +650,7 @@ async function executeForwardWebhook(
       }
     }
 
-    const response = await fetch(data.url, options);
+    const response = await fetch(validated.url, options);
     return response.ok;
   } catch (error) {
     console.error("Webhook forward error:", error);

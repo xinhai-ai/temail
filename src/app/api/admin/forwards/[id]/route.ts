@@ -8,6 +8,7 @@ import {
   normalizeForwardTargetConfig,
   parseForwardRuleConfig,
 } from "@/services/forward-config";
+import { readJsonBody } from "@/lib/request";
 
 const targetSchema = z.object({
   id: z.string().optional(),
@@ -61,15 +62,13 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 200_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = updateSchema.parse(body);
+    const data = updateSchema.parse(bodyResult.data);
 
     if (data.mailboxId) {
       const mailbox = await prisma.mailbox.findUnique({

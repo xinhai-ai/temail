@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
+import { readJsonBody } from "@/lib/request";
 
 const updateWebhookSchema = z.object({
   isActive: z.boolean(),
@@ -76,7 +77,11 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json().catch(() => ({}));
+  const bodyResult = await readJsonBody(request, { maxBytes: 10_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
+  const body = bodyResult.data;
   const parsed = updateWebhookSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid request" }, { status: 400 });
@@ -99,6 +104,4 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: "Webhook config not found" }, { status: 404 });
   }
-
-  
 }

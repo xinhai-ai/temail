@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { z } from "zod";
+import { readJsonBody } from "@/lib/request";
 
 const updateSchema = z.object({
   status: z.enum(["UNREAD", "READ", "ARCHIVED", "DELETED"]).optional(),
@@ -66,9 +67,13 @@ export async function PATCH(
 
   const { id } = await params;
 
+  const bodyResult = await readJsonBody(request, { maxBytes: 20_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
+
   try {
-    const body = await request.json();
-    const data = updateSchema.parse(body);
+    const data = updateSchema.parse(bodyResult.data);
 
     const email = await prisma.email.findFirst({
       where: { id, mailbox: { userId: session.user.id } },

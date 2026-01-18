@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/rbac";
+import { readJsonBody } from "@/lib/request";
 
 const settingSchema = z.object({
   key: z.string().min(1),
@@ -36,12 +37,11 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 200_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
+  const body = bodyResult.data;
 
   try {
     const items = Array.isArray(body) ? body : [body];

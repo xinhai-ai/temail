@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/rbac";
+import { readJsonBody } from "@/lib/request";
 
 const updateSchema = z.object({
   status: z.enum(["UNREAD", "READ", "ARCHIVED", "DELETED"]).optional(),
@@ -47,15 +48,13 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 20_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = updateSchema.parse(body);
+    const data = updateSchema.parse(bodyResult.data);
 
     const updated = await prisma.email.update({
       where: { id },
@@ -98,4 +97,3 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

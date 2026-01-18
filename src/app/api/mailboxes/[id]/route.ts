@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
+import { readJsonBody } from "@/lib/request";
 
 const updateSchema = z.object({
   note: z.string().optional(),
   isStarred: z.boolean().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "DELETED"]).optional(),
-  groupId: z.string().nullable().optional(),
+  groupId: z.string().trim().min(1).nullable().optional(),
 });
 
 export async function GET(
@@ -48,16 +49,30 @@ export async function PATCH(
 
   const { id } = await params;
 
-  try {
-    const body = await request.json();
-    const data = updateSchema.parse(body);
+  const bodyResult = await readJsonBody(request, { maxBytes: 20_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
 
-    const result = await prisma.mailbox.updateMany({
+  try {
+    const data = updateSchema.parse(bodyResult.data);
+
+    if (typeof data.groupId === "string") {
+      const group = await prisma.mailboxGroup.findFirst({
+        where: { id: data.groupId, userId: session.user.id },
+        select: { id: true },
+      });
+      if (!group) {
+        return NextResponse.json({ error: "Group not found" }, { status: 404 });
+      }
+    }
+
+    const updateResult = await prisma.mailbox.updateMany({
       where: { id, userId: session.user.id },
       data,
     });
 
-    if (result.count === 0) {
+    if (updateResult.count === 0) {
       return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
     }
 

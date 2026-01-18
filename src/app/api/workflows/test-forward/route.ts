@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
+import { readJsonBody } from "@/lib/request";
+import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
+import { rateLimit } from "@/lib/api-rate-limit";
 import type {
   ForwardEmailData,
   ForwardTelegramData,
@@ -9,6 +12,14 @@ import type {
   ForwardWebhookData,
   NodeType,
 } from "@/lib/workflow/types";
+
+function normalizeWebhookMethod(method: string | undefined): "GET" | "POST" | "PUT" | "PATCH" | "DELETE" {
+  const candidate = (method || "").trim().toUpperCase();
+  if (candidate === "GET" || candidate === "POST" || candidate === "PUT" || candidate === "PATCH" || candidate === "DELETE") {
+    return candidate;
+  }
+  return "POST";
+}
 
 interface TestEmailData {
   id: string;
@@ -29,8 +40,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const limited = rateLimit(`workflows:test-forward:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
+  }
+
   try {
-    const body = await req.json();
+    const bodyResult = await readJsonBody(req, { maxBytes: 400_000 });
+    if (!bodyResult.ok) {
+      return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+    }
+    const body = bodyResult.data;
     const { type, config, email } = body as {
       type: NodeType;
       config: ForwardEmailData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
@@ -62,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     switch (type) {
       case "forward:email":
-        result = await testEmailForward(config as ForwardEmailData, vars);
+        result = await testEmailForward(config as ForwardEmailData);
         break;
       case "forward:telegram":
         result = await testTelegramForward(config as ForwardTelegramData, email, vars);
@@ -94,8 +118,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function testEmailForward(
-  config: ForwardEmailData,
-  vars: Record<string, unknown>
+  config: ForwardEmailData
 ): Promise<{ success: boolean; message: string; details?: string }> {
   // For email, we just validate the config since we can't send without SMTP
   if (!config.to) {
@@ -136,6 +159,8 @@ async function testTelegramForward(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        redirect: "error",
+        signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
         body: JSON.stringify({
           chat_id: config.chatId,
           text: `[TEST] ${text}`,
@@ -180,6 +205,11 @@ async function testDiscordForward(
     return { success: false, message: "Invalid Discord webhook URL format" };
   }
 
+  const validated = await validateEgressUrl(config.webhookUrl);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
   const template = config.template || `📧 **Test Email**: ${email.subject}`;
   let body: Record<string, unknown>;
 
@@ -194,9 +224,11 @@ async function testDiscordForward(
   }
 
   try {
-    const response = await fetch(config.webhookUrl, {
+    const response = await fetch(validated.url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -234,6 +266,11 @@ async function testSlackForward(
     return { success: false, message: "Invalid Slack webhook URL format" };
   }
 
+  const validated = await validateEgressUrl(config.webhookUrl);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
   const template = config.template || `📧 *Test Email*: ${email.subject}`;
   let body: Record<string, unknown>;
 
@@ -248,9 +285,11 @@ async function testSlackForward(
   }
 
   try {
-    const response = await fetch(config.webhookUrl, {
+    const response = await fetch(validated.url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -283,13 +322,12 @@ async function testWebhookForward(
     return { success: false, message: "Webhook URL is required" };
   }
 
-  try {
-    new URL(config.url);
-  } catch {
-    return { success: false, message: "Invalid webhook URL format" };
+  const validated = await validateEgressUrl(config.url);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
   }
 
-  const method = config.method || "POST";
+  const method = normalizeWebhookMethod(config.method);
   const contentType = config.contentType || "application/json";
   const body = config.bodyTemplate
     ? replaceTemplateVariables(config.bodyTemplate, vars)
@@ -301,10 +339,12 @@ async function testWebhookForward(
   };
 
   try {
-    const response = await fetch(config.url, {
+    const response = await fetch(validated.url, {
       method,
       headers,
       body: method !== "GET" ? body : undefined,
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     });
 
     return {

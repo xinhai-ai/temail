@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createWorkflowSchema } from "@/lib/workflow/schema";
 import { createEmptyWorkflowConfig } from "@/lib/workflow/types";
+import { readJsonBody } from "@/lib/request";
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,7 +77,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const bodyResult = await readJsonBody(request, { maxBytes: 400_000 });
+    if (!bodyResult.ok) {
+      return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+    }
+    const body = bodyResult.data;
     const parsed = createWorkflowSchema.safeParse(body);
 
     if (!parsed.success) {

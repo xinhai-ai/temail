@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
+import { readJsonBody } from "@/lib/request";
 
 const bulkSchema = z.object({
   action: z.enum(["markRead", "delete", "archive", "unarchive"]),
@@ -15,9 +16,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const bodyResult = await readJsonBody(request, { maxBytes: 50_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
+
   try {
-    const body = await request.json();
-    const { action, ids } = bulkSchema.parse(body);
+    const { action, ids } = bulkSchema.parse(bodyResult.data);
 
     const owned = await prisma.email.findMany({
       where: {
@@ -71,4 +76,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

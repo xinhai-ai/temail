@@ -4,6 +4,8 @@ import { executeForwards } from "@/services/forward";
 import { triggerEmailWorkflows } from "@/services/workflow/trigger";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { Prisma } from "@prisma/client";
+import { readJsonBody } from "@/lib/request";
+import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 
 function extractEmailAddress(value: unknown) {
   if (typeof value !== "string") return null;
@@ -50,23 +52,45 @@ function extractWebhookHeaders(value: unknown): Array<{ name: string; value: str
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { to, from, subject, text, html, secret, messageId, headers, raw } = body;
+    const ip = getClientIp(request) || "unknown";
+    const limited = rateLimit(`webhook-incoming:${ip}`, { limit: 600, windowMs: 60_000 });
+    if (!limited.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+      return NextResponse.json(
+        { error: "Rate limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+      );
+    }
 
-    if (!to || !secret) {
+    const bodyResult = await readJsonBody(request, { maxBytes: 1_000_000 });
+    if (!bodyResult.ok) {
+      return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+    }
+
+    const body = bodyResult.data;
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+    const payload = body as Record<string, unknown>;
+    const { to, from, subject, text, html, secret, messageId, headers, raw } = payload;
+
+    const secretKey = typeof secret === "string" ? secret.trim() : "";
+    const rawTo = typeof to === "string" ? to : "";
+
+    if (!rawTo || !secretKey) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    const toAddress = extractEmailAddress(to);
+    const toAddress = extractEmailAddress(rawTo);
     if (!toAddress) {
       return NextResponse.json({ error: "Invalid to address" }, { status: 400 });
     }
 
     const webhookConfig = await prisma.domainWebhookConfig.findUnique({
-      where: { secretKey: secret },
+      where: { secretKey },
       include: { domain: true },
     });
 

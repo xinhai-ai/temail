@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { readJsonBody } from "@/lib/request";
 
 const updateSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
@@ -44,17 +45,15 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 20_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = updateSchema.parse(body);
+    const data = updateSchema.parse(bodyResult.data);
 
-    const result = await prisma.mailboxGroup.updateMany({
+    const updateResult = await prisma.mailboxGroup.updateMany({
       where: { id, userId: session.user.id },
       data: {
         ...(data.name !== undefined ? { name: data.name } : null),
@@ -63,7 +62,7 @@ export async function PATCH(
       },
     });
 
-    if (result.count === 0) {
+    if (updateResult.count === 0) {
       return NextResponse.json({ error: "Group not found" }, { status: 404 });
     }
 
@@ -105,4 +104,3 @@ export async function DELETE(
 
   return NextResponse.json({ success: true });
 }
-

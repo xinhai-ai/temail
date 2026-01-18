@@ -7,6 +7,7 @@ import {
   normalizeForwardTargetConfig,
   parseForwardRuleConfig,
 } from "@/services/forward-config";
+import { readJsonBody } from "@/lib/request";
 
 const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -60,16 +61,25 @@ export async function POST(
 
   const { id } = await params;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 200_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
+  const body = bodyResult.data;
 
   try {
     if (body && typeof body === "object" && "targets" in body) {
       const data = createV3Schema.parse(body);
+
+      if (typeof data.mailboxId === "string") {
+        const mailbox = await prisma.mailbox.findFirst({
+          where: { id: data.mailboxId, userId: id },
+          select: { id: true },
+        });
+        if (!mailbox) {
+          return NextResponse.json({ error: "Mailbox not found for this user" }, { status: 404 });
+        }
+      }
 
       const ruleConfig = data.config ?? JSON.stringify({ version: 3 });
       const parsed = parseForwardRuleConfig(ruleConfig);

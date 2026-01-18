@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateWorkflowSchema } from "@/lib/workflow/schema";
+import { readJsonBody } from "@/lib/request";
 
 export async function GET(
   request: NextRequest,
@@ -78,7 +79,11 @@ export async function PATCH(
       );
     }
 
-    const body = await request.json();
+    const bodyResult = await readJsonBody(request, { maxBytes: 400_000 });
+    if (!bodyResult.ok) {
+      return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+    }
+    const body = bodyResult.data;
     const parsed = updateWorkflowSchema.safeParse(body);
 
     if (!parsed.success) {

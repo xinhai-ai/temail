@@ -3,12 +3,13 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
+import { readJsonBody } from "@/lib/request";
 
 const mailboxSchema = z.object({
   prefix: z.string().min(1, "Prefix is required"),
   domainId: z.string().min(1, "Domain is required"),
   note: z.string().optional(),
-  groupId: z.string().optional(),
+  groupId: z.string().trim().min(1).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -53,9 +54,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const bodyResult = await readJsonBody(request, { maxBytes: 20_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+  }
+
   try {
-    const body = await request.json();
-    const data = mailboxSchema.parse(body);
+    const data = mailboxSchema.parse(bodyResult.data);
 
     const isAdmin = isAdminRole(session.user.role);
     const domain = await prisma.domain.findFirst({
@@ -79,6 +84,16 @@ export async function POST(request: NextRequest) {
         { error: "Mailbox already exists" },
         { status: 400 }
       );
+    }
+
+    if (data.groupId) {
+      const group = await prisma.mailboxGroup.findFirst({
+        where: { id: data.groupId, userId: session.user.id },
+        select: { id: true },
+      });
+      if (!group) {
+        return NextResponse.json({ error: "Group not found" }, { status: 404 });
+      }
     }
 
     const mailbox = await prisma.mailbox.create({

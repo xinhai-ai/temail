@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getAdminSession, isSuperAdminRole } from "@/lib/rbac";
+import { readJsonBody } from "@/lib/request";
 
 const schema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -36,15 +37,13 @@ export async function POST(
     );
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 10_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = schema.parse(body);
+    const data = schema.parse(bodyResult.data);
     const hashedPassword = await bcrypt.hash(data.password, 12);
 
     await prisma.user.update({
@@ -77,4 +76,3 @@ export async function POST(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

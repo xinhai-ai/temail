@@ -4,6 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { WorkflowEngine } from "@/services/workflow/engine";
 import { logWorkflowDispatch, updateDispatchLogExecution, getExecutionSummary } from "@/services/workflow/logging";
 import type { WorkflowConfig, EmailContext } from "@/lib/workflow/types";
+import { readJsonBody } from "@/lib/request";
+
+function getOptionalString(data: Record<string, unknown>, key: string) {
+  const value = data[key];
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
 
 export async function POST(
   request: NextRequest,
@@ -16,7 +24,13 @@ export async function POST(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    const bodyResult = await readJsonBody(request, { maxBytes: 400_000 });
+    if (!bodyResult.ok) {
+      return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+    }
+    const rawBody = bodyResult.data;
+    const body =
+      rawBody && typeof rawBody === "object" ? (rawBody as Record<string, unknown>) : {};
 
     // Verify workflow ownership
     const workflow = await prisma.workflow.findFirst({
@@ -34,22 +48,25 @@ export async function POST(
     }
 
     // Get test email context from request body or use default
+    const now = Date.now();
     const emailContext: EmailContext = {
-      id: body.emailId || "test-email-" + Date.now(),
-      messageId: body.messageId || `<test-${Date.now()}@test.local>`,
-      fromAddress: body.fromAddress || "test@example.com",
-      fromName: body.fromName || "Test Sender",
-      toAddress: body.toAddress || "recipient@example.com",
-      subject: body.subject || "Test Email Subject",
-      textBody: body.textBody || "This is a test email body for workflow testing.",
-      htmlBody: body.htmlBody || "<p>This is a test email body for workflow testing.</p>",
+      id: getOptionalString(body, "emailId") ?? `test-email-${now}`,
+      messageId: getOptionalString(body, "messageId") ?? `<test-${now}@test.local>`,
+      fromAddress: getOptionalString(body, "fromAddress") ?? "test@example.com",
+      fromName: getOptionalString(body, "fromName") ?? "Test Sender",
+      toAddress: getOptionalString(body, "toAddress") ?? "recipient@example.com",
+      subject: getOptionalString(body, "subject") ?? "Test Email Subject",
+      textBody: getOptionalString(body, "textBody") ?? "This is a test email body for workflow testing.",
+      htmlBody: getOptionalString(body, "htmlBody") ?? "<p>This is a test email body for workflow testing.</p>",
       receivedAt: new Date(),
     };
 
     // Use provided config or current workflow config
-    const config = body.config
-      ? (body.config as WorkflowConfig)
-      : (JSON.parse(workflow.config) as WorkflowConfig);
+    const configValue = body["config"];
+    const config =
+      configValue && typeof configValue === "object"
+        ? (configValue as WorkflowConfig)
+        : (JSON.parse(workflow.config) as WorkflowConfig);
 
     // Create execution record
     const execution = await prisma.workflowExecution.create({

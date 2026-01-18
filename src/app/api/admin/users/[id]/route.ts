@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession, isSuperAdminRole } from "@/lib/rbac";
 import { z } from "zod";
+import { readJsonBody } from "@/lib/request";
 
 const updateSchema = z.object({
   email: z.string().email().optional(),
@@ -98,15 +99,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 50_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = updateSchema.parse(body);
+    const data = updateSchema.parse(bodyResult.data);
 
     if (data.role && !isSuperAdmin) {
       return NextResponse.json(
@@ -235,4 +234,3 @@ export async function DELETE(
 
   return NextResponse.json({ success: true });
 }
-

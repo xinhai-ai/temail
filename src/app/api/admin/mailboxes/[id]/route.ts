@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/rbac";
 import { Prisma } from "@prisma/client";
+import { readJsonBody } from "@/lib/request";
 
 const updateSchema = z.object({
   note: z.string().nullable().optional(),
@@ -51,15 +52,13 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  const bodyResult = await readJsonBody(request, { maxBytes: 50_000 });
+  if (!bodyResult.ok) {
+    return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
   }
 
   try {
-    const data = updateSchema.parse(body);
+    const data = updateSchema.parse(bodyResult.data);
 
     const updated = await prisma.mailbox.update({
       where: { id },

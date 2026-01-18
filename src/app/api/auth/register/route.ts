@@ -4,6 +4,8 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import { getRegistrationSettings, isInviteCodeValid } from "@/lib/registration";
+import { readJsonBody } from "@/lib/request";
+import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -20,16 +22,22 @@ function safeEqual(a: string, b: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    let body;
-    try {
-      body = await request.json();
-    } catch {
+    const ip = getClientIp(request) || "unknown";
+    const limited = rateLimit(`register:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+    if (!limited.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
       return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
+        { error: "Rate limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
       );
     }
-    const { email, password, name, adminSecret, inviteCode } = registerSchema.parse(body);
+
+    const bodyResult = await readJsonBody(request, { maxBytes: 10_000 });
+    if (!bodyResult.ok) {
+      return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
+    }
+
+    const { email, password, name, adminSecret, inviteCode } = registerSchema.parse(bodyResult.data);
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
