@@ -11,9 +11,11 @@ import type {
   ConditionAiClassifierData,
   KeywordSet,
   EmailContentField,
+  ActionAiRewriteData,
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
+import { evaluateAiRewrite } from "@/lib/workflow/ai-rewrite";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -117,6 +119,9 @@ export async function executeNode(
         data as { field: EmailContentField; pattern: string; replacement: string; flags?: string },
         context
       );
+
+    case "action:aiRewrite":
+      return executeAiRewrite(data as ActionAiRewriteData, context);
 
     // Forwards
     case "forward:email":
@@ -573,6 +578,59 @@ function executeRegexReplace(
     before: changed ? truncateForLog(before, 80) : undefined,
     after: changed ? truncateForLog(after, 80) : undefined,
   };
+}
+
+async function executeAiRewrite(
+  data: ActionAiRewriteData,
+  context: ExecutionContext
+): Promise<{ appliedEmailFields: EmailContentField[]; variablesWritten: number; resultVariable?: string }> {
+  const resultVariable = (data.resultVariable || "").trim() || undefined;
+
+  if (!context.email) {
+    return { appliedEmailFields: [], variablesWritten: 0, resultVariable };
+  }
+
+  const result = await evaluateAiRewrite(data, context);
+
+  const appliedEmailFields: EmailContentField[] = [];
+  let variablesWritten = 0;
+
+  const wantsEmail = data.writeTarget === "email" || data.writeTarget === "both";
+  const wantsVariables = data.writeTarget === "variables" || data.writeTarget === "both";
+
+  if (wantsEmail) {
+    const nextEmail = { ...context.email };
+
+    if (typeof result.subject === "string" && result.subject.trim()) {
+      nextEmail.subject = result.subject;
+      appliedEmailFields.push("subject");
+    }
+    if (typeof result.textBody === "string" && result.textBody.trim()) {
+      nextEmail.textBody = result.textBody;
+      appliedEmailFields.push("textBody");
+    }
+    if (typeof result.htmlBody === "string" && result.htmlBody.trim()) {
+      nextEmail.htmlBody = result.htmlBody;
+      appliedEmailFields.push("htmlBody");
+    }
+
+    context.email = nextEmail;
+  }
+
+  if (wantsVariables && result.variables) {
+    for (const [key, value] of Object.entries(result.variables)) {
+      const name = key.trim();
+      if (!name) continue;
+      context.variables[name] = value;
+      variablesWritten += 1;
+    }
+  }
+
+  if (resultVariable) {
+    context.variables[resultVariable] = JSON.stringify(result);
+  }
+
+  return { appliedEmailFields, variablesWritten, resultVariable };
 }
 
 // ==================== Forward Executors ====================
