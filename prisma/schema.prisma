@@ -36,6 +36,7 @@ model User {
   logs          Log[]
   accounts      Account[]
   sessions      Session[]
+  tags          Tag[]
 
   @@map("users")
 }
@@ -241,6 +242,7 @@ model Email {
   headers     EmailHeader[]
   forwardLogs ForwardLog[]
   previewLink EmailPreviewLink?
+  emailTags   EmailTag[]
 
   @@unique([mailboxId, messageId])
   @@index([mailboxId])
@@ -315,6 +317,39 @@ model EmailPreviewLink {
 
   @@index([createdAt])
   @@map("email_preview_links")
+}
+
+// ==================== 标签 ====================
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  emailTags EmailTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model EmailTag {
+  emailId   String
+  email     Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  tagId     String
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([emailId, tagId])
+  @@index([tagId])
+  @@map("email_tags")
 }
 
 // ==================== 转发规则 ====================
