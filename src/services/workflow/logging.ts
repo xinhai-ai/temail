@@ -7,6 +7,71 @@ import type {
   ExecutionSummary,
 } from "@/lib/workflow/logging-types";
 
+// Default max execution logs per workflow (can be overridden by system setting)
+const DEFAULT_MAX_EXECUTION_LOGS = 100;
+
+/**
+ * Get the maximum number of execution logs to keep per workflow
+ */
+async function getMaxExecutionLogs(): Promise<number> {
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: "workflow_max_execution_logs" },
+    });
+    if (setting?.value) {
+      const parsed = parseInt(setting.value, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore errors, use default
+  }
+  return DEFAULT_MAX_EXECUTION_LOGS;
+}
+
+/**
+ * Clean up old workflow execution logs that exceed the limit
+ */
+export async function cleanupWorkflowExecutionLogs(workflowId: string): Promise<number> {
+  const maxLogs = await getMaxExecutionLogs();
+
+  // Get the count of executions for this workflow
+  const count = await prisma.workflowExecution.count({
+    where: { workflowId },
+  });
+
+  if (count <= maxLogs) {
+    return 0;
+  }
+
+  // Find executions to delete (oldest ones beyond the limit)
+  const executionsToDelete = await prisma.workflowExecution.findMany({
+    where: { workflowId },
+    orderBy: { startedAt: "desc" },
+    skip: maxLogs,
+    select: { id: true },
+  });
+
+  if (executionsToDelete.length === 0) {
+    return 0;
+  }
+
+  const idsToDelete = executionsToDelete.map((e) => e.id);
+
+  // Delete execution logs first (cascade should handle this, but be explicit)
+  await prisma.workflowExecutionLog.deleteMany({
+    where: { executionId: { in: idsToDelete } },
+  });
+
+  // Delete the executions
+  const result = await prisma.workflowExecution.deleteMany({
+    where: { id: { in: idsToDelete } },
+  });
+
+  return result.count;
+}
+
 /**
  * WorkflowLogger - 工作流执行日志记录器
  * 用于记录节点执行的详细日志

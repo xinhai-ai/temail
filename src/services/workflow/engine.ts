@@ -10,7 +10,7 @@ import type {
 import { NODE_DEFINITIONS } from "@/lib/workflow/types";
 import { topologicalSort, getNextNodes } from "@/lib/workflow/utils";
 import { executeNode } from "./executor";
-import { WorkflowLogger } from "./logging";
+import { WorkflowLogger, cleanupWorkflowExecutionLogs } from "./logging";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 
 export class WorkflowEngine {
@@ -232,6 +232,18 @@ export class WorkflowEngine {
       where: { id: this.executionId },
       data: updateData,
     });
+
+    // Clean up old execution logs when execution finishes
+    if (status === "SUCCESS" || status === "FAILED" || status === "CANCELLED") {
+      try {
+        const deletedCount = await cleanupWorkflowExecutionLogs(this.workflowId);
+        if (deletedCount > 0) {
+          console.log(`[workflow] Cleaned up ${deletedCount} old execution logs for workflow ${this.workflowId}`);
+        }
+      } catch (cleanupError) {
+        console.error("[workflow] Failed to cleanup execution logs:", cleanupError);
+      }
+    }
   }
 }
 

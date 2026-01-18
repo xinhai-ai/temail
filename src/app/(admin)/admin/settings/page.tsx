@@ -31,7 +31,8 @@ export default function AdminSettingsPage() {
   const [aiClassifierEnabled, setAiClassifierEnabled] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
   const [registrationInviteCodes, setRegistrationInviteCodes] = useState("");
-  const [tab, setTab] = useState<"general" | "registration" | "smtp" | "ai">("general");
+  const [workflowMaxExecutionLogs, setWorkflowMaxExecutionLogs] = useState("100");
+  const [tab, setTab] = useState<"general" | "registration" | "smtp" | "ai" | "workflow">("general");
 
   const setValue = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -108,6 +109,7 @@ export default function AdminSettingsPage() {
     const mode = map.registration_mode;
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
     setRegistrationInviteCodes(map.registration_invite_codes || "");
+    setWorkflowMaxExecutionLogs(map.workflow_max_execution_logs || "100");
     setLoading(false);
   };
 
@@ -137,7 +139,8 @@ export default function AdminSettingsPage() {
 
       payload.push(
         { key: "registration_mode", value: registrationMode },
-        { key: "registration_invite_codes", value: registrationInviteCodes }
+        { key: "registration_invite_codes", value: registrationInviteCodes },
+        { key: "workflow_max_execution_logs", value: workflowMaxExecutionLogs }
       );
 
       const res = await fetch("/api/admin/settings", {
@@ -184,11 +187,12 @@ export default function AdminSettingsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="registration">Registration</TabsTrigger>
           <TabsTrigger value="smtp">SMTP</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
+          <TabsTrigger value="workflow">Workflow</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -365,6 +369,39 @@ export default function AdminSettingsPage() {
                     </ul>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="workflow">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Workflow Settings
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure workflow execution and logging behavior
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Max Execution Logs per Workflow</Label>
+                <p className="text-xs text-muted-foreground">
+                  Maximum number of execution logs to keep for each workflow. Older logs will be automatically deleted when this limit is exceeded.
+                </p>
+                <Input
+                  type="number"
+                  min="10"
+                  max="10000"
+                  placeholder="100"
+                  value={workflowMaxExecutionLogs}
+                  onChange={(e) => setWorkflowMaxExecutionLogs(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Recommended: 50-500. Higher values will use more database storage.
+                </p>
               </div>
             </CardContent>
           </Card>
