@@ -236,6 +236,7 @@ export interface TemplateContext {
     subject: string;
     textBody?: string;
     htmlBody?: string;
+    previewUrl?: string;
     receivedAt: Date | string;
   };
   mailbox?: {
@@ -270,6 +271,7 @@ export function replaceTemplateVariables(
     result = result.replace(/\{\{email\.subject\}\}/g, email.subject || "");
     result = result.replace(/\{\{email\.textBody\}\}/g, email.textBody || "");
     result = result.replace(/\{\{email\.htmlBody\}\}/g, email.htmlBody || "");
+    result = result.replace(/\{\{email\.previewUrl\}\}/g, email.previewUrl || "");
     result = result.replace(/\{\{email\.receivedAt\}\}/g, receivedAt);
   }
 

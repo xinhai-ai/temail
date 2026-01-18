@@ -239,6 +239,7 @@ model Email {
   attachments Attachment[]
   headers     EmailHeader[]
   forwardLogs ForwardLog[]
+  previewLink EmailPreviewLink?
 
   @@unique([mailboxId, messageId])
   @@index([mailboxId])
@@ -299,6 +300,19 @@ model Attachment {
   email       Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
 
   @@map("attachments")
+}
+
+model EmailPreviewLink {
+  id             String   @id @default(cuid())
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  lastAccessedAt DateTime?
+
+  emailId        String   @unique
+  email          Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("email_preview_links")
 }
 
 // ==================== 转发规则 ====================

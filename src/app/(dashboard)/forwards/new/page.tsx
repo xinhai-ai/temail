@@ -1209,7 +1209,7 @@ export function ForwardRuleBuilderPage({ mode = "create", ruleId }: { mode?: "cr
 	              <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
 	                <Label className="text-sm">Variables</Label>
 	                <div className="text-xs text-muted-foreground">
-	                  <span className="font-mono">{`{{id}} {{subject}} {{fromAddress}} {{fromName}} {{toAddress}} {{textBody}} {{htmlBody}} {{receivedAt}} {{mailboxId}}`}</span>
+	                  <span className="font-mono">{`{{id}} {{subject}} {{fromAddress}} {{fromName}} {{toAddress}} {{textBody}} {{htmlBody}} {{previewUrl}} {{receivedAt}} {{mailboxId}}`}</span>
 	                </div>
 	
 	                {(hasEmailTarget || hasTextTarget) && (

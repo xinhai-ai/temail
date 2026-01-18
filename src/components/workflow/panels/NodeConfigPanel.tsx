@@ -1120,6 +1120,9 @@ function AiClassifierConfig({
                 <li>
                   <code>{"{{email.htmlBody}}"}</code> - Email body (HTML)
                 </li>
+                <li>
+                  <code>{"{{email.previewUrl}}"}</code> - Public preview link
+                </li>
               </ul>
             </div>
           </>
@@ -1715,6 +1718,7 @@ function VariableHelpText() {
           <p>{"{{email.toAddress}}"}</p>
           <p>{"{{email.textBody}}"}</p>
           <p>{"{{email.htmlBody}}"}</p>
+          <p>{"{{email.previewUrl}}"}</p>
           <p>{"{{email.receivedAt}}"}</p>
           <p>{"{{email.messageId}}"}</p>
           <p>{"{{mailbox.address}}"}</p>

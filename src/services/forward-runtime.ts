@@ -14,7 +14,11 @@ export type ForwardEmail = {
   receivedAt: Date;
 };
 
-export function buildForwardTemplateVars(email: ForwardEmail, mailboxId: string) {
+export function buildForwardTemplateVars(
+  email: ForwardEmail,
+  mailboxId: string,
+  options?: { previewUrl?: string }
+) {
   return {
     id: email.id,
     subject: email.subject,
@@ -23,6 +27,7 @@ export function buildForwardTemplateVars(email: ForwardEmail, mailboxId: string)
     toAddress: email.toAddress,
     textBody: email.textBody || "",
     htmlBody: email.htmlBody || "",
+    previewUrl: options?.previewUrl || "",
     receivedAt: email.receivedAt.toISOString(),
     mailboxId,
   };
@@ -106,4 +111,3 @@ export function matchesForwardConditions(email: ForwardEmail, condition: Forward
       );
   }
 }
-

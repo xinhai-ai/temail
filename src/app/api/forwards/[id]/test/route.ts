@@ -13,6 +13,7 @@ import {
   type ForwardType,
 } from "@/services/forward-config";
 import { buildForwardTemplateVars, matchesForwardConditions, renderForwardTemplate, type ForwardEmail } from "@/services/forward-runtime";
+import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 import nodemailer from "nodemailer";
 
 const testRequestSchema = z.object({
@@ -251,7 +252,16 @@ export async function POST(
     mailboxId = rule.mailboxId || "sample";
   }
 
-  const vars = buildForwardTemplateVars(email, mailboxId);
+  let previewUrl = "";
+  if (parsed.data.emailId) {
+    try {
+      const link = await getOrCreateEmailPreviewLink(email.id);
+      previewUrl = link?.url || "";
+    } catch {
+      // ignore
+    }
+  }
+  const vars = buildForwardTemplateVars(email, mailboxId, { previewUrl });
   const matched = runtime.conditions ? matchesForwardConditions(email, runtime.conditions) : true;
 
   if (!matched) {

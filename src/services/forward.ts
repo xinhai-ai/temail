@@ -16,6 +16,7 @@ import {
   renderForwardTemplate,
   type ForwardEmail,
 } from "@/services/forward-runtime";
+import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 
 type EmailData = ForwardEmail;
 
@@ -78,6 +79,13 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
   });
 
   const emailFields = buildForwardLogEmailFields(email);
+  let previewUrl = "";
+  try {
+    const link = await getOrCreateEmailPreviewLink(email.id);
+    previewUrl = link?.url || "";
+  } catch (error) {
+    console.error("[forward] Failed to create preview link:", error);
+  }
 
   for (const rule of rules) {
     try {
@@ -93,7 +101,7 @@ export async function executeForwards(email: EmailData, mailboxId: string, userI
         continue;
       }
 
-      const vars = buildForwardTemplateVars(email, mailboxId);
+      const vars = buildForwardTemplateVars(email, mailboxId, { previewUrl });
 
       let sentCount = 0;
 

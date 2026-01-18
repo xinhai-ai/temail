@@ -11,6 +11,7 @@ import { NODE_DEFINITIONS } from "@/lib/workflow/types";
 import { topologicalSort, getNextNodes } from "@/lib/workflow/utils";
 import { executeNode } from "./executor";
 import { WorkflowLogger } from "./logging";
+import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 
 export class WorkflowEngine {
   private workflowId: string;
@@ -35,6 +36,16 @@ export class WorkflowEngine {
   async execute(emailContext?: EmailContext): Promise<void> {
     if (emailContext) {
       this.context.email = emailContext;
+      if (!this.context.isTestMode) {
+        try {
+          const link = await getOrCreateEmailPreviewLink(emailContext.id);
+          if (link?.url) {
+            this.context.email = { ...emailContext, previewUrl: link.url };
+          }
+        } catch (error) {
+          console.error("[workflow] Failed to create preview link:", error);
+        }
+      }
     }
 
     try {

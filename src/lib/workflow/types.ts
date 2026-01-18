@@ -423,6 +423,7 @@ export interface EmailContext {
   subject: string;
   textBody?: string;
   htmlBody?: string;
+  previewUrl?: string;
   receivedAt: Date;
 }
 
