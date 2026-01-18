@@ -9,8 +9,7 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
-import { Switch } from "@/components/ui/switch";
-import { Mail, Paperclip, Download } from "lucide-react";
+import { Image as ImageIcon, ImageOff as ImageOffIcon, Mail, Paperclip, Download } from "lucide-react";
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
 
@@ -232,7 +231,7 @@ export function PreviewPanel({
                   </div>
                 ) : null}
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     variant={previewMode === "text" ? "default" : "outline"}
@@ -256,16 +255,25 @@ export function PreviewPanel({
                   >
                     Raw
                   </Button>
+                  {selectedEmail.htmlBody ? (
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      className={cn(
+                        allowRemoteResources && "bg-primary/10 border-primary/20 text-primary"
+                      )}
+                      title={allowRemoteResources ? "Remote images enabled" : "Remote images disabled"}
+                      aria-label={allowRemoteResources ? "Disable remote images" : "Enable remote images"}
+                      onClick={() => handleAllowRemoteResourcesChange(!allowRemoteResources)}
+                    >
+                      {allowRemoteResources ? (
+                        <ImageIcon className="h-4 w-4" />
+                      ) : (
+                        <ImageOffIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                  ) : null}
                 </div>
-
-                {previewMode === "html" && selectedEmail.htmlBody && (
-                  <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-                    <div className="text-xs text-muted-foreground">
-                      Load remote images
-                    </div>
-                    <Switch checked={allowRemoteResources} onCheckedChange={handleAllowRemoteResourcesChange} />
-                  </div>
-                )}
 
                 {previewMode === "html" && selectedEmail.htmlBody ? (
                   <EmailHtmlPreview html={selectedEmail.htmlBody} allowRemoteResources={allowRemoteResources} />
