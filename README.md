@@ -71,6 +71,14 @@ docker compose up -d
 
 访问 `http://localhost:3000`。
 
+### 镜像标签（版本）
+
+默认 `docker-compose.yml` 使用 `:latest`（稳定发布版）。如需固定版本，可将镜像标签替换为 `:X.Y.Z`。
+
+如需跟随默认分支最新提交（开发版），使用 `:edge` 或 `:sha-...`。
+
+版本规范与发布流程详见 `VERSIONING.md`。
+
 ### 首次启动自动创建管理员
 
 首次启动如果数据库里没有任何用户，`web` 服务会自动创建一个 `SUPER_ADMIN` 账号（默认邮箱 `admin@temail.local`）。如果你没有在 `.env` 中设置 `BOOTSTRAP_ADMIN_PASSWORD`，会生成随机密码并打印到日志：
@@ -131,12 +139,11 @@ docker compose exec web npx prisma migrate deploy
 
 ## CI（GitHub Actions）
 
-已提供 GitHub Actions 工作流用于在 PR/Push 时构建 Docker 镜像（保证 `docker build` 可通过），并在默认分支推送到 GHCR：
+已提供 GitHub Actions 工作流用于构建并发布 Docker 镜像：
 
-- `ghcr.io/xinhai-ai/temail:latest`（Web）
-- `ghcr.io/xinhai-ai/temail:sha-...`（Web）
-- `ghcr.io/xinhai-ai/temail-imap-service:latest`（IMAP Service）
-- `ghcr.io/xinhai-ai/temail-imap-service:sha-...`（IMAP Service）
+- 开发版（默认分支 push）：`ghcr.io/xinhai-ai/temail:edge`、`ghcr.io/xinhai-ai/temail:sha-...`
+- 发行版（push tag `vX.Y.Z`）：`ghcr.io/xinhai-ai/temail:latest`、`ghcr.io/xinhai-ai/temail:X.Y.Z`（以及 `X.Y`/`X`）
+- IMAP Service 同理：`ghcr.io/xinhai-ai/temail-imap-service:...`
 
 ## License
 

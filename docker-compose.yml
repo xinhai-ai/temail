@@ -1,5 +1,6 @@
 services:
   web:
+    # Tags: :latest (release), :edge (default branch), :X.Y.Z (pinned)
     image: ghcr.io/xinhai-ai/temail:latest
     command: sh -c "npx prisma migrate deploy && node scripts/bootstrap-admin.js && npm run start"
     ports:
@@ -29,6 +30,7 @@ services:
       start_period: 30s
 
   imap-service:
+    # Tags: :latest (release), :edge (default branch), :X.Y.Z (pinned)
     image: ghcr.io/xinhai-ai/temail-imap-service:latest
     depends_on:
       web:
