@@ -10,6 +10,7 @@ import type {
   ConditionKeywordData,
   ConditionAiClassifierData,
   KeywordSet,
+  EmailContentField,
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
@@ -101,6 +102,21 @@ export async function executeNode(
 
     case "action:setVariable":
       return executeSetVariable(data as { name: string; value: string }, context);
+
+    case "action:unsetVariable":
+      return executeUnsetVariable(data as { name: string }, context);
+
+    case "action:cloneVariable":
+      return executeCloneVariable(data as { source: string; target: string }, context);
+
+    case "action:rewriteEmail":
+      return executeRewriteEmail(data as { subject?: string; textBody?: string; htmlBody?: string }, context);
+
+    case "action:regexReplace":
+      return executeRegexReplace(
+        data as { field: EmailContentField; pattern: string; replacement: string; flags?: string },
+        context
+      );
 
     // Forwards
     case "forward:email":
@@ -424,6 +440,139 @@ function executeSetVariable(
   });
   context.variables[data.name] = processedValue;
   return true;
+}
+
+function truncateForLog(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}…`;
+}
+
+function cloneValue(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+
+  const globalClone = (globalThis as unknown as { structuredClone?: (v: unknown) => unknown }).structuredClone;
+  if (typeof globalClone === "function") {
+    try {
+      return globalClone(value);
+    } catch {
+      // Fall through to other strategies
+    }
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.parse(JSON.stringify(value)) as unknown;
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+}
+
+function executeUnsetVariable(
+  data: { name: string },
+  context: ExecutionContext
+): { removed: boolean; name: string } {
+  const name = (data.name || "").trim();
+  if (!name) return { removed: false, name: "" };
+  const removed = Object.prototype.hasOwnProperty.call(context.variables, name);
+  delete context.variables[name];
+  return { removed, name };
+}
+
+function executeCloneVariable(
+  data: { source: string; target: string },
+  context: ExecutionContext
+): { cloned: boolean; source: string; target: string } {
+  const source = (data.source || "").trim();
+  const target = (data.target || "").trim();
+  if (!source || !target) return { cloned: false, source, target };
+
+  const value = context.variables[source];
+  context.variables[target] = cloneValue(value);
+  return { cloned: true, source, target };
+}
+
+function executeRewriteEmail(
+  data: { subject?: string; textBody?: string; htmlBody?: string },
+  context: ExecutionContext
+): { updatedFields: EmailContentField[]; changes: Record<string, { before: string; after: string }> } {
+  if (!context.email) return { updatedFields: [], changes: {} };
+
+  const templateCtx = buildTemplateContext(context);
+  const updatedFields: EmailContentField[] = [];
+  const changes: Record<string, { before: string; after: string }> = {};
+
+  const nextEmail = { ...context.email };
+
+  const subjectTemplate = typeof data.subject === "string" ? data.subject : undefined;
+  if (subjectTemplate?.trim()) {
+    const before = context.email.subject || "";
+    const after = replaceTemplateVariables(subjectTemplate, templateCtx);
+    nextEmail.subject = after;
+    updatedFields.push("subject");
+    changes.subject = { before: truncateForLog(before, 80), after: truncateForLog(after, 80) };
+  }
+
+  const textTemplate = typeof data.textBody === "string" ? data.textBody : undefined;
+  if (textTemplate?.trim()) {
+    const before = context.email.textBody || "";
+    const after = replaceTemplateVariables(textTemplate, templateCtx);
+    nextEmail.textBody = after;
+    updatedFields.push("textBody");
+    changes.textBody = { before: truncateForLog(before, 80), after: truncateForLog(after, 80) };
+  }
+
+  const htmlTemplate = typeof data.htmlBody === "string" ? data.htmlBody : undefined;
+  if (htmlTemplate?.trim()) {
+    const before = context.email.htmlBody || "";
+    const after = replaceTemplateVariables(htmlTemplate, templateCtx);
+    nextEmail.htmlBody = after;
+    updatedFields.push("htmlBody");
+    changes.htmlBody = { before: truncateForLog(before, 80), after: truncateForLog(after, 80) };
+  }
+
+  context.email = nextEmail;
+  return { updatedFields, changes };
+}
+
+function normalizeRegexFlags(flags: string | undefined): string {
+  const trimmed = (flags || "").trim();
+  return trimmed ? trimmed : "g";
+}
+
+function executeRegexReplace(
+  data: { field: EmailContentField; pattern: string; replacement: string; flags?: string },
+  context: ExecutionContext
+): { changed: boolean; field: EmailContentField; before?: string; after?: string } {
+  if (!context.email) return { changed: false, field: data.field };
+
+  const templateCtx = buildTemplateContext(context);
+  const pattern = replaceTemplateVariables(data.pattern || "", templateCtx);
+  const replacement = replaceTemplateVariables(data.replacement || "", templateCtx);
+
+  if (!pattern) return { changed: false, field: data.field };
+
+  let regex: RegExp;
+  try {
+    regex = new RegExp(pattern, normalizeRegexFlags(data.flags));
+  } catch (error) {
+    console.error("Regex Replace: invalid regex:", error);
+    return { changed: false, field: data.field };
+  }
+
+  const before = context.email[data.field] || "";
+  const after = before.replace(regex, replacement);
+  context.email = { ...context.email, [data.field]: after };
+
+  const changed = before !== after;
+  return {
+    changed,
+    field: data.field,
+    before: changed ? truncateForLog(before, 80) : undefined,
+    after: changed ? truncateForLog(after, 80) : undefined,
+  };
 }
 
 // ==================== Forward Executors ====================
