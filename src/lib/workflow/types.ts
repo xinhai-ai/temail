@@ -43,6 +43,11 @@ export type NodeType =
   | "action:unstar"
   | "action:delete"
   | "action:setVariable"
+  | "action:unsetVariable"
+  | "action:cloneVariable"
+  | "action:rewriteEmail"
+  | "action:regexReplace"
+  | "action:aiRewrite"
   // 转发
   | "forward:email"
   | "forward:telegram"
@@ -71,6 +76,11 @@ export type NodeData =
   | ActionUnstarData
   | ActionDeleteData
   | ActionSetVariableData
+  | ActionUnsetVariableData
+  | ActionCloneVariableData
+  | ActionRewriteEmailData
+  | ActionRegexReplaceData
+  | ActionAiRewriteData
   | ForwardEmailData
   | ForwardTelegramData
   | ForwardDiscordData
@@ -202,6 +212,44 @@ export interface ActionSetVariableData {
   label?: string;
   name: string;
   value: string;
+}
+
+export interface ActionUnsetVariableData {
+  label?: string;
+  name: string;
+}
+
+export interface ActionCloneVariableData {
+  label?: string;
+  source: string;
+  target: string;
+}
+
+export type EmailContentField = "subject" | "textBody" | "htmlBody";
+
+export interface ActionRewriteEmailData {
+  label?: string;
+  subject?: string;
+  textBody?: string;
+  htmlBody?: string;
+}
+
+export interface ActionRegexReplaceData {
+  label?: string;
+  field: EmailContentField;
+  pattern: string;
+  replacement: string;
+  flags?: string;
+}
+
+export type AiRewriteWriteTarget = "email" | "variables" | "both";
+
+export interface ActionAiRewriteData {
+  label?: string;
+  writeTarget: AiRewriteWriteTarget;
+  fields?: EmailContentField[];
+  prompt?: string;
+  resultVariable?: string;
 }
 
 // ==================== 转发数据 ====================
@@ -636,6 +684,61 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     inputs: 1,
     outputs: 1,
     defaultData: { name: "", value: "" },
+  },
+  "action:unsetVariable": {
+    type: "action:unsetVariable",
+    category: "action",
+    label: "Unset Variable",
+    description: "Remove a workflow variable",
+    icon: "Variable",
+    color: "#10b981",
+    inputs: 1,
+    outputs: 1,
+    defaultData: { name: "" },
+  },
+  "action:cloneVariable": {
+    type: "action:cloneVariable",
+    category: "action",
+    label: "Clone Variable",
+    description: "Clone a variable into another one",
+    icon: "Variable",
+    color: "#10b981",
+    inputs: 1,
+    outputs: 1,
+    defaultData: { source: "", target: "" },
+  },
+  "action:rewriteEmail": {
+    type: "action:rewriteEmail",
+    category: "action",
+    label: "Rewrite Email",
+    description: "Rewrite email subject/body using templates",
+    icon: "Mail",
+    color: "#10b981",
+    inputs: 1,
+    outputs: 1,
+    defaultData: {},
+  },
+  "action:regexReplace": {
+    type: "action:regexReplace",
+    category: "action",
+    label: "Regex Replace",
+    description: "Apply regex replacement to an email field",
+    icon: "Code",
+    color: "#10b981",
+    inputs: 1,
+    outputs: 1,
+    defaultData: { field: "textBody", pattern: "", replacement: "", flags: "g" },
+  },
+  "action:aiRewrite": {
+    type: "action:aiRewrite",
+    category: "action",
+    label: "AI Rewrite",
+    description: "Rewrite or extract content using AI",
+    icon: "Brain",
+    color: "#10b981",
+    inputs: 1,
+    outputs: 1,
+    defaultData: { writeTarget: "variables", fields: ["subject", "textBody"], prompt: "", resultVariable: "" },
   },
 
   // 转发

@@ -133,6 +133,42 @@ const actionSetVariableDataSchema = z.object({
   value: z.string(),
 });
 
+const emailContentFieldSchema = z.enum(["subject", "textBody", "htmlBody"]);
+
+const actionUnsetVariableDataSchema = z.object({
+  label: z.string().optional(),
+  name: z.string().min(1),
+});
+
+const actionCloneVariableDataSchema = z.object({
+  label: z.string().optional(),
+  source: z.string().min(1),
+  target: z.string().min(1),
+});
+
+const actionRewriteEmailDataSchema = z.object({
+  label: z.string().optional(),
+  subject: z.string().optional(),
+  textBody: z.string().optional(),
+  htmlBody: z.string().optional(),
+});
+
+const actionRegexReplaceDataSchema = z.object({
+  label: z.string().optional(),
+  field: emailContentFieldSchema,
+  pattern: z.string().min(1).max(2000),
+  replacement: z.string().max(5000),
+  flags: z.string().regex(/^[gimsuy]*$/).max(10).optional(),
+});
+
+const actionAiRewriteDataSchema = z.object({
+  label: z.string().optional(),
+  writeTarget: z.enum(["email", "variables", "both"]),
+  fields: z.array(emailContentFieldSchema).optional(),
+  prompt: z.string().optional(),
+  resultVariable: z.string().optional(),
+});
+
 // 转发
 const forwardEmailDataSchema = z.object({
   label: z.string().optional(),
@@ -204,6 +240,11 @@ const nodeTypeToDataSchema: Record<string, z.ZodType> = {
   "action:unstar": actionSimpleDataSchema,
   "action:delete": actionSimpleDataSchema,
   "action:setVariable": actionSetVariableDataSchema,
+  "action:unsetVariable": actionUnsetVariableDataSchema,
+  "action:cloneVariable": actionCloneVariableDataSchema,
+  "action:rewriteEmail": actionRewriteEmailDataSchema,
+  "action:regexReplace": actionRegexReplaceDataSchema,
+  "action:aiRewrite": actionAiRewriteDataSchema,
   "forward:email": forwardEmailDataSchema,
   "forward:telegram": forwardTelegramDataSchema,
   "forward:discord": forwardDiscordDataSchema,
@@ -232,6 +273,11 @@ const nodeTypeSchema = z.enum([
   "action:unstar",
   "action:delete",
   "action:setVariable",
+  "action:unsetVariable",
+  "action:cloneVariable",
+  "action:rewriteEmail",
+  "action:regexReplace",
+  "action:aiRewrite",
   "forward:email",
   "forward:telegram",
   "forward:discord",
