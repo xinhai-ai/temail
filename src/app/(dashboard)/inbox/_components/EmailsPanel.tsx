@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -115,6 +115,7 @@ export function EmailsPanel({
   const isPresetPageSize = pageSize === 5 || pageSize === 10 || pageSize === 15;
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
   const lastSearchSubmitAt = useRef<number>(0);
+  const tagSuggestionsId = useId();
   const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
   const [addTagEmailId, setAddTagEmailId] = useState<string | null>(null);
   const [addTagName, setAddTagName] = useState("");
@@ -568,7 +569,7 @@ export function EmailsPanel({
             <Label htmlFor="add-tag-name">Tag name</Label>
             <Input
               id="add-tag-name"
-              list="email-tag-suggestions"
+              list={tagSuggestionsId}
               value={addTagName}
               onChange={(e) => setAddTagName(e.target.value)}
               placeholder="e.g. urgent"
@@ -579,7 +580,7 @@ export function EmailsPanel({
                 void submitAddTag();
               }}
             />
-            <datalist id="email-tag-suggestions">
+            <datalist id={tagSuggestionsId}>
               {tags.map((t) => (
                 <option key={t.id} value={t.name} />
               ))}
