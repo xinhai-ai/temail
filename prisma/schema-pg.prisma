@@ -1,0 +1,594 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 用户系统 ====================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          Role      @default(USER)
+  avatar        String?
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  domains       Domain[]
+  mailboxes     Mailbox[]
+  forwardRules  ForwardRule[]
+  workflows     Workflow[]
+  logs          Log[]
+  accounts      Account[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==================== 域名管理 ====================
+
+enum DomainSourceType {
+  IMAP
+  WEBHOOK
+}
+
+enum DomainStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  ERROR
+}
+
+model Domain {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  sourceType  DomainSourceType
+  status      DomainStatus     @default(PENDING)
+  isPublic    Boolean          @default(false)
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  imapConfig  ImapConfig?
+  webhookConfig DomainWebhookConfig?
+  mailboxes   Mailbox[]
+  inboundEmails InboundEmail[]
+
+  @@map("domains")
+}
+
+model ImapConfig {
+  id           String   @id @default(cuid())
+  host         String
+  port         Int      @default(993)
+  secure       Boolean  @default(true)
+  username     String
+  password     String
+  lastSync     DateTime?
+  syncInterval Int      @default(60)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // UID tracking for reliable sync
+  lastSyncedUid     Int?      // Last synced UID
+  lastUidValidity   BigInt?   // UIDVALIDITY for mailbox rebuild detection
+  lastFullSync      DateTime? // Last full sync time
+
+  // Error tracking
+  consecutiveErrors Int       @default(0)
+  lastError         String?
+
+  domainId     String   @unique
+  domain       Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("imap_configs")
+}
+
+model DomainWebhookConfig {
+  id        String   @id @default(cuid())
+  secretKey String   @unique
+  endpoint  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  domainId  String   @unique
+  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("domain_webhook_configs")
+}
+
+// ==================== 邮箱管理 ====================
+
+enum MailboxStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+model MailboxGroup {
+  id          String    @id @default(cuid())
+  name        String
+  color       String?
+  description String?
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  mailboxes   Mailbox[]
+
+  @@unique([userId, name])
+  @@map("mailbox_groups")
+}
+
+model Mailbox {
+  id          String        @id @default(cuid())
+  prefix      String
+  address     String        @unique
+  status      MailboxStatus @default(ACTIVE)
+  note        String?
+  isStarred   Boolean       @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  domainId    String
+  domain      Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  groupId     String?
+  group       MailboxGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  emails      Email[]
+  inboundEmails InboundEmail[]
+  forwardRules ForwardRule[]
+  workflows   Workflow[]
+
+  @@unique([prefix, domainId])
+  @@index([userId])
+  @@index([domainId])
+  @@map("mailboxes")
+}
+
+// ==================== 邮件 ====================
+
+enum EmailStatus {
+  UNREAD
+  READ
+  ARCHIVED
+  DELETED
+}
+
+model Email {
+  id          String      @id @default(cuid())
+  messageId   String?
+  fromAddress String
+  fromName    String?
+  toAddress   String
+  subject     String
+  textBody    String?
+  htmlBody    String?
+  rawContent  String?
+  status      EmailStatus @default(UNREAD)
+  isStarred   Boolean     @default(false)
+  receivedAt  DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  mailboxId   String
+  mailbox     Mailbox     @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  attachments Attachment[]
+  headers     EmailHeader[]
+  forwardLogs ForwardLog[]
+  previewLink EmailPreviewLink?
+
+  @@unique([mailboxId, messageId])
+  @@index([mailboxId])
+  @@index([messageId])
+  @@index([receivedAt])
+  @@index([status])
+  @@map("emails")
+}
+
+model InboundEmail {
+  id          String           @id @default(cuid())
+  sourceType  DomainSourceType
+  messageId   String?
+  fromAddress String?
+  fromName    String?
+  toAddress   String
+  subject     String
+  textBody    String?
+  htmlBody    String?
+  rawContent  String?
+  receivedAt  DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+
+  domainId    String
+  domain      Domain           @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  mailboxId   String?
+  mailbox     Mailbox?         @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceType, domainId, messageId, toAddress])
+  @@index([domainId])
+  @@index([mailboxId])
+  @@index([messageId])
+  @@index([receivedAt])
+  @@map("inbound_emails")
+}
+
+model EmailHeader {
+  id      String @id @default(cuid())
+  name    String
+  value   String
+
+  emailId String
+  email   Email  @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@map("email_headers")
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  filename    String
+  contentType String
+  size        Int
+  path        String
+  createdAt   DateTime @default(now())
+
+  emailId     String
+  email       Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model EmailPreviewLink {
+  id             String   @id @default(cuid())
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  lastAccessedAt DateTime?
+
+  emailId        String   @unique
+  email          Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("email_preview_links")
+}
+
+// ==================== 转发规则 ====================
+
+enum ForwardType {
+  EMAIL
+  TELEGRAM
+  DISCORD
+  SLACK
+  WEBHOOK
+}
+
+enum ForwardStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+model ForwardRule {
+  id            String        @id @default(cuid())
+  name          String
+  type          ForwardType
+  status        ForwardStatus @default(ACTIVE)
+  config        String
+  lastTriggered DateTime?
+  errorMessage  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  mailboxId     String?
+  mailbox       Mailbox?      @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  targets       ForwardTarget[]
+  logs          ForwardLog[]
+
+  @@index([userId])
+  @@map("forward_rules")
+}
+
+model ForwardTarget {
+  id        String      @id @default(cuid())
+  type      ForwardType
+  config    String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  ruleId    String
+  rule      ForwardRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  logs      ForwardLog[]
+
+  @@index([ruleId])
+  @@index([ruleId, type])
+  @@map("forward_targets")
+}
+
+model ForwardLog {
+  id           String   @id @default(cuid())
+  success      Boolean
+  message      String?
+  responseCode Int?
+  createdAt    DateTime @default(now())
+
+  ruleId       String
+  rule         ForwardRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  targetId     String?
+  target       ForwardTarget? @relation(fields: [targetId], references: [id], onDelete: SetNull)
+
+  emailId        String?
+  email          Email?    @relation(fields: [emailId], references: [id], onDelete: SetNull)
+  emailFrom      String?
+  emailTo        String?
+  emailSubject   String?
+  emailTextBrief String?
+
+  @@index([ruleId])
+  @@index([targetId])
+  @@index([emailId])
+  @@index([createdAt])
+  @@map("forward_logs")
+}
+
+// ==================== 系统日志 ====================
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}
+
+enum LogAction {
+  USER_LOGIN
+  USER_LOGOUT
+  USER_REGISTER
+  USER_UPDATE
+  DOMAIN_CREATE
+  DOMAIN_UPDATE
+  DOMAIN_DELETE
+  MAILBOX_CREATE
+  MAILBOX_UPDATE
+  MAILBOX_DELETE
+  EMAIL_RECEIVE
+  EMAIL_DELETE
+  FORWARD_TRIGGER
+  FORWARD_SUCCESS
+  FORWARD_FAIL
+  SYSTEM_ERROR
+}
+
+model Log {
+  id        String    @id @default(cuid())
+  level     LogLevel  @default(INFO)
+  action    LogAction
+  message   String
+  metadata  String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([userId])
+  @@map("logs")
+}
+
+// ==================== 系统设置 ====================
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  type        String   @default("string")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// ==================== 工作流系统 ====================
+
+enum WorkflowStatus {
+  DRAFT    // 草稿
+  ACTIVE   // 启用
+  INACTIVE // 停用
+  ERROR    // 错误
+}
+
+enum ExecutionStatus {
+  RUNNING   // 执行中
+  SUCCESS   // 成功
+  FAILED    // 失败
+  CANCELLED // 取消
+}
+
+enum NodeExecutionStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+model Workflow {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  status      WorkflowStatus @default(DRAFT)
+  config      String         // JSON: 节点和边的完整配置
+  version     Int            @default(1)
+
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 可选：绑定到特定邮箱
+  mailboxId   String?
+  mailbox     Mailbox?       @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+
+  executions   WorkflowExecution[]
+  dispatchLogs WorkflowDispatchLog[]
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([mailboxId])
+  @@index([status])
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id          String          @id @default(cuid())
+  workflowId  String
+  workflow    Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  status      ExecutionStatus @default(RUNNING)
+  triggeredBy String          // 触发来源：email:{id}, schedule, manual
+
+  // 执行上下文和结果
+  input       String?         // JSON: 输入数据（如邮件信息）
+  output      String?         // JSON: 最终输出
+  logs        String?         // JSON: 节点执行日志数组 (legacy)
+  error       String?         // 错误信息
+
+  // 执行路径追踪
+  executionPath String?       // JSON: 执行路径数组
+  nodesExecuted Int           @default(0)
+
+  // 关联
+  nodeLogs    WorkflowExecutionLog[]
+  dispatchLog WorkflowDispatchLog?
+
+  startedAt   DateTime        @default(now())
+  finishedAt  DateTime?
+
+  @@index([workflowId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("workflow_executions")
+}
+
+model WorkflowExecutionLog {
+  id            String              @id @default(cuid())
+  executionId   String
+  execution     WorkflowExecution   @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  nodeId        String
+  nodeType      String
+  nodeLabel     String?
+  status        NodeExecutionStatus @default(RUNNING)
+  stepOrder     Int
+
+  input         String?             // JSON: 节点输入
+  output        String?             // JSON: 节点输出
+  error         String?             // 错误信息
+  metadata      String?             // JSON: 额外元数据
+
+  startedAt     DateTime            @default(now())
+  finishedAt    DateTime?
+  duration      Int?                // 毫秒
+
+  @@index([executionId])
+  @@index([nodeType])
+  @@index([status])
+  @@map("workflow_execution_logs")
+}
+
+model WorkflowDispatchLog {
+  id            String              @id @default(cuid())
+  workflowId    String
+  workflow      Workflow            @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  triggerType   String              // email, schedule, manual
+  emailId       String?
+  emailFrom     String?
+  emailTo       String?
+  emailSubject  String?
+
+  executionId   String?             @unique
+  execution     WorkflowExecution?  @relation(fields: [executionId], references: [id], onDelete: SetNull)
+
+  dispatched    Boolean             // 是否成功触发
+  skipReason    String?             // 跳过原因
+
+  createdAt     DateTime            @default(now())
+
+  @@index([workflowId])
+  @@index([emailId])
+  @@index([createdAt])
+  @@map("workflow_dispatch_logs")
+}

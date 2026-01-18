@@ -29,7 +29,7 @@ COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY next.config.ts tsconfig.json ./
-COPY postcss.config.mjs tailwind.config.ts components.json ./
+COPY postcss.config.mjs components.json ./
 # Copy source code last (most frequently changed)
 COPY public ./public
 COPY src ./src
@@ -44,11 +44,14 @@ COPY --from=deps-prod /app/node_modules ./node_modules
 COPY package.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 COPY scripts/bootstrap-admin.js ./scripts/bootstrap-admin.js
+RUN chmod +x ./scripts/docker-entrypoint.sh
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/next.config.ts ./next.config.ts
 EXPOSE 3000
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]
 
 # IMAP service image
@@ -61,5 +64,7 @@ COPY prisma.config.ts ./
 COPY tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
+RUN chmod +x ./scripts/imap-entrypoint.sh
 EXPOSE 3001
+ENTRYPOINT ["./scripts/imap-entrypoint.sh"]
 CMD ["node", "--conditions=react-server", "--import", "tsx", "scripts/imap-service.ts"]
