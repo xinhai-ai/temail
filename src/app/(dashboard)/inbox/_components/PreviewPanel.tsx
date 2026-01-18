@@ -6,11 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { useState } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { Switch } from "@/components/ui/switch";
-import { ExternalLink, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
 
@@ -64,20 +63,6 @@ export function PreviewPanel({
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
       <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Preview</p>
-          <div className="flex items-center gap-2">
-            {selectedEmailId && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/emails/${selectedEmailId}`}>
-                  Open
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            )}
-          </div>
-        </div>
-
         {!selectedEmailId ? (
           <EmptyState
             icon={<Mail className="h-8 w-8 text-muted-foreground" />}

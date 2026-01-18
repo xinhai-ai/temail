@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +20,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { Archive, ArchiveRestore, Copy, Mail, MailOpen, Search, Star, StarOff, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, ExternalLink, Mail, MailOpen, Search, Star, StarOff, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import type { EmailListItem } from "../types";
 
 export type EmailStatusFilter = "all" | "unread" | "archived";
@@ -93,14 +94,30 @@ export function EmailsPanel({
   onStatusFilterChange,
 }: EmailsPanelProps) {
   const safePages = Math.max(1, pages);
+  const [emailSearchInput, setEmailSearchInput] = useState(() => emailSearch);
   const [pageSizeInput, setPageSizeInput] = useState(() => String(pageSize));
   const pageSizeValue = String(pageSize);
   const isPresetPageSize = pageSize === 5 || pageSize === 10 || pageSize === 15;
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
+  const lastSearchSubmitAt = useRef<number>(0);
+
+  useEffect(() => {
+    setEmailSearchInput(emailSearch);
+  }, [emailSearch]);
 
   useEffect(() => {
     setPageSizeInput(String(pageSize));
   }, [pageSize]);
+
+  const submitSearch = () => {
+    const now = Date.now();
+    if (now - lastSearchSubmitAt.current < 250) return;
+    lastSearchSubmitAt.current = now;
+
+    const next = emailSearchInput.trim();
+    if (next === emailSearch) return;
+    onEmailSearchChange(next);
+  };
 
   const commitPageSize = () => {
     const parsed = Number.parseInt(pageSizeInput, 10);
@@ -123,9 +140,15 @@ export function EmailsPanel({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search emails..."
-              value={emailSearch}
-              onChange={(e) => onEmailSearchChange(e.target.value)}
+              placeholder="Search emails... (press Enter)"
+              value={emailSearchInput}
+              onChange={(e) => setEmailSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                if (e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                submitSearch();
+              }}
               className="pl-10 h-10 bg-muted/50 border-border/50 focus:bg-background transition-colors"
             />
           </div>
@@ -253,7 +276,13 @@ export function EmailsPanel({
               }
               action={
                 emailSearch
-                  ? { label: "Clear search", onClick: () => onEmailSearchChange("") }
+                  ? {
+                      label: "Clear search",
+                      onClick: () => {
+                        setEmailSearchInput("");
+                        onEmailSearchChange("");
+                      },
+                    }
                   : undefined
               }
             />
@@ -336,6 +365,12 @@ export function EmailsPanel({
                     <ContextMenuContent className="w-48">
                       <ContextMenuLabel>Email</ContextMenuLabel>
                       <ContextMenuSeparator />
+                      <ContextMenuItem asChild>
+                        <Link href={`/emails/${email.id}`}>
+                          <ExternalLink />
+                          Open
+                        </Link>
+                      </ContextMenuItem>
                       <ContextMenuItem
                         onClick={() => onCopySenderAddress(email.fromAddress)}
                       >
