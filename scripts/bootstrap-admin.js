@@ -3,7 +3,32 @@
 const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
-const { PrismaLibSql } = require("@prisma/adapter-libsql");
+
+function detectDatabaseType() {
+  const url = process.env.DATABASE_URL || "";
+  if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
+    return "postgresql";
+  }
+  return "sqlite";
+}
+
+function createPrismaClient() {
+  const databaseType = detectDatabaseType();
+  if (databaseType === "postgresql") {
+    // PostgreSQL with pg adapter
+    const { PrismaPg } = require("@prisma/adapter-pg");
+    const adapter = new PrismaPg({
+      connectionString: process.env.DATABASE_URL,
+    });
+    return new PrismaClient({ adapter });
+  }
+  // SQLite with libsql adapter
+  const { PrismaLibSql } = require("@prisma/adapter-libsql");
+  const adapter = new PrismaLibSql({
+    url: process.env.DATABASE_URL || "file:./dev.db",
+  });
+  return new PrismaClient({ adapter });
+}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,7 +59,10 @@ function createRandomPassword() {
 
 function isMissingTableError(error) {
   const message = error instanceof Error ? error.message : String(error);
-  return message.toLowerCase().includes("no such table");
+  const lower = message.toLowerCase();
+  // SQLite: "no such table"
+  // PostgreSQL: "relation ... does not exist"
+  return lower.includes("no such table") || lower.includes("does not exist");
 }
 
 async function waitForUserTable(prisma, options) {
@@ -125,9 +153,7 @@ async function main() {
     parseIntOr(resolveEnvString("BOOTSTRAP_WAIT_SECONDS"), 180);
   const intervalMs = parseIntOr(resolveEnvString("BOOTSTRAP_POLL_INTERVAL_MS"), 1000);
 
-  const databaseUrl = resolveEnvString("DATABASE_URL") || "file:./dev.db";
-  const adapter = new PrismaLibSql({ url: databaseUrl });
-  const prisma = new PrismaClient({ adapter });
+  const prisma = createPrismaClient();
 
   try {
     const schemaReady = await waitForUserTable(prisma, {

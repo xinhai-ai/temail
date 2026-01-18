@@ -9,6 +9,10 @@ npx prisma generate
 echo "Running database migrations..."
 npx prisma migrate deploy
 
+# Bootstrap admin user if configured
+echo "Running bootstrap admin..."
+node scripts/bootstrap-admin.js
+
 # Start the application
 echo "Starting application..."
 exec "$@"

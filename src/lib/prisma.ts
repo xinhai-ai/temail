@@ -14,7 +14,13 @@ export const databaseType: DatabaseType = detectDatabaseType();
 
 function createPrismaClient(): PrismaClient {
   if (databaseType === "postgresql") {
-    return new PrismaClient();
+    // PostgreSQL with pg adapter
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaPg } = require("@prisma/adapter-pg");
+    const adapter = new PrismaPg({
+      connectionString: process.env.DATABASE_URL,
+    });
+    return new PrismaClient({ adapter });
   }
   // SQLite with libsql adapter
   // eslint-disable-next-line @typescript-eslint/no-require-imports
