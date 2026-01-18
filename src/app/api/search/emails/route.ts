@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import prisma, { databaseType } from "@/lib/prisma";
 
 let cachedFtsAvailable: boolean | null = null;
 
@@ -95,11 +95,14 @@ export async function GET(request: NextRequest) {
     });
 
     const ftsQuery = buildFtsQuery(parsed.q);
-    if (!ftsQuery) {
+    if (!ftsQuery && databaseType === "sqlite") {
       return NextResponse.json({ emails: [], hasMore: false, nextCursor: null });
     }
 
     const fallbackTokens = buildFallbackTokens(parsed.q);
+    if (fallbackTokens.length === 0) {
+      return NextResponse.json({ emails: [], hasMore: false, nextCursor: null });
+    }
 
     const useCursor = mode === "cursor" || typeof parsed.cursor === "string";
     const usePage = !useCursor && (mode === "page" || typeof parsed.page === "number");
@@ -119,7 +122,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
     }
 
-    const shouldUseFts = (await ensureFtsAvailable()) && !containsCjk(parsed.q);
+    // PostgreSQL uses ILIKE directly, SQLite uses FTS when available
+    const shouldUseFts =
+      databaseType === "sqlite" &&
+      (await ensureFtsAvailable()) &&
+      !containsCjk(parsed.q);
 
     if (usePage) {
       const page = parsed.page ?? 1;
@@ -221,14 +228,24 @@ export async function GET(request: NextRequest) {
               : {}),
           },
           ...fallbackTokens.map((token) => ({
-            OR: [
-              { subject: { contains: token } },
-              { fromAddress: { contains: token } },
-              { fromName: { contains: token } },
-              { toAddress: { contains: token } },
-              { textBody: { contains: token } },
-              { htmlBody: { contains: token } },
-            ],
+            OR:
+              databaseType === "postgresql"
+                ? [
+                    { subject: { contains: token, mode: "insensitive" as const } },
+                    { fromAddress: { contains: token, mode: "insensitive" as const } },
+                    { fromName: { contains: token, mode: "insensitive" as const } },
+                    { toAddress: { contains: token, mode: "insensitive" as const } },
+                    { textBody: { contains: token, mode: "insensitive" as const } },
+                    { htmlBody: { contains: token, mode: "insensitive" as const } },
+                  ]
+                : [
+                    { subject: { contains: token } },
+                    { fromAddress: { contains: token } },
+                    { fromName: { contains: token } },
+                    { toAddress: { contains: token } },
+                    { textBody: { contains: token } },
+                    { htmlBody: { contains: token } },
+                  ],
           })),
         ],
       };
@@ -263,7 +280,7 @@ export async function GET(request: NextRequest) {
           total,
           pages: Math.ceil(total / parsed.limit),
         },
-        mode: "fallback",
+        mode: databaseType === "postgresql" ? "ilike" : "fallback",
       });
     }
 
@@ -346,14 +363,24 @@ export async function GET(request: NextRequest) {
             : {}),
         },
         ...fallbackTokens.map((token) => ({
-          OR: [
-            { subject: { contains: token } },
-            { fromAddress: { contains: token } },
-            { fromName: { contains: token } },
-            { toAddress: { contains: token } },
-            { textBody: { contains: token } },
-            { htmlBody: { contains: token } },
-          ],
+          OR:
+            databaseType === "postgresql"
+              ? [
+                  { subject: { contains: token, mode: "insensitive" as const } },
+                  { fromAddress: { contains: token, mode: "insensitive" as const } },
+                  { fromName: { contains: token, mode: "insensitive" as const } },
+                  { toAddress: { contains: token, mode: "insensitive" as const } },
+                  { textBody: { contains: token, mode: "insensitive" as const } },
+                  { htmlBody: { contains: token, mode: "insensitive" as const } },
+                ]
+              : [
+                  { subject: { contains: token } },
+                  { fromAddress: { contains: token } },
+                  { fromName: { contains: token } },
+                  { toAddress: { contains: token } },
+                  { textBody: { contains: token } },
+                  { htmlBody: { contains: token } },
+                ],
         })),
         ...(cursorEmail
           ? [
@@ -389,7 +416,12 @@ export async function GET(request: NextRequest) {
     const slice = hasMore ? items.slice(0, parsed.limit) : items;
     const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1].id : null;
 
-    return NextResponse.json({ emails: slice, hasMore, nextCursor, mode: "fallback" });
+    return NextResponse.json({
+      emails: slice,
+      hasMore,
+      nextCursor,
+      mode: databaseType === "postgresql" ? "ilike" : "fallback",
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
