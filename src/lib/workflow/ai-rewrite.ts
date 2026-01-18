@@ -41,6 +41,11 @@ Return a JSON object with this schema:
 Rules:
 - If you don't want to change a field, return null for that field.
 - If extracting data, put it into "variables" as a flat object of string values.
+- You MUST NOT invent variable keys. Only use keys explicitly requested by the user.
+- Allowed variable keys (JSON array): {{requestedVariableKeysJson}}
+- If the allowed key list is empty, set "variables" to null.
+- Do not output additional keys under "variables" (no synonyms, no extra keys).
+- Variable values must be plain strings (do not JSON-encode objects).
 - Do not return additional keys.
 
 Email Subject:
@@ -105,6 +110,34 @@ function getFieldsForPrompt(data: ActionAiRewriteData): EmailContentField[] {
   return ["subject", "textBody"];
 }
 
+function extractRequestedVariableKeys(instruction: string): string[] {
+  const keys = new Set<string>();
+  const text = instruction || "";
+
+  const dot = /variables\.([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  for (const match of text.matchAll(dot)) {
+    if (match[1]) keys.add(match[1]);
+  }
+
+  const bracket = /variables\[['"]([^'"]+)['"]\]/g;
+  for (const match of text.matchAll(bracket)) {
+    const candidate = (match[1] || "").trim();
+    if (candidate) keys.add(candidate);
+  }
+
+  const mustache = /\{\{\s*variables\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
+  for (const match of text.matchAll(mustache)) {
+    if (match[1]) keys.add(match[1]);
+  }
+
+  return Array.from(keys);
+}
+
+export function getAiRewriteRequestedVariableKeys(data: ActionAiRewriteData): string[] {
+  const instruction = (data.prompt || "").trim();
+  return extractRequestedVariableKeys(instruction);
+}
+
 function buildPrompt(data: ActionAiRewriteData, context: ExecutionContext, config: AiRewriteConfig): string {
   const email = context.email
     ? {
@@ -117,12 +150,14 @@ function buildPrompt(data: ActionAiRewriteData, context: ExecutionContext, confi
 
   const variablesJson = JSON.stringify(context.variables || {}, null, 2);
   const instruction = (data.prompt || "").trim();
+  const requestedVariableKeysJson = JSON.stringify(getAiRewriteRequestedVariableKeys(data));
 
   return replaceTemplateVariables(config.defaultPrompt, {
     email,
     variables: context.variables,
     variablesJson,
     instruction,
+    requestedVariableKeysJson,
   });
 }
 
@@ -150,6 +185,12 @@ async function callOpenAiStructured(
   context: ExecutionContext,
   config: AiRewriteConfig
 ): Promise<AiRewriteResult> {
+  const requestedVariableKeys = getAiRewriteRequestedVariableKeys(data);
+  const allowsVariables = data.writeTarget === "variables" || data.writeTarget === "both";
+  const variableProperties = allowsVariables
+    ? Object.fromEntries(requestedVariableKeys.map((key) => [key, { type: "string" }]))
+    : {};
+
   const jsonSchema = {
     type: "object",
     properties: {
@@ -158,7 +199,8 @@ async function callOpenAiStructured(
       htmlBody: { type: ["string", "null"] },
       variables: {
         type: ["object", "null"],
-        additionalProperties: { type: "string" },
+        ...(requestedVariableKeys.length > 0 ? { properties: variableProperties } : {}),
+        additionalProperties: false,
       },
       reasoning: { type: ["string", "null"] },
     },
@@ -226,9 +268,12 @@ function chooseTestModeResult(data: ActionAiRewriteData, context: ExecutionConte
   }
 
   if (data.writeTarget === "variables" || data.writeTarget === "both") {
-    result.variables = {
-      ai_summary: `TEST: ${email?.subject || ""}`.trim(),
-    };
+    const keys = getAiRewriteRequestedVariableKeys(data);
+    if (keys.length > 0) {
+      result.variables = Object.fromEntries(keys.map((key) => [key, `TEST:${key}`]));
+    } else {
+      result.variables = null;
+    }
   }
 
   return result;

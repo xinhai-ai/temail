@@ -15,7 +15,7 @@ import type {
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
-import { evaluateAiRewrite } from "@/lib/workflow/ai-rewrite";
+import { evaluateAiRewrite, getAiRewriteRequestedVariableKeys } from "@/lib/workflow/ai-rewrite";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -585,6 +585,7 @@ async function executeAiRewrite(
   context: ExecutionContext
 ): Promise<{ appliedEmailFields: EmailContentField[]; variablesWritten: number; resultVariable?: string }> {
   const resultVariable = (data.resultVariable || "").trim() || undefined;
+  const requestedVariableKeys = getAiRewriteRequestedVariableKeys(data);
 
   if (!context.email) {
     return { appliedEmailFields: [], variablesWritten: 0, resultVariable };
@@ -627,7 +628,12 @@ async function executeAiRewrite(
   }
 
   if (resultVariable) {
-    context.variables[resultVariable] = JSON.stringify(result);
+    const reserved = new Set<string>(requestedVariableKeys);
+    for (const key of Object.keys(result.variables || {})) reserved.add(key);
+
+    if (!reserved.has(resultVariable)) {
+      context.variables[resultVariable] = JSON.stringify(result);
+    }
   }
 
   return { appliedEmailFields, variablesWritten, resultVariable };

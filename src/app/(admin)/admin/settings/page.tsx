@@ -37,6 +37,11 @@ Return a JSON object with this schema:
 Rules:
 - If you don't want to change a field, return null for that field.
 - If extracting data, put it into "variables" as a flat object of string values.
+- You MUST NOT invent variable keys. Only use keys explicitly requested by the user.
+- Allowed variable keys (JSON array): {{requestedVariableKeysJson}}
+- If the allowed key list is empty, set "variables" to null.
+- Do not output additional keys under "variables" (no synonyms, no extra keys).
+- Variable values must be plain strings (do not JSON-encode objects).
 - Do not return additional keys.
 
 Email Subject:
