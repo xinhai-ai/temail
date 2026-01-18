@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "trigger-email",
+      "type": "trigger:email",
+      "position": { "x": 200, "y": 100 },
+      "data": { "label": "Email Trigger" }
+    },
+    {
+      "id": "keyword-match",
+      "type": "condition:keyword",
+      "position": { "x": 200, "y": 250 },
+      "data": {
+        "label": "Keyword Match",
+        "keywords": ["invoice", "发票"],
+        "matchType": "any",
+        "fields": ["subject", "textBody"],
+        "caseSensitive": false
+      }
+    },
+    {
+      "id": "set-original-subject",
+      "type": "action:setVariable",
+      "position": { "x": 200, "y": 400 },
+      "data": {
+        "label": "Set Variable",
+        "name": "original_subject",
+        "value": "{{email.subject}}"
+      }
+    },
+    {
+      "id": "ai-extract",
+      "type": "action:aiRewrite",
+      "position": { "x": 200, "y": 550 },
+      "data": {
+        "label": "AI Rewrite",
+        "writeTarget": "variables",
+        "fields": ["subject", "textBody"],
+        "prompt": "Extract a concise summary into variables.summary and action items into variables.action_items. Do not rewrite the email fields.",
+        "resultVariable": "ai_result"
+      }
+    },
+    {
+      "id": "rewrite-email",
+      "type": "action:rewriteEmail",
+      "position": { "x": 200, "y": 700 },
+      "data": {
+        "label": "Rewrite Email",
+        "subject": "[Summary] {{variables.summary}}",
+        "textBody": "Original subject: {{variables.original_subject}}\\n\\nSummary:\\n{{variables.summary}}\\n\\nAction items:\\n{{variables.action_items}}\\n\\n---\\n\\n{{email.textBody}}"
+      }
+    },
+    {
+      "id": "forward-email",
+      "type": "forward:email",
+      "position": { "x": 200, "y": 850 },
+      "data": {
+        "label": "Forward Email",
+        "to": "forward@example.com",
+        "template": {
+          "subject": "{{email.subject}}",
+          "body": "{{email.textBody}}"
+        }
+      }
+    },
+    {
+      "id": "end",
+      "type": "control:end",
+      "position": { "x": 200, "y": 1000 },
+      "data": { "label": "End" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "trigger-email", "target": "keyword-match" },
+    { "id": "e2", "source": "keyword-match", "sourceHandle": "true", "target": "set-original-subject" },
+    { "id": "e3", "source": "keyword-match", "sourceHandle": "false", "target": "end" },
+    { "id": "e4", "source": "set-original-subject", "target": "ai-extract" },
+    { "id": "e5", "source": "ai-extract", "target": "rewrite-email" },
+    { "id": "e6", "source": "rewrite-email", "target": "forward-email" },
+    { "id": "e7", "source": "forward-email", "target": "end" }
+  ]
+}
+
