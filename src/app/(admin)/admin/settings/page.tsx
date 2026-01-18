@@ -23,12 +23,44 @@ Email Subject: {{email.subject}}
 Email From: {{email.fromAddress}}
 Email Body: {{email.textBody}}`;
 
+const DEFAULT_AI_REWRITE_PROMPT = `You are an email rewriting and extraction assistant.
+
+Return a JSON object with this schema:
+{
+  "subject": string | null,
+  "textBody": string | null,
+  "htmlBody": string | null,
+  "variables": object | null,
+  "reasoning": string | null
+}
+
+Rules:
+- If you don't want to change a field, return null for that field.
+- If extracting data, put it into "variables" as a flat object of string values.
+- Do not return additional keys.
+
+Email Subject:
+{{email.subject}}
+
+Email Text Body:
+{{email.textBody}}
+
+Email HTML Body:
+{{email.htmlBody}}
+
+Existing Variables (JSON):
+{{variablesJson}}
+
+Instruction:
+{{instruction}}`;
+
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [smtpSecure, setSmtpSecure] = useState(false);
   const [aiClassifierEnabled, setAiClassifierEnabled] = useState(false);
+  const [aiRewriteEnabled, setAiRewriteEnabled] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
   const [registrationInviteCodes, setRegistrationInviteCodes] = useState("");
   const [workflowMaxExecutionLogs, setWorkflowMaxExecutionLogs] = useState("100");
@@ -86,6 +118,37 @@ export default function AdminSettingsPage() {
     ],
     []
   );
+  const aiRewriteItems = useMemo(
+    () => [
+      {
+        key: "ai_rewrite_base_url",
+        label: "API Base URL",
+        placeholder: "https://api.openai.com/v1",
+        description: "OpenAI-compatible API endpoint",
+      },
+      {
+        key: "ai_rewrite_model",
+        label: "Model",
+        placeholder: "gpt-4o-mini",
+        description: "Model to use for rewriting/extraction (e.g., gpt-4o-mini, gpt-4o)",
+      },
+      {
+        key: "ai_rewrite_api_key",
+        label: "API Key",
+        placeholder: "sk-...",
+        secret: true,
+        description: "OpenAI API key or compatible provider key",
+      },
+      {
+        key: "ai_rewrite_default_prompt",
+        label: "Default Prompt Template",
+        type: "textarea" as const,
+        placeholder: DEFAULT_AI_REWRITE_PROMPT,
+        description: "Default rewrite/extraction prompt (supports template variables)",
+      },
+    ],
+    []
+  );
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -106,6 +169,7 @@ export default function AdminSettingsPage() {
     setValues(map);
     setSmtpSecure(map.smtp_secure === "true");
     setAiClassifierEnabled(map.ai_classifier_enabled === "true");
+    setAiRewriteEnabled(map.ai_rewrite_enabled === "true");
     const mode = map.registration_mode;
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
     setRegistrationInviteCodes(map.registration_invite_codes || "");
@@ -133,8 +197,13 @@ export default function AdminSettingsPage() {
           key: item.key,
           value: values[item.key] || "",
         })),
+        ...aiRewriteItems.map((item) => ({
+          key: item.key,
+          value: values[item.key] || "",
+        })),
         { key: "smtp_secure", value: smtpSecure ? "true" : "false" },
         { key: "ai_classifier_enabled", value: aiClassifierEnabled ? "true" : "false" },
+        { key: "ai_rewrite_enabled", value: aiRewriteEnabled ? "true" : "false" },
       ].filter((x) => x.value !== "");
 
       payload.push(
@@ -305,73 +374,143 @@ export default function AdminSettingsPage() {
         </TabsContent>
 
         <TabsContent value="ai">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                AI Classifier Settings
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Configure AI-powered email classification for workflows
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Enable AI Classifier</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Allow workflows to use AI for email classification
-                  </p>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  AI Classifier Settings
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure AI-powered email classification for workflows
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable AI Classifier</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Allow workflows to use AI for email classification
+                    </p>
+                  </div>
+                  <Switch checked={aiClassifierEnabled} onCheckedChange={setAiClassifierEnabled} />
                 </div>
-                <Switch checked={aiClassifierEnabled} onCheckedChange={setAiClassifierEnabled} />
-              </div>
 
-              <Separator />
+                <Separator />
 
-              {aiClassifierItems.map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <Label>{item.label}</Label>
-                  {item.description && (
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                  )}
-                  {item.type === "textarea" ? (
-                    <Textarea
-                      placeholder={item.placeholder}
-                      value={values[item.key] || ""}
-                      onChange={(e) => setValue(item.key, e.target.value)}
-                      rows={8}
-                      className="font-mono text-sm"
-                    />
-                  ) : (
-                    <Input
-                      placeholder={item.placeholder}
-                      value={values[item.key] || ""}
-                      type={item.secret ? "password" : "text"}
-                      onChange={(e) => setValue(item.key, e.target.value)}
-                    />
-                  )}
-                </div>
-              ))}
+                {aiClassifierItems.map((item) => (
+                  <div key={item.key} className="space-y-2">
+                    <Label>{item.label}</Label>
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                    )}
+                    {item.type === "textarea" ? (
+                      <Textarea
+                        placeholder={item.placeholder}
+                        value={values[item.key] || ""}
+                        onChange={(e) => setValue(item.key, e.target.value)}
+                        rows={8}
+                        className="font-mono text-sm"
+                      />
+                    ) : (
+                      <Input
+                        placeholder={item.placeholder}
+                        value={values[item.key] || ""}
+                        type={item.secret ? "password" : "text"}
+                        onChange={(e) => setValue(item.key, e.target.value)}
+                      />
+                    )}
+                  </div>
+                ))}
 
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div className="text-xs text-blue-900 space-y-1">
-                    <p className="font-medium">Template Variables</p>
-                    <p>You can use these variables in the prompt template:</p>
-                    <ul className="list-disc list-inside pl-2 space-y-0.5">
-                      <li><code>{"{{categories}}"}</code> - List of classification categories</li>
-                      <li><code>{"{{email.subject}}"}</code> - Email subject line</li>
-                      <li><code>{"{{email.fromAddress}}"}</code> - Sender email address</li>
-                      <li><code>{"{{email.fromName}}"}</code> - Sender display name</li>
-                      <li><code>{"{{email.textBody}}"}</code> - Email body (plain text)</li>
-                      <li><code>{"{{email.htmlBody}}"}</code> - Email body (HTML)</li>
-                    </ul>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                    <div className="text-xs text-blue-900 space-y-1">
+                      <p className="font-medium">Template Variables</p>
+                      <p>You can use these variables in the prompt template:</p>
+                      <ul className="list-disc list-inside pl-2 space-y-0.5">
+                        <li><code>{"{{categories}}"}</code> - List of classification categories</li>
+                        <li><code>{"{{email.subject}}"}</code> - Email subject line</li>
+                        <li><code>{"{{email.fromAddress}}"}</code> - Sender email address</li>
+                        <li><code>{"{{email.fromName}}"}</code> - Sender display name</li>
+                        <li><code>{"{{email.textBody}}"}</code> - Email body (plain text)</li>
+                        <li><code>{"{{email.htmlBody}}"}</code> - Email body (HTML)</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  AI Rewrite Settings
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure AI-powered rewrite/extraction nodes for workflows
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable AI Rewrite</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Allow workflows to use AI to rewrite or extract email content
+                    </p>
+                  </div>
+                  <Switch checked={aiRewriteEnabled} onCheckedChange={setAiRewriteEnabled} />
+                </div>
+
+                <Separator />
+
+                {aiRewriteItems.map((item) => (
+                  <div key={item.key} className="space-y-2">
+                    <Label>{item.label}</Label>
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                    )}
+                    {item.type === "textarea" ? (
+                      <Textarea
+                        placeholder={item.placeholder}
+                        value={values[item.key] || ""}
+                        onChange={(e) => setValue(item.key, e.target.value)}
+                        rows={10}
+                        className="font-mono text-sm"
+                      />
+                    ) : (
+                      <Input
+                        placeholder={item.placeholder}
+                        value={values[item.key] || ""}
+                        type={item.secret ? "password" : "text"}
+                        onChange={(e) => setValue(item.key, e.target.value)}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                    <div className="text-xs text-blue-900 space-y-1">
+                      <p className="font-medium">Template Variables</p>
+                      <p>You can use these variables in the prompt template:</p>
+                      <ul className="list-disc list-inside pl-2 space-y-0.5">
+                        <li><code>{"{{email.subject}}"}</code> - Email subject line</li>
+                        <li><code>{"{{email.textBody}}"}</code> - Email body (plain text)</li>
+                        <li><code>{"{{email.htmlBody}}"}</code> - Email body (HTML)</li>
+                        <li><code>{"{{variablesJson}}"}</code> - Current workflow variables as JSON</li>
+                        <li><code>{"{{instruction}}"}</code> - Node-specific instruction text</li>
+                        <li><code>{"{{variables.anyKey}}"}</code> - Access a specific workflow variable</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="workflow">
