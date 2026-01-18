@@ -71,6 +71,7 @@ export default function InboxPage() {
   const [refreshCooldown, setRefreshCooldown] = useState(0); // remaining seconds
   const [mobileTab, setMobileTab] = useState<"mailboxes" | "emails" | "preview">("emails");
   const [statusFilter, setStatusFilter] = useState<EmailStatusFilter>("all");
+  const [emailsRefreshKey, setEmailsRefreshKey] = useState(0);
 
   const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
 
@@ -226,7 +227,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter]);
+  }, [selectedMailboxId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter, emailsRefreshKey]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -596,11 +597,15 @@ export default function InboxPage() {
     }
 
     toast.success("Emails archived");
-    // Remove from list if not viewing archived
+    setSelectedEmailIds([]);
+    // Clear selected email if it was archived
+    if (selectedEmailId && ids.includes(selectedEmailId)) {
+      setSelectedEmailId(null);
+      setSelectedEmail(null);
+    }
+    // Refresh list to get correct data
     if (statusFilter !== "archived") {
-      setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
-      setSelectedEmailId((current) => (current && ids.includes(current) ? null : current));
-      setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? null : prev));
+      setEmailsRefreshKey((k) => k + 1);
     } else {
       setEmails((prev) =>
         prev.map((e) => (ids.includes(e.id) ? { ...e, status: "ARCHIVED" } : e))
@@ -609,7 +614,6 @@ export default function InboxPage() {
         prev && ids.includes(prev.id) ? { ...prev, status: "ARCHIVED" } : prev
       );
     }
-    setSelectedEmailIds([]);
   };
 
   const handleStatusFilterChange = (filter: EmailStatusFilter) => {
@@ -642,8 +646,7 @@ export default function InboxPage() {
     }
 
     toast.success("Marked as read");
-    setEmails((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, status: "READ" } : e)));
-    setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? { ...prev, status: "READ" } : prev));
+    setSelectedEmailIds([]);
 
     // Update mailbox unread counts
     setMailboxes((prev) =>
@@ -656,7 +659,13 @@ export default function InboxPage() {
       })
     );
 
-    setSelectedEmailIds([]);
+    // Refresh list when viewing unread filter (marked emails should disappear)
+    if (statusFilter === "unread") {
+      setEmailsRefreshKey((k) => k + 1);
+    } else {
+      setEmails((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, status: "READ" } : e)));
+      setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? { ...prev, status: "READ" } : prev));
+    }
   };
 
   const confirmBulkDelete = async () => {
@@ -678,11 +687,15 @@ export default function InboxPage() {
     }
 
     toast.success("Emails deleted");
-    setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
-    setSelectedEmailId((current) => (current && ids.includes(current) ? null : current));
-    setSelectedEmail((prev) => (prev && ids.includes(prev.id) ? null : prev));
     setSelectedEmailIds([]);
     setBulkDeleteOpen(false);
+    // Clear selected email if it was deleted
+    if (selectedEmailId && ids.includes(selectedEmailId)) {
+      setSelectedEmailId(null);
+      setSelectedEmail(null);
+    }
+    // Refresh list to get correct data
+    setEmailsRefreshKey((k) => k + 1);
   };
 
   const handleEmailSearchChange = (value: string) => {
