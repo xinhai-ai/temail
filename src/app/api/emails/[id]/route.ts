@@ -34,6 +34,11 @@ export async function GET(
         },
       },
       headers: true,
+      emailTags: {
+        select: {
+          tag: { select: { id: true, name: true, color: true } },
+        },
+      },
     },
   });
 
@@ -44,9 +49,10 @@ export async function GET(
   // For lazy loading: exclude rawContent from response, but indicate if it's available
   // - If rawContentPath exists: raw content is in file storage
   // - If only rawContent exists (legacy): keep a flag so frontend knows raw is available
-  const { rawContent, ...emailWithoutRawContent } = email;
+  const { rawContent, emailTags, ...emailWithoutRawContent } = email;
   const response = {
     ...emailWithoutRawContent,
+    tags: emailTags.map((et) => et.tag),
     // For backward compatibility: if no rawContentPath but rawContent exists,
     // set rawContent to true (as a flag) so frontend knows to fetch from /raw
     rawContent: !email.rawContentPath && rawContent ? true : undefined,

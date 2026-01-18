@@ -9,12 +9,55 @@ let cachedFtsAvailable: boolean | null = null;
 const querySchema = z.object({
   q: z.string().trim().min(1, "Query is required").max(200),
   mailboxId: z.string().trim().min(1).optional(),
+  tagId: z.string().trim().min(1).optional(),
   status: z.enum(["UNREAD", "READ", "ARCHIVED", "DELETED"]).optional(),
   excludeArchived: z.coerce.boolean().optional(),
   cursor: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+type EmailListItem = {
+  id: string;
+  subject: string;
+  fromAddress: string;
+  fromName: string | null;
+  status: string;
+  isStarred: boolean;
+  receivedAt: string;
+  mailboxId: string;
+  mailbox: { address: string };
+  tags?: Array<{ id: string; name: string; color: string | null }>;
+};
+
+async function attachTags(items: EmailListItem[]) {
+  const ids = items.map((i) => i.id);
+  if (ids.length === 0) return items;
+
+  const rows = await prisma.emailTag.findMany({
+    where: { emailId: { in: ids } },
+    select: {
+      emailId: true,
+      tag: { select: { id: true, name: true, color: true } },
+    },
+  });
+
+  const byEmail = new Map<string, Array<{ id: string; name: string; color: string | null }>>();
+  for (const row of rows) {
+    const list = byEmail.get(row.emailId) || [];
+    list.push(row.tag);
+    byEmail.set(row.emailId, list);
+  }
+
+  for (const list of byEmail.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return items.map((item) => ({
+    ...item,
+    tags: byEmail.get(item.id) || [],
+  }));
+}
 
 function containsCjk(input: string) {
   const value = input || "";
@@ -87,6 +130,7 @@ export async function GET(request: NextRequest) {
     const parsed = querySchema.parse({
       q: searchParams.get("q") || "",
       mailboxId: searchParams.get("mailboxId") || undefined,
+      tagId: searchParams.get("tagId") || undefined,
       status: searchParams.get("status") || undefined,
       excludeArchived: searchParams.get("excludeArchived") || undefined,
       cursor: searchParams.get("cursor") || undefined,
@@ -113,6 +157,7 @@ export async function GET(request: NextRequest) {
             id: parsed.cursor,
             ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
             mailbox: { userId: session.user.id },
+            ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
           },
           select: { id: true, receivedAt: true },
         })
@@ -164,6 +209,11 @@ export async function GET(request: NextRequest) {
               WHERE m.userId = ${session.user.id}
                 AND emails_fts MATCH ${ftsQuery}
                 ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+                ${
+                  parsed.tagId
+                    ? Prisma.sql`AND EXISTS (SELECT 1 FROM email_tags et WHERE et.emailId = e.id AND et.tagId = ${parsed.tagId})`
+                    : Prisma.empty
+                }
                 ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
                 ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
               ORDER BY e.receivedAt DESC, e.id DESC
@@ -178,6 +228,11 @@ export async function GET(request: NextRequest) {
               WHERE m.userId = ${session.user.id}
                 AND emails_fts MATCH ${ftsQuery}
                 ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+                ${
+                  parsed.tagId
+                    ? Prisma.sql`AND EXISTS (SELECT 1 FROM email_tags et WHERE et.emailId = e.id AND et.tagId = ${parsed.tagId})`
+                    : Prisma.empty
+                }
                 ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
                 ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
             `),
@@ -185,7 +240,7 @@ export async function GET(request: NextRequest) {
 
           const total = Number(countRows?.[0]?.total ?? 0);
 
-          const emails = rows.map((row) => ({
+          const emails = await attachTags(rows.map((row) => ({
             id: row.id,
             subject: row.subject,
             fromAddress: row.fromAddress,
@@ -195,7 +250,7 @@ export async function GET(request: NextRequest) {
             receivedAt: row.receivedAt,
             mailboxId: row.mailboxId,
             mailbox: { address: row.mailboxAddress },
-          }));
+          })));
 
           return NextResponse.json({
             emails,
@@ -222,6 +277,7 @@ export async function GET(request: NextRequest) {
           {
             mailbox: { userId: session.user.id },
             ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+            ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
             ...(parsed.status ? { status: parsed.status } : {}),
             ...(parsed.excludeArchived && !parsed.status
               ? { status: { not: "ARCHIVED" as const } }
@@ -263,6 +319,9 @@ export async function GET(request: NextRequest) {
             receivedAt: true,
             mailboxId: true,
             mailbox: { select: { address: true } },
+            emailTags: {
+              select: { tag: { select: { id: true, name: true, color: true } } },
+            },
           },
           orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
           skip: offset,
@@ -272,7 +331,7 @@ export async function GET(request: NextRequest) {
       ]);
 
       return NextResponse.json({
-        emails: items,
+        emails: items.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) })),
         pagination: {
           mode: "page",
           page,
@@ -315,6 +374,11 @@ export async function GET(request: NextRequest) {
           WHERE m.userId = ${session.user.id}
             AND emails_fts MATCH ${ftsQuery}
             ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
+            ${
+              parsed.tagId
+                ? Prisma.sql`AND EXISTS (SELECT 1 FROM email_tags et WHERE et.emailId = e.id AND et.tagId = ${parsed.tagId})`
+                : Prisma.empty
+            }
             ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
             ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
             ${
@@ -330,7 +394,7 @@ export async function GET(request: NextRequest) {
         const slice = hasMore ? rows.slice(0, parsed.limit) : rows;
         const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1].id : null;
 
-        const emails = slice.map((row) => ({
+        const emails = await attachTags(slice.map((row) => ({
           id: row.id,
           subject: row.subject,
           fromAddress: row.fromAddress,
@@ -340,7 +404,7 @@ export async function GET(request: NextRequest) {
           receivedAt: row.receivedAt,
           mailboxId: row.mailboxId,
           mailbox: { address: row.mailboxAddress },
-        }));
+        })));
 
         return NextResponse.json({ emails, hasMore, nextCursor, mode: "fts" });
       } catch (error) {
@@ -357,6 +421,7 @@ export async function GET(request: NextRequest) {
         {
           mailbox: { userId: session.user.id },
           ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
+          ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
           ...(parsed.status ? { status: parsed.status } : {}),
           ...(parsed.excludeArchived && !parsed.status
             ? { status: { not: "ARCHIVED" as const } }
@@ -407,6 +472,9 @@ export async function GET(request: NextRequest) {
         receivedAt: true,
         mailboxId: true,
         mailbox: { select: { address: true } },
+        emailTags: {
+          select: { tag: { select: { id: true, name: true, color: true } } },
+        },
       },
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       take: parsed.limit + 1,
@@ -417,7 +485,7 @@ export async function GET(request: NextRequest) {
     const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1].id : null;
 
     return NextResponse.json({
-      emails: slice,
+      emails: slice.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) })),
       hasMore,
       nextCursor,
       mode: databaseType === "postgresql" ? "ilike" : "fallback",

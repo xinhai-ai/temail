@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const excludeArchived = searchParams.get("excludeArchived") === "true";
   const mailboxId = searchParams.get("mailboxId");
+  const tagId = searchParams.get("tagId");
   const mode = searchParams.get("mode");
   const cursor = searchParams.get("cursor");
   const page = parseInt(searchParams.get("page") || "1");
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
     ...(status && { status: status as "UNREAD" | "READ" | "ARCHIVED" | "DELETED" }),
     ...(excludeArchived && !status && { status: { not: "ARCHIVED" as const } }),
     ...(mailboxId && { mailboxId }),
+    ...(tagId && { emailTags: { some: { tagId } } }),
   };
 
   if (mode === "cursor" || typeof cursor === "string") {
@@ -47,6 +49,11 @@ export async function GET(request: NextRequest) {
         receivedAt: true,
         mailboxId: true,
         mailbox: { select: { address: true } },
+        emailTags: {
+          select: {
+            tag: { select: { id: true, name: true, color: true } },
+          },
+        },
       },
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -54,7 +61,11 @@ export async function GET(request: NextRequest) {
     });
 
     const hasMore = items.length > limit;
-    const emails = hasMore ? items.slice(0, limit) : items;
+    const slice = hasMore ? items.slice(0, limit) : items;
+    const emails = slice.map(({ emailTags, ...rest }) => ({
+      ...rest,
+      tags: emailTags.map((et) => et.tag),
+    }));
     const nextCursor = hasMore && emails.length > 0 ? emails[emails.length - 1].id : null;
 
     return NextResponse.json({
@@ -84,6 +95,11 @@ export async function GET(request: NextRequest) {
         receivedAt: true,
         mailboxId: true,
         mailbox: { select: { address: true } },
+        emailTags: {
+          select: {
+            tag: { select: { id: true, name: true, color: true } },
+          },
+        },
       },
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * limit,
@@ -93,7 +109,10 @@ export async function GET(request: NextRequest) {
   ]);
 
   return NextResponse.json({
-    emails,
+    emails: emails.map(({ emailTags, ...rest }) => ({
+      ...rest,
+      tags: emailTags.map((et) => et.tag),
+    })),
     pagination: {
       mode: "page",
       page,
