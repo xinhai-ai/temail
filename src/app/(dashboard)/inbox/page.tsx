@@ -1148,6 +1148,7 @@ export default function InboxPage() {
               onEmailSearchChange={handleEmailSearchChange}
               onPageSizeChange={handleEmailsPageSizeChange}
               onTagFilterChange={handleTagFilterChange}
+              onUpdateEmailTags={handleUpdateEmailTags}
               onSelectEmail={(email) => {
                 handleSelectEmail(email);
                 setMobileTab("preview");
@@ -1176,8 +1177,6 @@ export default function InboxPage() {
             selectedEmailId={selectedEmailId}
             selectedEmail={selectedEmail}
             loadingPreview={loadingPreview}
-            availableTags={availableTags}
-            onUpdateEmailTags={handleUpdateEmailTags}
           />
         </TabsContent>
         </Tabs>
@@ -1256,6 +1255,7 @@ export default function InboxPage() {
             onEmailSearchChange={handleEmailSearchChange}
             onPageSizeChange={handleEmailsPageSizeChange}
             onTagFilterChange={handleTagFilterChange}
+            onUpdateEmailTags={handleUpdateEmailTags}
             onSelectEmail={handleSelectEmail}
             onToggleSelectAllOnPage={toggleSelectAllOnPage}
             onToggleEmailSelection={toggleEmailSelection}
@@ -1279,8 +1279,6 @@ export default function InboxPage() {
             selectedEmailId={selectedEmailId}
             selectedEmail={selectedEmail}
             loadingPreview={loadingPreview}
-            availableTags={availableTags}
-            onUpdateEmailTags={handleUpdateEmailTags}
           />
         </div>
 

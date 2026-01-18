@@ -5,22 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
 import { Switch } from "@/components/ui/switch";
-import { Mail, Paperclip, Download, X } from "lucide-react";
-import type { EmailDetail, Tag } from "../types";
+import { Mail, Paperclip, Download } from "lucide-react";
+import type { EmailDetail } from "../types";
 import { toast } from "sonner";
 
 type PreviewPanelProps = {
   selectedEmailId: string | null;
   selectedEmail: EmailDetail | null;
   loadingPreview: boolean;
-  availableTags: Tag[];
-  onUpdateEmailTags: (emailId: string, patch: { add?: string[]; remove?: string[] }) => Promise<boolean>;
 };
 
 function formatFileSize(bytes: number): string {
@@ -35,8 +32,6 @@ export function PreviewPanel({
   selectedEmailId,
   selectedEmail,
   loadingPreview,
-  availableTags,
-  onUpdateEmailTags,
 }: PreviewPanelProps) {
   const REMOTE_RESOURCES_KEY = "temail.preview.allowRemoteResources";
   const REMOTE_RESOURCES_WARNED_KEY = "temail.preview.remoteResourcesWarned";
@@ -54,14 +49,11 @@ export function PreviewPanel({
   // Lazy loading state for raw content
   const [rawContent, setRawContent] = useState<string | null>(null);
   const [loadingRaw, setLoadingRaw] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const [savingTags, setSavingTags] = useState(false);
 
   // Reset raw content when email changes
   useEffect(() => {
     setRawContent(null);
     setManualPreviewMode(null);
-    setNewTagName("");
   }, [selectedEmailId]);
 
   const previewMode: "text" | "html" | "raw" = manualPreviewMode ?? (selectedEmail?.htmlBody ? "html" : "text");
@@ -230,91 +222,15 @@ export function PreviewPanel({
                   </span>
                 </div>
 
-                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs text-muted-foreground">Tags</div>
-                  </div>
+                {selectedEmail.tags && selectedEmail.tags.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    {selectedEmail.tags && selectedEmail.tags.length > 0 ? (
-                      selectedEmail.tags.map((tag) => (
-                        <Badge key={tag.id} variant="secondary" className="gap-1">
-                          <span>{tag.name}</span>
-                          <button
-                            type="button"
-                            className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-background/60"
-                            onClick={async () => {
-                              if (!selectedEmailId) return;
-                              setSavingTags(true);
-                              try {
-                                await onUpdateEmailTags(selectedEmailId, { remove: [tag.id] });
-                              } finally {
-                                setSavingTags(false);
-                              }
-                            }}
-                            aria-label={`Remove tag ${tag.name}`}
-                            disabled={savingTags}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-xs text-muted-foreground/70">No tags</span>
-                    )}
+                    {selectedEmail.tags.map((tag) => (
+                      <Badge key={tag.id} variant="secondary">
+                        {tag.name}
+                      </Badge>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      list="tag-suggestions"
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      placeholder="Add tag…"
-                      className="h-8 flex-1"
-                      onKeyDown={async (e) => {
-                        if (e.key !== "Enter") return;
-                        if (e.nativeEvent.isComposing) return;
-                        e.preventDefault();
-                        if (!selectedEmailId) return;
-                        const name = newTagName.trim();
-                        if (!name) return;
-                        setSavingTags(true);
-                        try {
-                          const ok = await onUpdateEmailTags(selectedEmailId, { add: [name] });
-                          if (ok) setNewTagName("");
-                        } finally {
-                          setSavingTags(false);
-                        }
-                      }}
-                      disabled={savingTags}
-                    />
-                    <datalist id="tag-suggestions">
-                      {availableTags.map((t) => (
-                        <option key={t.id} value={t.name} />
-                      ))}
-                    </datalist>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        if (!selectedEmailId) return;
-                        const name = newTagName.trim();
-                        if (!name) return;
-                        setSavingTags(true);
-                        try {
-                          const ok = await onUpdateEmailTags(selectedEmailId, { add: [name] });
-                          if (ok) setNewTagName("");
-                        } finally {
-                          setSavingTags(false);
-                        }
-                      }}
-                      disabled={savingTags || !newTagName.trim()}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Tip: Tags are per user and can be used for filtering.
-                  </div>
-                </div>
+                ) : null}
 
                 <div className="flex gap-2">
                   <Button

@@ -6,21 +6,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   ContextMenu,
+  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuLabel,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { Archive, ArchiveRestore, Copy, ExternalLink, Mail, MailOpen, Search, Star, StarOff, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, ExternalLink, Mail, MailOpen, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import type { EmailListItem, Tag } from "../types";
 
@@ -45,6 +51,7 @@ type EmailsPanelProps = {
   onEmailSearchChange: (value: string) => void;
   onPageSizeChange: (pageSize: number) => void;
   onTagFilterChange: (tagId: string | null) => void;
+  onUpdateEmailTags: (emailId: string, patch: { add?: string[]; remove?: string[] }) => Promise<boolean>;
   onSelectEmail: (email: EmailListItem) => void;
   onToggleSelectAllOnPage: (checked: boolean) => void;
   onToggleEmailSelection: (emailId: string, checked: boolean) => void;
@@ -82,6 +89,7 @@ export function EmailsPanel({
   onEmailSearchChange,
   onPageSizeChange,
   onTagFilterChange,
+  onUpdateEmailTags,
   onSelectEmail,
   onToggleSelectAllOnPage,
   onToggleEmailSelection,
@@ -107,6 +115,9 @@ export function EmailsPanel({
   const isPresetPageSize = pageSize === 5 || pageSize === 10 || pageSize === 15;
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
   const lastSearchSubmitAt = useRef<number>(0);
+  const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
+  const [addTagEmailId, setAddTagEmailId] = useState<string | null>(null);
+  const [addTagName, setAddTagName] = useState("");
 
   useEffect(() => {
     setEmailSearchInput(emailSearch);
@@ -138,6 +149,24 @@ export function EmailsPanel({
       onPageSizeChange(next);
     }
     setPageSizeOpen(false);
+  };
+
+  const openAddTagDialog = (emailId: string) => {
+    setAddTagEmailId(emailId);
+    setAddTagName("");
+    setAddTagDialogOpen(true);
+  };
+
+  const submitAddTag = async () => {
+    if (!addTagEmailId) return;
+    const name = addTagName.trim();
+    if (!name) return;
+    const ok = await onUpdateEmailTags(addTagEmailId, { add: [name] });
+    if (ok) {
+      setAddTagDialogOpen(false);
+      setAddTagEmailId(null);
+      setAddTagName("");
+    }
   };
 
   return (
@@ -321,6 +350,7 @@ export function EmailsPanel({
               {emails.map((email) => {
                 const active = selectedEmailId === email.id;
                 const isUnread = email.status === "UNREAD";
+                const emailTagIds = new Set((email.tags || []).map((t) => t.id));
                 return (
                   <ContextMenu key={email.id}>
                     <ContextMenuTrigger asChild>
@@ -423,6 +453,45 @@ export function EmailsPanel({
                         <Copy />
                         Copy Sender
                       </ContextMenuItem>
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger>
+                          <TagIcon />
+                          Tags
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent className="w-56">
+                          {tags.length === 0 ? (
+                            <ContextMenuItem disabled>
+                              No tags yet
+                            </ContextMenuItem>
+                          ) : (
+                            tags.map((tag) => {
+                              const checked = emailTagIds.has(tag.id);
+                              return (
+                                <ContextMenuCheckboxItem
+                                  key={tag.id}
+                                  checked={checked}
+                                  onSelect={(e) => e.preventDefault()}
+                                  onCheckedChange={(next) => {
+                                    const enabled = Boolean(next);
+                                    if (enabled) {
+                                      void onUpdateEmailTags(email.id, { add: [tag.name] });
+                                    } else {
+                                      void onUpdateEmailTags(email.id, { remove: [tag.id] });
+                                    }
+                                  }}
+                                >
+                                  {tag.name}
+                                </ContextMenuCheckboxItem>
+                              );
+                            })
+                          )}
+                          <ContextMenuSeparator />
+                          <ContextMenuItem onClick={() => openAddTagDialog(email.id)}>
+                            <Plus />
+                            Add new…
+                          </ContextMenuItem>
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
                       {isUnread && (
                         <ContextMenuItem
                           onClick={() => onMarkEmailRead(email.id)}
@@ -477,6 +546,55 @@ export function EmailsPanel({
           )}
         </div>
       </CardContent>
+
+      <Dialog
+        open={addTagDialogOpen}
+        onOpenChange={(open) => {
+          setAddTagDialogOpen(open);
+          if (!open) {
+            setAddTagEmailId(null);
+            setAddTagName("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add tag</DialogTitle>
+            <DialogDescription>
+              Create a new tag or attach an existing tag by name.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="add-tag-name">Tag name</Label>
+            <Input
+              id="add-tag-name"
+              list="email-tag-suggestions"
+              value={addTagName}
+              onChange={(e) => setAddTagName(e.target.value)}
+              placeholder="e.g. urgent"
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                if (e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                void submitAddTag();
+              }}
+            />
+            <datalist id="email-tag-suggestions">
+              {tags.map((t) => (
+                <option key={t.id} value={t.name} />
+              ))}
+            </datalist>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAddTagDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void submitAddTag()} disabled={!addTagName.trim()}>
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="p-3 border-t border-border/50 flex items-center justify-between gap-2 flex-shrink-0">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
