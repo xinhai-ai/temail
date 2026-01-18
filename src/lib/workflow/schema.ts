@@ -165,6 +165,7 @@ const actionAiRewriteDataSchema = z.object({
   label: z.string().optional(),
   writeTarget: z.enum(["email", "variables", "both"]),
   fields: z.array(emailContentFieldSchema).optional(),
+  outputVariableKeys: z.array(z.string().min(1).max(100)).max(50).optional(),
   prompt: z.string().optional(),
   resultVariable: z.string().optional(),
 });

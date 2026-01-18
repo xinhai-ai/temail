@@ -142,6 +142,16 @@ function extractRequestedVariableKeys(instruction: string): string[] {
 }
 
 export function getAiRewriteRequestedVariableKeys(data: ActionAiRewriteData): string[] {
+  const explicit = Array.isArray(data.outputVariableKeys)
+    ? data.outputVariableKeys
+        .map((k) => (typeof k === "string" ? k.trim() : ""))
+        .filter((k) => k.length > 0)
+    : [];
+
+  if (explicit.length > 0) {
+    return Array.from(new Set(explicit));
+  }
+
   const instruction = (data.prompt || "").trim();
   return extractRequestedVariableKeys(instruction);
 }

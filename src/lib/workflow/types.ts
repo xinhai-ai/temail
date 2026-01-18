@@ -248,6 +248,7 @@ export interface ActionAiRewriteData {
   label?: string;
   writeTarget: AiRewriteWriteTarget;
   fields?: EmailContentField[];
+  outputVariableKeys?: string[];
   prompt?: string;
   resultVariable?: string;
 }
@@ -738,7 +739,7 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     color: "#10b981",
     inputs: 1,
     outputs: 1,
-    defaultData: { writeTarget: "variables", fields: ["subject", "textBody"], prompt: "", resultVariable: "" },
+    defaultData: { writeTarget: "variables", fields: ["subject", "textBody"], outputVariableKeys: [], prompt: "", resultVariable: "" },
   },
 
   // 转发

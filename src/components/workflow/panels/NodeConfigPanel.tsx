@@ -464,6 +464,8 @@ function renderNodeConfig(
     case "action:aiRewrite": {
       const writeTarget = (data.writeTarget as string) || "variables";
       const fields = (data.fields as EmailContentField[]) || ["subject", "textBody"];
+      const outputVariableKeys = (data.outputVariableKeys as string[]) || [];
+      const outputVariableKeysText = outputVariableKeys.join(", ");
 
       const toggleField = (field: EmailContentField, checked: boolean) => {
         const next = new Set(fields);
@@ -529,6 +531,28 @@ function renderNodeConfig(
               className="font-mono text-sm"
             />
           </div>
+
+          {(writeTarget === "variables" || writeTarget === "both") && (
+            <div className="space-y-2">
+              <Label htmlFor="outputVariableKeys" className="text-xs font-medium">Output Variable Keys (optional)</Label>
+              <Input
+                id="outputVariableKeys"
+                value={outputVariableKeysText}
+                onChange={(e) => {
+                  const keys = e.target.value
+                    .split(/[,\n]/)
+                    .map((k) => k.trim())
+                    .filter(Boolean);
+                  onChange("outputVariableKeys", keys);
+                }}
+                placeholder="code, order_id"
+                className="h-8 text-sm font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                When set, the AI must only write these keys (comma/newline separated). If empty, keys are inferred from the instruction (e.g. variables.code).
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="resultVariable" className="text-xs font-medium">Result Variable (optional)</Label>
