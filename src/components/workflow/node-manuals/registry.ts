@@ -27,6 +27,12 @@ export const nodeManualLoaders: Partial<Record<NodeType, NodeManualLoader>> = {
   "action:regexReplace": () => import("./action-regex-replace"),
   "action:setTags": () => import("./action-set-tags"),
   "action:aiRewrite": () => import("./action-ai-rewrite"),
+
+  "forward:email": () => import("./forward-email"),
+  "forward:telegram": () => import("./forward-telegram"),
+  "forward:discord": () => import("./forward-discord"),
+  "forward:slack": () => import("./forward-slack"),
+  "forward:webhook": () => import("./forward-webhook"),
 };
 
 export async function loadNodeManual(type: NodeType): Promise<NodeManual | null> {
