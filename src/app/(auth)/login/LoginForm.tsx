@@ -35,6 +35,9 @@ export default function LoginForm({
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [step, setStep] = useState<"primary" | "otp">("primary");
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export default function LoginForm({
     e.preventDefault();
     setError("");
 
-    if (turnstileRequired && !turnstileToken) {
+    if (step === "primary" && turnstileRequired && !turnstileToken) {
       setError("Please complete the Turnstile challenge.");
       return;
     }
@@ -57,24 +60,79 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      if (step === "primary") {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+            turnstileToken: turnstileRequired ? turnstileToken : undefined,
+          }),
+        });
+
+        const data = (await res.json().catch(() => null)) as
+          | { loginToken?: string; requiresOtp?: boolean; mfaToken?: string; error?: string }
+          | null;
+        if (!res.ok) {
+          const message = data?.error || "Sign in failed";
+          setError(message);
+          if (turnstileRequired && message.toLowerCase().includes("turnstile")) {
+            setTurnstileToken(null);
+            setTurnstileReset((prev) => prev + 1);
+          }
+          return;
+        }
+
+        if (data?.requiresOtp) {
+          if (!data.mfaToken) {
+            setError("Sign in failed");
+            return;
+          }
+          setMfaToken(data.mfaToken);
+          setOtpCode("");
+          setPassword("");
+          setStep("otp");
+          return;
+        }
+
+        const loginToken = data?.loginToken;
+        if (!loginToken) {
+          setError("Sign in failed");
+          return;
+        }
+
+        const result = await signIn("credentials", { loginToken, redirect: false });
+        if (result?.error) {
+          setError("Sign in failed");
+          return;
+        }
+
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      const currentMfaToken = mfaToken;
+      if (!currentMfaToken) {
+        setError("Sign in failed");
+        setStep("primary");
+        return;
+      }
+      if (!otpCode.trim()) {
+        setError("Please enter your code.");
+        return;
+      }
+
+      const res = await fetch("/api/auth/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          turnstileToken: turnstileRequired ? turnstileToken : undefined,
-        }),
+        body: JSON.stringify({ mfaToken: currentMfaToken, code: otpCode }),
       });
 
       const data = (await res.json().catch(() => null)) as { loginToken?: string; error?: string } | null;
       if (!res.ok) {
-        const message = data?.error || "Sign in failed";
-        setError(message);
-        if (turnstileRequired && message.toLowerCase().includes("turnstile")) {
-          setTurnstileToken(null);
-          setTurnstileReset((prev) => prev + 1);
-        }
+        setError(data?.error || "Invalid code");
         return;
       }
 
@@ -138,27 +196,60 @@ export default function LoginForm({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
-                  required
+                  required={step === "primary"}
+                  disabled={step !== "primary" || loading}
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            {step === "primary" ? (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="otp">Verification code</Label>
                 <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
-                  required
+                  id="otp"
+                  inputMode="numeric"
+                  placeholder="123456"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  className="h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
+                  autoFocus
+                  disabled={loading}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Enter the code from your authenticator app or a backup code.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setStep("primary");
+                    setMfaToken(null);
+                    setOtpCode("");
+                  }}
+                  disabled={loading}
+                >
+                  Back
+                </Button>
               </div>
-            </div>
+            )}
 
-            {turnstileRequired && (
+            {step === "primary" && turnstileRequired && (
               <div className="space-y-2">
                 <TurnstileWidget
                   siteKey={turnstile.siteKey as string}
@@ -171,7 +262,7 @@ export default function LoginForm({
                 </p>
               </div>
             )}
-            {!turnstileRequired && turnstile.bypass && (
+            {step === "primary" && !turnstileRequired && turnstile.bypass && (
               <p className="text-[11px] text-muted-foreground">
                 Turnstile bypass is enabled in development.
               </p>
@@ -184,7 +275,7 @@ export default function LoginForm({
               disabled={loading}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
+              {step === "primary" ? "Sign In" : "Verify"}
             </Button>
             {showRegisterLink ? (
               <p className="text-sm text-center text-muted-foreground">

@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { issueLoginToken } from "@/lib/auth-tokens";
+import { issueLoginToken, issueMfaChallenge } from "@/lib/auth-tokens";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { readJsonBody } from "@/lib/request";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { getAuthFeatureFlags } from "@/lib/auth-features";
 
 const schema = z.object({
   email: z.string().email("Invalid email address"),
@@ -54,6 +55,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
+    const flags = await getAuthFeatureFlags();
+    if (flags.otpEnabled) {
+      const totp = await prisma.userTotp.findUnique({
+        where: { userId: user.id },
+        select: { enabledAt: true },
+      });
+      if (totp?.enabledAt) {
+        const mfaToken = await issueMfaChallenge({ userId: user.id, request });
+        return NextResponse.json({ requiresOtp: true, mfaToken });
+      }
+    }
+
     const loginToken = await issueLoginToken({ userId: user.id, request });
     return NextResponse.json({ loginToken });
   } catch (error) {
@@ -64,4 +77,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

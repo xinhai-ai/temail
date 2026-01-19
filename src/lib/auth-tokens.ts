@@ -6,8 +6,10 @@ import { getClientIp } from "@/lib/api-rate-limit";
 
 const LOGIN_TOKEN_BYTES = 32;
 const LOGIN_TOKEN_TTL_MS = 10 * 60_000;
+const MFA_CHALLENGE_BYTES = 32;
+const MFA_CHALLENGE_TTL_MS = 10 * 60_000;
 
-function sha256Hex(value: string): string {
+export function sha256Hex(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
@@ -64,3 +66,27 @@ export async function consumeLoginToken(token: string): Promise<{ userId: string
   return { userId: existing.userId };
 }
 
+export async function issueMfaChallenge(options: {
+  userId: string;
+  request?: Request;
+  ttlMs?: number;
+}): Promise<string> {
+  const token = generateOpaqueToken(MFA_CHALLENGE_BYTES);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + (options.ttlMs ?? MFA_CHALLENGE_TTL_MS));
+
+  const ip = options.request ? getClientIp(options.request) : null;
+  const userAgent = options.request?.headers.get("user-agent") || null;
+
+  await prisma.mfaChallenge.create({
+    data: {
+      userId: options.userId,
+      tokenHash: sha256Hex(token),
+      expiresAt,
+      ip,
+      userAgent,
+    },
+  });
+
+  return token;
+}

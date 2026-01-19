@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { User, Lock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import QRCode from "qrcode";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -21,6 +22,17 @@ export default function SettingsPage() {
   const [loadingTrash, setLoadingTrash] = useState(true);
   const [savingTrash, setSavingTrash] = useState(false);
 
+  const [otpAvailable, setOtpAvailable] = useState(false);
+  const [otpEnabled, setOtpEnabled] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(true);
+  const [otpWorking, setOtpWorking] = useState(false);
+  const [otpSetup, setOtpSetup] = useState<{ secret: string; otpauthUrl: string; qrDataUrl: string | null } | null>(
+    null
+  );
+  const [otpConfirmCode, setOtpConfirmCode] = useState("");
+  const [otpBackupCodes, setOtpBackupCodes] = useState<string[] | null>(null);
+  const [otpDisablePassword, setOtpDisablePassword] = useState("");
+
   useEffect(() => {
     const load = async () => {
       const res = await fetch("/api/users/me/trash");
@@ -31,6 +43,20 @@ export default function SettingsPage() {
       setLoadingTrash(false);
     };
     load().catch(() => setLoadingTrash(false));
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      setOtpLoading(true);
+      const res = await fetch("/api/users/me/otp");
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setOtpAvailable(Boolean(data?.available));
+        setOtpEnabled(Boolean(data?.enabled));
+      }
+      setOtpLoading(false);
+    };
+    load().catch(() => setOtpLoading(false));
   }, []);
 
   const handleUpdateProfile = async () => {
@@ -105,6 +131,98 @@ export default function SettingsPage() {
       toast.error("Failed to save");
     } finally {
       setSavingTrash(false);
+    }
+  };
+
+  const handleOtpSetup = async () => {
+    setOtpWorking(true);
+    setOtpBackupCodes(null);
+    try {
+      const res = await fetch("/api/users/me/otp/setup", { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to set up OTP");
+        return;
+      }
+
+      const secret = String(data?.secret || "");
+      const otpauthUrl = String(data?.otpauthUrl || "");
+      if (!secret || !otpauthUrl) {
+        toast.error("Failed to set up OTP");
+        return;
+      }
+
+      let qrDataUrl: string | null = null;
+      try {
+        qrDataUrl = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 200 });
+      } catch {
+        qrDataUrl = null;
+      }
+
+      setOtpSetup({ secret, otpauthUrl, qrDataUrl });
+      setOtpConfirmCode("");
+      toast.success("OTP setup created. Please confirm with a code.");
+    } finally {
+      setOtpWorking(false);
+    }
+  };
+
+  const handleOtpConfirm = async () => {
+    if (!otpConfirmCode.trim()) {
+      toast.error("Please enter a code");
+      return;
+    }
+
+    setOtpWorking(true);
+    try {
+      const res = await fetch("/api/users/me/otp/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: otpConfirmCode }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to enable OTP");
+        return;
+      }
+
+      const codes = Array.isArray(data?.backupCodes) ? (data.backupCodes as string[]) : [];
+      setOtpBackupCodes(codes.length ? codes : null);
+      setOtpEnabled(true);
+      setOtpSetup(null);
+      setOtpConfirmCode("");
+      toast.success("OTP enabled");
+    } finally {
+      setOtpWorking(false);
+    }
+  };
+
+  const handleOtpDisable = async () => {
+    if (!otpDisablePassword.trim()) {
+      toast.error("Please enter your current password");
+      return;
+    }
+
+    setOtpWorking(true);
+    try {
+      const res = await fetch("/api/users/me/otp/disable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: otpDisablePassword }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to disable OTP");
+        return;
+      }
+
+      setOtpEnabled(false);
+      setOtpSetup(null);
+      setOtpBackupCodes(null);
+      setOtpDisablePassword("");
+      toast.success("OTP disabled");
+    } finally {
+      setOtpWorking(false);
     }
   };
 
@@ -203,6 +321,109 @@ export default function SettingsPage() {
             <Button onClick={handleChangePassword} disabled={changingPassword}>
               {changingPassword ? "Changing..." : "Change Password"}
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Two-Factor Authentication (OTP)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {otpLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : !otpAvailable ? (
+              <p className="text-sm text-muted-foreground">
+                OTP is disabled by the administrator.
+              </p>
+            ) : otpEnabled ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  OTP is enabled for your account.
+                </p>
+                <div className="space-y-2">
+                  <Label>Disable OTP</Label>
+                  <Input
+                    type="password"
+                    placeholder="Enter your current password"
+                    value={otpDisablePassword}
+                    onChange={(e) => setOtpDisablePassword(e.target.value)}
+                    disabled={otpWorking}
+                  />
+                  <Button variant="destructive" onClick={handleOtpDisable} disabled={otpWorking}>
+                    {otpWorking ? "Disabling..." : "Disable OTP"}
+                  </Button>
+                </div>
+              </>
+            ) : otpSetup ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Scan the QR code with an authenticator app, or enter the secret manually, then confirm with a code.
+                </p>
+                {otpSetup.qrDataUrl ? (
+                  <div className="flex justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={otpSetup.qrDataUrl} alt="OTP QR Code" className="rounded-md border" />
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    QR code generation failed. Use the secret below.
+                  </p>
+                )}
+                <div className="space-y-2">
+                  <Label>Secret</Label>
+                  <Input value={otpSetup.secret} readOnly className="font-mono" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirm code</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="123456"
+                    value={otpConfirmCode}
+                    onChange={(e) => setOtpConfirmCode(e.target.value)}
+                    disabled={otpWorking}
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={handleOtpConfirm} disabled={otpWorking}>
+                      {otpWorking ? "Enabling..." : "Enable OTP"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setOtpSetup(null);
+                        setOtpConfirmCode("");
+                      }}
+                      disabled={otpWorking}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Add an extra layer of security to your account with one-time codes.
+                </p>
+                <Button onClick={handleOtpSetup} disabled={otpWorking}>
+                  {otpWorking ? "Setting up..." : "Set up OTP"}
+                </Button>
+              </>
+            )}
+
+            {otpBackupCodes && otpBackupCodes.length > 0 && (
+              <div className="rounded-lg border p-3 space-y-2">
+                <p className="text-sm font-medium">Backup codes</p>
+                <p className="text-xs text-muted-foreground">
+                  Save these codes in a safe place. They will only be shown once.
+                </p>
+                <pre className="text-xs bg-muted/50 p-2 rounded font-mono whitespace-pre-wrap">
+                  {otpBackupCodes.join("\n")}
+                </pre>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
