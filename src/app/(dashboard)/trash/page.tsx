@@ -148,14 +148,6 @@ export default function TrashPage() {
   const allOnPageSelected = emails.length > 0 && emails.every((e) => selectedSet.has(e.id));
   const someOnPageSelected = emails.some((e) => selectedSet.has(e.id));
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center p-12">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       <div>
@@ -189,7 +181,13 @@ export default function TrashPage() {
         </div>
       </div>
 
-      {emails.length === 0 ? (
+      {loading ? (
+        <Card className="border-border/50">
+          <CardContent className="flex justify-center items-center py-16">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </CardContent>
+        </Card>
+      ) : emails.length === 0 ? (
         <Card className="border-border/50 border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="p-4 rounded-full bg-muted mb-4">
@@ -299,4 +297,3 @@ export default function TrashPage() {
     </div>
   );
 }
-
