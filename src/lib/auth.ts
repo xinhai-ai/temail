@@ -1,10 +1,7 @@
 import NextAuth from "next-auth";
-import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
-import { getClientIp } from "@/lib/api-rate-limit";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { consumeLoginToken } from "@/lib/auth-tokens";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
@@ -15,51 +12,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        loginToken: { label: "Login Token", type: "text" },
       },
-      async authorize(credentials, request) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
+      async authorize(credentials) {
         const extra = credentials as Partial<Record<string, unknown>>;
-        const turnstileToken = typeof extra.turnstileToken === "string" ? extra.turnstileToken : undefined;
-        const ip = getClientIp(request);
-        const turnstile = await verifyTurnstileToken({ token: turnstileToken, ip });
-        if (!turnstile.ok) {
-          const error = new CredentialsSignin();
-          error.code = "turnstile";
-          throw error;
-        }
+        const loginToken = typeof extra.loginToken === "string" ? extra.loginToken : undefined;
+        if (!loginToken) return null;
+
+        const consumed = await consumeLoginToken(loginToken);
+        if (!consumed) return null;
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { id: consumed.userId },
+          select: { id: true, email: true, name: true, role: true, isActive: true },
         });
 
-        if (!user || !user.password) {
-          return null;
-        }
+        if (!user?.isActive) return null;
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-
-        if (!isValid) {
-          return null;
-        }
-
-        if (!user.isActive) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
+        return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),
   ],

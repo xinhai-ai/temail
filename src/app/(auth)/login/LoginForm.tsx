@@ -57,29 +57,41 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      const signInOptions: Record<string, string | boolean> = {
-        email,
-        password,
-        redirect: false,
-      };
-      if (turnstileRequired && turnstileToken) {
-        signInOptions.turnstileToken = turnstileToken;
-      }
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          turnstileToken: turnstileRequired ? turnstileToken : undefined,
+        }),
+      });
 
-      const result = await signIn("credentials", signInOptions);
-
-      if (result?.error) {
-        if (result.code === "turnstile") {
-          setError("Turnstile verification failed. Please try again.");
+      const data = (await res.json().catch(() => null)) as { loginToken?: string; error?: string } | null;
+      if (!res.ok) {
+        const message = data?.error || "Sign in failed";
+        setError(message);
+        if (turnstileRequired && message.toLowerCase().includes("turnstile")) {
           setTurnstileToken(null);
           setTurnstileReset((prev) => prev + 1);
-        } else {
-          setError("Invalid email or password");
         }
-      } else {
-        router.push("/dashboard");
-        router.refresh();
+        return;
       }
+
+      const loginToken = data?.loginToken;
+      if (!loginToken) {
+        setError("Sign in failed");
+        return;
+      }
+
+      const result = await signIn("credentials", { loginToken, redirect: false });
+      if (result?.error) {
+        setError("Sign in failed");
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
