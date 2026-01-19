@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Mail, Lock, Loader2 } from "lucide-react";
+import { KeyRound, Loader2, Lock, Mail } from "lucide-react";
 
 type TurnstileConfig = {
   enabled: boolean;
@@ -267,6 +267,7 @@ export default function LoginForm({
                 onClick={handlePasskeySignIn}
                 disabled={loading}
               >
+                <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />
                 Use passkey
               </Button>
             )}

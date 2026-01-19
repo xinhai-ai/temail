@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 import { getAuthFeatureFlags, getWebAuthnConfig } from "@/lib/auth-features";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { readJsonBody } from "@/lib/request";
+import { stringifyAuthenticatorTransports } from "@/lib/webauthn";
 import { Prisma } from "@prisma/client";
 
 const schema = z.object({
@@ -88,8 +89,7 @@ export async function POST(request: NextRequest) {
     const { registrationInfo } = verification;
     const credentialId = Buffer.from(registrationInfo.credentialID).toString("base64url");
 
-    const transports = (parsed.response.response as { transports?: string[] }).transports;
-    const transportsJson = Array.isArray(transports) ? JSON.stringify(transports) : null;
+    const transportsJson = stringifyAuthenticatorTransports(parsed.response.response.transports);
 
     try {
       await prisma.$transaction(async (tx) => {

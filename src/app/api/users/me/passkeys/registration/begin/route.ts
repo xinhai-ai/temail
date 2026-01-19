@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getAuthFeatureFlags, getWebAuthnConfig } from "@/lib/auth-features";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { parseAuthenticatorTransportsJson } from "@/lib/webauthn";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -44,14 +45,7 @@ export async function POST(request: NextRequest) {
   const excludeCredentials = existing.map((cred) => ({
     id: Buffer.from(cred.credentialId, "base64url"),
     type: "public-key" as const,
-    transports: (() => {
-      if (!cred.transports) return undefined;
-      try {
-        return JSON.parse(cred.transports) as string[];
-      } catch {
-        return undefined;
-      }
-    })(),
+    transports: parseAuthenticatorTransportsJson(cred.transports),
   }));
 
   const options = await generateRegistrationOptions({

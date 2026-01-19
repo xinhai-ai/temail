@@ -5,6 +5,7 @@ import type { AuthenticationResponseJSON } from "@simplewebauthn/types";
 import prisma from "@/lib/prisma";
 import { getAuthFeatureFlags, getWebAuthnConfig } from "@/lib/auth-features";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { parseAuthenticatorTransportsJson } from "@/lib/webauthn";
 import { readJsonBody } from "@/lib/request";
 import { issueLoginToken, issueMfaChallenge } from "@/lib/auth-tokens";
 
@@ -74,14 +75,7 @@ export async function POST(request: NextRequest) {
 
     const config = await getWebAuthnConfig({ request });
 
-    const transports = (() => {
-      if (!credential.transports) return undefined;
-      try {
-        return JSON.parse(credential.transports) as string[];
-      } catch {
-        return undefined;
-      }
-    })();
+    const transports = parseAuthenticatorTransportsJson(credential.transports);
 
     const verification = await verifyAuthenticationResponse({
       response: parsed.response,
