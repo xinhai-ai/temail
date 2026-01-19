@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -9,8 +9,18 @@ import { Button } from "@/components/ui/button";
 import { User, Lock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
+import { startRegistration } from "@simplewebauthn/browser";
+import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/types";
 
 export default function SettingsPage() {
+  type PasskeyInfo = {
+    id: string;
+    createdAt: string;
+    lastUsedAt: string | null;
+    deviceType: string | null;
+    backedUp: boolean | null;
+  };
+
   const { data: session } = useSession();
   const [name, setName] = useState(session?.user?.name || "");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -32,6 +42,11 @@ export default function SettingsPage() {
   const [otpConfirmCode, setOtpConfirmCode] = useState("");
   const [otpBackupCodes, setOtpBackupCodes] = useState<string[] | null>(null);
   const [otpDisablePassword, setOtpDisablePassword] = useState("");
+
+  const [passkeysAvailable, setPasskeysAvailable] = useState(false);
+  const [passkeysLoading, setPasskeysLoading] = useState(true);
+  const [passkeysWorking, setPasskeysWorking] = useState(false);
+  const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -58,6 +73,21 @@ export default function SettingsPage() {
     };
     load().catch(() => setOtpLoading(false));
   }, []);
+
+  const fetchPasskeys = useCallback(async () => {
+    setPasskeysLoading(true);
+    const res = await fetch("/api/users/me/passkeys");
+    const data = await res.json().catch(() => null);
+    if (res.ok) {
+      setPasskeysAvailable(Boolean(data?.available));
+      setPasskeys(Array.isArray(data?.passkeys) ? (data.passkeys as PasskeyInfo[]) : []);
+    }
+    setPasskeysLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchPasskeys().catch(() => setPasskeysLoading(false));
+  }, [fetchPasskeys]);
 
   const handleUpdateProfile = async () => {
     toast.success("Profile updated");
@@ -223,6 +253,76 @@ export default function SettingsPage() {
       toast.success("OTP disabled");
     } finally {
       setOtpWorking(false);
+    }
+  };
+
+  const handleAddPasskey = async () => {
+    if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
+      toast.error("Passkeys are not supported in this browser.");
+      return;
+    }
+    if (!passkeysAvailable) {
+      toast.error("Passkeys are disabled by the administrator.");
+      return;
+    }
+
+    setPasskeysWorking(true);
+    try {
+      const beginRes = await fetch("/api/users/me/passkeys/registration/begin", { method: "POST" });
+      const beginData = (await beginRes.json().catch(() => null)) as
+        | { options?: unknown; challengeId?: string; error?: string }
+        | null;
+      if (!beginRes.ok) {
+        toast.error(beginData?.error || "Failed to start passkey registration");
+        return;
+      }
+
+      const options = beginData?.options;
+      const challengeId = beginData?.challengeId;
+      if (!options || !challengeId) {
+        toast.error("Failed to start passkey registration");
+        return;
+      }
+
+      const response = await startRegistration(options as PublicKeyCredentialCreationOptionsJSON);
+
+      const finishRes = await fetch("/api/users/me/passkeys/registration/finish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challengeId, response }),
+      });
+      const finishData = (await finishRes.json().catch(() => null)) as { error?: string } | null;
+      if (!finishRes.ok) {
+        toast.error(finishData?.error || "Failed to register passkey");
+        return;
+      }
+
+      toast.success("Passkey added");
+      await fetchPasskeys();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.toLowerCase().includes("abort") || message.toLowerCase().includes("cancel")) {
+        return;
+      }
+      toast.error("Failed to register passkey");
+    } finally {
+      setPasskeysWorking(false);
+    }
+  };
+
+  const handleRemovePasskey = async (id: string) => {
+    setPasskeysWorking(true);
+    try {
+      const res = await fetch(`/api/users/me/passkeys/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to remove passkey");
+        return;
+      }
+      toast.success("Passkey removed");
+      await fetchPasskeys();
+    } finally {
+      setPasskeysWorking(false);
     }
   };
 
@@ -423,6 +523,60 @@ export default function SettingsPage() {
                   {otpBackupCodes.join("\n")}
                 </pre>
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Passkeys
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {passkeysLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <>
+                {!passkeysAvailable && (
+                  <p className="text-sm text-muted-foreground">
+                    Passkeys are disabled by the administrator.
+                  </p>
+                )}
+                <Button onClick={handleAddPasskey} disabled={passkeysWorking || !passkeysAvailable}>
+                  {passkeysWorking ? "Working..." : "Add passkey"}
+                </Button>
+                {passkeys.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No passkeys added yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {passkeys.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between gap-4 rounded-md border p-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {p.deviceType ? `Device: ${p.deviceType}` : "Passkey"}
+                            {p.backedUp ? " · Synced" : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Added: {new Date(p.createdAt).toLocaleString()}
+                            {p.lastUsedAt ? ` · Last used: ${new Date(p.lastUsedAt).toLocaleString()}` : ""}
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleRemovePasskey(p.id)}
+                          disabled={passkeysWorking}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

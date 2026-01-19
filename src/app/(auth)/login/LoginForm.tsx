@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { startAuthentication } from "@simplewebauthn/browser";
+import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +30,11 @@ type TurnstileConfig = {
 export default function LoginForm({
   showRegisterLink = true,
   turnstile,
+  passkeyEnabled = false,
 }: {
   showRegisterLink?: boolean;
   turnstile: TurnstileConfig;
+  passkeyEnabled?: boolean;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -47,6 +51,90 @@ export default function LoginForm({
   const handleTurnstileToken = useCallback((token: string | null) => {
     setTurnstileToken(token);
   }, []);
+
+  const completeLogin = async (loginToken: string) => {
+    const result = await signIn("credentials", { loginToken, redirect: false });
+    if (result?.error) {
+      setError("Sign in failed");
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
+  };
+
+  const handlePasskeySignIn = async () => {
+    setError("");
+    if (!passkeyEnabled) return;
+    if (step !== "primary") return;
+
+    if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
+      setError("Passkeys are not supported in this browser.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const beginRes = await fetch("/api/auth/passkey/begin", { method: "POST" });
+      const beginData = (await beginRes.json().catch(() => null)) as
+        | { options?: unknown; challengeId?: string; error?: string }
+        | null;
+      if (!beginRes.ok) {
+        setError(beginData?.error || "Passkey sign-in failed");
+        return;
+      }
+
+      const options = beginData?.options;
+      const challengeId = beginData?.challengeId;
+      if (!options || !challengeId) {
+        setError("Passkey sign-in failed");
+        return;
+      }
+
+      const response = await startAuthentication(options as PublicKeyCredentialRequestOptionsJSON);
+
+      const finishRes = await fetch("/api/auth/passkey/finish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challengeId, response }),
+      });
+      const finishData = (await finishRes.json().catch(() => null)) as
+        | { loginToken?: string; requiresOtp?: boolean; mfaToken?: string; error?: string }
+        | null;
+      if (!finishRes.ok) {
+        setError(finishData?.error || "Passkey sign-in failed");
+        return;
+      }
+
+      if (finishData?.requiresOtp) {
+        if (!finishData.mfaToken) {
+          setError("Passkey sign-in failed");
+          return;
+        }
+        setMfaToken(finishData.mfaToken);
+        setOtpCode("");
+        setPassword("");
+        setStep("otp");
+        return;
+      }
+
+      const loginToken = finishData?.loginToken;
+      if (!loginToken) {
+        setError("Passkey sign-in failed");
+        return;
+      }
+
+      await completeLogin(loginToken);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.toLowerCase().includes("abort") || message.toLowerCase().includes("cancel")) {
+        return;
+      }
+      setError("Passkey sign-in failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,14 +190,7 @@ export default function LoginForm({
           return;
         }
 
-        const result = await signIn("credentials", { loginToken, redirect: false });
-        if (result?.error) {
-          setError("Sign in failed");
-          return;
-        }
-
-        router.push("/dashboard");
-        router.refresh();
+        await completeLogin(loginToken);
         return;
       }
 
@@ -142,14 +223,7 @@ export default function LoginForm({
         return;
       }
 
-      const result = await signIn("credentials", { loginToken, redirect: false });
-      if (result?.error) {
-        setError("Sign in failed");
-        return;
-      }
-
-      router.push("/dashboard");
-      router.refresh();
+      await completeLogin(loginToken);
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
@@ -184,6 +258,17 @@ export default function LoginForm({
               <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg border border-destructive/20">
                 {error}
               </div>
+            )}
+            {step === "primary" && passkeyEnabled && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-11 font-medium"
+                onClick={handlePasskeySignIn}
+                disabled={loading}
+              >
+                Use passkey
+              </Button>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
