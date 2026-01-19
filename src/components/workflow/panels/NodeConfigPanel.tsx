@@ -132,7 +132,7 @@ export function NodeConfigPanel({ mailboxes = [] }: NodeConfigPanelProps) {
           </div>
 
           {/* 根据节点类型显示不同的配置项 */}
-          {renderNodeConfig(selectedNode.type as NodeType, data, handleChange, mailboxes)}
+          {renderNodeConfig(selectedNode.id, selectedNode.type as NodeType, data, handleChange, mailboxes)}
         </div>
       </div>
 
@@ -166,6 +166,7 @@ export function NodeConfigPanel({ mailboxes = [] }: NodeConfigPanelProps) {
 }
 
 function renderNodeConfig(
+  nodeId: string,
   type: NodeType,
   data: Record<string, unknown>,
   onChange: (key: string, value: unknown) => void,
@@ -528,115 +529,8 @@ function renderNodeConfig(
       );
     }
 
-    case "action:aiRewrite": {
-      const writeTarget = (data.writeTarget as string) || "variables";
-      const fields = (data.fields as EmailContentField[]) || ["subject", "textBody"];
-      const outputVariableKeys = (data.outputVariableKeys as string[]) || [];
-      const outputVariableKeysText = outputVariableKeys.join(", ");
-
-      const toggleField = (field: EmailContentField, checked: boolean) => {
-        const next = new Set(fields);
-        if (checked) next.add(field);
-        else next.delete(field);
-        onChange("fields", Array.from(next));
-      };
-
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Write Target</Label>
-            <Select value={writeTarget} onValueChange={(v) => onChange("writeTarget", v)}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Select target" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="variables">Variables</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Prompt Fields</Label>
-            <div className="space-y-2 rounded-md border bg-background p-2">
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={fields.includes("subject")}
-                  onCheckedChange={(v) => toggleField("subject", Boolean(v))}
-                />
-                Subject
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={fields.includes("textBody")}
-                  onCheckedChange={(v) => toggleField("textBody", Boolean(v))}
-                />
-                Body (Text)
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={fields.includes("htmlBody")}
-                  onCheckedChange={(v) => toggleField("htmlBody", Boolean(v))}
-                />
-                Body (HTML)
-              </label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Select which email fields are sent to the AI (large bodies are truncated)
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="prompt" className="text-xs font-medium">Instruction</Label>
-            <Textarea
-              id="prompt"
-              value={(data.prompt as string) || ""}
-              onChange={(e) => onChange("prompt", e.target.value)}
-              placeholder="Extract key points into variables, then rewrite subject and body."
-              rows={6}
-              className="font-mono text-sm"
-            />
-          </div>
-
-          {(writeTarget === "variables" || writeTarget === "both") && (
-            <div className="space-y-2">
-              <Label htmlFor="outputVariableKeys" className="text-xs font-medium">Output Variable Keys (optional)</Label>
-              <Input
-                id="outputVariableKeys"
-                value={outputVariableKeysText}
-                onChange={(e) => {
-                  const keys = e.target.value
-                    .split(/[,\n]/)
-                    .map((k) => k.trim())
-                    .filter(Boolean);
-                  onChange("outputVariableKeys", keys);
-                }}
-                placeholder="code, order_id"
-                className="h-8 text-sm font-mono"
-              />
-              <p className="text-xs text-muted-foreground">
-                When set, the AI must only write these keys (comma/newline separated). If empty, keys are inferred from the instruction (e.g. variables.code).
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="resultVariable" className="text-xs font-medium">Result Variable (optional)</Label>
-            <Input
-              id="resultVariable"
-              value={(data.resultVariable as string) || ""}
-              onChange={(e) => onChange("resultVariable", e.target.value)}
-              placeholder="aiResult"
-              className="h-8 text-sm font-mono"
-            />
-            <p className="text-xs text-muted-foreground">
-              Stores the full JSON result into this workflow variable
-            </p>
-          </div>
-        </div>
-      );
-    }
+    case "action:aiRewrite":
+      return <AiRewriteActionConfig key={nodeId} data={data} onChange={onChange} />;
 
     case "control:branch":
       return (
@@ -663,6 +557,139 @@ function renderNodeConfig(
         </p>
       );
   }
+}
+
+function parseOutputVariableKeys(text: string): string[] {
+  return text
+    .split(/[,\n，]/)
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
+
+function AiRewriteActionConfig({
+  data,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const writeTarget = (data.writeTarget as string) || "variables";
+  const fields = (data.fields as EmailContentField[]) || ["subject", "textBody"];
+  const outputVariableKeys = (data.outputVariableKeys as string[]) || [];
+  const canonicalOutputVariableKeysText = outputVariableKeys.join(", ");
+
+  const [isEditingOutputVariableKeys, setIsEditingOutputVariableKeys] = useState(false);
+  const [outputVariableKeysText, setOutputVariableKeysText] = useState(canonicalOutputVariableKeysText);
+
+  const toggleField = (field: EmailContentField, checked: boolean) => {
+    const next = new Set(fields);
+    if (checked) next.add(field);
+    else next.delete(field);
+    onChange("fields", Array.from(next));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Write Target</Label>
+        <Select value={writeTarget} onValueChange={(v) => onChange("writeTarget", v)}>
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder="Select target" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="variables">Variables</SelectItem>
+            <SelectItem value="email">Email</SelectItem>
+            <SelectItem value="both">Both</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Prompt Fields</Label>
+        <div className="space-y-2 rounded-md border bg-background p-2">
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={fields.includes("subject")}
+              onCheckedChange={(v) => toggleField("subject", Boolean(v))}
+            />
+            Subject
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={fields.includes("textBody")}
+              onCheckedChange={(v) => toggleField("textBody", Boolean(v))}
+            />
+            Body (Text)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={fields.includes("htmlBody")}
+              onCheckedChange={(v) => toggleField("htmlBody", Boolean(v))}
+            />
+            Body (HTML)
+          </label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Select which email fields are sent to the AI (large bodies are truncated)
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="prompt" className="text-xs font-medium">Instruction</Label>
+        <Textarea
+          id="prompt"
+          value={(data.prompt as string) || ""}
+          onChange={(e) => onChange("prompt", e.target.value)}
+          placeholder="Extract key points into variables, then rewrite subject and body."
+          rows={6}
+          className="font-mono text-sm"
+        />
+      </div>
+
+      {(writeTarget === "variables" || writeTarget === "both") && (
+        <div className="space-y-2">
+          <Label htmlFor="outputVariableKeys" className="text-xs font-medium">Output Variable Keys (optional)</Label>
+          <Input
+            id="outputVariableKeys"
+            value={isEditingOutputVariableKeys ? outputVariableKeysText : canonicalOutputVariableKeysText}
+            onFocus={() => {
+              setIsEditingOutputVariableKeys(true);
+              setOutputVariableKeysText(canonicalOutputVariableKeysText);
+            }}
+            onChange={(e) => {
+              const nextText = e.target.value;
+              setOutputVariableKeysText(nextText);
+              onChange("outputVariableKeys", parseOutputVariableKeys(nextText));
+            }}
+            onBlur={() => {
+              const normalized = parseOutputVariableKeys(outputVariableKeysText).join(", ");
+              setIsEditingOutputVariableKeys(false);
+              setOutputVariableKeysText(normalized);
+            }}
+            placeholder="code, order_id"
+            className="h-8 text-sm font-mono"
+          />
+          <p className="text-xs text-muted-foreground">
+            When set, the AI must only write these keys (comma/newline separated). If empty, keys are inferred from the instruction (e.g. variables.code).
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="resultVariable" className="text-xs font-medium">Result Variable (optional)</Label>
+        <Input
+          id="resultVariable"
+          value={(data.resultVariable as string) || ""}
+          onChange={(e) => onChange("resultVariable", e.target.value)}
+          placeholder="aiResult"
+          className="h-8 text-sm font-mono"
+        />
+        <p className="text-xs text-muted-foreground">
+          Stores the full JSON result into this workflow variable
+        </p>
+      </div>
+    </div>
+  );
 }
 
 // ==================== 关键字条件配置 ====================
