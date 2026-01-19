@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
         { subject: { contains: search } },
         { fromAddress: { contains: search } },
         { toAddress: { contains: search } },
+        { mailbox: { is: { address: { contains: search } } } },
       ],
     }),
   };
@@ -77,4 +78,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-

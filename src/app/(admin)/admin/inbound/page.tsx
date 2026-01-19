@@ -11,9 +11,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Inbox } from "lucide-react";
+import { Inbox, Search } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { InboundEmailActions } from "./_components/InboundEmailActions";
 
 function parseSourceType(value: string | null) {
   if (value === "IMAP" || value === "WEBHOOK") return value as DomainSourceType;
@@ -58,6 +60,7 @@ export default async function AdminInboundEmailsPage({
         { subject: { contains: search } },
         { fromAddress: { contains: search } },
         { toAddress: { contains: search } },
+        { mailbox: { is: { address: { contains: search } } } },
       ],
     }),
   };
@@ -84,11 +87,11 @@ export default async function AdminInboundEmailsPage({
   ]);
 
   const pages = Math.max(1, Math.ceil(total / limit));
-  const buildHref = (nextPage: number) => {
+  const buildHref = (nextPage: number, nextSearch: string | null = search) => {
     const params = new URLSearchParams();
     params.set("page", String(nextPage));
     params.set("limit", String(limit));
-    if (search) params.set("search", search);
+    if (nextSearch) params.set("search", nextSearch);
     if (domainId) params.set("domainId", domainId);
     if (mailboxId) params.set("mailboxId", mailboxId);
     if (sourceType) params.set("sourceType", sourceType);
@@ -103,6 +106,35 @@ export default async function AdminInboundEmailsPage({
         <p className="text-muted-foreground">
           View all incoming messages (including unmatched catch-all)
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <form action="/admin/inbound" method="GET" className="flex flex-1 items-center gap-2">
+          <input type="hidden" name="limit" value={String(limit)} />
+          {domainId && <input type="hidden" name="domainId" value={domainId} />}
+          {mailboxId && <input type="hidden" name="mailboxId" value={mailboxId} />}
+          {sourceType && <input type="hidden" name="sourceType" value={sourceType} />}
+          {matchedRaw && <input type="hidden" name="matched" value={matchedRaw} />}
+
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              name="search"
+              defaultValue={search}
+              placeholder="Search by email / subject…"
+              className="pl-10"
+            />
+          </div>
+
+          <Button type="submit" size="sm" variant="outline">
+            Search
+          </Button>
+          {search && (
+            <Button size="sm" variant="ghost" asChild>
+              <Link href={buildHref(1, null)}>Clear</Link>
+            </Button>
+          )}
+        </form>
       </div>
 
       <div className="flex items-center justify-between gap-2">
@@ -162,9 +194,7 @@ export default async function AdminInboundEmailsPage({
                   <TableCell>{email.subject}</TableCell>
                   <TableCell className="font-mono text-xs">{email.fromAddress || "-"}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/inbound/${email.id}`}>View</Link>
-                    </Button>
+                    <InboundEmailActions id={email.id} />
                   </TableCell>
                 </TableRow>
               ))}

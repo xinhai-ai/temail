@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getStorage } from "@/lib/storage";
 
 export async function GET(
   request: NextRequest,
@@ -34,4 +35,34 @@ export async function GET(
   };
 
   return NextResponse.json(response);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const inboundEmail = await prisma.inboundEmail.findUnique({
+    where: { id },
+    select: { id: true, rawContentPath: true },
+  });
+
+  if (!inboundEmail) {
+    return NextResponse.json({ error: "Inbound email not found" }, { status: 404 });
+  }
+
+  if (inboundEmail.rawContentPath) {
+    const storage = getStorage();
+    await storage.delete(inboundEmail.rawContentPath);
+  }
+
+  await prisma.inboundEmail.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
 }

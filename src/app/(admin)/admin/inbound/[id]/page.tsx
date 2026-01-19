@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 interface InboundEmail {
   id: string;
@@ -29,12 +30,14 @@ interface InboundEmail {
 export default function AdminInboundEmailDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
 
   const [inboundEmail, setInboundEmail] = useState<InboundEmail | null>(null);
   const [loading, setLoading] = useState(true);
   const [rawContent, setRawContent] = useState<string | null>(null);
   const [loadingRaw, setLoadingRaw] = useState(false);
   const [rawExpanded, setRawExpanded] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,6 +82,28 @@ export default function AdminInboundEmailDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (deleting) return;
+    if (!confirm("Delete this inbound email permanently? This cannot be undone.")) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/inbound/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to delete");
+        return;
+      }
+      toast.success("Deleted");
+      router.push("/admin/inbound");
+      router.refresh();
+    } catch {
+      toast.error("Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Loading...</div>;
   }
@@ -103,9 +128,20 @@ export default function AdminInboundEmailDetailPage() {
           <h1 className="text-3xl font-bold">Inbound Email</h1>
           <p className="text-muted-foreground break-all">{inboundEmail.id}</p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/admin/inbound">Back</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/inbound">Back</Link>
+          </Button>
+          <Button
+            variant="outline"
+            disabled={deleting}
+            onClick={handleDelete}
+            className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6 space-y-3">
