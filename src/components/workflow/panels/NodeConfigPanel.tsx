@@ -41,11 +41,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Trash2, Play, FileText, Settings2, ChevronDown, ChevronRight, Plus, Pencil, GitBranch, Info } from "lucide-react";
+import { X, Trash2, Play, FileText, Settings2, ChevronDown, ChevronRight, Plus, Pencil, GitBranch, Info, HelpCircle } from "lucide-react";
 import { ConditionBuilder, SimpleConditionEditor } from "./ConditionBuilder";
 import { ForwardTestButton, TemplateSelector } from "./ForwardTestPanel";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { NodeManualDialog } from "../node-manuals/NodeManualDialog";
 
 interface NodeConfigPanelProps {
   mailboxes?: { id: string; address: string }[];
@@ -56,6 +57,7 @@ export function NodeConfigPanel({ mailboxes = [] }: NodeConfigPanelProps) {
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const deleteNode = useWorkflowStore((s) => s.deleteNode);
   const setSelectedNodeId = useWorkflowStore((s) => s.setSelectedNodeId);
+  const [manualOpen, setManualOpen] = useState(false);
 
   if (!selectedNode) {
     return (
@@ -90,7 +92,18 @@ export function NodeConfigPanel({ mailboxes = [] }: NodeConfigPanelProps) {
             <div className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">{definition?.label || "Node"}</h3>
+            <div className="flex items-center gap-1">
+              <h3 className="font-semibold text-sm">{definition?.label || "Node"}</h3>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-6 w-6"
+                aria-label="Open node manual"
+                onClick={() => setManualOpen(true)}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">{selectedNode.type}</p>
           </div>
         </div>
@@ -142,6 +155,12 @@ export function NodeConfigPanel({ mailboxes = [] }: NodeConfigPanelProps) {
           Delete Node
         </Button>
       </div>
+
+      <NodeManualDialog
+        nodeType={selectedNode.type as NodeType}
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+      />
     </div>
   );
 }
