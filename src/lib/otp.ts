@@ -1,4 +1,4 @@
-import OTPAuth from "otpauth";
+import * as OTPAuth from "otpauth";
 
 export const DEFAULT_TOTP_DIGITS = 6;
 export const DEFAULT_TOTP_PERIOD = 30;
