@@ -75,6 +75,8 @@ export default function AdminSettingsPage() {
   const [registrationInviteCodes, setRegistrationInviteCodes] = useState("");
   const [workflowMaxExecutionLogs, setWorkflowMaxExecutionLogs] = useState("100");
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
+  const [passkeyEnabled, setPasskeyEnabled] = useState(false);
+  const [otpEnabled, setOtpEnabled] = useState(false);
   const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow">("general");
 
   const setValue = (key: string, value: string) => {
@@ -102,6 +104,21 @@ export default function AdminSettingsPage() {
     () => [
       { key: "turnstile_site_key", label: "Site Key", placeholder: "0x4AAAAAA..." },
       { key: "turnstile_secret_key", label: "Secret Key", placeholder: "0x4AAAAAA...", secret: true },
+    ],
+    []
+  );
+  const webauthnItems = useMemo(
+    () => [
+      {
+        key: "webauthn_origin",
+        label: "WebAuthn Origin (optional)",
+        placeholder: "https://example.com",
+      },
+      {
+        key: "webauthn_rp_id",
+        label: "WebAuthn RP ID (optional)",
+        placeholder: "example.com",
+      },
     ],
     []
   );
@@ -192,6 +209,8 @@ export default function AdminSettingsPage() {
     setAiClassifierEnabled(map.ai_classifier_enabled === "true");
     setAiRewriteEnabled(map.ai_rewrite_enabled === "true");
     setTurnstileEnabled(map.turnstile_enabled === "true");
+    setPasskeyEnabled(map.auth_passkey_enabled === "true");
+    setOtpEnabled(map.auth_otp_enabled === "true");
     const mode = map.registration_mode;
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
     setRegistrationInviteCodes(map.registration_invite_codes || "");
@@ -231,12 +250,16 @@ export default function AdminSettingsPage() {
         { key: "ai_classifier_enabled", value: aiClassifierEnabled ? "true" : "false" },
         { key: "ai_rewrite_enabled", value: aiRewriteEnabled ? "true" : "false" },
         { key: "turnstile_enabled", value: turnstileEnabled ? "true" : "false" },
+        { key: "auth_passkey_enabled", value: passkeyEnabled ? "true" : "false" },
+        { key: "auth_otp_enabled", value: otpEnabled ? "true" : "false" },
       ].filter((x) => x.value !== "");
 
       payload.push(
         { key: "registration_mode", value: registrationMode },
         { key: "registration_invite_codes", value: registrationInviteCodes },
-        { key: "workflow_max_execution_logs", value: workflowMaxExecutionLogs }
+        { key: "workflow_max_execution_logs", value: workflowMaxExecutionLogs },
+        { key: "webauthn_origin", value: values["webauthn_origin"] || "" },
+        { key: "webauthn_rp_id", value: values["webauthn_rp_id"] || "" }
       );
 
       const res = await fetch("/api/admin/settings", {
@@ -391,6 +414,28 @@ export default function AdminSettingsPage() {
 
               <Separator />
 
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Enable Passkey Login (WebAuthn)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Allow users to sign in with passkeys (no password required).
+                  </p>
+                </div>
+                <Switch checked={passkeyEnabled} onCheckedChange={setPasskeyEnabled} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Enable OTP (2FA)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Allow users to enable OTP-based two-factor authentication.
+                  </p>
+                </div>
+                <Switch checked={otpEnabled} onCheckedChange={setOtpEnabled} />
+              </div>
+
+              <Separator />
+
               {turnstileEnabled && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                   <div className="text-xs text-amber-900 space-y-1">
@@ -422,6 +467,17 @@ export default function AdminSettingsPage() {
                     }
                     value={values[item.key] || ""}
                     type={item.secret ? "password" : "text"}
+                    onChange={(e) => setValue(item.key, e.target.value)}
+                  />
+                </div>
+              ))}
+
+              {webauthnItems.map((item) => (
+                <div key={item.key} className="space-y-2">
+                  <Label>{item.label}</Label>
+                  <Input
+                    placeholder={item.placeholder}
+                    value={values[item.key] || ""}
                     onChange={(e) => setValue(item.key, e.target.value)}
                   />
                 </div>
