@@ -57,6 +57,7 @@ export async function GET(
             mailboxes: true,
             domains: true,
             forwardRules: true,
+            workflows: true,
           },
         },
       },
