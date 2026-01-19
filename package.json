@@ -15,9 +15,7 @@
     "release:patch": "npm version patch -m \"chore(release): v%s\"",
     "release:minor": "npm version minor -m \"chore(release): v%s\"",
     "release:major": "npm version major -m \"chore(release): v%s\"",
-    "test": "node --test --import tsx src/**/*.test.ts",
-    "imap:test": "dotenv -- node --conditions=react-server --import tsx scripts/imap-tester.ts",
-    "imap:service": "dotenv -- node --conditions=react-server --import tsx scripts/imap-service.ts"
+    "test": "node --test --import tsx src/**/*.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
