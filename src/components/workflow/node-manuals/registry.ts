@@ -3,7 +3,7 @@ import type { NodeManual } from "./types";
 
 export type NodeManualLoader = () => Promise<{ default: NodeManual }>;
 
-export const nodeManualLoaders: Partial<Record<NodeType, NodeManualLoader>> = {
+export const nodeManualLoaders: Record<NodeType, NodeManualLoader> = {
   "trigger:email": () => import("./trigger-email"),
   "trigger:schedule": () => import("./trigger-schedule"),
   "trigger:manual": () => import("./trigger-manual"),
@@ -33,11 +33,14 @@ export const nodeManualLoaders: Partial<Record<NodeType, NodeManualLoader>> = {
   "forward:discord": () => import("./forward-discord"),
   "forward:slack": () => import("./forward-slack"),
   "forward:webhook": () => import("./forward-webhook"),
+
+  "control:branch": () => import("./control-branch"),
+  "control:delay": () => import("./control-delay"),
+  "control:end": () => import("./control-end"),
 };
 
-export async function loadNodeManual(type: NodeType): Promise<NodeManual | null> {
+export async function loadNodeManual(type: NodeType): Promise<NodeManual> {
   const loader = nodeManualLoaders[type];
-  if (!loader) return null;
   const loadedModule = await loader();
   return loadedModule.default;
 }

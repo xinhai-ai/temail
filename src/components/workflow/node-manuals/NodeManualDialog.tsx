@@ -32,7 +32,7 @@ export function NodeManualDialog({
         if (cancelled) return;
         setLoaded({
           type: nodeType,
-          manual: loaded ?? getDefaultNodeManual(nodeType),
+          manual: loaded,
         });
       })
       .catch(() => {
