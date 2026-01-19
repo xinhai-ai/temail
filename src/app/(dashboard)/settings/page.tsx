@@ -192,6 +192,8 @@ export default function SettingsPage() {
       setOtpSetup({ secret, otpauthUrl, qrDataUrl });
       setOtpConfirmCode("");
       toast.success("OTP setup created. Please confirm with a code.");
+    } catch {
+      toast.error("Failed to set up OTP");
     } finally {
       setOtpWorking(false);
     }
@@ -222,6 +224,8 @@ export default function SettingsPage() {
       setOtpSetup(null);
       setOtpConfirmCode("");
       toast.success("OTP enabled");
+    } catch {
+      toast.error("Failed to enable OTP");
     } finally {
       setOtpWorking(false);
     }
@@ -251,6 +255,8 @@ export default function SettingsPage() {
       setOtpBackupCodes(null);
       setOtpDisablePassword("");
       toast.success("OTP disabled");
+    } catch {
+      toast.error("Failed to disable OTP");
     } finally {
       setOtpWorking(false);
     }
@@ -321,6 +327,8 @@ export default function SettingsPage() {
       }
       toast.success("Passkey removed");
       await fetchPasskeys();
+    } catch {
+      toast.error("Failed to remove passkey");
     } finally {
       setPasskeysWorking(false);
     }

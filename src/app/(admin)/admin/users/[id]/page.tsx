@@ -323,11 +323,17 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
   const fetchAuth = async () => {
     setAuthLoading(true);
-    const res = await fetch(`/api/admin/users/${id}/auth`);
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setOtpEnabled(Boolean(data.otpEnabled));
-      setPasskeyCount(Number(data.passkeyCount || 0));
+    try {
+      const res = await fetch(`/api/admin/users/${id}/auth`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setOtpEnabled(Boolean(data.otpEnabled));
+        setPasskeyCount(Number(data.passkeyCount || 0));
+      } else {
+        toast.error(data.error || "Failed to load auth status");
+      }
+    } catch {
+      toast.error("Failed to load auth status");
     }
     setAuthLoading(false);
   };
@@ -345,6 +351,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       } else {
         toast.error(data.error || "Failed to delete OTP");
       }
+    } catch {
+      toast.error("Failed to delete OTP");
     } finally {
       setAuthWorking(false);
     }
@@ -363,6 +371,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       } else {
         toast.error(data.error || "Failed to delete passkeys");
       }
+    } catch {
+      toast.error("Failed to delete passkeys");
     } finally {
       setAuthWorking(false);
     }
