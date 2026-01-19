@@ -41,7 +41,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Trash2, Play, FileText, Settings2, ChevronDown, ChevronRight, Plus, Pencil, GitBranch, Info, HelpCircle } from "lucide-react";
+import { X, Trash2, Play, FileText, Settings2, ChevronDown, ChevronRight, Plus, Pencil, GitBranch, Info, HelpCircle, Tag } from "lucide-react";
 import { ConditionBuilder, SimpleConditionEditor } from "./ConditionBuilder";
 import { ForwardTestButton, TemplateSelector } from "./ForwardTestPanel";
 import { cn } from "@/lib/utils";
@@ -991,6 +991,11 @@ function KeywordMultiClassifierConfig({
   const fields = (data.fields as MatchField[]) || ["subject", "textBody"];
 
   const [newCategory, setNewCategory] = useState("");
+  const [keywordSetModalOpen, setKeywordSetModalOpen] = useState(false);
+  const [keywordSetModalCategory, setKeywordSetModalCategory] = useState<string | null>(null);
+  const [keywordSetKeywordsText, setKeywordSetKeywordsText] = useState("");
+  const [keywordSetMatchType, setKeywordSetMatchType] = useState<"any" | "all">("any");
+  const [keywordSetCaseSensitive, setKeywordSetCaseSensitive] = useState(false);
 
   const addCategory = () => {
     const category = newCategory.trim();
@@ -1026,6 +1031,43 @@ function KeywordMultiClassifierConfig({
       set.category === category ? { ...set, ...updates } : set
     );
     onChange("keywordSets", updated);
+  };
+
+  const openKeywordSetModal = (category: string) => {
+    const set =
+      keywordSets.find((s) => s.category === category) || ({
+        category,
+        keywords: [],
+        matchType: "any" as const,
+        caseSensitive: false,
+      } satisfies KeywordSet);
+
+    setKeywordSetModalCategory(category);
+    setKeywordSetKeywordsText(set.keywords.join(", "));
+    setKeywordSetMatchType(set.matchType || "any");
+    setKeywordSetCaseSensitive(Boolean(set.caseSensitive));
+    setKeywordSetModalOpen(true);
+  };
+
+  const closeKeywordSetModal = () => {
+    setKeywordSetModalOpen(false);
+    setKeywordSetModalCategory(null);
+  };
+
+  const saveKeywordSetModal = () => {
+    if (!keywordSetModalCategory) return;
+
+    const keywords = keywordSetKeywordsText
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+
+    updateKeywordSet(keywordSetModalCategory, {
+      keywords,
+      matchType: keywordSetMatchType,
+      caseSensitive: keywordSetCaseSensitive,
+    });
+    closeKeywordSetModal();
   };
 
   const addField = (field: MatchField) => {
@@ -1144,7 +1186,18 @@ function KeywordMultiClassifierConfig({
           return (
             <Card key={category}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">{category}</CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-sm">{category}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => openKeywordSetModal(category)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    Edit
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
@@ -1225,6 +1278,82 @@ function KeywordMultiClassifierConfig({
           Used when no keywords match
         </p>
       </div>
+
+      <Dialog
+        open={keywordSetModalOpen}
+        onOpenChange={(open) => (open ? setKeywordSetModalOpen(true) : closeKeywordSetModal())}
+      >
+        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="h-5 w-5" />
+              Keyword Set
+              {keywordSetModalCategory ? `: ${keywordSetModalCategory}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Edit keywords and matching rules for this category.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1 pr-4 -mr-4">
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Keywords</Label>
+                <Textarea
+                  value={keywordSetKeywordsText}
+                  onChange={(e) => setKeywordSetKeywordsText(e.target.value)}
+                  placeholder="urgent, asap, important"
+                  rows={6}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Separate keywords with commas.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Match Type</Label>
+                  <Select
+                    value={keywordSetMatchType}
+                    onValueChange={(value) => setKeywordSetMatchType(value as "any" | "all")}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any keyword</SelectItem>
+                      <SelectItem value="all">All keywords</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={keywordSetCaseSensitive}
+                      onCheckedChange={setKeywordSetCaseSensitive}
+                    />
+                    <Label className="text-xs">Case sensitive</Label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={closeKeywordSetModal}
+            >
+              Cancel
+            </Button>
+            <Button onClick={saveKeywordSetModal} disabled={!keywordSetModalCategory}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
