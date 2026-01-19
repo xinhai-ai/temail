@@ -50,13 +50,13 @@ export function NodeManualDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden grid grid-rows-[auto_minmax(0,1fr)_auto]">
         <DialogHeader>
           <DialogTitle>{manual.title}</DialogTitle>
           <DialogDescription>{manual.summary}</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
+        <ScrollArea className="min-h-0 w-full pr-4 -mr-4">
           <div className="py-4 space-y-4">
             {loading && (
               <p className="text-sm text-muted-foreground">
