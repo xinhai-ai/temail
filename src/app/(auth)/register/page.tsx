@@ -3,9 +3,12 @@ import { redirect } from "next/navigation";
 import { UserX } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getRegistrationMode } from "@/lib/registration";
+import { getTurnstileClientConfig } from "@/lib/turnstile";
 import RegisterForm from "./RegisterForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const dynamic = "force-dynamic";
 
 export default async function RegisterPage() {
   const session = await auth();
@@ -52,5 +55,6 @@ export default async function RegisterPage() {
     );
   }
 
-  return <RegisterForm mode={mode} />;
+  const turnstile = await getTurnstileClientConfig();
+  return <RegisterForm mode={mode} turnstile={turnstile} />;
 }

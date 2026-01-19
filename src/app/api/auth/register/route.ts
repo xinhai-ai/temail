@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { getRegistrationSettings, isInviteCodeValid } from "@/lib/registration";
 import { readJsonBody } from "@/lib/request";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -13,6 +14,7 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").optional(),
   adminSecret: z.string().optional(),
   inviteCode: z.string().trim().min(1).optional(),
+  turnstileToken: z.string().trim().min(1).optional(),
 });
 
 function safeEqual(a: string, b: string) {
@@ -37,7 +39,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
     }
 
-    const { email, password, name, adminSecret, inviteCode } = registerSchema.parse(bodyResult.data);
+    const { email, password, name, adminSecret, inviteCode, turnstileToken } = registerSchema.parse(bodyResult.data);
+
+    const turnstile = await verifyTurnstileToken({ token: turnstileToken, ip });
+    if (!turnstile.ok) {
+      return NextResponse.json({ error: turnstile.error }, { status: 400 });
+    }
 
     const existingUser = await prisma.user.findUnique({
       where: { email },

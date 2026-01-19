@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileWidget } from "@/components/security/TurnstileWidget";
 import {
   Card,
   CardContent,
@@ -17,7 +18,20 @@ import {
 import { KeyRound, Lock, Mail, User, Loader2 } from "lucide-react";
 import type { RegistrationMode } from "@/lib/registration";
 
-export default function RegisterForm({ mode }: { mode: RegistrationMode }) {
+type TurnstileConfig = {
+  enabled: boolean;
+  bypass: boolean;
+  siteKey: string | null;
+  misconfigured: boolean;
+};
+
+export default function RegisterForm({
+  mode,
+  turnstile,
+}: {
+  mode: RegistrationMode;
+  turnstile: TurnstileConfig;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,6 +40,13 @@ export default function RegisterForm({ mode }: { mode: RegistrationMode }) {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+
+  const turnstileRequired = Boolean(turnstile.enabled && turnstile.siteKey);
+  const handleTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,24 +67,39 @@ export default function RegisterForm({ mode }: { mode: RegistrationMode }) {
       return;
     }
 
+    if (turnstileRequired && !turnstileToken) {
+      setError("Please complete the Turnstile challenge.");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const body: Record<string, unknown> = {
+        name,
+        email,
+        password,
+        ...(mode === "invite" ? { inviteCode } : {}),
+      };
+      if (turnstileRequired && turnstileToken) {
+        body.turnstileToken = turnstileToken;
+      }
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          ...(mode === "invite" ? { inviteCode } : {}),
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setError(data?.error || "Registration failed");
+        const message = data?.error || "Registration failed";
+        setError(message);
+        if (turnstileRequired && typeof message === "string" && message.toLowerCase().includes("turnstile")) {
+          setTurnstileToken(null);
+          setTurnstileReset((prev) => prev + 1);
+        }
         return;
       }
 
@@ -181,6 +217,25 @@ export default function RegisterForm({ mode }: { mode: RegistrationMode }) {
                 />
               </div>
             </div>
+
+            {turnstileRequired && (
+              <div className="space-y-2">
+                <TurnstileWidget
+                  siteKey={turnstile.siteKey as string}
+                  onToken={handleTurnstileToken}
+                  resetKey={turnstileReset}
+                  className="flex justify-center"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Protected by Cloudflare Turnstile.
+                </p>
+              </div>
+            )}
+            {!turnstileRequired && turnstile.bypass && (
+              <p className="text-[11px] text-muted-foreground">
+                Turnstile bypass is enabled in development.
+              </p>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 pt-2">
             <Button type="submit" className="w-full h-11 font-medium" disabled={loading}>
@@ -199,4 +254,3 @@ export default function RegisterForm({ mode }: { mode: RegistrationMode }) {
     </div>
   );
 }
-

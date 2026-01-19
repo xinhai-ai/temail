@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TurnstileWidget } from "@/components/security/TurnstileWidget";
 import {
   Card,
   CardContent,
@@ -17,27 +18,64 @@ import {
 } from "@/components/ui/card";
 import { Mail, Lock, Loader2 } from "lucide-react";
 
-export default function LoginForm({ showRegisterLink = true }: { showRegisterLink?: boolean }) {
+type TurnstileConfig = {
+  enabled: boolean;
+  bypass: boolean;
+  siteKey: string | null;
+  misconfigured: boolean;
+};
+
+export default function LoginForm({
+  showRegisterLink = true,
+  turnstile,
+}: {
+  showRegisterLink?: boolean;
+  turnstile: TurnstileConfig;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+
+  const turnstileRequired = Boolean(turnstile.enabled && turnstile.siteKey);
+  const handleTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (turnstileRequired && !turnstileToken) {
+      setError("Please complete the Turnstile challenge.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      const signInOptions: Record<string, string | boolean> = {
         email,
         password,
         redirect: false,
-      });
+      };
+      if (turnstileRequired && turnstileToken) {
+        signInOptions.turnstileToken = turnstileToken;
+      }
+
+      const result = await signIn("credentials", signInOptions);
 
       if (result?.error) {
-        setError("Invalid email or password");
+        if (result.code === "turnstile") {
+          setError("Turnstile verification failed. Please try again.");
+          setTurnstileToken(null);
+          setTurnstileReset((prev) => prev + 1);
+        } else {
+          setError("Invalid email or password");
+        }
       } else {
         router.push("/dashboard");
         router.refresh();
@@ -107,6 +145,25 @@ export default function LoginForm({ showRegisterLink = true }: { showRegisterLin
                 />
               </div>
             </div>
+
+            {turnstileRequired && (
+              <div className="space-y-2">
+                <TurnstileWidget
+                  siteKey={turnstile.siteKey as string}
+                  onToken={handleTurnstileToken}
+                  resetKey={turnstileReset}
+                  className="flex justify-center"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Protected by Cloudflare Turnstile.
+                </p>
+              </div>
+            )}
+            {!turnstileRequired && turnstile.bypass && (
+              <p className="text-[11px] text-muted-foreground">
+                Turnstile bypass is enabled in development.
+              </p>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 pt-2">
             <Button

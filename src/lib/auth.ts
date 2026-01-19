@@ -1,7 +1,10 @@
 import NextAuth from "next-auth";
+import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
@@ -15,9 +18,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) {
           return null;
+        }
+
+        const extra = credentials as Partial<Record<string, unknown>>;
+        const turnstileToken = typeof extra.turnstileToken === "string" ? extra.turnstileToken : undefined;
+        const ip = getClientIp(request);
+        const turnstile = await verifyTurnstileToken({ token: turnstileToken, ip });
+        if (!turnstile.ok) {
+          const error = new CredentialsSignin();
+          error.code = "turnstile";
+          throw error;
         }
 
         const user = await prisma.user.findUnique({

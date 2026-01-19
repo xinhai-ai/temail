@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Info, Settings } from "lucide-react";
+import { Info, Settings, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 const DEFAULT_AI_CLASSIFIER_PROMPT = `You are an email classification assistant. Analyze the email content and classify it into one of the following categories:
@@ -67,13 +67,15 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [maskedValues, setMaskedValues] = useState<Record<string, boolean>>({});
   const [smtpSecure, setSmtpSecure] = useState(false);
   const [aiClassifierEnabled, setAiClassifierEnabled] = useState(false);
   const [aiRewriteEnabled, setAiRewriteEnabled] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
   const [registrationInviteCodes, setRegistrationInviteCodes] = useState("");
   const [workflowMaxExecutionLogs, setWorkflowMaxExecutionLogs] = useState("100");
-  const [tab, setTab] = useState<"general" | "registration" | "smtp" | "ai" | "workflow">("general");
+  const [turnstileEnabled, setTurnstileEnabled] = useState(false);
+  const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow">("general");
 
   const setValue = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -93,6 +95,13 @@ export default function AdminSettingsPage() {
       { key: "smtp_user", label: "SMTP User", placeholder: "user@example.com" },
       { key: "smtp_pass", label: "SMTP Password", placeholder: "••••••••", secret: true },
       { key: "smtp_from", label: "SMTP From", placeholder: "TEmail <no-reply@example.com>" },
+    ],
+    []
+  );
+  const turnstileItems = useMemo(
+    () => [
+      { key: "turnstile_site_key", label: "Site Key", placeholder: "0x4AAAAAA..." },
+      { key: "turnstile_secret_key", label: "Secret Key", placeholder: "0x4AAAAAA...", secret: true },
     ],
     []
   );
@@ -171,14 +180,18 @@ export default function AdminSettingsPage() {
     }
 
     const map: Record<string, string> = {};
-    for (const row of data as { key: string; value: string }[]) {
+    const masked: Record<string, boolean> = {};
+    for (const row of data as { key: string; value: string; masked?: boolean }[]) {
       map[row.key] = row.value;
+      masked[row.key] = Boolean(row.masked);
     }
 
     setValues(map);
+    setMaskedValues(masked);
     setSmtpSecure(map.smtp_secure === "true");
     setAiClassifierEnabled(map.ai_classifier_enabled === "true");
     setAiRewriteEnabled(map.ai_rewrite_enabled === "true");
+    setTurnstileEnabled(map.turnstile_enabled === "true");
     const mode = map.registration_mode;
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
     setRegistrationInviteCodes(map.registration_invite_codes || "");
@@ -210,9 +223,14 @@ export default function AdminSettingsPage() {
           key: item.key,
           value: values[item.key] || "",
         })),
+        ...turnstileItems.map((item) => ({
+          key: item.key,
+          value: values[item.key] || "",
+        })),
         { key: "smtp_secure", value: smtpSecure ? "true" : "false" },
         { key: "ai_classifier_enabled", value: aiClassifierEnabled ? "true" : "false" },
         { key: "ai_rewrite_enabled", value: aiRewriteEnabled ? "true" : "false" },
+        { key: "turnstile_enabled", value: turnstileEnabled ? "true" : "false" },
       ].filter((x) => x.value !== "");
 
       payload.push(
@@ -265,9 +283,10 @@ export default function AdminSettingsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="registration">Registration</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="smtp">SMTP</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="workflow">Workflow</TabsTrigger>
@@ -343,6 +362,85 @@ export default function AdminSettingsPage() {
                     Invite-code registration is enabled but no invite codes are configured.
                   </p>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Security Settings
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure bot protection for authentication flows.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Enable Cloudflare Turnstile</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Protect login and registration with a CAPTCHA-like challenge.
+                  </p>
+                </div>
+                <Switch checked={turnstileEnabled} onCheckedChange={setTurnstileEnabled} />
+              </div>
+
+              <Separator />
+
+              {turnstileEnabled && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <div className="text-xs text-amber-900 space-y-1">
+                    <p className="font-medium">Turnstile status</p>
+                    <p>
+                      {(values["turnstile_site_key"] || "").trim()
+                        ? "Site Key: configured"
+                        : "Site Key: missing"}
+                      {" · "}
+                      {maskedValues["turnstile_secret_key"] || (values["turnstile_secret_key"] || "").trim()
+                        ? "Secret Key: configured"
+                        : "Secret Key: missing"}
+                    </p>
+                    <p>
+                      Turnstile is only enforced when enabled and both keys are configured.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {turnstileItems.map((item) => (
+                <div key={item.key} className="space-y-2">
+                  <Label>{item.label}</Label>
+                  <Input
+                    placeholder={
+                      item.secret && maskedValues[item.key] && !values[item.key]
+                        ? "•••••••• (configured)"
+                        : item.placeholder
+                    }
+                    value={values[item.key] || ""}
+                    type={item.secret ? "password" : "text"}
+                    onChange={(e) => setValue(item.key, e.target.value)}
+                  />
+                </div>
+              ))}
+
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div className="text-xs text-blue-900 space-y-1">
+                    <p className="font-medium">Development Bypass</p>
+                    <p>
+                      In development, you can bypass Turnstile verification by setting{" "}
+                      <code>TURNSTILE_DEV_BYPASS=1</code>.
+                    </p>
+                    <p>
+                      Create your keys in Cloudflare Turnstile and paste the Site Key and Secret Key above.
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
