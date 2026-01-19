@@ -7,7 +7,7 @@
 - 临时邮箱：创建邮箱、收件箱管理、邮件列表/详情
 - 收件源：
   - Webhook：将外部邮件/事件推送到 `/api/webhooks/incoming`
-  - IMAP：通过独立的 IMAP Service 同步邮箱到系统
+  - IMAP：通过独立的 Worker 同步邮箱到系统
 - 转发：支持通过 SMTP/Webhook（以及 UI 中的其它类型占位）将邮件转发到目标
 - 工作流：可对收件触发工作流节点执行
 
@@ -36,9 +36,9 @@ npm run dev
 
 访问 `http://localhost:3000`。
 
-## IMAP Service（可选）
+## Worker（IMAP 同步 + 后台任务，可选）
 
-IMAP 同步服务是一个独立进程（默认端口 `3001`），用于拉取 IMAP 邮箱并写入数据库，然后通过内部 API 通知 Web 端做实时更新。
+Worker 是一个独立进程（默认端口 `3001`），用于拉取 IMAP 邮箱并写入数据库，并可运行后台任务（例如 Trash 定时清理），然后通过内部 API 通知 Web 端做实时更新。
 
 本地一键启动（Web + IMAP Service）：
 
@@ -52,7 +52,7 @@ npm run dev:all
 node --conditions=react-server --import tsx scripts/imap-service.ts
 ```
 
-常用环境变量：`IMAP_SERVICE_ENABLED`、`IMAP_SERVICE_HOST`、`IMAP_SERVICE_PORT`、`IMAP_SERVICE_KEY`、`NEXTJS_URL`。
+常用环境变量：`IMAP_SERVICE_ENABLED`、`IMAP_SERVICE_HOST`、`IMAP_SERVICE_PORT`、`IMAP_SERVICE_KEY`、`NEXTJS_URL`（以及 `TRASH_PURGE_*`）。
 
 ## 环境变量
 
@@ -111,7 +111,7 @@ cp .env.example .env
 - `IMAP_SERVICE_ENABLED="1"`
 - （可选）设置 `IMAP_SERVICE_KEY`，用于限制内部 API 调用
 
-2) `docker-compose.yml` 默认已包含 `imap-service` 服务；Web 容器会通过 `IMAP_SERVICE_HOST=imap-service` 与 IMAP Service 通信。
+2) `docker-compose.yml` 默认已包含 `worker` 服务；Web 容器会通过 `IMAP_SERVICE_HOST=worker` 与 Worker 通信（并兼容别名 `imap-service`）。
 
 ### 生产部署建议（Compose）
 
@@ -143,7 +143,7 @@ docker compose exec web npx prisma migrate deploy
 
 - 开发版（默认分支 push）：`ghcr.io/xinhai-ai/temail:edge`、`ghcr.io/xinhai-ai/temail:sha-...`
 - 发行版（push tag `vX.Y.Z`）：`ghcr.io/xinhai-ai/temail:latest`、`ghcr.io/xinhai-ai/temail:X.Y.Z`（以及 `X.Y`/`X`）
-- IMAP Service 同理：`ghcr.io/xinhai-ai/temail-imap-service:...`
+- Worker 同理：`ghcr.io/xinhai-ai/temail-worker:...`
 
 ## License
 

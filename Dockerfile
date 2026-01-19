@@ -54,8 +54,8 @@ EXPOSE 3000
 ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]
 
-# IMAP service image
-FROM base AS imap-service
+# Worker image (IMAP sync + background jobs)
+FROM base AS worker
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./

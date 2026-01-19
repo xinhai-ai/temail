@@ -33,7 +33,7 @@ GitHub Actions will build and publish release images for that tag.
 Two images are published:
 
 - `ghcr.io/<owner>/<repo>` (web)
-- `ghcr.io/<owner>/<repo>-imap-service`
+- `ghcr.io/<owner>/<repo>-worker`
 
 **Release builds (git tag `vX.Y.Z`)** publish:
 
@@ -42,4 +42,3 @@ Two images are published:
 **Dev builds (default branch pushes)** publish:
 
 - `edge`, `sha-<shortsha>`
-

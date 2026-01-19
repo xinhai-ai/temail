@@ -1,4 +1,6 @@
+import { spawn, type ChildProcess } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import cron, { type ScheduledTask } from "node-cron";
 import { ImapServiceManager } from "../src/services/imap/manager";
 import { createHttpRealtimePublisher } from "../src/services/imap/sync";
 import prisma from "../src/lib/prisma";
@@ -16,6 +18,14 @@ function parseEnvBool(name: string, defaultValue: boolean): boolean {
   return raw === "1" || raw.toLowerCase() === "true";
 }
 
+function parseEnvOptionalInt(name: string): number | undefined {
+  const raw = process.env[name];
+  if (!raw) return undefined;
+  const parsed = parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  return parsed;
+}
+
 const PORT = parseEnvInt("IMAP_SERVICE_PORT", 3001);
 const NEXTJS_PORT = parseEnvInt("NEXTJS_PORT", 3000);
 const NEXTJS_URL = process.env.NEXTJS_URL || `http://localhost:${NEXTJS_PORT}`;
@@ -28,7 +38,16 @@ const RECONNECT_MIN_MS = parseEnvInt("IMAP_RECONNECT_MIN_MS", 1000);
 const RECONNECT_MAX_MS = parseEnvInt("IMAP_RECONNECT_MAX_MS", 5 * 60 * 1000);
 const DEBUG = parseEnvBool("IMAP_SERVICE_DEBUG", false);
 
+const TRASH_PURGE_ENABLED = parseEnvBool("TRASH_PURGE_ENABLED", true);
+const TRASH_PURGE_CRON = process.env.TRASH_PURGE_CRON || "10 3 * * *";
+const TRASH_PURGE_TIMEZONE = process.env.TRASH_PURGE_TIMEZONE || process.env.TZ;
+const TRASH_PURGE_LIMIT = parseEnvOptionalInt("TRASH_PURGE_LIMIT");
+const TRASH_PURGE_DRY_RUN = parseEnvBool("TRASH_PURGE_DRY_RUN", false);
+
 let manager: ImapServiceManager | null = null;
+let purgeTask: ScheduledTask | null = null;
+let purgeRunning = false;
+let purgeProcess: ChildProcess | null = null;
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -115,6 +134,57 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   sendJson(res, 404, { error: "Not found" });
 }
 
+async function runTrashPurgeOnce(): Promise<void> {
+  if (purgeRunning) {
+    console.log("[imap-service] [trash-purge] already running; skipping this tick");
+    return;
+  }
+
+  purgeRunning = true;
+  const startedAt = new Date();
+
+  try {
+    const args: string[] = ["--conditions=react-server", "--import", "tsx", "scripts/purge-trash.ts"];
+    if (TRASH_PURGE_DRY_RUN) {
+      args.push("--dry-run");
+    }
+    if (typeof TRASH_PURGE_LIMIT === "number") {
+      args.push("--limit", String(TRASH_PURGE_LIMIT));
+    }
+
+    console.log(
+      "[imap-service] [trash-purge] starting",
+      JSON.stringify({
+        startedAt: startedAt.toISOString(),
+        cron: TRASH_PURGE_CRON,
+        timezone: TRASH_PURGE_TIMEZONE || null,
+        dryRun: TRASH_PURGE_DRY_RUN,
+        limit: TRASH_PURGE_LIMIT ?? null,
+      }),
+    );
+
+    const child = spawn(process.execPath, args, { stdio: "inherit", env: process.env });
+    purgeProcess = child;
+
+    await new Promise<void>((resolve) => {
+      child.once("exit", (code, signal) => {
+        console.log(
+          "[imap-service] [trash-purge] finished",
+          JSON.stringify({ code: code ?? null, signal: signal ?? null }),
+        );
+        resolve();
+      });
+      child.once("error", (error) => {
+        console.error("[imap-service] [trash-purge] spawn failed:", error);
+        resolve();
+      });
+    });
+  } finally {
+    purgeProcess = null;
+    purgeRunning = false;
+  }
+}
+
 async function main(): Promise<void> {
   console.log("[imap-service] Starting IMAP service...");
   console.log("[imap-service] Configuration:");
@@ -127,6 +197,13 @@ async function main(): Promise<void> {
   console.log(`  Health check interval: ${HEALTH_CHECK_MS}ms`);
   console.log(`  Reconnect: ${RECONNECT_MIN_MS}ms - ${RECONNECT_MAX_MS}ms`);
   console.log(`  Debug: ${DEBUG}`);
+  console.log(`  Trash purge: ${TRASH_PURGE_ENABLED ? "enabled" : "disabled"}`);
+  if (TRASH_PURGE_ENABLED) {
+    console.log(`    Cron: ${TRASH_PURGE_CRON}`);
+    if (TRASH_PURGE_TIMEZONE) console.log(`    Timezone: ${TRASH_PURGE_TIMEZONE}`);
+    if (TRASH_PURGE_DRY_RUN) console.log("    Dry-run: true");
+    if (TRASH_PURGE_LIMIT) console.log(`    Limit: ${TRASH_PURGE_LIMIT}`);
+  }
 
   // Create realtime publisher for Next.js
   const realtimePublisher = createHttpRealtimePublisher(NEXTJS_URL);
@@ -153,6 +230,23 @@ async function main(): Promise<void> {
   // Start the manager
   manager.start();
 
+  if (TRASH_PURGE_ENABLED) {
+    if (!cron.validate(TRASH_PURGE_CRON)) {
+      console.error(`[imap-service] Invalid TRASH_PURGE_CRON: ${TRASH_PURGE_CRON}. Trash purge disabled.`);
+    } else {
+      purgeTask = cron.schedule(
+        TRASH_PURGE_CRON,
+        () => {
+          runTrashPurgeOnce().catch((error) => {
+            console.error("[imap-service] [trash-purge] unexpected error:", error);
+          });
+        },
+        { timezone: TRASH_PURGE_TIMEZONE },
+      );
+      console.log("[imap-service] Trash purge scheduler active");
+    }
+  }
+
   // Create HTTP server
   const server = createServer((req, res) => {
     handleRequest(req, res).catch((error) => {
@@ -176,6 +270,16 @@ async function main(): Promise<void> {
     console.log(`[imap-service] Received ${signal}, shutting down...`);
 
     server.close();
+
+    if (purgeTask) {
+      purgeTask.stop();
+      purgeTask = null;
+    }
+
+    if (purgeProcess && !purgeProcess.killed) {
+      purgeProcess.kill("SIGTERM");
+      purgeProcess = null;
+    }
 
     if (manager) {
       await manager.stop();

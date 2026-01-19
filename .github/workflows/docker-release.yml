@@ -18,9 +18,9 @@ jobs:
           - name: web
             target: web
             image: ghcr.io/${{ github.repository }}
-          - name: imap-service
-            target: imap-service
-            image: ghcr.io/${{ github.repository }}-imap-service
+          - name: worker
+            target: worker
+            image: ghcr.io/${{ github.repository }}-worker
     steps:
       - name: Checkout
         uses: actions/checkout@v4
