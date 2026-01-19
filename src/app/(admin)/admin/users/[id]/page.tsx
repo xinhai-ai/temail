@@ -145,6 +145,10 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   // Security
   const [newPassword, setNewPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authWorking, setAuthWorking] = useState(false);
+  const [otpEnabled, setOtpEnabled] = useState(false);
+  const [passkeyCount, setPasskeyCount] = useState(0);
 
   // Mailboxes
   const [mailboxSearch, setMailboxSearch] = useState("");
@@ -247,7 +251,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     const run = async () => {
       setLoading(true);
-      await Promise.all([fetchUser(), fetchMailboxes(), fetchEmails(), fetchForwards(), fetchWorkflows()]);
+      await Promise.all([fetchUser(), fetchMailboxes(), fetchEmails(), fetchForwards(), fetchWorkflows(), fetchAuth()]);
       setLoading(false);
     };
     run();
@@ -315,6 +319,53 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       toast.error(data.error || "Failed to reset password");
     }
     setResettingPassword(false);
+  };
+
+  const fetchAuth = async () => {
+    setAuthLoading(true);
+    const res = await fetch(`/api/admin/users/${id}/auth`);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setOtpEnabled(Boolean(data.otpEnabled));
+      setPasskeyCount(Number(data.passkeyCount || 0));
+    }
+    setAuthLoading(false);
+  };
+
+  const handleDeleteOtp = async () => {
+    if (!user) return;
+    if (!confirm(`Delete OTP (2FA) for ${user.email}?`)) return;
+    setAuthWorking(true);
+    try {
+      const res = await fetch(`/api/admin/users/${id}/otp`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success("OTP deleted");
+        await fetchAuth();
+      } else {
+        toast.error(data.error || "Failed to delete OTP");
+      }
+    } finally {
+      setAuthWorking(false);
+    }
+  };
+
+  const handleDeletePasskeys = async () => {
+    if (!user) return;
+    if (!confirm(`Delete all passkeys for ${user.email}?`)) return;
+    setAuthWorking(true);
+    try {
+      const res = await fetch(`/api/admin/users/${id}/passkeys`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success("Passkeys deleted");
+        await fetchAuth();
+      } else {
+        toast.error(data.error || "Failed to delete passkeys");
+      }
+    } finally {
+      setAuthWorking(false);
+    }
   };
 
   const handleToggleMailbox = async (mailboxId: string, status: Mailbox["status"]) => {
@@ -715,6 +766,48 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <p className="text-xs text-muted-foreground">
                 Note: JWT sessions are not revoked automatically yet.
               </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle>OTP / Passkeys</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                {authLoading ? (
+                  "Loading…"
+                ) : (
+                  <>
+                    <p>OTP enabled: {otpEnabled ? "Yes" : "No"}</p>
+                    <p>Passkeys: {passkeyCount}</p>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteOtp}
+                  disabled={authWorking || authLoading || (user?.role !== "USER" && !isSuperAdmin)}
+                >
+                  Delete OTP
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeletePasskeys}
+                  disabled={authWorking || authLoading || passkeyCount === 0 || (user?.role !== "USER" && !isSuperAdmin)}
+                >
+                  Delete Passkeys
+                </Button>
+                <Button variant="outline" onClick={fetchAuth} disabled={authWorking || authLoading}>
+                  Reload
+                </Button>
+              </div>
+              {!isSuperAdmin && user?.role !== "USER" && (
+                <p className="text-xs text-muted-foreground">
+                  Only SUPER_ADMIN can reset admin authentication methods.
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
