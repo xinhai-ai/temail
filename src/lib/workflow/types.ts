@@ -280,7 +280,7 @@ export interface ForwardTelegramData {
   token: string;
   chatId: string;
   template?: string;
-  parseMode?: "Markdown" | "HTML" | "MarkdownV2";
+  parseMode?: "Markdown" | "HTML" | "MarkdownV2" | "None";
 }
 
 export interface ForwardDiscordData {

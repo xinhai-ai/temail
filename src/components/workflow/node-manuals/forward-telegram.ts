@@ -21,7 +21,7 @@ const manual: NodeManual = {
     {
       key: "parseMode",
       label: "Parse Mode",
-      description: "消息解析模式：Markdown / MarkdownV2 / HTML。",
+      description: "消息解析模式：None（请求中不传 parse_mode）/ Markdown / MarkdownV2 / HTML。",
       example: "Markdown",
     },
     {
@@ -37,4 +37,3 @@ const manual: NodeManual = {
 };
 
 export default manual;
-

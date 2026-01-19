@@ -151,7 +151,15 @@ async function testTelegramForward(
 
   const template = config.template || `📧 *Test Email*\n\n*Subject:* ${email.subject}`;
   const text = replaceTemplateVariables(template, vars);
-  const parseMode = config.parseMode || "Markdown";
+  const requestBody: Record<string, unknown> = {
+    chat_id: config.chatId,
+    text: `[TEST] ${text}`,
+  };
+  if (!config.parseMode) {
+    requestBody.parse_mode = "Markdown";
+  } else if (config.parseMode !== "None") {
+    requestBody.parse_mode = config.parseMode;
+  }
 
   try {
     const response = await fetch(
@@ -161,11 +169,7 @@ async function testTelegramForward(
         headers: { "Content-Type": "application/json" },
         redirect: "error",
         signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
-        body: JSON.stringify({
-          chat_id: config.chatId,
-          text: `[TEST] ${text}`,
-          parse_mode: parseMode,
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
 

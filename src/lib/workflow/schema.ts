@@ -191,6 +191,7 @@ const forwardTelegramDataSchema = z.object({
   token: z.string().min(1),
   chatId: z.string().min(1),
   template: z.string().optional(),
+  parseMode: z.enum(["Markdown", "MarkdownV2", "HTML", "None"]).optional(),
 });
 
 const forwardDiscordDataSchema = z.object({

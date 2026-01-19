@@ -13,6 +13,7 @@ import type {
   EmailContentField,
   ActionSetTagsData,
   ActionAiRewriteData,
+  ForwardTelegramData,
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
@@ -136,7 +137,7 @@ export async function executeNode(
 
     case "forward:telegram":
       return executeForwardTelegram(
-        data as { token: string; chatId: string; template?: string; parseMode?: string },
+        data as { token: string; chatId: string; template?: string; parseMode?: ForwardTelegramData["parseMode"] },
         context
       );
 
@@ -775,7 +776,7 @@ async function executeForwardEmail(
 }
 
 async function executeForwardTelegram(
-  data: { token: string; chatId: string; template?: string; parseMode?: string },
+  data: { token: string; chatId: string; template?: string; parseMode?: ForwardTelegramData["parseMode"] },
   context: ExecutionContext
 ): Promise<boolean> {
   if (!context.email) return false;
@@ -790,25 +791,58 @@ async function executeForwardTelegram(
     return true;
   }
 
-  try {
-    const url = `https://api.telegram.org/bot${data.token}/sendMessage`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
-      body: JSON.stringify({
-        chat_id: data.chatId,
-        text: message,
-        parse_mode: data.parseMode || "Markdown",
-      }),
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error("Telegram forward error:", error);
-    return false;
+  const url = `https://api.telegram.org/bot${data.token}/sendMessage`;
+  const requestBody: Record<string, unknown> = {
+    chat_id: data.chatId,
+    text: message,
+  };
+  if (!data.parseMode) {
+    requestBody.parse_mode = "Markdown";
+  } else if (data.parseMode !== "None") {
+    requestBody.parse_mode = data.parseMode;
   }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    redirect: "error",
+    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+    body: JSON.stringify(requestBody),
+  });
+
+  const responseText = await response.text();
+  let payload: unknown;
+  try {
+    payload = responseText ? JSON.parse(responseText) : undefined;
+  } catch {
+    payload = undefined;
+  }
+
+  const telegramOk = Boolean(
+    response.ok &&
+      payload &&
+      typeof payload === "object" &&
+      "ok" in payload &&
+      (payload as { ok?: unknown }).ok === true
+  );
+
+  if (!telegramOk) {
+    const description =
+      payload &&
+      typeof payload === "object" &&
+      "description" in payload &&
+      typeof (payload as { description?: unknown }).description === "string"
+        ? (payload as { description: string }).description
+        : responseText || response.statusText || "Telegram API error";
+    const errorCode =
+      payload && typeof payload === "object" && "error_code" in payload
+        ? Number((payload as { error_code?: unknown }).error_code)
+        : undefined;
+    const errorCodeSuffix = Number.isFinite(errorCode) ? `, error_code=${errorCode}` : "";
+    throw new Error(`Telegram API error (HTTP ${response.status}${errorCodeSuffix}): ${description}`);
+  }
+
+  return true;
 }
 
 async function executeForwardDiscord(

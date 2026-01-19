@@ -1828,11 +1828,15 @@ function ForwardTelegramConfig({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="None">None</SelectItem>
             <SelectItem value="Markdown">Markdown</SelectItem>
             <SelectItem value="MarkdownV2">MarkdownV2</SelectItem>
             <SelectItem value="HTML">HTML</SelectItem>
           </SelectContent>
         </Select>
+        <p className="text-xs text-muted-foreground">
+          Select <span className="font-mono">None</span> to omit <span className="font-mono">parse_mode</span> in the Telegram API request.
+        </p>
       </div>
 
       <div className="space-y-2">
