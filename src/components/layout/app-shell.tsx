@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_COLLAPSED_COOKIE = "temail_sidebar_collapsed";
@@ -34,12 +35,14 @@ export function AppShell({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Sidebar isAdmin={isAdmin} collapsed={collapsed} onCollapsedChange={handleCollapsedChange} />
-      <div className={cn(collapsed ? "md:pl-16" : "md:pl-64")}>
-        <Header isAdmin={isAdmin} />
-        <main className="p-4 md:p-6">{children}</main>
+    <TooltipProvider delayDuration={200}>
+      <div className="min-h-screen bg-slate-50">
+        <Sidebar isAdmin={isAdmin} collapsed={collapsed} onCollapsedChange={handleCollapsedChange} />
+        <div className={cn(collapsed ? "md:pl-16" : "md:pl-64")}>
+          <Header isAdmin={isAdmin} />
+          <main className="p-4 md:p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
