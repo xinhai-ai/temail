@@ -13,6 +13,20 @@ export const nodeManualLoaders: Partial<Record<NodeType, NodeManualLoader>> = {
   "condition:ai-classifier": () => import("./condition-ai-classifier"),
   "condition:classifier": () => import("./condition-classifier"),
   "condition:custom": () => import("./condition-custom"),
+
+  "action:archive": () => import("./action-archive"),
+  "action:markRead": () => import("./action-mark-read"),
+  "action:markUnread": () => import("./action-mark-unread"),
+  "action:star": () => import("./action-star"),
+  "action:unstar": () => import("./action-unstar"),
+  "action:delete": () => import("./action-delete"),
+  "action:setVariable": () => import("./action-set-variable"),
+  "action:unsetVariable": () => import("./action-unset-variable"),
+  "action:cloneVariable": () => import("./action-clone-variable"),
+  "action:rewriteEmail": () => import("./action-rewrite-email"),
+  "action:regexReplace": () => import("./action-regex-replace"),
+  "action:setTags": () => import("./action-set-tags"),
+  "action:aiRewrite": () => import("./action-ai-rewrite"),
 };
 
 export async function loadNodeManual(type: NodeType): Promise<NodeManual | null> {
