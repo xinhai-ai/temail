@@ -38,6 +38,11 @@ model User {
   accounts      Account[]
   sessions      Session[]
   tags          Tag[]
+  authChallenges AuthChallenge[]
+  passkeyCredentials PasskeyCredential[]
+  loginTokens    LoginToken[]
+  mfaChallenges  MfaChallenge[]
+  totp           UserTotp?
 
   @@map("users")
 }
@@ -79,6 +84,117 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// ==================== 认证安全（Passkey / OTP） ====================
+
+enum AuthChallengePurpose {
+  PASSKEY_REGISTRATION
+  PASSKEY_AUTHENTICATION
+}
+
+model AuthChallenge {
+  id        String               @id @default(cuid())
+  userId    String?
+  purpose   AuthChallengePurpose
+  challenge String
+  expiresAt DateTime
+  usedAt    DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime             @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_challenges")
+}
+
+model PasskeyCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  credentialId String   @unique
+  publicKey    Bytes
+  counter      Int      @default(0)
+  transports   String?  // JSON string
+  deviceType   String?
+  backedUp     Boolean?
+  lastUsedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("passkey_credentials")
+}
+
+model LoginToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("login_tokens")
+}
+
+model MfaChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int      @default(0)
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("mfa_challenges")
+}
+
+model UserTotp {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  secretCiphertext String
+  secretIv         String
+  secretTag        String
+  digits           Int      @default(6)
+  period           Int      @default(30)
+  algorithm        String   @default("SHA1")
+  enabledAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  backupCodes UserTotpBackupCode[]
+
+  @@map("user_totp")
+}
+
+model UserTotpBackupCode {
+  id        String   @id @default(cuid())
+  userTotpId String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  userTotp UserTotp @relation(fields: [userTotpId], references: [id], onDelete: Cascade)
+
+  @@index([userTotpId])
+  @@map("user_totp_backup_codes")
 }
 
 // ==================== 域名管理 ====================
