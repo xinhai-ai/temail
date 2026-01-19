@@ -1020,21 +1020,30 @@ export default function InboxPage() {
     if (refreshingImap || refreshCooldown > 0) return;
     setRefreshingImap(true);
     try {
-      const res = await fetch("/api/imap/sync", { method: "POST" });
+      const res = await fetch("/api/inbox/refresh", { method: "POST" });
       const data = await res.json().catch(() => null);
 
-      if (res.status === 429) {
-        // Rate limited - set cooldown timer
-        const remainingMs = data?.remainingMs || 30000;
+      const remainingMs = data?.imap?.remainingMs;
+      if (typeof remainingMs === "number" && remainingMs > 0) {
         setRefreshCooldown(Math.ceil(remainingMs / 1000));
-        toast.error(data?.message || "Please wait before refreshing again");
-        return;
       }
 
       if (!res.ok) {
         toast.error(data?.error || "Failed to refresh");
         return;
       }
+
+      const imap = data?.imap;
+      if (imap?.ok === false && (imap.reason === "cooldown" || imap.reason === "running")) {
+        toast.error(data?.message || imap.message || "Please wait before refreshing again");
+        return;
+      }
+
+      if (imap?.ok === false && imap.reason === "error") {
+        toast.error(data?.message || imap.message || "Failed to refresh");
+        return;
+      }
+
       toast.success(data?.message || "Refresh triggered");
     } catch {
       toast.error("Failed to refresh");
