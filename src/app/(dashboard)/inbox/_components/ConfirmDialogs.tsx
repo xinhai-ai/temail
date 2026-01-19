@@ -10,10 +10,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import type { Mailbox, MailboxGroup } from "../types";
 
 type ConfirmDialogsProps = {
   deleteEmailId: string | null;
+  skipEmailDeleteConfirm: boolean;
   bulkDeleteOpen: boolean;
   selectedEmailCount: number;
   deleteMailboxId: string | null;
@@ -21,6 +24,7 @@ type ConfirmDialogsProps = {
   deleting: boolean;
   mailboxes: Mailbox[];
   onDeleteEmailIdChange: (id: string | null) => void;
+  onSkipEmailDeleteConfirmChange: (skip: boolean) => void;
   onBulkDeleteOpenChange: (open: boolean) => void;
   onDeleteMailboxIdChange: (id: string | null) => void;
   onDeleteGroupChange: (group: MailboxGroup | null) => void;
@@ -32,6 +36,7 @@ type ConfirmDialogsProps = {
 
 export function ConfirmDialogs({
   deleteEmailId,
+  skipEmailDeleteConfirm,
   bulkDeleteOpen,
   selectedEmailCount,
   deleteMailboxId,
@@ -39,6 +44,7 @@ export function ConfirmDialogs({
   deleting,
   mailboxes,
   onDeleteEmailIdChange,
+  onSkipEmailDeleteConfirmChange,
   onBulkDeleteOpenChange,
   onDeleteMailboxIdChange,
   onDeleteGroupChange,
@@ -59,10 +65,20 @@ export function ConfirmDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Email</AlertDialogTitle>
+            <AlertDialogTitle>Move to Trash</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this email? This action cannot be undone.
+              This email will be moved to Trash. You can restore it later from the Trash page.
             </AlertDialogDescription>
+            <div className="flex items-center gap-2 pt-3">
+              <Checkbox
+                id="skip-delete-email-confirm"
+                checked={skipEmailDeleteConfirm}
+                onCheckedChange={(checked) => onSkipEmailDeleteConfirmChange(Boolean(checked))}
+              />
+              <Label htmlFor="skip-delete-email-confirm" className="text-sm text-muted-foreground">
+                Don&apos;t remind me again
+              </Label>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
@@ -71,7 +87,7 @@ export function ConfirmDialogs({
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? "Moving..." : "Move to Trash"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -80,10 +96,20 @@ export function ConfirmDialogs({
       <AlertDialog open={bulkDeleteOpen} onOpenChange={onBulkDeleteOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Emails</AlertDialogTitle>
+            <AlertDialogTitle>Move Emails to Trash</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete {selectedEmailCount} selected emails? This action cannot be undone.
+              Move {selectedEmailCount} selected emails to Trash? You can restore them later from the Trash page.
             </AlertDialogDescription>
+            <div className="flex items-center gap-2 pt-3">
+              <Checkbox
+                id="skip-bulk-delete-email-confirm"
+                checked={skipEmailDeleteConfirm}
+                onCheckedChange={(checked) => onSkipEmailDeleteConfirmChange(Boolean(checked))}
+              />
+              <Label htmlFor="skip-bulk-delete-email-confirm" className="text-sm text-muted-foreground">
+                Don&apos;t remind me again
+              </Label>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
@@ -92,7 +118,7 @@ export function ConfirmDialogs({
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? "Moving..." : "Move to Trash"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -150,4 +176,3 @@ export function ConfirmDialogs({
     </>
   );
 }
-

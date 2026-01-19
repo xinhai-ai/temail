@@ -18,6 +18,7 @@ import type {
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
 import { evaluateAiRewrite, getAiRewriteRequestedVariableKeys } from "@/lib/workflow/ai-rewrite";
+import { getRestoreStatusForTrash } from "@/services/email-trash";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -432,9 +433,23 @@ async function executeDelete(context: ExecutionContext): Promise<boolean> {
     return true;
   }
 
-  await prisma.email.delete({
+  const email = await prisma.email.findUnique({
     where: { id: context.email.id },
+    select: { id: true, status: true, deletedAt: true },
   });
+
+  if (!email) return false;
+
+  if (email.status !== "DELETED") {
+    await prisma.email.update({
+      where: { id: email.id },
+      data: {
+        status: "DELETED",
+        deletedAt: email.deletedAt ?? new Date(),
+        restoreStatus: getRestoreStatusForTrash(email.status),
+      },
+    });
+  }
 
   return true;
 }

@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
+import { getRestoreStatusForTrash, moveOwnedEmailToTrash } from "@/services/email-trash";
+import { Prisma } from "@prisma/client";
 
 const updateSchema = z.object({
   status: z.enum(["UNREAD", "READ", "ARCHIVED", "DELETED"]).optional(),
@@ -102,9 +104,31 @@ export async function PATCH(
       return NextResponse.json({ error: "Email not found" }, { status: 404 });
     }
 
+    const updateData: Prisma.EmailUpdateInput = {};
+
+    if (typeof data.isStarred === "boolean") {
+      updateData.isStarred = data.isStarred;
+    }
+
+    if (data.status) {
+      if (data.status === "DELETED") {
+        if (email.status !== "DELETED") {
+          updateData.status = "DELETED";
+          updateData.deletedAt = email.deletedAt ?? new Date();
+          updateData.restoreStatus = getRestoreStatusForTrash(email.status);
+        }
+      } else {
+        updateData.status = data.status;
+        if (email.status === "DELETED") {
+          updateData.deletedAt = null;
+          updateData.restoreStatus = null;
+        }
+      }
+    }
+
     const updated = await prisma.email.update({
       where: { id },
-      data,
+      data: updateData,
     });
 
     publishRealtimeEvent(session.user.id, {
@@ -112,7 +136,7 @@ export async function PATCH(
       data: {
         id: updated.id,
         mailboxId: updated.mailboxId,
-        ...(data.status ? { status: data.status } : {}),
+        ...(data.status ? { status: updated.status } : {}),
         ...(typeof data.isStarred === "boolean" ? { isStarred: data.isStarred } : {}),
       },
     });
@@ -143,19 +167,14 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const email = await prisma.email.findFirst({
-    where: { id, mailbox: { userId: session.user.id } },
-  });
-
-  if (!email) {
+  const moved = await moveOwnedEmailToTrash({ emailId: id, userId: session.user.id });
+  if (!moved) {
     return NextResponse.json({ error: "Email not found" }, { status: 404 });
   }
 
-  await prisma.email.delete({ where: { id } });
-
   publishRealtimeEvent(session.user.id, {
-    type: "email.deleted",
-    data: { id, mailboxId: email.mailboxId },
+    type: "email.updated",
+    data: { id, mailboxId: moved.mailboxId, status: "DELETED" },
   });
 
   return NextResponse.json({ success: true });

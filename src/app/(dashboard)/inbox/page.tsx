@@ -17,6 +17,7 @@ export default function InboxPage() {
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
   const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
+  const SKIP_EMAIL_DELETE_CONFIRM_KEY = "temail.inbox.skipEmailDeleteConfirm";
   const DEFAULT_EMAILS_PAGE_SIZE = 15;
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
@@ -64,6 +65,7 @@ export default function InboxPage() {
 
   // Delete confirmation dialog states
   const [deleteEmailId, setDeleteEmailId] = useState<string | null>(null);
+  const [skipEmailDeleteConfirm, setSkipEmailDeleteConfirm] = useState(false);
   const [deleteMailboxId, setDeleteMailboxId] = useState<string | null>(null);
   const [deleteGroup, setDeleteGroup] = useState<MailboxGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -203,6 +205,24 @@ export default function InboxPage() {
   }, [emailsPageSize, emailsPageSizeLoaded]);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SKIP_EMAIL_DELETE_CONFIRM_KEY);
+      setSkipEmailDeleteConfirm(raw === "1");
+    } catch {
+      // ignore
+    }
+  }, [SKIP_EMAIL_DELETE_CONFIRM_KEY]);
+
+  const persistSkipEmailDeleteConfirm = (next: boolean) => {
+    setSkipEmailDeleteConfirm(next);
+    try {
+      localStorage.setItem(SKIP_EMAIL_DELETE_CONFIRM_KEY, next ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
     if (!emailsPageSizeLoaded) return;
     const fetchEmails = async () => {
       setLoadingEmails(true);
@@ -335,6 +355,13 @@ export default function InboxPage() {
         }
 
         if (event.type === "email.updated") {
+          if (event.data.status === "DELETED") {
+            setSelectedEmailIds((prev) => prev.filter((id) => id !== event.data.id));
+            setSelectedEmailId((current) => (current === event.data.id ? null : current));
+            setSelectedEmail((prev) => (prev?.id === event.data.id ? null : prev));
+            setEmails((prev) => prev.filter((e) => e.id !== event.data.id));
+            return;
+          }
           setSelectedEmail((prev) => {
             if (!prev || prev.id !== event.data.id) return prev;
             return {
@@ -446,25 +473,53 @@ export default function InboxPage() {
     }
   };
 
+  const moveEmailToTrash = async (id: string) => {
+    const emailInList = emails.find((e) => e.id === id);
+    const emailForCount = emailInList || (selectedEmail?.id === id ? selectedEmail : null);
+    const shouldDecrementUnread =
+      emailForCount?.status === "UNREAD" && typeof emailForCount?.mailboxId === "string";
+
+    setDeleting(true);
+    const res = await fetch(`/api/emails/${id}`, { method: "DELETE" });
+    setDeleting(false);
+    if (!res.ok) {
+      toast.error("Failed to move email to Trash");
+      return false;
+    }
+
+    toast.success("Moved to Trash");
+
+    if (shouldDecrementUnread) {
+      setMailboxes((prev) =>
+        prev.map((m) =>
+          m.id === emailForCount.mailboxId
+            ? { ...m, _count: { emails: Math.max(0, m._count.emails - 1) } }
+            : m
+        )
+      );
+    }
+
+    setSelectedEmailIds((prev) => prev.filter((x) => x !== id));
+    setEmails((prev) => prev.filter((e) => e.id !== id));
+    if (selectedEmailId === id) {
+      setSelectedEmailId(null);
+      setSelectedEmail(null);
+    }
+    setDeleteEmailId(null);
+    return true;
+  };
+
   const handleDeleteEmail = async (id: string) => {
+    if (skipEmailDeleteConfirm) {
+      void moveEmailToTrash(id);
+      return;
+    }
     setDeleteEmailId(id);
   };
 
   const confirmDeleteEmail = async () => {
     if (!deleteEmailId) return;
-    setDeleting(true);
-    const res = await fetch(`/api/emails/${deleteEmailId}`, { method: "DELETE" });
-    setDeleting(false);
-    if (!res.ok) {
-      toast.error("Failed to delete email");
-      return;
-    }
-    toast.success("Email deleted");
-    setEmails((prev) => prev.filter((e) => e.id !== deleteEmailId));
-    if (selectedEmailId === deleteEmailId) {
-      setSelectedEmailId(null);
-    }
-    setDeleteEmailId(null);
+    void moveEmailToTrash(deleteEmailId);
   };
 
   const handleSelectEmail = async (email: EmailListItem) => {
@@ -726,11 +781,11 @@ export default function InboxPage() {
     setDeleting(false);
 
     if (!res.ok) {
-      toast.error(data?.error || "Failed to delete emails");
+      toast.error(data?.error || "Failed to move emails to Trash");
       return;
     }
 
-    toast.success("Emails deleted");
+    toast.success("Moved to Trash");
     setSelectedEmailIds([]);
     setBulkDeleteOpen(false);
     // Clear selected email if it was deleted
@@ -740,6 +795,14 @@ export default function InboxPage() {
     }
     // Refresh list to get correct data
     setEmailsRefreshKey((k) => k + 1);
+  };
+
+  const openBulkDelete = () => {
+    if (skipEmailDeleteConfirm) {
+      void confirmBulkDelete();
+      return;
+    }
+    setBulkDeleteOpen(true);
   };
 
   const handleEmailSearchChange = (value: string) => {
@@ -1166,7 +1229,7 @@ export default function InboxPage() {
               onToggleEmailSelection={toggleEmailSelection}
               onBulkMarkRead={handleBulkMarkRead}
               onBulkArchive={handleBulkArchive}
-              onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+              onOpenBulkDelete={openBulkDelete}
               onClearSelection={() => setSelectedEmailIds([])}
               onStarEmail={handleStarEmail}
               onDeleteEmail={handleDeleteEmail}
@@ -1270,7 +1333,7 @@ export default function InboxPage() {
             onToggleEmailSelection={toggleEmailSelection}
             onBulkMarkRead={handleBulkMarkRead}
             onBulkArchive={handleBulkArchive}
-            onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+            onOpenBulkDelete={openBulkDelete}
             onClearSelection={() => setSelectedEmailIds([])}
             onStarEmail={handleStarEmail}
             onDeleteEmail={handleDeleteEmail}
@@ -1293,6 +1356,7 @@ export default function InboxPage() {
 
         <ConfirmDialogs
           deleteEmailId={deleteEmailId}
+          skipEmailDeleteConfirm={skipEmailDeleteConfirm}
           bulkDeleteOpen={bulkDeleteOpen}
           selectedEmailCount={selectedEmailIds.length}
           deleteMailboxId={deleteMailboxId}
@@ -1300,6 +1364,7 @@ export default function InboxPage() {
           deleting={deleting}
           mailboxes={mailboxes}
           onDeleteEmailIdChange={setDeleteEmailId}
+          onSkipEmailDeleteConfirmChange={persistSkipEmailDeleteConfirm}
           onBulkDeleteOpenChange={setBulkDeleteOpen}
           onDeleteMailboxIdChange={setDeleteMailboxId}
           onDeleteGroupChange={setDeleteGroup}

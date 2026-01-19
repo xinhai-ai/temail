@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Globe, Server, Webhook, Copy, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -19,6 +20,7 @@ interface Domain {
   name: string;
   sourceType: "IMAP" | "WEBHOOK";
   status: string;
+  inboundPolicy?: "CATCH_ALL" | "KNOWN_ONLY";
   description?: string;
   isPublic?: boolean;
   imapConfig?: {
@@ -60,6 +62,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   const [webhookActive, setWebhookActive] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
   const [description, setDescription] = useState("");
+  const [inboundPolicy, setInboundPolicy] = useState<"CATCH_ALL" | "KNOWN_ONLY">("CATCH_ALL");
 
   // Redirect non-admin users
   useEffect(() => {
@@ -80,6 +83,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
       setDomain(data);
       setIsPublic(Boolean(data.isPublic));
       setDescription(data.description || "");
+      setInboundPolicy(data.inboundPolicy === "KNOWN_ONLY" ? "KNOWN_ONLY" : "CATCH_ALL");
 
       if (data.imapConfig) {
         setImapHost(data.imapConfig.host);
@@ -110,7 +114,11 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
     const res = await fetch(`/api/domains/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isPublic, description: description.trim() ? description.trim() : undefined }),
+      body: JSON.stringify({
+        isPublic,
+        inboundPolicy,
+        description: description.trim() ? description.trim() : undefined,
+      }),
     });
 
     if (res.ok) {
@@ -261,6 +269,25 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Inbound Policy</Label>
+            <Select
+              value={inboundPolicy}
+              onValueChange={(value) => setInboundPolicy(value as "CATCH_ALL" | "KNOWN_ONLY")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CATCH_ALL">Catch-all (accept unmatched)</SelectItem>
+                <SelectItem value="KNOWN_ONLY">Known-only (reject unknown)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              Catch-all will keep unmatched inbound messages for inspection. Known-only will ignore/reject unknown mailboxes.
+            </p>
           </div>
 
           <div className="flex items-center justify-between gap-3">

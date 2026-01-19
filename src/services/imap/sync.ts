@@ -237,6 +237,10 @@ async function processMessage(
       select: { id: true, userId: true, address: true },
     });
 
+    if (!mailbox && domain.inboundPolicy === "KNOWN_ONLY") {
+      continue;
+    }
+
     // Generate a unique ID for file storage (used for both InboundEmail and Email)
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 

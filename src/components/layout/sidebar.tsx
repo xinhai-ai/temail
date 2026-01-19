@@ -20,6 +20,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Workflow,
+  Trash2,
 } from "lucide-react";
 
 interface NavItem {
@@ -32,6 +33,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Inbox", href: "/inbox", icon: Inbox },
+  { title: "Trash", href: "/trash", icon: Trash2 },
   { title: "Domains", href: "/domains", icon: Globe, adminOnly: true },
   { title: "Workflows", href: "/workflows", icon: Workflow },
   { title: "Forwards", href: "/forwards", icon: Forward },

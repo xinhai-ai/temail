@@ -678,7 +678,7 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     type: "action:delete",
     category: "action",
     label: "Delete",
-    description: "Delete the email",
+    description: "Move the email to Trash",
     icon: "Trash2",
     color: "#ef4444",
     inputs: 1,

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, Lock } from "lucide-react";
+import { User, Lock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -16,6 +16,22 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  const [trashRetentionDays, setTrashRetentionDays] = useState("30");
+  const [loadingTrash, setLoadingTrash] = useState(true);
+  const [savingTrash, setSavingTrash] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch("/api/users/me/trash");
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setTrashRetentionDays(String(data?.trashRetentionDays ?? 30));
+      }
+      setLoadingTrash(false);
+    };
+    load().catch(() => setLoadingTrash(false));
+  }, []);
 
   const handleUpdateProfile = async () => {
     toast.success("Profile updated");
@@ -60,6 +76,38 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveTrash = async () => {
+    const parsed = Number.parseInt(trashRetentionDays, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      toast.error("Trash retention days must be 0 or a positive number");
+      return;
+    }
+    if (parsed > 3650) {
+      toast.error("Trash retention days is too large");
+      return;
+    }
+
+    setSavingTrash(true);
+    try {
+      const res = await fetch("/api/users/me/trash", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trashRetentionDays: parsed }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to save");
+        return;
+      }
+      toast.success("Trash settings saved");
+      setTrashRetentionDays(String(data?.trashRetentionDays ?? parsed));
+    } catch {
+      toast.error("Failed to save");
+    } finally {
+      setSavingTrash(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -68,6 +116,34 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Trash
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Automatically delete trash after (days)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={3650}
+                value={trashRetentionDays}
+                onChange={(e) => setTrashRetentionDays(e.target.value)}
+                disabled={loadingTrash || savingTrash}
+              />
+              <p className="text-xs text-muted-foreground">
+                Set to 0 to never automatically delete.
+              </p>
+            </div>
+            <Button onClick={handleSaveTrash} disabled={loadingTrash || savingTrash}>
+              {savingTrash ? "Saving..." : "Save Trash Settings"}
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

@@ -133,6 +133,10 @@ export async function POST(request: NextRequest) {
       select: { id: true, userId: true, address: true },
     });
 
+    if (!mailbox && webhookConfig.domain.inboundPolicy === "KNOWN_ONLY") {
+      return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
+    }
+
     const parsedMessageId = typeof messageId === "string" ? messageId : null;
     const fromAddress =
       extractEmailAddress(from) ||

@@ -4,9 +4,10 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { readJsonBody } from "@/lib/request";
+import { purgeOwnedEmail } from "@/services/email-trash";
 
 const bulkSchema = z.object({
-  action: z.enum(["markRead", "delete", "archive", "unarchive"]),
+  action: z.enum(["markRead", "delete", "archive", "unarchive", "restore", "purge"]),
   ids: z.array(z.string().min(1)).min(1).max(200),
 });
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
         id: { in: ids },
         mailbox: { userId: session.user.id },
       },
-      select: { id: true, mailboxId: true },
+      select: { id: true, mailboxId: true, status: true, restoreStatus: true },
     });
 
     const ownedIds = owned.map((e) => e.id);
@@ -52,10 +53,49 @@ export async function POST(request: Request) {
         where: { id: { in: ownedIds } },
         data: { status: "READ" },
       });
-    } else {
-      await prisma.email.deleteMany({
-        where: { id: { in: ownedIds } },
-      });
+    } else if (action === "delete") {
+      const now = new Date();
+      const toTrashUnread = owned.filter((e) => e.status === "UNREAD").map((e) => e.id);
+      const toTrashRead = owned.filter((e) => e.status !== "UNREAD" && e.status !== "DELETED").map((e) => e.id);
+
+      if (toTrashUnread.length > 0) {
+        await prisma.email.updateMany({
+          where: { id: { in: toTrashUnread } },
+          data: { status: "DELETED", deletedAt: now, restoreStatus: "UNREAD" },
+        });
+      }
+
+      if (toTrashRead.length > 0) {
+        await prisma.email.updateMany({
+          where: { id: { in: toTrashRead } },
+          data: { status: "DELETED", deletedAt: now, restoreStatus: "READ" },
+        });
+      }
+    } else if (action === "restore") {
+      const restoreUnread = owned
+        .filter((e) => e.status === "DELETED" && e.restoreStatus === "UNREAD")
+        .map((e) => e.id);
+      const restoreRead = owned
+        .filter((e) => e.status === "DELETED" && e.restoreStatus !== "UNREAD")
+        .map((e) => e.id);
+
+      if (restoreUnread.length > 0) {
+        await prisma.email.updateMany({
+          where: { id: { in: restoreUnread } },
+          data: { status: "UNREAD", deletedAt: null, restoreStatus: null },
+        });
+      }
+
+      if (restoreRead.length > 0) {
+        await prisma.email.updateMany({
+          where: { id: { in: restoreRead } },
+          data: { status: "READ", deletedAt: null, restoreStatus: null },
+        });
+      }
+    } else if (action === "purge") {
+      for (const id of ownedIds) {
+        await purgeOwnedEmail({ emailId: id, userId: session.user.id });
+      }
     }
 
     const mailboxIds = Array.from(new Set(owned.map((e) => e.mailboxId)));

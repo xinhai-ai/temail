@@ -20,6 +20,12 @@ export async function GET(request: NextRequest) {
   const limitParam = searchParams.get("limit") || searchParams.get("take") || "20";
   const limit = Math.min(100, Math.max(1, parseInt(limitParam)));
 
+  const excludedStatuses: Array<"ARCHIVED" | "DELETED"> = [];
+  if (!status) {
+    excludedStatuses.push("DELETED");
+    if (excludeArchived) excludedStatuses.push("ARCHIVED");
+  }
+
   const where = {
     mailbox: { userId: session.user.id },
     ...(search && {
@@ -29,7 +35,12 @@ export async function GET(request: NextRequest) {
       ],
     }),
     ...(status && { status: status as "UNREAD" | "READ" | "ARCHIVED" | "DELETED" }),
-    ...(excludeArchived && !status && { status: { not: "ARCHIVED" as const } }),
+    ...(!status &&
+      excludedStatuses.length > 0 && {
+        status: excludedStatuses.length === 1
+          ? { not: excludedStatuses[0] }
+          : { notIn: excludedStatuses },
+      }),
     ...(mailboxId && { mailboxId }),
     ...(tagId && { emailTags: { some: { tagId } } }),
   };
@@ -46,6 +57,7 @@ export async function GET(request: NextRequest) {
         fromName: true,
         status: true,
         isStarred: true,
+        deletedAt: true,
         receivedAt: true,
         mailboxId: true,
         mailbox: { select: { address: true } },
@@ -92,6 +104,7 @@ export async function GET(request: NextRequest) {
         fromName: true,
         status: true,
         isStarred: true,
+        deletedAt: true,
         receivedAt: true,
         mailboxId: true,
         mailbox: { select: { address: true } },

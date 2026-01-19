@@ -58,10 +58,10 @@ export default function EmailsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this email?")) return;
+    if (!confirm("Move this email to Trash?")) return;
     const res = await fetch(`/api/emails/${id}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Email deleted");
+      toast.success("Moved to Trash");
       fetchEmails();
     }
   };

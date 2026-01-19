@@ -9,6 +9,7 @@ const updateSchema = z.object({
   name: z.string().optional(),
   sourceType: z.enum(["IMAP", "WEBHOOK"]).optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "PENDING", "ERROR"]).optional(),
+  inboundPolicy: z.enum(["CATCH_ALL", "KNOWN_ONLY"]).optional(),
   description: z.string().optional(),
   isPublic: z.boolean().optional(),
 });

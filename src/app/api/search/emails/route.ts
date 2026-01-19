@@ -215,7 +215,13 @@ export async function GET(request: NextRequest) {
                     : Prisma.empty
                 }
                 ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
-                ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
+                ${
+                  !parsed.status
+                    ? parsed.excludeArchived
+                      ? Prisma.sql`AND e.status NOT IN ('ARCHIVED', 'DELETED')`
+                      : Prisma.sql`AND e.status != 'DELETED'`
+                    : Prisma.empty
+                }
               ORDER BY e.receivedAt DESC, e.id DESC
               LIMIT ${parsed.limit}
               OFFSET ${offset}
@@ -234,7 +240,13 @@ export async function GET(request: NextRequest) {
                     : Prisma.empty
                 }
                 ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
-                ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
+                ${
+                  !parsed.status
+                    ? parsed.excludeArchived
+                      ? Prisma.sql`AND e.status NOT IN ('ARCHIVED', 'DELETED')`
+                      : Prisma.sql`AND e.status != 'DELETED'`
+                    : Prisma.empty
+                }
             `),
           ]);
 
@@ -272,16 +284,25 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const excludedStatuses: Array<"ARCHIVED" | "DELETED"> = [];
+      if (!parsed.status) {
+        excludedStatuses.push("DELETED");
+        if (parsed.excludeArchived) excludedStatuses.push("ARCHIVED");
+      }
+
       const fallbackWhere = {
         AND: [
           {
             mailbox: { userId: session.user.id },
             ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
             ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
-            ...(parsed.status ? { status: parsed.status } : {}),
-            ...(parsed.excludeArchived && !parsed.status
-              ? { status: { not: "ARCHIVED" as const } }
-              : {}),
+            ...(parsed.status
+              ? { status: parsed.status }
+              : excludedStatuses.length === 1
+                ? { status: { not: excludedStatuses[0] } }
+                : excludedStatuses.length > 1
+                  ? { status: { notIn: excludedStatuses } }
+                  : {}),
           },
           ...fallbackTokens.map((token) => ({
             OR:
@@ -380,7 +401,13 @@ export async function GET(request: NextRequest) {
                 : Prisma.empty
             }
             ${parsed.status ? Prisma.sql`AND e.status = ${parsed.status}` : Prisma.empty}
-            ${parsed.excludeArchived && !parsed.status ? Prisma.sql`AND e.status != 'ARCHIVED'` : Prisma.empty}
+            ${
+              !parsed.status
+                ? parsed.excludeArchived
+                  ? Prisma.sql`AND e.status NOT IN ('ARCHIVED', 'DELETED')`
+                  : Prisma.sql`AND e.status != 'DELETED'`
+                : Prisma.empty
+            }
             ${
               cursorEmail
                 ? Prisma.sql`AND (e.receivedAt < ${cursorEmail.receivedAt} OR (e.receivedAt = ${cursorEmail.receivedAt} AND e.id < ${cursorEmail.id}))`
@@ -416,16 +443,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const excludedStatuses: Array<"ARCHIVED" | "DELETED"> = [];
+    if (!parsed.status) {
+      excludedStatuses.push("DELETED");
+      if (parsed.excludeArchived) excludedStatuses.push("ARCHIVED");
+    }
+
     const fallbackWhere = {
       AND: [
         {
           mailbox: { userId: session.user.id },
           ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
           ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
-          ...(parsed.status ? { status: parsed.status } : {}),
-          ...(parsed.excludeArchived && !parsed.status
-            ? { status: { not: "ARCHIVED" as const } }
-            : {}),
+          ...(parsed.status
+            ? { status: parsed.status }
+            : excludedStatuses.length === 1
+              ? { status: { not: excludedStatuses[0] } }
+              : excludedStatuses.length > 1
+                ? { status: { notIn: excludedStatuses } }
+                : {}),
         },
         ...fallbackTokens.map((token) => ({
           OR:

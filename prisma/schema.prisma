@@ -26,6 +26,7 @@ model User {
   avatar        String?
   isActive      Boolean   @default(true)
   emailVerified DateTime?
+  trashRetentionDays Int   @default(30) // 0 = never auto purge
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -94,11 +95,17 @@ enum DomainStatus {
   ERROR
 }
 
+enum DomainInboundPolicy {
+  CATCH_ALL
+  KNOWN_ONLY
+}
+
 model Domain {
   id          String           @id @default(cuid())
   name        String           @unique
   sourceType  DomainSourceType
   status      DomainStatus     @default(PENDING)
+  inboundPolicy DomainInboundPolicy @default(CATCH_ALL)
   isPublic    Boolean          @default(false)
   description String?
   createdAt   DateTime         @default(now())
@@ -219,6 +226,11 @@ enum EmailStatus {
   DELETED
 }
 
+enum EmailRestoreStatus {
+  UNREAD
+  READ
+}
+
 model Email {
   id          String      @id @default(cuid())
   messageId   String?
@@ -231,6 +243,8 @@ model Email {
   rawContent  String?
   rawContentPath String?   // File storage path for RFC822 content
   status      EmailStatus @default(UNREAD)
+  deletedAt   DateTime?
+  restoreStatus EmailRestoreStatus?
   isStarred   Boolean     @default(false)
   receivedAt  DateTime    @default(now())
   createdAt   DateTime    @default(now())
@@ -249,6 +263,7 @@ model Email {
   @@index([messageId])
   @@index([receivedAt])
   @@index([status])
+  @@index([deletedAt])
   @@map("emails")
 }
 
