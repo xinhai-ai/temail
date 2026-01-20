@@ -72,3 +72,113 @@ jobs:
             type=registry,ref=${{ matrix.image }}:edge
             type=registry,ref=${{ matrix.image }}:latest
           cache-to: type=gha,scope=buildkit-${{ matrix.target }},mode=max
+
+  release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          PREV_TAG="$(git describe --tags --abbrev=0 --match "v*.*.*" "${CURRENT_TAG}^" 2>/dev/null || true)"
+
+          if [[ -n "${PREV_TAG}" ]]; then
+            RANGE="${PREV_TAG}..${CURRENT_TAG}"
+          else
+            RANGE="${CURRENT_TAG}"
+          fi
+
+          export CURRENT_TAG PREV_TAG
+          BODY="$(git log --no-merges --pretty=format:%H%x09%s "${RANGE}" | node <<'NODE'
+          const fs = require("fs");
+
+          const input = fs.readFileSync(0, "utf8").trim();
+          const currentTag = process.env.CURRENT_TAG || "";
+          const prevTag = process.env.PREV_TAG || "";
+          const repo = process.env.GITHUB_REPOSITORY || "";
+
+          const lines = input ? input.split("\n") : [];
+          const commits = lines
+            .map((line) => {
+              const [sha, ...rest] = line.split("\t");
+              const subject = rest.join("\t");
+              return { sha: (sha || "").trim(), subject: (subject || "").trim() };
+            })
+            .filter((c) => c.sha && c.subject)
+            .filter((c) => !/^chore\(release\):\s*/i.test(c.subject));
+
+          const groups = new Map([
+            ["feat", { title: "Features", items: [] }],
+            ["fix", { title: "Fixes", items: [] }],
+            ["perf", { title: "Performance", items: [] }],
+            ["refactor", { title: "Refactors", items: [] }],
+            ["docs", { title: "Docs", items: [] }],
+            ["test", { title: "Tests", items: [] }],
+            ["build", { title: "Build", items: [] }],
+            ["ci", { title: "CI", items: [] }],
+            ["chore", { title: "Chore", items: [] }],
+            ["revert", { title: "Reverts", items: [] }],
+            ["other", { title: "Other", items: [] }],
+          ]);
+
+          function getType(subject) {
+            const match = subject.match(/^([a-zA-Z]+)(?:\([^)]*\))?(!)?:\s+/);
+            if (!match) return "other";
+            const type = match[1].toLowerCase();
+            return groups.has(type) ? type : "other";
+          }
+
+          for (const commit of commits) {
+            const type = getType(commit.subject);
+            groups.get(type).items.push(commit);
+          }
+
+          const out = [];
+          if (prevTag) out.push(`## Changes since ${prevTag}`);
+          else out.push("## Changes");
+          if (prevTag && repo && currentTag) out.push(`Full diff: https://github.com/${repo}/compare/${prevTag}...${currentTag}`);
+          out.push("");
+
+          const order = ["feat", "fix", "perf", "refactor", "docs", "test", "build", "ci", "chore", "revert", "other"];
+          for (const key of order) {
+            const group = groups.get(key);
+            if (!group.items.length) continue;
+            out.push(`### ${group.title}`);
+            for (const item of group.items) {
+              const shortSha = item.sha.slice(0, 7);
+              const url = repo ? `https://github.com/${repo}/commit/${item.sha}` : "";
+              if (url) out.push(`- ${item.subject} ([${shortSha}](${url}))`);
+              else out.push(`- ${item.subject} (${shortSha})`);
+            }
+            out.push("");
+          }
+
+          process.stdout.write(out.join("\n").trimEnd());
+          NODE
+          )"
+
+          {
+            echo "body<<EOF"
+            echo "$BODY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.body }}
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
