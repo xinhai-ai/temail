@@ -1010,8 +1010,8 @@ async function executeForwardTelegram(
     throw new Error(`Telegram API error (HTTP ${failure.status}${errorCodeSuffix}): ${failure.description}`);
   };
 
-  const recoverDeletedTopicAndGetThreadId = async (): Promise<number | null> => {
-    if (!routingUserId || !routingMailboxId) return null;
+  const recoverDeletedTopicAndGetThreadId = async (): Promise<number | undefined> => {
+    if (!routingUserId || !routingMailboxId) return undefined;
 
     if (topicRouting === "generalTopic") {
       const topicName = await getTelegramForumGeneralTopicName();
@@ -1068,7 +1068,7 @@ async function executeForwardTelegram(
       return newThreadId;
     }
 
-    return null;
+    return undefined;
   };
 
   const first = await sendMessage(resolvedThreadId);
