@@ -271,7 +271,9 @@ export default function TelegramPage() {
       <Card>
         <CardHeader>
           <CardTitle>Forum group bindings</CardTitle>
-          <CardDescription>Bound groups. Emails forwarded by workflows will be routed into mailbox topics automatically.</CardDescription>
+          <CardDescription>
+            Bound groups. To forward emails, create a workflow with the <span className="font-mono">Telegram Group (Bound)</span> node. Messages will be routed into mailbox topics automatically.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {forumBindings.length === 0 ? (
