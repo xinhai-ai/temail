@@ -277,7 +277,7 @@ export interface ForwardEmailData {
 
 export interface ForwardTelegramData {
   label?: string;
-  // If `useAppBot` is true, token is taken from `process.env.TELEGRAM_BOT_TOKEN`.
+  // If `useAppBot` is true, token is taken from system settings (`telegram_bot_token`) or `process.env.TELEGRAM_BOT_TOKEN`.
   token?: string;
   useAppBot?: boolean;
   chatId: string;

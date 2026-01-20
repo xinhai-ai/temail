@@ -5,6 +5,7 @@ import { verifyTelegramWebhookSecret } from "@/services/telegram/bot-api";
 import { handleTelegramUpdate } from "@/services/telegram/handlers";
 import type { TelegramUpdate } from "@/services/telegram/types";
 import { Prisma } from "@prisma/client";
+import { getSystemSettingValue } from "@/services/system-settings";
 
 function extractUpdateId(payload: unknown): number | null {
   if (!payload || typeof payload !== "object") return null;
@@ -18,14 +19,15 @@ function isMissingTableError(error: unknown) {
 }
 
 export async function GET() {
+  const configured = ((await getSystemSettingValue("telegram_webhook_secret")) || process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
   return NextResponse.json({
     status: "ok",
-    webhookSecretConfigured: Boolean((process.env.TELEGRAM_WEBHOOK_SECRET || "").trim()),
+    webhookSecretConfigured: Boolean(configured),
   });
 }
 
 export async function POST(request: NextRequest) {
-  const secretCheck = verifyTelegramWebhookSecret(request.headers.get("x-telegram-bot-api-secret-token"));
+  const secretCheck = await verifyTelegramWebhookSecret(request.headers.get("x-telegram-bot-api-secret-token"));
   if (!secretCheck.ok) {
     return NextResponse.json({ error: secretCheck.error }, { status: secretCheck.status });
   }
@@ -68,4 +70,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
-

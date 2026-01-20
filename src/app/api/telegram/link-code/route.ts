@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createTelegramBindCode } from "@/services/telegram/bind-codes";
+import { getTelegramBotUsername } from "@/services/telegram/bot-api";
 
 export async function POST() {
   const session = await auth();
@@ -14,7 +15,7 @@ export async function POST() {
     ttlSeconds: 10 * 60,
   });
 
-  const botUsername = (process.env.TELEGRAM_BOT_USERNAME || "").trim();
+  const botUsername = await getTelegramBotUsername();
   const deepLink = botUsername ? `https://t.me/${botUsername}?start=${encodeURIComponent(code)}` : null;
 
   return NextResponse.json({
@@ -23,4 +24,3 @@ export async function POST() {
     deepLink,
   });
 }
-

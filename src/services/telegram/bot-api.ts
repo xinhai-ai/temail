@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { getSystemSettingValue } from "@/services/system-settings";
 
 type TelegramApiOk<T> = {
   ok: true;
@@ -20,8 +21,8 @@ export type TelegramInlineKeyboardMarkup = {
   inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
 };
 
-export function getTelegramBotToken(): string {
-  const token = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
+export async function getTelegramBotToken(): Promise<string> {
+  const token = ((await getSystemSettingValue("telegram_bot_token")) || process.env.TELEGRAM_BOT_TOKEN || "").trim();
   if (!token) {
     throw new Error("TELEGRAM_BOT_TOKEN is not configured");
   }
@@ -33,8 +34,10 @@ function safeEqual(a: string, b: string) {
   return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
-export function verifyTelegramWebhookSecret(provided: string | null): { ok: true } | { ok: false; status: number; error: string } {
-  const expected = (process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+export async function verifyTelegramWebhookSecret(
+  provided: string | null
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const expected = ((await getSystemSettingValue("telegram_webhook_secret")) || process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
   if (expected) {
     if (typeof provided !== "string" || !safeEqual(provided, expected)) {
       return { ok: false, status: 401, error: "Unauthorized" };
@@ -47,6 +50,16 @@ export function verifyTelegramWebhookSecret(provided: string | null): { ok: true
   }
 
   return { ok: true };
+}
+
+export async function getTelegramBotUsername(): Promise<string | null> {
+  const value = ((await getSystemSettingValue("telegram_bot_username")) || process.env.TELEGRAM_BOT_USERNAME || "").trim();
+  return value ? value : null;
+}
+
+export async function getTelegramForumGeneralTopicName(): Promise<string> {
+  const configured = ((await getSystemSettingValue("telegram_forum_general_topic_name")) || "").trim();
+  return configured || "TEmail · General";
 }
 
 async function telegramApiRequest<T>(
@@ -75,7 +88,7 @@ export async function telegramSendMessage(params: {
   replyMarkup?: TelegramInlineKeyboardMarkup;
   disableWebPagePreview?: boolean;
 }): Promise<void> {
-  const token = getTelegramBotToken();
+  const token = await getTelegramBotToken();
   const payload: Record<string, unknown> = {
     chat_id: params.chatId,
     text: params.text,
@@ -91,3 +104,28 @@ export async function telegramSendMessage(params: {
   throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
 }
 
+export async function telegramCreateForumTopic(params: { token?: string; chatId: string; name: string }): Promise<{
+  messageThreadId: number;
+  name: string;
+}> {
+  const token = (params.token || (await getTelegramBotToken())).trim();
+  if (!token) throw new Error("Telegram bot token is required");
+
+  const payload: Record<string, unknown> = {
+    chat_id: params.chatId,
+    name: params.name,
+  };
+
+  const result = await telegramApiRequest<{ message_thread_id: number; name: string }>(token, "createForumTopic", payload);
+  if (!result.ok) {
+    const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
+    throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
+  }
+
+  const messageThreadId = result.result.message_thread_id;
+  if (!Number.isFinite(messageThreadId) || messageThreadId <= 0) {
+    throw new Error("Telegram API error: invalid message_thread_id");
+  }
+
+  return { messageThreadId, name: result.result.name };
+}

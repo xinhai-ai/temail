@@ -19,6 +19,7 @@ import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
 import { evaluateAiRewrite, getAiRewriteRequestedVariableKeys } from "@/lib/workflow/ai-rewrite";
 import { getRestoreStatusForTrash } from "@/services/email-trash";
+import { getTelegramBotToken } from "@/services/telegram/bot-api";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -803,7 +804,7 @@ async function executeForwardTelegram(
     return true;
   }
 
-  const token = Boolean(data.useAppBot) ? (process.env.TELEGRAM_BOT_TOKEN || "").trim() : (data.token || "").trim();
+  const token = Boolean(data.useAppBot) ? await getTelegramBotToken() : (data.token || "").trim();
   if (!token) {
     throw new Error(Boolean(data.useAppBot) ? "TELEGRAM_BOT_TOKEN is not configured" : "Telegram bot token is required");
   }

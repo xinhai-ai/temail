@@ -223,7 +223,8 @@ export default function TelegramPage() {
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground">
-                  Set <span className="font-mono">TELEGRAM_BOT_USERNAME</span> to show a deep-link.
+                  Set <span className="font-mono">telegram_bot_username</span> (admin setting) or{" "}
+                  <span className="font-mono">TELEGRAM_BOT_USERNAME</span> to show a deep-link.
                 </div>
               )}
               {linkExpiresAt ? (
@@ -337,4 +338,3 @@ export default function TelegramPage() {
     </div>
   );
 }
-
