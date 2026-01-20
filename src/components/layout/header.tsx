@@ -94,7 +94,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0 flex flex-col">
+            <SheetContent side="left" className="w-72 p-0 flex flex-col overflow-hidden">
               <SheetHeader className="p-4 border-b">
                 <SheetTitle className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-primary/10">
@@ -103,7 +103,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
                   <span className="text-xl font-bold">TEmail</span>
                 </SheetTitle>
               </SheetHeader>
-              <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+              <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
                 {userNavItems.map(renderNavItem)}
 
                 {isAdmin && (
