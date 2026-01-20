@@ -37,6 +37,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { title: "Users", href: "/admin/users", icon: Users },
   { title: "Inbound", href: "/admin/inbound", icon: Inbox },
   { title: "Logs", href: "/admin/logs", icon: FileText },
+  { title: "Telegram", href: "/admin/telegram", icon: MessageCircle },
   { title: "System", href: "/admin/settings", icon: Cog },
 ];
 
@@ -50,6 +51,7 @@ export const PAGE_TITLES: Record<string, { title: string; description?: string }
   "/telegram": { title: "Telegram", description: "Link Telegram and bind topics" },
   "/settings": { title: "Settings", description: "Manage your account settings" },
   "/admin": { title: "Admin", description: "System administration" },
+  "/admin/telegram": { title: "Telegram", description: "Manage the site-owned bot and webhooks" },
 };
 
 function matchesPathname(pathname: string, href: string) {
