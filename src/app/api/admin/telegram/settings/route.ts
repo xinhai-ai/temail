@@ -35,23 +35,15 @@ export async function GET() {
 
   const map = new Map(rows.map((r) => [r.key, r.value]));
 
-  const envFallbacks: Record<string, string | undefined> = {
-    telegram_bot_token: process.env.TELEGRAM_BOT_TOKEN,
-    telegram_bot_username: process.env.TELEGRAM_BOT_USERNAME,
-    telegram_webhook_secret: process.env.TELEGRAM_WEBHOOK_SECRET,
-  };
-
   const result = TELEGRAM_SETTING_KEYS.map((key) => {
     const raw = map.get(key) ?? "";
-    const envRaw = envFallbacks[key];
 
     if (secretKeys.has(key)) {
-      const configured = Boolean(raw.trim() || (envRaw || "").trim());
+      const configured = Boolean(raw.trim());
       return { key, value: "", masked: configured };
     }
 
-    const value = raw || (envRaw || "");
-    return { key, value, masked: false };
+    return { key, value: raw, masked: false };
   });
 
   return NextResponse.json(result);
@@ -95,4 +87,3 @@ export async function PUT(request: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
-

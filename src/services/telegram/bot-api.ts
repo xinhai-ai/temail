@@ -22,15 +22,15 @@ export type TelegramInlineKeyboardMarkup = {
 };
 
 export async function getTelegramBotToken(): Promise<string> {
-  const token = ((await getSystemSettingValue("telegram_bot_token")) || process.env.TELEGRAM_BOT_TOKEN || "").trim();
+  const token = ((await getSystemSettingValue("telegram_bot_token")) || "").trim();
   if (!token) {
-    throw new Error("TELEGRAM_BOT_TOKEN is not configured");
+    throw new Error("telegram_bot_token is not configured");
   }
   return token;
 }
 
 export async function getTelegramWebhookSecretToken(): Promise<string | null> {
-  const value = ((await getSystemSettingValue("telegram_webhook_secret")) || process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  const value = ((await getSystemSettingValue("telegram_webhook_secret")) || "").trim();
   return value ? value : null;
 }
 
@@ -42,7 +42,7 @@ function safeEqual(a: string, b: string) {
 export async function verifyTelegramWebhookSecret(
   provided: string | null
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const expected = ((await getSystemSettingValue("telegram_webhook_secret")) || process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  const expected = ((await getSystemSettingValue("telegram_webhook_secret")) || "").trim();
   if (expected) {
     if (typeof provided !== "string" || !safeEqual(provided, expected)) {
       return { ok: false, status: 401, error: "Unauthorized" };
@@ -51,14 +51,14 @@ export async function verifyTelegramWebhookSecret(
   }
 
   if (process.env.NODE_ENV === "production") {
-    return { ok: false, status: 503, error: "TELEGRAM_WEBHOOK_SECRET is not configured" };
+    return { ok: false, status: 503, error: "telegram_webhook_secret is not configured" };
   }
 
   return { ok: true };
 }
 
 export async function getTelegramBotUsername(): Promise<string | null> {
-  const value = ((await getSystemSettingValue("telegram_bot_username")) || process.env.TELEGRAM_BOT_USERNAME || "").trim();
+  const value = ((await getSystemSettingValue("telegram_bot_username")) || "").trim();
   return value ? value : null;
 }
 

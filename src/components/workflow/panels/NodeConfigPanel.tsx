@@ -1805,7 +1805,7 @@ function ForwardTelegramConfig({
         <Label htmlFor="useAppBot" className="text-xs">Use App Bot</Label>
       </div>
       <p className="text-xs text-muted-foreground">
-        Uses the admin-configured app bot token (<span className="font-mono">telegram_bot_token</span> or <span className="font-mono">TELEGRAM_BOT_TOKEN</span>).
+        Uses the admin-configured app bot token (<span className="font-mono">telegram_bot_token</span>).
       </p>
 
       <div className="space-y-2">

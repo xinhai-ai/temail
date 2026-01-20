@@ -19,7 +19,7 @@ function isMissingTableError(error: unknown) {
 }
 
 export async function GET() {
-  const configured = ((await getSystemSettingValue("telegram_webhook_secret")) || process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  const configured = ((await getSystemSettingValue("telegram_webhook_secret")) || "").trim();
   return NextResponse.json({
     status: "ok",
     webhookSecretConfigured: Boolean(configured),

@@ -221,8 +221,8 @@ export default function TelegramPage() {
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground">
-                  Set <span className="font-mono">telegram_bot_username</span> (admin setting) or{" "}
-                  <span className="font-mono">TELEGRAM_BOT_USERNAME</span> to show a deep-link.
+                  Ask your admin to set <span className="font-mono">telegram_bot_username</span> in{" "}
+                  <span className="font-mono">/admin/telegram</span> to show a deep-link.
                 </div>
               )}
               {linkExpiresAt ? (
