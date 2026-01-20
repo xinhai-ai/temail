@@ -282,6 +282,7 @@ export interface ForwardTelegramData {
   useAppBot?: boolean;
   chatId: string;
   messageThreadId?: number;
+  topicRouting?: "explicit" | "mailboxTopic" | "generalTopic";
   template?: string;
   parseMode?: "Markdown" | "HTML" | "MarkdownV2" | "None";
 }

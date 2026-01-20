@@ -5,15 +5,7 @@ function notifyWorkflowName(bindingId: string) {
   return `Telegram Notify (${bindingId})`;
 }
 
-function parsePositiveInt(value: string | null) {
-  if (!value) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
 function buildNotifyWorkflowConfig(binding: TelegramChatBinding) {
-  const messageThreadId = parsePositiveInt(binding.threadId) ?? undefined;
-
   return {
     version: 1,
     nodes: [
@@ -31,7 +23,7 @@ function buildNotifyWorkflowConfig(binding: TelegramChatBinding) {
           label: "Telegram Notify",
           useAppBot: true,
           chatId: binding.chatId,
-          ...(typeof messageThreadId === "number" ? { messageThreadId } : {}),
+          topicRouting: "mailboxTopic",
           parseMode: "None",
           template: `📧 New email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}`,
         },
@@ -56,7 +48,9 @@ export async function upsertTelegramNotifyWorkflowForBinding(bindingId: string):
   });
   if (!binding) return;
 
-  if (binding.mode !== "NOTIFY") return;
+  // "MANAGE" bindings represent a bound forum group (with a General topic).
+  // Auto-notify workflow routes each email into its mailbox topic.
+  if (binding.mode !== "MANAGE") return;
 
   const name = notifyWorkflowName(binding.id);
   const config = buildNotifyWorkflowConfig(binding);
@@ -74,7 +68,7 @@ export async function upsertTelegramNotifyWorkflowForBinding(bindingId: string):
         name,
         description: `Auto-generated for Telegram binding ${binding.id}. Changes may be overwritten.`,
         userId: binding.userId,
-        mailboxId: binding.mailboxId,
+        mailboxId: null,
         config: JSON.stringify(config),
         status,
         version: 1,
@@ -87,7 +81,7 @@ export async function upsertTelegramNotifyWorkflowForBinding(bindingId: string):
   await prisma.workflow.update({
     where: { id: existing.id },
     data: {
-      mailboxId: binding.mailboxId,
+      mailboxId: null,
       status,
       config: JSON.stringify(config),
       version: 1,

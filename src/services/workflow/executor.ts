@@ -19,7 +19,7 @@ import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
 import { evaluateAiRewrite, getAiRewriteRequestedVariableKeys } from "@/lib/workflow/ai-rewrite";
 import { getRestoreStatusForTrash } from "@/services/email-trash";
-import { getTelegramBotToken } from "@/services/telegram/bot-api";
+import { getTelegramBotToken, telegramCreateForumTopic } from "@/services/telegram/bot-api";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -797,6 +797,7 @@ async function executeForwardTelegram(
   const templateCtx = buildTemplateContext(context);
   const template = data.template || `📧 New email: ${context.email.subject}`;
   const message = replaceTemplateVariables(template, templateCtx);
+  const topicRouting = (data.topicRouting || "explicit") satisfies NonNullable<ForwardTelegramData["topicRouting"]>;
 
   // 测试模式下跳过实际发送
   if (context.isTestMode) {
@@ -806,32 +807,135 @@ async function executeForwardTelegram(
 
   const token = Boolean(data.useAppBot) ? await getTelegramBotToken() : (data.token || "").trim();
   if (!token) {
-    throw new Error(Boolean(data.useAppBot) ? "TELEGRAM_BOT_TOKEN is not configured" : "Telegram bot token is required");
+    throw new Error(Boolean(data.useAppBot) ? "Telegram app bot token is not configured" : "Telegram bot token is required");
   }
+
+  const requiresTopicRouting = topicRouting === "mailboxTopic" || topicRouting === "generalTopic";
+  if (requiresTopicRouting && !Boolean(data.useAppBot)) {
+    throw new Error("Telegram topic routing requires Use App Bot");
+  }
+
+  const parsePositiveInt = (value: string | null | undefined) => {
+    if (!value) return null;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  };
+
+  const buildScopeKey = (params: { chatId: string; mailboxId: string | null; mode: "MANAGE" | "NOTIFY" }) => {
+    const mailboxPart = params.mailboxId ? params.mailboxId : "all";
+    return `chat:${params.chatId}|mailbox:${mailboxPart}|mode:${params.mode}`;
+  };
+
+  let resolvedThreadId = typeof data.messageThreadId === "number" ? data.messageThreadId : undefined;
 
   if (Boolean(data.useAppBot)) {
     const email = await prisma.email.findUnique({
       where: { id: context.email.id },
-      select: { mailbox: { select: { userId: true } } },
+      select: {
+        mailboxId: true,
+        mailbox: { select: { userId: true, address: true } },
+      },
     });
     const userId = email?.mailbox?.userId;
-    if (!userId) {
-      throw new Error("Cannot resolve workflow userId for Telegram binding validation");
+    const mailboxId = email?.mailboxId;
+    const mailboxAddress = email?.mailbox?.address;
+    if (!userId || !mailboxId) {
+      throw new Error("Cannot resolve workflow userId/mailboxId for Telegram routing");
     }
 
-    const threadId = typeof data.messageThreadId === "number" ? String(data.messageThreadId) : null;
-    const binding = await prisma.telegramChatBinding.findFirst({
-      where: {
-        userId,
-        enabled: true,
-        mode: "NOTIFY",
-        chatId: data.chatId,
-        ...(threadId ? { threadId } : { threadId: null }),
-      },
-      select: { id: true },
+    const forumBinding = await prisma.telegramChatBinding.findFirst({
+      where: { userId, enabled: true, mode: "MANAGE", chatId: data.chatId },
+      select: { id: true, threadId: true },
+      orderBy: { updatedAt: "desc" },
     });
-    if (!binding) {
-      throw new Error("Telegram destination is not bound/enabled for this account");
+
+    if (topicRouting === "generalTopic") {
+      if (!forumBinding) {
+        throw new Error("Telegram group is not bound/enabled for this account");
+      }
+      const forumThreadId = parsePositiveInt(forumBinding.threadId);
+      if (!forumThreadId) {
+        throw new Error("Telegram General topic is not configured for this binding");
+      }
+      resolvedThreadId = forumThreadId;
+    } else if (topicRouting === "mailboxTopic") {
+      if (!forumBinding) {
+        throw new Error("Telegram group is not bound/enabled for this account");
+      }
+
+      const existing = await prisma.telegramChatBinding.findFirst({
+        where: {
+          userId,
+          enabled: true,
+          mode: "NOTIFY",
+          chatId: data.chatId,
+          mailboxId,
+        },
+        select: { id: true, threadId: true },
+        orderBy: { updatedAt: "desc" },
+      });
+
+      const existingThread = parsePositiveInt(existing?.threadId);
+      if (existing && existingThread) {
+        resolvedThreadId = existingThread;
+      } else {
+        const topicName = (mailboxAddress || mailboxId).trim().slice(0, 120) || `Mailbox ${mailboxId.slice(0, 8)}`;
+        const created = await telegramCreateForumTopic({ token, chatId: data.chatId, name: topicName });
+        resolvedThreadId = created.messageThreadId;
+
+        const scopeKey = buildScopeKey({ chatId: data.chatId, mailboxId, mode: "NOTIFY" });
+        const stored = await prisma.telegramChatBinding.upsert({
+          where: { userId_scopeKey: { userId, scopeKey } },
+          update: {
+            enabled: true,
+            mode: "NOTIFY",
+            chatId: data.chatId,
+            threadId: String(resolvedThreadId),
+            mailboxId,
+          },
+          create: {
+            userId,
+            scopeKey,
+            enabled: true,
+            mode: "NOTIFY",
+            chatId: data.chatId,
+            threadId: String(resolvedThreadId),
+            mailboxId,
+          },
+          select: { id: true },
+        });
+
+        await prisma.telegramChatBinding.deleteMany({
+          where: {
+            userId,
+            chatId: data.chatId,
+            mode: "NOTIFY",
+            mailboxId,
+            id: { not: stored.id },
+          },
+        });
+      }
+    } else {
+      // explicit
+      if (typeof data.messageThreadId === "number") {
+        const threadId = String(data.messageThreadId);
+        const binding = await prisma.telegramChatBinding.findFirst({
+          where: {
+            userId,
+            enabled: true,
+            chatId: data.chatId,
+            OR: [{ mode: "MANAGE", threadId }, { mode: "NOTIFY", threadId }],
+          },
+          select: { id: true },
+        });
+        if (!binding) {
+          throw new Error("Telegram destination is not bound/enabled for this account");
+        }
+      } else {
+        if (!forumBinding) {
+          throw new Error("Telegram destination is not bound/enabled for this account");
+        }
+      }
     }
   }
 
@@ -839,7 +943,7 @@ async function executeForwardTelegram(
   const requestBody: Record<string, unknown> = {
     chat_id: data.chatId,
     text: message,
-    ...(typeof data.messageThreadId === "number" ? { message_thread_id: data.messageThreadId } : {}),
+    ...(typeof resolvedThreadId === "number" ? { message_thread_id: resolvedThreadId } : {}),
   };
   if (!data.parseMode) {
     requestBody.parse_mode = "Markdown";
