@@ -5,7 +5,7 @@ import { telegramSetMyCommands, type TelegramBotCommand } from "@/services/teleg
 function buildPrivateCommands(): TelegramBotCommand[] {
   return [
     { command: "start", description: "Link your account: /start <code>" },
-    { command: "mailbox_create", description: "Create a mailbox" },
+    { command: "new", description: "Create a mailbox" },
     { command: "mailboxes", description: "List mailboxes" },
     { command: "emails", description: "List recent emails" },
     { command: "search", description: "Search emails" },
@@ -22,6 +22,7 @@ function buildPrivateCommands(): TelegramBotCommand[] {
 function buildGroupCommands(): TelegramBotCommand[] {
   return [
     { command: "bind", description: "Bind this forum group: /bind <code>" },
+    { command: "new", description: "Create a mailbox" },
     { command: "mailboxes", description: "List mailboxes" },
     { command: "emails", description: "List recent emails" },
     { command: "search", description: "Search emails" },

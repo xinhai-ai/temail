@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { TelegramBindPurpose, TelegramBindingMode } from "@prisma/client";
+import crypto from "node:crypto";
+import { Prisma, type TelegramBindPurpose, type TelegramBindingMode } from "@prisma/client";
 import { isImapServiceEnabled, syncAllImapDomains } from "@/lib/imap-client";
 import { formatRemainingTime, tryAcquireSyncLock } from "@/lib/rate-limit";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
@@ -20,6 +21,8 @@ import type { TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./t
 const TELEGRAM_MAX_MESSAGE_CHARS = 4096;
 const EMAILS_PAGE_SIZE = 6;
 const EMAILS_BUTTONS_PER_ROW = 5;
+const DOMAINS_PAGE_SIZE = 10;
+const DOMAINS_BUTTONS_PER_ROW = 5;
 const CALLBACK_PREFIX = "temail";
 
 function parseCommand(text: string): { command: string; args: string } | null {
@@ -39,7 +42,7 @@ function formatHelp() {
     "",
     "Commands (private chat):",
     "- /start <code> — link your TEmail account",
-    "- /mailbox_create <prefix>@<domain> — create a mailbox",
+    "- /new [domain|prefix@domain] — create a mailbox",
     "- /mailboxes — list mailboxes",
     "- /emails [mailboxId|address] — list recent emails",
     "- /search <query> — search emails",
@@ -217,7 +220,7 @@ async function handleMailboxes(message: TelegramMessage) {
   });
 
   if (mailboxes.length === 0) {
-    await replyToMessage(message, "No mailboxes yet. Create one in the web UI first.");
+    await replyToMessage(message, "No mailboxes yet. Create one with /new.");
     return;
   }
 
@@ -238,7 +241,25 @@ async function handleMailboxCreate(message: TelegramMessage, args: string) {
 
   const raw = (args || "").trim();
   if (!raw) {
-    await replyToMessage(message, "Usage: /mailbox_create <prefix>@<domain>");
+    const payload = await buildNewDomainPickerPayload({ userId, page: 1 });
+    await replyToMessage(message, payload.text, payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : undefined);
+    return;
+  }
+
+  // /new <domain> => auto-generate prefix
+  if (!raw.includes("@") && raw.split(/\s+/).filter(Boolean).length === 1) {
+    const domainArg = raw.trim();
+    const isAdmin = await getIsAdminUser(userId);
+    const domain = await prisma.domain.findFirst({
+      where: isAdmin ? { name: domainArg } : { name: domainArg, isPublic: true, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (!domain) {
+      await replyToMessage(message, "Domain not found (or not available). Create mailboxes in public ACTIVE domains.");
+      return;
+    }
+    const mailbox = await createMailboxWithGeneratedPrefix({ userId, domainId: domain.id });
+    await replyToMessage(message, `Mailbox created: ${mailbox.address}\nid: ${mailbox.id}`);
     return;
   }
 
@@ -253,15 +274,11 @@ async function handleMailboxCreate(message: TelegramMessage, args: string) {
       })();
 
   if (!parsed.prefix || !parsed.domain) {
-    await replyToMessage(message, "Usage: /mailbox_create <prefix>@<domain>");
+    await replyToMessage(message, "Usage: /new [domain|prefix@domain]");
     return;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const isAdmin = await getIsAdminUser(userId);
 
   const domain = await prisma.domain.findFirst({
     where: isAdmin ? { name: parsed.domain } : { name: parsed.domain, isPublic: true, status: "ACTIVE" },
@@ -342,6 +359,14 @@ function buildSearchListCallback(page: number) {
   return `${CALLBACK_PREFIX}:search:${page}`;
 }
 
+function buildNewDomainsListCallback(page: number) {
+  return `${CALLBACK_PREFIX}:newdomains:${page}`;
+}
+
+function buildNewDomainSelectCallback(domainId: string) {
+  return `${CALLBACK_PREFIX}:newdomain:${domainId}`;
+}
+
 function buildOpenEmailCallback(emailId: string) {
   return `${CALLBACK_PREFIX}:open:${emailId}`;
 }
@@ -352,6 +377,112 @@ function parseSearchQueryFromMessageText(text: string | null | undefined): strin
   const match = value.match(/^Query:\s*(.+)\s*$/m);
   const q = match?.[1]?.trim() || "";
   return q ? q : null;
+}
+
+function generateTelegramMailboxPrefix() {
+  return `tg${crypto.randomBytes(4).toString("hex")}`;
+}
+
+async function getIsAdminUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  return user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+}
+
+async function createMailboxWithGeneratedPrefix(params: { userId: string; domainId: string }) {
+  const isAdmin = await getIsAdminUser(params.userId);
+  const domain = await prisma.domain.findFirst({
+    where: isAdmin ? { id: params.domainId } : { id: params.domainId, isPublic: true, status: "ACTIVE" },
+    select: { id: true, name: true },
+  });
+  if (!domain) {
+    throw new Error("Domain not found (or not available). Create mailboxes in public ACTIVE domains.");
+  }
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const prefix = generateTelegramMailboxPrefix();
+    const address = `${prefix}@${domain.name}`;
+    try {
+      const mailbox = await prisma.mailbox.create({
+        data: {
+          prefix,
+          address,
+          userId: params.userId,
+          domainId: domain.id,
+        },
+        select: { id: true, address: true },
+      });
+      return mailbox;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error("Failed to generate a unique mailbox. Please try again.");
+}
+
+async function buildNewDomainPickerPayload(params: { userId: string; page: number }) {
+  const page = Number.isFinite(params.page) && params.page > 0 ? Math.floor(params.page) : 1;
+  const skip = (page - 1) * DOMAINS_PAGE_SIZE;
+
+  const isAdmin = await getIsAdminUser(params.userId);
+
+  const rows = await prisma.domain.findMany({
+    where: isAdmin ? {} : { isPublic: true, status: "ACTIVE" },
+    select: { id: true, name: true, status: true, isPublic: true },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    skip,
+    take: DOMAINS_PAGE_SIZE + 1,
+  });
+
+  const hasNext = rows.length > DOMAINS_PAGE_SIZE;
+  const domains = rows.slice(0, DOMAINS_PAGE_SIZE);
+
+  const title = `New mailbox — choose a domain (page ${page})`;
+
+  if (domains.length === 0) {
+    return {
+      text: `${title}\n\nNo available domains.`,
+      replyMarkup: undefined as TelegramInlineKeyboardMarkup | undefined,
+      hasNext: false,
+    };
+  }
+
+  const lines = domains.map((d, idx) => {
+    const statusSuffix = d.status !== "ACTIVE" ? ` [${d.status}]` : "";
+    const publicSuffix = d.isPublic ? "" : " (private)";
+    return `${idx + 1}) ${d.name}${publicSuffix}${statusSuffix}`;
+  });
+
+  const inline_keyboard: TelegramInlineKeyboardMarkup["inline_keyboard"] = [];
+  let row: Array<{ text: string; callback_data: string }> = [];
+  for (const [idx, domain] of domains.entries()) {
+    row.push({
+      text: String(idx + 1),
+      callback_data: buildNewDomainSelectCallback(domain.id),
+    });
+    if (row.length >= DOMAINS_BUTTONS_PER_ROW) {
+      inline_keyboard.push(row);
+      row = [];
+    }
+  }
+  if (row.length) inline_keyboard.push(row);
+
+  const navRow: Array<{ text: string; callback_data: string }> = [];
+  if (page > 1) navRow.push({ text: "◀ Prev", callback_data: buildNewDomainsListCallback(page - 1) });
+  if (hasNext) navRow.push({ text: "Next ▶", callback_data: buildNewDomainsListCallback(page + 1) });
+  if (navRow.length) inline_keyboard.push(navRow);
+
+  return {
+    text: `${title}\n\n${lines.join("\n")}\n\nClick a number to create a new mailbox (prefix auto-generated).`,
+    replyMarkup: { inline_keyboard },
+    hasNext,
+  };
 }
 
 async function buildEmailsListPayload(params: {
@@ -912,6 +1043,7 @@ async function handleBind(message: TelegramMessage, args: string) {
       "✅ TEmail is connected to this group.",
       "",
       "Use this topic for global management:",
+      "- /new",
       "- /mailboxes",
       "- /search <q>",
       "- /refresh",
@@ -1084,6 +1216,74 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
       });
       return;
     }
+
+    if (parts[1] === "newdomains") {
+      const chatId = String(message.chat.id);
+      const messageId = message.message_id;
+      let page = Number.parseInt(parts[2] || "1", 10);
+      if (!Number.isFinite(page) || page <= 0) page = 1;
+
+      if (ctx.kind === "forum-mailbox") {
+        await telegramEditMessageText({
+          chatId,
+          messageId,
+          text: "Please use the General topic to create mailboxes.",
+          disableWebPagePreview: true,
+        });
+        return;
+      }
+
+      const payload = await buildNewDomainPickerPayload({ userId: link.userId, page });
+      await telegramEditMessageText({
+        chatId,
+        messageId,
+        text: payload.text,
+        ...(payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : {}),
+        disableWebPagePreview: true,
+      });
+      return;
+    }
+
+    if (parts[1] === "newdomain") {
+      const chatId = String(message.chat.id);
+      const messageId = message.message_id;
+      const domainId = (parts[2] || "").trim();
+      if (!domainId) return;
+
+      if (ctx.kind === "forum-mailbox") {
+        await telegramEditMessageText({
+          chatId,
+          messageId,
+          text: "Please use the General topic to create mailboxes.",
+          disableWebPagePreview: true,
+        });
+        return;
+      }
+
+      let mailbox: { id: string; address: string };
+      try {
+        mailbox = await createMailboxWithGeneratedPrefix({ userId: link.userId, domainId });
+      } catch (error) {
+        const messageText = error instanceof Error ? error.message : String(error);
+        await telegramEditMessageText({
+          chatId,
+          messageId,
+          text: `Create mailbox failed: ${truncateTelegramText(messageText, 400)}`,
+          replyMarkup: { inline_keyboard: [[{ text: "Try again", callback_data: buildNewDomainsListCallback(1) }]] },
+          disableWebPagePreview: true,
+        });
+        return;
+      }
+
+      await telegramEditMessageText({
+        chatId,
+        messageId,
+        text: `✅ Mailbox created: ${mailbox.address}\nid: ${mailbox.id}`,
+        replyMarkup: { inline_keyboard: [[{ text: "Create another", callback_data: buildNewDomainsListCallback(1) }]] },
+        disableWebPagePreview: true,
+      });
+      return;
+    }
   } catch (error) {
     const messageText = error instanceof Error ? error.message : String(error);
     const clipped = truncateTelegramText(messageText, 180);
@@ -1124,8 +1324,11 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
       case "mailboxes":
         await handleMailboxes(message);
         return;
+      case "new":
       case "mailbox_create":
+      case "mailboxes_create":
       case "mailbox-create":
+      case "mailboxes-create":
         await handleMailboxCreate(message, parsed.args);
         return;
       case "emails":
