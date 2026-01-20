@@ -27,6 +27,7 @@ function formatHelp() {
     "",
     "Commands (private chat):",
     "- /start <code> — link your TEmail account",
+    "- /mailbox_create <prefix>@<domain> — create a mailbox",
     "- /mailboxes — list mailboxes",
     "- /emails [mailboxId|address] — list recent emails",
     "- /search <query> — search emails",
@@ -166,6 +167,72 @@ async function handleMailboxes(message: TelegramMessage) {
 
   const lines = mailboxes.map((m) => `- ${m.address} (unread: ${m._count.emails})\n  id: ${m.id}`);
   await replyToMessage(message, `Mailboxes:\n\n${lines.join("\n")}\n\nTip: /emails <mailboxId|address>`);
+}
+
+async function handleMailboxCreate(message: TelegramMessage, args: string) {
+  if (message.chat.type !== "private") return;
+
+  const userId = await requireLinkedUserId(message);
+  if (!userId) return;
+
+  const raw = (args || "").trim();
+  if (!raw) {
+    await replyToMessage(message, "Usage: /mailbox_create <prefix>@<domain>");
+    return;
+  }
+
+  const parsed = raw.includes("@")
+    ? (() => {
+        const [prefix, domain] = raw.split("@");
+        return { prefix: (prefix || "").trim(), domain: (domain || "").trim() };
+      })()
+    : (() => {
+        const [prefix, domain] = raw.split(/\s+/);
+        return { prefix: (prefix || "").trim(), domain: (domain || "").trim() };
+      })();
+
+  if (!parsed.prefix || !parsed.domain) {
+    await replyToMessage(message, "Usage: /mailbox_create <prefix>@<domain>");
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
+  const domain = await prisma.domain.findFirst({
+    where: isAdmin ? { name: parsed.domain } : { name: parsed.domain, isPublic: true, status: "ACTIVE" },
+    select: { id: true, name: true },
+  });
+
+  if (!domain) {
+    await replyToMessage(message, "Domain not found (or not available). Create mailboxes in public ACTIVE domains.");
+    return;
+  }
+
+  const address = `${parsed.prefix}@${domain.name}`;
+  const existing = await prisma.mailbox.findUnique({
+    where: { address },
+    select: { id: true },
+  });
+  if (existing) {
+    await replyToMessage(message, `Mailbox already exists: ${address}`);
+    return;
+  }
+
+  const mailbox = await prisma.mailbox.create({
+    data: {
+      prefix: parsed.prefix,
+      address,
+      userId,
+      domainId: domain.id,
+    },
+    select: { id: true, address: true },
+  });
+
+  await replyToMessage(message, `Mailbox created: ${mailbox.address}\nid: ${mailbox.id}`);
 }
 
 async function resolveMailboxIdForUser(userId: string, arg: string): Promise<{ id: string; address: string } | null> {
@@ -551,6 +618,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
         return;
       case "mailboxes":
         await handleMailboxes(message);
+        return;
+      case "mailbox_create":
+      case "mailbox-create":
+        await handleMailboxCreate(message, parsed.args);
         return;
       case "emails":
         await handleEmails(message, parsed.args);
