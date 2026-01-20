@@ -272,14 +272,7 @@ function renderNodeConfig(
       return <ForwardEmailConfig data={data} onChange={onChange} />;
 
     case "forward:telegram-bound":
-      return (
-        <div className="space-y-2">
-          <p className="text-sm">No configuration required.</p>
-          <p className="text-xs text-muted-foreground">
-            This node forwards emails to your <span className="font-mono">/bind</span>-bound Telegram forum group and routes messages into mailbox topics automatically.
-          </p>
-        </div>
-      );
+      return <ForwardTelegramBoundConfig data={data} onChange={onChange} />;
 
     case "forward:telegram":
       return <ForwardTelegramConfig data={data} onChange={onChange} />;
@@ -1869,6 +1862,80 @@ function ForwardTelegramConfig({
         <Label className="text-xs font-medium">Parse Mode</Label>
         <Select
           value={(data.parseMode as string) || "Markdown"}
+          onValueChange={(v) => onChange("parseMode", v)}
+        >
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="None">None</SelectItem>
+            <SelectItem value="Markdown">Markdown</SelectItem>
+            <SelectItem value="MarkdownV2">MarkdownV2</SelectItem>
+            <SelectItem value="HTML">HTML</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Select <span className="font-mono">None</span> to omit <span className="font-mono">parse_mode</span> in the Telegram API request.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="template" className="text-xs font-medium">Message Template</Label>
+          <Select value={selectedPreset} onValueChange={handlePresetSelect}>
+            <SelectTrigger className="w-[100px] h-6 text-xs">
+              <SelectValue placeholder="Template" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Default</SelectItem>
+              <SelectItem value="compact">Compact</SelectItem>
+              <SelectItem value="detailed">Detailed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Textarea
+          id="template"
+          value={(data.template as string) || ""}
+          onChange={(e) => onChange("template", e.target.value)}
+          placeholder="📧 New email from {{email.fromAddress}}"
+          rows={5}
+          className="text-xs font-mono"
+        />
+      </div>
+
+      <VariableHelpText />
+    </div>
+  );
+}
+
+function ForwardTelegramBoundConfig({
+  data,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const [selectedPreset, setSelectedPreset] = useState<string>("");
+
+  const handlePresetSelect = (preset: string) => {
+    setSelectedPreset(preset);
+    const templates = DEFAULT_FORWARD_TEMPLATES.telegram;
+    const template = templates[preset as keyof typeof templates];
+    if (template) {
+      onChange("template", template);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Forwards to your <span className="font-mono">/bind</span>-bound Telegram forum group and routes messages into mailbox topics automatically.
+      </p>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">Parse Mode</Label>
+        <Select
+          value={(data.parseMode as string) || "None"}
           onValueChange={(v) => onChange("parseMode", v)}
         >
           <SelectTrigger className="h-8 text-sm">

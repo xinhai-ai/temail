@@ -279,6 +279,8 @@ export interface ForwardEmailData {
 
 export interface ForwardTelegramBoundData {
   label?: string;
+  template?: string;
+  parseMode?: "Markdown" | "HTML" | "MarkdownV2" | "None";
 }
 
 export interface ForwardTelegramData {
@@ -794,7 +796,10 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     color: "#8b5cf6",
     inputs: 1,
     outputs: 1,
-    defaultData: {},
+    defaultData: {
+      parseMode: "None",
+      template: `📧 New email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}\n\nPreview: {{email.previewUrl}}`,
+    },
   },
   "forward:telegram": {
     type: "forward:telegram",

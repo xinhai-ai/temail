@@ -209,6 +209,8 @@ const forwardTelegramDataSchema = z
 
 const forwardTelegramBoundDataSchema = z.object({
   label: z.string().optional(),
+  template: z.string().optional(),
+  parseMode: z.enum(["Markdown", "MarkdownV2", "HTML", "None"]).optional(),
 });
 
 const forwardDiscordDataSchema = z.object({

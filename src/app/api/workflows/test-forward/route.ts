@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         result = await testEmailForward(config as ForwardEmailData);
         break;
       case "forward:telegram-bound":
-        result = await testTelegramBoundForward(session.user.id, email, vars);
+        result = await testTelegramBoundForward(session.user.id, config as ForwardTelegramBoundData, email, vars);
         break;
       case "forward:telegram":
         result = await testTelegramForward(config as ForwardTelegramData, email, vars);
@@ -149,9 +149,18 @@ async function testTelegramForward(
   email: TestEmailData,
   vars: Record<string, unknown>
 ): Promise<{ success: boolean; message: string; details?: string }> {
-  const token = (config.token || "").trim();
-  if (!token) {
-    return { success: false, message: "Bot token is required" };
+  let token: string;
+  if (config.useAppBot) {
+    try {
+      token = await getTelegramBotToken();
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : "App bot token is not configured" };
+    }
+  } else {
+    token = (config.token || "").trim();
+    if (!token) {
+      return { success: false, message: "Bot token is required" };
+    }
   }
   if (!config.chatId) {
     return { success: false, message: "Chat ID is required" };
@@ -206,6 +215,7 @@ async function testTelegramForward(
 
 async function testTelegramBoundForward(
   userId: string,
+  config: ForwardTelegramBoundData,
   email: TestEmailData,
   vars: Record<string, unknown>
 ): Promise<{ success: boolean; message: string; details?: string }> {
@@ -220,7 +230,8 @@ async function testTelegramBoundForward(
 
   const token = await getTelegramBotToken();
 
-  const template = `📧 Test Email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}`;
+  const defaultTemplate = `📧 Test Email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}`;
+  const template = (config.template || "").trim() ? String(config.template) : defaultTemplate;
   const text = replaceTemplateVariables(template, vars);
 
   const messageThreadId = binding.threadId ? Number.parseInt(binding.threadId, 10) : null;
@@ -229,6 +240,10 @@ async function testTelegramBoundForward(
     text: `[TEST] ${text}`,
     ...(Number.isFinite(messageThreadId) && (messageThreadId as number) > 0 ? { message_thread_id: messageThreadId } : {}),
   };
+  const parseMode = config.parseMode || "None";
+  if (parseMode !== "None") {
+    requestBody.parse_mode = parseMode;
+  }
 
   try {
     const response = await fetch(

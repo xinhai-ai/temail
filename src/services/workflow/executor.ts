@@ -999,7 +999,7 @@ async function executeForwardTelegram(
 }
 
 async function executeForwardTelegramBound(
-  _data: ForwardTelegramBoundData,
+  data: ForwardTelegramBoundData,
   context: ExecutionContext
 ): Promise<boolean> {
   if (!context.email) return false;
@@ -1028,14 +1028,16 @@ async function executeForwardTelegramBound(
     throw new Error("No bound Telegram forum group found. Bind a group first in Telegram settings.");
   }
 
-  const template = `📧 New email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}\n\nPreview: {{email.previewUrl}}`;
+  const defaultTemplate = `📧 New email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}\n\nPreview: {{email.previewUrl}}`;
+  const template = (data.template || "").trim() ? String(data.template) : defaultTemplate;
+  const parseMode = data.parseMode || "None";
 
   return executeForwardTelegram(
     {
       useAppBot: true,
       chatId: binding.chatId,
       topicRouting: "mailboxTopic",
-      parseMode: "None",
+      parseMode,
       template,
     },
     context
