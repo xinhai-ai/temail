@@ -77,7 +77,7 @@ export default function AdminSettingsPage() {
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const [otpEnabled, setOtpEnabled] = useState(false);
-  const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "telegram" | "ai" | "workflow">("general");
+  const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow">("general");
 
   const setValue = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -97,37 +97,6 @@ export default function AdminSettingsPage() {
       { key: "smtp_user", label: "SMTP User", placeholder: "user@example.com" },
       { key: "smtp_pass", label: "SMTP Password", placeholder: "••••••••", secret: true },
       { key: "smtp_from", label: "SMTP From", placeholder: "TEmail <no-reply@example.com>" },
-    ],
-    []
-  );
-  const telegramItems = useMemo(
-    () => [
-      {
-        key: "telegram_bot_token",
-        label: "Bot Token",
-        placeholder: "123456:ABC-DEF...",
-        secret: true,
-        description: "Get it from @BotFather. This bot is owned by the site admin and used for all users.",
-      },
-      {
-        key: "telegram_bot_username",
-        label: "Bot Username",
-        placeholder: "YourBot",
-        description: "Optional: used to generate /start deep-links on the user dashboard.",
-      },
-      {
-        key: "telegram_webhook_secret",
-        label: "Webhook Secret",
-        placeholder: "random-secret",
-        secret: true,
-        description: "Recommended: used to validate Telegram webhook requests.",
-      },
-      {
-        key: "telegram_forum_general_topic_name",
-        label: "Forum General Topic Name",
-        placeholder: "TEmail · General",
-        description: "Topic name created when a user binds a forum group.",
-      },
     ],
     []
   );
@@ -265,10 +234,6 @@ export default function AdminSettingsPage() {
           key: item.key,
           value: values[item.key] || "",
         })),
-        ...telegramItems.map((item) => ({
-          key: item.key,
-          value: values[item.key] || "",
-        })),
         ...aiClassifierItems.map((item) => ({
           key: item.key,
           value: values[item.key] || "",
@@ -341,12 +306,11 @@ export default function AdminSettingsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 h-auto">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="registration">Registration</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="smtp">SMTP</TabsTrigger>
-          <TabsTrigger value="telegram">Telegram</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="workflow">Workflow</TabsTrigger>
         </TabsList>
@@ -562,37 +526,6 @@ export default function AdminSettingsPage() {
                   <Label>{item.label}</Label>
                   <Input
                     placeholder={item.placeholder}
-                    value={values[item.key] || ""}
-                    type={item.secret ? "password" : "text"}
-                    onChange={(e) => setValue(item.key, e.target.value)}
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="telegram">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Telegram Bot Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {telegramItems.map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <Label>{item.label}</Label>
-                  {item.description && (
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                  )}
-                  <Input
-                    placeholder={
-                      item.secret && maskedValues[item.key] && !values[item.key]
-                        ? "•••••••• (configured)"
-                        : item.placeholder
-                    }
                     value={values[item.key] || ""}
                     type={item.secret ? "password" : "text"}
                     onChange={(e) => setValue(item.key, e.target.value)}
