@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 type TelegramLink = {
@@ -18,7 +17,7 @@ type TelegramLink = {
   updatedAt: string;
 };
 
-type TelegramBinding = {
+type TelegramForumBinding = {
   id: string;
   enabled: boolean;
   mode: "MANAGE" | "NOTIFY";
@@ -27,10 +26,17 @@ type TelegramBinding = {
   chatTitle: string | null;
   threadId: string | null;
   updatedAt: string;
-  mailbox: { id: string; address: string } | null;
 };
 
-type MailboxItem = { id: string; address: string };
+type TelegramMailboxTopic = {
+  id: string;
+  enabled: boolean;
+  mode: "MANAGE" | "NOTIFY";
+  chatId: string;
+  threadId: string | null;
+  updatedAt: string;
+  mailbox: { id: string; address: string } | null;
+};
 
 function copyToClipboard(text: string) {
   if (!text) return;
@@ -43,8 +49,8 @@ function copyToClipboard(text: string) {
 export default function TelegramPage() {
   const [loading, setLoading] = useState(true);
   const [link, setLink] = useState<TelegramLink | null>(null);
-  const [bindings, setBindings] = useState<TelegramBinding[]>([]);
-  const [mailboxes, setMailboxes] = useState<MailboxItem[]>([]);
+  const [forumBindings, setForumBindings] = useState<TelegramForumBinding[]>([]);
+  const [mailboxTopics, setMailboxTopics] = useState<TelegramMailboxTopic[]>([]);
 
   const [creatingLinkCode, setCreatingLinkCode] = useState(false);
   const [linkCode, setLinkCode] = useState("");
@@ -52,28 +58,21 @@ export default function TelegramPage() {
   const [linkExpiresAt, setLinkExpiresAt] = useState<string | null>(null);
 
   const [creatingBindCode, setCreatingBindCode] = useState(false);
-  const [bindMailboxId, setBindMailboxId] = useState<string>("all");
-  const [bindMode, setBindMode] = useState<"NOTIFY" | "MANAGE">("NOTIFY");
   const [bindCode, setBindCode] = useState("");
   const [bindExpiresAt, setBindExpiresAt] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [bindingsRes, mailboxesRes] = await Promise.all([fetch("/api/telegram/bindings"), fetch("/api/mailboxes")]);
+      const bindingsRes = await fetch("/api/telegram/bindings");
       const bindingsData = await bindingsRes.json().catch(() => null);
-      const mailboxesData = await mailboxesRes.json().catch(() => null);
 
       if (bindingsRes.ok) {
         setLink(bindingsData?.link || null);
-        setBindings(Array.isArray(bindingsData?.bindings) ? (bindingsData.bindings as TelegramBinding[]) : []);
+        setForumBindings(Array.isArray(bindingsData?.forumBindings) ? (bindingsData.forumBindings as TelegramForumBinding[]) : []);
+        setMailboxTopics(Array.isArray(bindingsData?.mailboxTopics) ? (bindingsData.mailboxTopics as TelegramMailboxTopic[]) : []);
       } else {
         toast.error(bindingsData?.error || "Failed to load Telegram bindings");
-      }
-
-      if (mailboxesRes.ok) {
-        const list = Array.isArray(mailboxesData) ? (mailboxesData as Array<{ id: string; address: string }>) : [];
-        setMailboxes(list.map((m) => ({ id: m.id, address: m.address })));
       }
     } finally {
       setLoading(false);
@@ -84,10 +83,13 @@ export default function TelegramPage() {
     fetchAll().catch(() => setLoading(false));
   }, [fetchAll]);
 
-  const mailboxOptions = useMemo(() => {
-    const sorted = [...mailboxes].sort((a, b) => a.address.localeCompare(b.address));
-    return [{ id: "all", address: "All mailboxes" }, ...sorted.map((m) => ({ id: m.id, address: m.address }))];
-  }, [mailboxes]);
+  const chatTitles = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of forumBindings) {
+      map.set(b.chatId, b.chatTitle || b.chatId);
+    }
+    return map;
+  }, [forumBindings]);
 
   const createLinkCode = async () => {
     setCreatingLinkCode(true);
@@ -112,14 +114,10 @@ export default function TelegramPage() {
   const createChatBindCode = async () => {
     setCreatingBindCode(true);
     try {
-      const body = {
-        mailboxId: bindMailboxId === "all" ? null : bindMailboxId,
-        mode: bindMode,
-      };
       const res = await fetch("/api/telegram/bind-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -137,8 +135,8 @@ export default function TelegramPage() {
   };
 
   const updateBindingEnabled = async (id: string, enabled: boolean) => {
-    const prev = bindings;
-    setBindings((list) => list.map((b) => (b.id === id ? { ...b, enabled } : b)));
+    const prev = forumBindings;
+    setForumBindings((list) => list.map((b) => (b.id === id ? { ...b, enabled } : b)));
     try {
       const res = await fetch(`/api/telegram/bindings/${id}`, {
         method: "PATCH",
@@ -147,13 +145,13 @@ export default function TelegramPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setBindings(prev);
+        setForumBindings(prev);
         toast.error(data?.error || "Failed to update binding");
         return;
       }
       toast.success("Binding updated");
     } catch {
-      setBindings(prev);
+      setForumBindings(prev);
       toast.error("Failed to update binding");
     }
   };
@@ -166,7 +164,7 @@ export default function TelegramPage() {
         toast.error(data?.error || "Failed to delete binding");
         return;
       }
-      setBindings((list) => list.filter((b) => b.id !== id));
+      await fetchAll();
       toast.success("Binding removed");
     } catch {
       toast.error("Failed to delete binding");
@@ -242,42 +240,13 @@ export default function TelegramPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>2) Bind a group Topic</CardTitle>
+          <CardTitle>2) Bind a forum group (Topics)</CardTitle>
           <CardDescription>
-            Generate a bind code, then in the target group Topic run <span className="font-mono">/bind &lt;code&gt;</span>
+            Generate a bind code, then in the target group run <span className="font-mono">/bind &lt;code&gt;</span>. The bot will create a{" "}
+            <span className="font-mono">TEmail · General</span> topic for management.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Mailbox scope</Label>
-              <Select value={bindMailboxId} onValueChange={setBindMailboxId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {mailboxOptions.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.address}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Mode</Label>
-              <Select value={bindMode} onValueChange={(v) => setBindMode(v as "NOTIFY" | "MANAGE")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NOTIFY">NOTIFY</SelectItem>
-                  <SelectItem value="MANAGE">MANAGE</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label>Bind code</Label>
             <div className="flex gap-2">
@@ -301,14 +270,14 @@ export default function TelegramPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Bindings</CardTitle>
-          <CardDescription>Topics bound to your account for Telegram notifications.</CardDescription>
+          <CardTitle>Forum group bindings</CardTitle>
+          <CardDescription>Bound groups. Emails forwarded by workflows will be routed into mailbox topics automatically.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {bindings.length === 0 ? (
+          {forumBindings.length === 0 ? (
             <div className="text-sm text-muted-foreground">No bindings yet.</div>
           ) : (
-            bindings.map((b) => (
+            forumBindings.map((b) => (
               <div key={b.id} className="rounded-lg border p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                   <div className="text-sm font-medium">
@@ -318,7 +287,7 @@ export default function TelegramPage() {
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground font-mono">
-                    chat_id={b.chatId}{b.threadId ? ` • thread_id=${b.threadId}` : ""}{b.mailbox ? ` • ${b.mailbox.address}` : " • all"}
+                    chat_id={b.chatId}{b.threadId ? ` • general_thread_id=${b.threadId}` : ""}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 justify-end">
@@ -329,6 +298,27 @@ export default function TelegramPage() {
                   <Button variant="outline" size="icon" onClick={() => deleteBinding(b.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Mailbox topics</CardTitle>
+          <CardDescription>Auto-created when workflows forward emails to Telegram.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {mailboxTopics.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No mailbox topics yet.</div>
+          ) : (
+            mailboxTopics.map((t) => (
+              <div key={t.id} className="rounded-lg border p-3 space-y-1">
+                <div className="text-sm font-medium">{t.mailbox?.address || t.id}</div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  group={chatTitles.get(t.chatId) || t.chatId} • chat_id={t.chatId}{t.threadId ? ` • thread_id=${t.threadId}` : ""}
                 </div>
               </div>
             ))

@@ -20,6 +20,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
+  const existing = await prisma.telegramChatBinding.findFirst({
+    where: { id, userId: session.user.id, mode: "MANAGE" },
+    select: { id: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Binding not found" }, { status: 404 });
+  }
+
   const bodyResult = await readJsonBody(request, { maxBytes: 10_000 });
   if (!bodyResult.ok) {
     return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
@@ -31,7 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const updated = await prisma.telegramChatBinding.updateMany({
-    where: { id, userId: session.user.id },
+    where: { id, userId: session.user.id, mode: "MANAGE" },
     data: { enabled: parsed.data.enabled },
   });
 
@@ -55,14 +63,24 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const deleted = await prisma.telegramChatBinding.deleteMany({
-    where: { id, userId: session.user.id },
+  const binding = await prisma.telegramChatBinding.findFirst({
+    where: { id, userId: session.user.id, mode: "MANAGE" },
+    select: { id: true, chatId: true },
   });
-  if (deleted.count === 0) {
+  if (!binding) {
     return NextResponse.json({ error: "Binding not found" }, { status: 404 });
   }
 
-  await deleteTelegramNotifyWorkflowForBinding(id);
+  await prisma.$transaction([
+    prisma.telegramChatBinding.deleteMany({
+      where: { userId: session.user.id, chatId: binding.chatId, mode: "NOTIFY" },
+    }),
+    prisma.telegramChatBinding.delete({
+      where: { id: binding.id },
+    }),
+  ]);
+
+  await deleteTelegramNotifyWorkflowForBinding(binding.id);
 
   return NextResponse.json({ success: true });
 }

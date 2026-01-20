@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [link, bindings] = await Promise.all([
+  const [link, forumBindings, mailboxTopics] = await Promise.all([
     prisma.telegramUserLink.findFirst({
       where: { userId: session.user.id, revokedAt: null },
       orderBy: { updatedAt: "desc" },
@@ -21,14 +21,15 @@ export async function GET() {
       },
     }),
     prisma.telegramChatBinding.findMany({
-      where: { userId: session.user.id },
-      include: {
-        mailbox: { select: { id: true, address: true } },
-      },
+      where: { userId: session.user.id, mode: "MANAGE" },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.telegramChatBinding.findMany({
+      where: { userId: session.user.id, mode: "NOTIFY", mailboxId: { not: null } },
+      include: { mailbox: { select: { id: true, address: true } } },
       orderBy: { updatedAt: "desc" },
     }),
   ]);
 
-  return NextResponse.json({ link, bindings });
+  return NextResponse.json({ link, forumBindings, mailboxTopics });
 }
-
