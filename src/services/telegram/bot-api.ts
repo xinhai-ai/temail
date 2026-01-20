@@ -29,6 +29,11 @@ export async function getTelegramBotToken(): Promise<string> {
   return token;
 }
 
+export async function getTelegramWebhookSecretToken(): Promise<string | null> {
+  const value = ((await getSystemSettingValue("telegram_webhook_secret")) || process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  return value ? value : null;
+}
+
 function safeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -61,6 +66,18 @@ export async function getTelegramForumGeneralTopicName(): Promise<string> {
   const configured = ((await getSystemSettingValue("telegram_forum_general_topic_name")) || "").trim();
   return configured || "TEmail · General";
 }
+
+export type TelegramWebhookInfo = {
+  url: string;
+  has_custom_certificate?: boolean;
+  pending_update_count?: number;
+  ip_address?: string;
+  last_error_date?: number;
+  last_error_message?: string;
+  last_synchronization_error_date?: number;
+  max_connections?: number;
+  allowed_updates?: string[];
+};
 
 async function telegramApiRequest<T>(
   token: string,
@@ -128,4 +145,48 @@ export async function telegramCreateForumTopic(params: { token?: string; chatId:
   }
 
   return { messageThreadId, name: result.result.name };
+}
+
+export async function telegramGetWebhookInfo(): Promise<TelegramWebhookInfo> {
+  const token = await getTelegramBotToken();
+  const result = await telegramApiRequest<TelegramWebhookInfo>(token, "getWebhookInfo", {});
+  if (result.ok) return result.result;
+  const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
+  throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
+}
+
+export async function telegramSetWebhook(params: {
+  url: string;
+  dropPendingUpdates?: boolean;
+  secretToken?: string | null;
+}): Promise<TelegramWebhookInfo> {
+  const token = await getTelegramBotToken();
+  const payload: Record<string, unknown> = {
+    url: params.url,
+    ...(typeof params.dropPendingUpdates === "boolean" ? { drop_pending_updates: params.dropPendingUpdates } : {}),
+    ...(params.secretToken ? { secret_token: params.secretToken } : {}),
+  };
+
+  const result = await telegramApiRequest<boolean>(token, "setWebhook", payload);
+  if (!result.ok) {
+    const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
+    throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
+  }
+
+  return telegramGetWebhookInfo();
+}
+
+export async function telegramDeleteWebhook(params?: { dropPendingUpdates?: boolean }): Promise<TelegramWebhookInfo> {
+  const token = await getTelegramBotToken();
+  const payload: Record<string, unknown> = {
+    ...(typeof params?.dropPendingUpdates === "boolean" ? { drop_pending_updates: params.dropPendingUpdates } : {}),
+  };
+
+  const result = await telegramApiRequest<boolean>(token, "deleteWebhook", payload);
+  if (!result.ok) {
+    const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
+    throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
+  }
+
+  return telegramGetWebhookInfo();
 }
