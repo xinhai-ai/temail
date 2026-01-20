@@ -321,6 +321,18 @@ function truncateButtonText(input: string, maxChars = 48) {
   return value.slice(0, Math.max(0, maxChars - 1)) + "…";
 }
 
+function isTelegramUrlButtonUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    const host = url.hostname.toLowerCase();
+    if (!host || host === "localhost") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function buildEmailsListCallback(scope: { kind: "all" } | { kind: "mailbox"; mailboxId: string }, page: number) {
   if (scope.kind === "all") return `${CALLBACK_PREFIX}:emails:all:${page}`;
   return `${CALLBACK_PREFIX}:emails:mb:${scope.mailboxId}:${page}`;
@@ -459,7 +471,7 @@ async function sendEmailDetails(message: TelegramMessage, userId: string, emailI
     text = truncateTelegramText(text, TELEGRAM_MAX_MESSAGE_CHARS);
   }
 
-  const replyMarkup: TelegramInlineKeyboardMarkup | undefined = previewUrl
+  const replyMarkup: TelegramInlineKeyboardMarkup | undefined = previewUrl && isTelegramUrlButtonUrl(previewUrl)
     ? { inline_keyboard: [[{ text: "Open Preview", url: previewUrl }]] }
     : undefined;
 

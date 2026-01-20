@@ -1,14 +1,30 @@
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { getSystemSettingValue } from "@/services/system-settings";
 
-function getPublicBaseUrl() {
-  const raw = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || "http://localhost:3000";
-  return raw.trim().replace(/\/+$/, "");
+function normalizeOrigin(raw: string | null | undefined): string | null {
+  const value = (raw || "").trim();
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
 }
 
-function buildPreviewUrl(token: string) {
-  return `${getPublicBaseUrl()}/p/${token}`;
+async function getPublicBaseUrl(): Promise<string> {
+  const configured = normalizeOrigin(await getSystemSettingValue("site_url"));
+  const fallback =
+    normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL) ||
+    normalizeOrigin(process.env.AUTH_URL) ||
+    "http://localhost:3000";
+
+  return (configured || fallback).replace(/\/+$/, "");
+}
+
+async function buildPreviewUrl(token: string): Promise<string> {
+  return `${await getPublicBaseUrl()}/p/${token}`;
 }
 
 function generateToken() {
@@ -30,7 +46,7 @@ export async function getOrCreateEmailPreviewLink(emailId: string): Promise<{ to
         create: { emailId, token },
         select: { token: true },
       });
-      return { token: row.token, url: buildPreviewUrl(row.token) };
+      return { token: row.token, url: await buildPreviewUrl(row.token) };
     } catch (error) {
       if (isMissingTableError(error)) return null;
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -41,4 +57,3 @@ export async function getOrCreateEmailPreviewLink(emailId: string): Promise<{ to
   }
   return null;
 }
-
