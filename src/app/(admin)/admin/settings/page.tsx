@@ -306,7 +306,7 @@ export default function AdminSettingsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="registration">Registration</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
