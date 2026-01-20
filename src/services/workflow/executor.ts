@@ -137,10 +137,7 @@ export async function executeNode(
       );
 
     case "forward:telegram":
-      return executeForwardTelegram(
-        data as { token: string; chatId: string; template?: string; parseMode?: ForwardTelegramData["parseMode"] },
-        context
-      );
+      return executeForwardTelegram(data as ForwardTelegramData, context);
 
     case "forward:discord":
       return executeForwardDiscord(
@@ -791,7 +788,7 @@ async function executeForwardEmail(
 }
 
 async function executeForwardTelegram(
-  data: { token: string; chatId: string; template?: string; parseMode?: ForwardTelegramData["parseMode"] },
+  data: ForwardTelegramData,
   context: ExecutionContext
 ): Promise<boolean> {
   if (!context.email) return false;
@@ -806,10 +803,42 @@ async function executeForwardTelegram(
     return true;
   }
 
-  const url = `https://api.telegram.org/bot${data.token}/sendMessage`;
+  const token = Boolean(data.useAppBot) ? (process.env.TELEGRAM_BOT_TOKEN || "").trim() : (data.token || "").trim();
+  if (!token) {
+    throw new Error(Boolean(data.useAppBot) ? "TELEGRAM_BOT_TOKEN is not configured" : "Telegram bot token is required");
+  }
+
+  if (Boolean(data.useAppBot)) {
+    const email = await prisma.email.findUnique({
+      where: { id: context.email.id },
+      select: { mailbox: { select: { userId: true } } },
+    });
+    const userId = email?.mailbox?.userId;
+    if (!userId) {
+      throw new Error("Cannot resolve workflow userId for Telegram binding validation");
+    }
+
+    const threadId = typeof data.messageThreadId === "number" ? String(data.messageThreadId) : null;
+    const binding = await prisma.telegramChatBinding.findFirst({
+      where: {
+        userId,
+        enabled: true,
+        mode: "NOTIFY",
+        chatId: data.chatId,
+        ...(threadId ? { threadId } : { threadId: null }),
+      },
+      select: { id: true },
+    });
+    if (!binding) {
+      throw new Error("Telegram destination is not bound/enabled for this account");
+    }
+  }
+
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
   const requestBody: Record<string, unknown> = {
     chat_id: data.chatId,
     text: message,
+    ...(typeof data.messageThreadId === "number" ? { message_thread_id: data.messageThreadId } : {}),
   };
   if (!data.parseMode) {
     requestBody.parse_mode = "Markdown";

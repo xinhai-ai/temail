@@ -37,6 +37,7 @@ type TargetDraft = {
   to?: string;
   token?: string;
   chatId?: string;
+  messageThreadId?: string;
   url?: string;
   headers?: string;
 };
@@ -169,7 +170,7 @@ function createTargetDraft(type: TargetType): TargetDraft {
     case "EMAIL":
       return { clientId: createClientId(), type, to: "" };
     case "TELEGRAM":
-      return { clientId: createClientId(), type, token: "", chatId: "" };
+      return { clientId: createClientId(), type, token: "", chatId: "", messageThreadId: "" };
     case "DISCORD":
     case "SLACK":
     case "WEBHOOK":
@@ -234,7 +235,21 @@ function buildTargets(drafts: TargetDraft[]): CreateTargetPayload[] {
         const token = t.token?.trim() || "";
         const chatId = t.chatId?.trim() || "";
         if (!token || !chatId) throw new Error(`${prefix}: Telegram token and chat ID are required`);
-        return { ...(t.id ? { id: t.id } : {}), type: "TELEGRAM", config: JSON.stringify({ type: "TELEGRAM", token, chatId }) };
+        const rawThreadId = t.messageThreadId?.trim() || "";
+        const messageThreadId = rawThreadId ? Number.parseInt(rawThreadId, 10) : undefined;
+        if (rawThreadId && (!Number.isFinite(messageThreadId) || messageThreadId <= 0)) {
+          throw new Error(`${prefix}: Telegram Topic ID (message_thread_id) must be a positive integer`);
+        }
+        return {
+          ...(t.id ? { id: t.id } : {}),
+          type: "TELEGRAM",
+          config: JSON.stringify({
+            type: "TELEGRAM",
+            token,
+            chatId,
+            ...(typeof messageThreadId === "number" ? { messageThreadId } : {}),
+          }),
+        };
       }
       case "DISCORD":
       case "SLACK":
@@ -404,6 +419,12 @@ export function ForwardRuleBuilderPage({ mode = "create", ruleId }: { mode?: "cr
                         type: t.type,
                         token: typeof raw?.token === "string" ? raw.token : "",
                         chatId: typeof raw?.chatId === "string" ? raw.chatId : "",
+                        messageThreadId:
+                          typeof raw?.messageThreadId === "number"
+                            ? String(raw.messageThreadId)
+                            : typeof raw?.messageThreadId === "string"
+                              ? raw.messageThreadId
+                              : "",
                       };
                     case "DISCORD":
                     case "SLACK":
@@ -1140,22 +1161,39 @@ export function ForwardRuleBuilderPage({ mode = "create", ruleId }: { mode?: "cr
                               }
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label>Chat ID</Label>
-                            <Input
-                              placeholder="-1001234567890"
-                              value={t.chatId || ""}
-                              onChange={(e) =>
-                                setTargets((prev) =>
-                                  prev.map((row) =>
-                                    row.clientId === t.clientId ? { ...row, chatId: e.target.value } : row
-                                  )
-                                )
-                              }
-                            />
-                          </div>
-                        </>
-                      )}
+	                          <div className="space-y-2">
+	                            <Label>Chat ID</Label>
+	                            <Input
+	                              placeholder="-1001234567890"
+	                              value={t.chatId || ""}
+	                              onChange={(e) =>
+	                                setTargets((prev) =>
+	                                  prev.map((row) =>
+	                                    row.clientId === t.clientId ? { ...row, chatId: e.target.value } : row
+	                                  )
+	                                )
+	                              }
+	                            />
+	                          </div>
+	                          <div className="space-y-2">
+	                            <Label>Topic ID (optional)</Label>
+	                            <Input
+	                              placeholder="1234"
+	                              value={t.messageThreadId || ""}
+	                              onChange={(e) =>
+	                                setTargets((prev) =>
+	                                  prev.map((row) =>
+	                                    row.clientId === t.clientId ? { ...row, messageThreadId: e.target.value } : row
+	                                  )
+	                                )
+	                              }
+	                            />
+	                            <p className="text-xs text-muted-foreground">
+	                              Telegram <span className="font-mono">message_thread_id</span> for Topics
+	                            </p>
+	                          </div>
+	                        </>
+	                      )}
 
                       {(t.type === "DISCORD" || t.type === "SLACK" || t.type === "WEBHOOK") && (
                         <>

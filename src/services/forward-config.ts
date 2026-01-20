@@ -15,6 +15,7 @@ const legacyTelegramDestinationSchema = z
   .object({
     token: z.string().trim().min(1, "Telegram token is required"),
     chatId: z.string().trim().min(1, "Telegram chatId is required"),
+    messageThreadId: z.coerce.number().int().positive().optional(),
   })
   .strict();
 
@@ -37,6 +38,7 @@ const forwardDestinationSchema = z.discriminatedUnion("type", [
       type: z.literal("TELEGRAM"),
       token: z.string().trim().min(1, "Telegram token is required"),
       chatId: z.string().trim().min(1, "Telegram chatId is required"),
+      messageThreadId: z.coerce.number().int().positive().optional(),
     })
     .strict(),
   z

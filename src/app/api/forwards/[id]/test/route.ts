@@ -327,13 +327,18 @@ export async function POST(
         switch (destination.type) {
           case "TELEGRAM": {
             const text = templateText ? renderForwardTemplate(templateText, vars) : buildDefaultTelegramText(email);
-            return {
-              type: "TELEGRAM",
-              url: `https://api.telegram.org/bot${destination.token}/sendMessage`,
-              headers: { "Content-Type": "application/json" },
-              body: { chat_id: destination.chatId, text, parse_mode: "Markdown" },
-            };
-          }
+	            return {
+	              type: "TELEGRAM",
+	              url: `https://api.telegram.org/bot${destination.token}/sendMessage`,
+	              headers: { "Content-Type": "application/json" },
+	              body: {
+	                chat_id: destination.chatId,
+	                ...(typeof destination.messageThreadId === "number" ? { message_thread_id: destination.messageThreadId } : {}),
+	                text,
+	                parse_mode: "Markdown",
+	              },
+	            };
+	          }
           case "DISCORD": {
             const validated = await validateEgressUrl(destination.url);
             if (!validated.ok) throw new Error(validated.error);

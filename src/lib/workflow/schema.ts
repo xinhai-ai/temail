@@ -186,13 +186,26 @@ const forwardEmailDataSchema = z.object({
   }).optional(),
 });
 
-const forwardTelegramDataSchema = z.object({
-  label: z.string().optional(),
-  token: z.string().min(1),
-  chatId: z.string().min(1),
-  template: z.string().optional(),
-  parseMode: z.enum(["Markdown", "MarkdownV2", "HTML", "None"]).optional(),
-});
+const forwardTelegramDataSchema = z
+  .object({
+    label: z.string().optional(),
+    token: z.string().min(1).optional(),
+    useAppBot: z.boolean().optional(),
+    chatId: z.string().min(1),
+    messageThreadId: z.coerce.number().int().positive().optional(),
+    template: z.string().optional(),
+    parseMode: z.enum(["Markdown", "MarkdownV2", "HTML", "None"]).optional(),
+  })
+  .superRefine((value, ctx) => {
+    const useAppBot = Boolean(value.useAppBot);
+    if (!useAppBot && !value.token) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["token"],
+        message: "Telegram token is required (or enable Use App Bot)",
+      });
+    }
+  });
 
 const forwardDiscordDataSchema = z.object({
   label: z.string().optional(),

@@ -1796,6 +1796,18 @@ function ForwardTelegramConfig({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Switch
+          id="useAppBot"
+          checked={(data.useAppBot as boolean) || false}
+          onCheckedChange={(v) => onChange("useAppBot", v)}
+        />
+        <Label htmlFor="useAppBot" className="text-xs">Use App Bot</Label>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Uses <span className="font-mono">TELEGRAM_BOT_TOKEN</span> from the server environment (recommended for topic notifications).
+      </p>
+
       <div className="space-y-2">
         <Label htmlFor="token" className="text-xs font-medium">Bot Token</Label>
         <Input
@@ -1805,6 +1817,7 @@ function ForwardTelegramConfig({
           onChange={(e) => onChange("token", e.target.value)}
           placeholder="123456:ABC-DEF..."
           className="h-8 text-sm font-mono"
+          disabled={(data.useAppBot as boolean) || false}
         />
         <p className="text-xs text-muted-foreground">
           Get from @BotFather on Telegram
@@ -1822,6 +1835,23 @@ function ForwardTelegramConfig({
         />
         <p className="text-xs text-muted-foreground">
           Use @userinfobot to get your chat ID
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="messageThreadId" className="text-xs font-medium">Topic ID (optional)</Label>
+        <Input
+          id="messageThreadId"
+          value={typeof data.messageThreadId === "number" ? String(data.messageThreadId) : ""}
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            onChange("messageThreadId", raw ? Number.parseInt(raw, 10) : undefined);
+          }}
+          placeholder="1234"
+          className="h-8 text-sm font-mono"
+        />
+        <p className="text-xs text-muted-foreground">
+          Telegram <span className="font-mono">message_thread_id</span> for Topics (forum threads).
         </p>
       </div>
 

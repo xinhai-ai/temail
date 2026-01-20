@@ -147,6 +147,7 @@ async function sendTelegram(
       signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
         chat_id: destination.chatId,
+        ...(typeof destination.messageThreadId === "number" ? { message_thread_id: destination.messageThreadId } : {}),
         text,
         parse_mode: "Markdown",
       }),
