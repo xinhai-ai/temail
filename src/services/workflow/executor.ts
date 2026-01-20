@@ -20,7 +20,7 @@ import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
 import { evaluateAiRewrite, getAiRewriteRequestedVariableKeys } from "@/lib/workflow/ai-rewrite";
 import { getRestoreStatusForTrash } from "@/services/email-trash";
-import { getTelegramBotToken, telegramCreateForumTopic } from "@/services/telegram/bot-api";
+import { getTelegramBotToken, getTelegramForumGeneralTopicName, telegramCreateForumTopic } from "@/services/telegram/bot-api";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -819,6 +819,8 @@ async function executeForwardTelegram(
     throw new Error("Telegram topic routing requires Use App Bot");
   }
 
+  const isTopicDeletedError = (description: string) => description.toUpperCase().includes("TOPIC_DELETED");
+
   const parsePositiveInt = (value: string | null | undefined) => {
     if (!value) return null;
     const parsed = Number.parseInt(value, 10);
@@ -831,6 +833,9 @@ async function executeForwardTelegram(
   };
 
   let resolvedThreadId = typeof data.messageThreadId === "number" ? data.messageThreadId : undefined;
+  let routingUserId: string | null = null;
+  let routingMailboxId: string | null = null;
+  let routingMailboxAddress: string | null = null;
 
   if (Boolean(data.useAppBot)) {
     const email = await prisma.email.findUnique({
@@ -846,6 +851,9 @@ async function executeForwardTelegram(
     if (!userId || !mailboxId) {
       throw new Error("Cannot resolve workflow userId/mailboxId for Telegram routing");
     }
+    routingUserId = userId;
+    routingMailboxId = mailboxId;
+    routingMailboxAddress = mailboxAddress || null;
 
     const forumBinding = await prisma.telegramChatBinding.findFirst({
       where: { userId, enabled: true, mode: "MANAGE", chatId: data.chatId },
@@ -943,43 +951,45 @@ async function executeForwardTelegram(
     }
   }
 
-  const url = `https://api.telegram.org/bot${token}/sendMessage`;
-  const requestBody: Record<string, unknown> = {
-    chat_id: data.chatId,
-    text: message,
-    ...(typeof resolvedThreadId === "number" ? { message_thread_id: resolvedThreadId } : {}),
-  };
-  if (!data.parseMode) {
-    requestBody.parse_mode = "Markdown";
-  } else if (data.parseMode !== "None") {
-    requestBody.parse_mode = data.parseMode;
-  }
+  const parseMode = !data.parseMode ? "Markdown" : data.parseMode;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    redirect: "error",
-    signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
-    body: JSON.stringify(requestBody),
-  });
+  const sendMessage = async (threadId: number | undefined) => {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const requestBody: Record<string, unknown> = {
+      chat_id: data.chatId,
+      text: message,
+      ...(typeof threadId === "number" ? { message_thread_id: threadId } : {}),
+    };
+    if (parseMode !== "None") {
+      requestBody.parse_mode = parseMode;
+    }
 
-  const responseText = await response.text();
-  let payload: unknown;
-  try {
-    payload = responseText ? JSON.parse(responseText) : undefined;
-  } catch {
-    payload = undefined;
-  }
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+      body: JSON.stringify(requestBody),
+    });
 
-  const telegramOk = Boolean(
-    response.ok &&
-      payload &&
-      typeof payload === "object" &&
-      "ok" in payload &&
-      (payload as { ok?: unknown }).ok === true
-  );
+    const responseText = await response.text();
+    let payload: unknown;
+    try {
+      payload = responseText ? JSON.parse(responseText) : undefined;
+    } catch {
+      payload = undefined;
+    }
 
-  if (!telegramOk) {
+    const telegramOk = Boolean(
+      response.ok &&
+        payload &&
+        typeof payload === "object" &&
+        "ok" in payload &&
+        (payload as { ok?: unknown }).ok === true
+    );
+
+    if (telegramOk) return { ok: true as const };
+
     const description =
       payload &&
       typeof payload === "object" &&
@@ -991,8 +1001,97 @@ async function executeForwardTelegram(
       payload && typeof payload === "object" && "error_code" in payload
         ? Number((payload as { error_code?: unknown }).error_code)
         : undefined;
-    const errorCodeSuffix = Number.isFinite(errorCode) ? `, error_code=${errorCode}` : "";
-    throw new Error(`Telegram API error (HTTP ${response.status}${errorCodeSuffix}): ${description}`);
+
+    return { ok: false as const, status: response.status, description, errorCode };
+  };
+
+  const throwTelegramError = (failure: { status: number; description: string; errorCode?: number }) => {
+    const errorCodeSuffix = Number.isFinite(failure.errorCode) ? `, error_code=${failure.errorCode}` : "";
+    throw new Error(`Telegram API error (HTTP ${failure.status}${errorCodeSuffix}): ${failure.description}`);
+  };
+
+  const recoverDeletedTopicAndGetThreadId = async (): Promise<number | null> => {
+    if (!routingUserId || !routingMailboxId) return null;
+
+    if (topicRouting === "generalTopic") {
+      const topicName = await getTelegramForumGeneralTopicName();
+      const created = await telegramCreateForumTopic({ token, chatId: data.chatId, name: topicName });
+      const newThreadId = created.messageThreadId;
+
+      await prisma.telegramChatBinding.updateMany({
+        where: { userId: routingUserId, enabled: true, mode: "MANAGE", chatId: data.chatId },
+        data: { threadId: String(newThreadId) },
+      });
+
+      return newThreadId;
+    }
+
+    if (topicRouting === "mailboxTopic") {
+      const topicName =
+        (routingMailboxAddress || routingMailboxId).trim().slice(0, 120) ||
+        `Mailbox ${routingMailboxId.slice(0, 8)}`;
+      const created = await telegramCreateForumTopic({ token, chatId: data.chatId, name: topicName });
+      const newThreadId = created.messageThreadId;
+
+      const scopeKey = buildScopeKey({ chatId: data.chatId, mailboxId: routingMailboxId, mode: "NOTIFY" });
+      const stored = await prisma.telegramChatBinding.upsert({
+        where: { userId_scopeKey: { userId: routingUserId, scopeKey } },
+        update: {
+          enabled: true,
+          mode: "NOTIFY",
+          chatId: data.chatId,
+          threadId: String(newThreadId),
+          mailboxId: routingMailboxId,
+        },
+        create: {
+          userId: routingUserId,
+          scopeKey,
+          enabled: true,
+          mode: "NOTIFY",
+          chatId: data.chatId,
+          threadId: String(newThreadId),
+          mailboxId: routingMailboxId,
+        },
+        select: { id: true },
+      });
+
+      await prisma.telegramChatBinding.deleteMany({
+        where: {
+          userId: routingUserId,
+          chatId: data.chatId,
+          mode: "NOTIFY",
+          mailboxId: routingMailboxId,
+          id: { not: stored.id },
+        },
+      });
+
+      return newThreadId;
+    }
+
+    return null;
+  };
+
+  const first = await sendMessage(resolvedThreadId);
+  if (!first.ok) {
+    const canRecover =
+      Boolean(data.useAppBot) &&
+      typeof resolvedThreadId === "number" &&
+      (topicRouting === "mailboxTopic" || topicRouting === "generalTopic") &&
+      isTopicDeletedError(first.description);
+
+    if (!canRecover) {
+      throwTelegramError(first);
+    }
+
+    const recoveredThreadId = await recoverDeletedTopicAndGetThreadId();
+    if (!recoveredThreadId) {
+      throwTelegramError(first);
+    }
+
+    const second = await sendMessage(recoveredThreadId);
+    if (!second.ok) {
+      throwTelegramError(second);
+    }
   }
 
   return true;
