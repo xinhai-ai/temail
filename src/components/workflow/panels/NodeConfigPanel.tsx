@@ -271,6 +271,16 @@ function renderNodeConfig(
     case "forward:email":
       return <ForwardEmailConfig data={data} onChange={onChange} />;
 
+    case "forward:telegram-bound":
+      return (
+        <div className="space-y-2">
+          <p className="text-sm">No configuration required.</p>
+          <p className="text-xs text-muted-foreground">
+            This node forwards emails to your <span className="font-mono">/bind</span>-bound Telegram forum group and routes messages into mailbox topics automatically.
+          </p>
+        </div>
+      );
+
     case "forward:telegram":
       return <ForwardTelegramConfig data={data} onChange={onChange} />;
 

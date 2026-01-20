@@ -46,6 +46,7 @@ export const nodeTypes: NodeTypes = {
 
   // 转发
   "forward:email": createNodeComponent("forward:email"),
+  "forward:telegram-bound": createNodeComponent("forward:telegram-bound"),
   "forward:telegram": createNodeComponent("forward:telegram"),
   "forward:discord": createNodeComponent("forward:discord"),
   "forward:slack": createNodeComponent("forward:slack"),

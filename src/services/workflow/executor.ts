@@ -13,6 +13,7 @@ import type {
   EmailContentField,
   ActionSetTagsData,
   ActionAiRewriteData,
+  ForwardTelegramBoundData,
   ForwardTelegramData,
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
@@ -139,6 +140,9 @@ export async function executeNode(
 
     case "forward:telegram":
       return executeForwardTelegram(data as ForwardTelegramData, context);
+
+    case "forward:telegram-bound":
+      return executeForwardTelegramBound(data as ForwardTelegramBoundData, context);
 
     case "forward:discord":
       return executeForwardDiscord(
@@ -992,6 +996,50 @@ async function executeForwardTelegram(
   }
 
   return true;
+}
+
+async function executeForwardTelegramBound(
+  _data: ForwardTelegramBoundData,
+  context: ExecutionContext
+): Promise<boolean> {
+  if (!context.email) return false;
+
+  // 测试模式下跳过实际发送
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would send to bound Telegram group");
+    return true;
+  }
+
+  const email = await prisma.email.findUnique({
+    where: { id: context.email.id },
+    select: { mailbox: { select: { userId: true } } },
+  });
+  const userId = email?.mailbox?.userId;
+  if (!userId) {
+    throw new Error("Cannot resolve workflow userId for Telegram forwarding");
+  }
+
+  const binding = await prisma.telegramChatBinding.findFirst({
+    where: { userId, enabled: true, mode: "MANAGE" },
+    select: { chatId: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (!binding) {
+    throw new Error("No bound Telegram forum group found. Bind a group first in Telegram settings.");
+  }
+
+  const template = `📧 New email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}\n\nPreview: {{email.previewUrl}}`;
+
+  return executeForwardTelegram(
+    {
+      useAppBot: true,
+      chatId: binding.chatId,
+      topicRouting: "mailboxTopic",
+      parseMode: "None",
+      template,
+    },
+    context
+  );
 }
 
 async function executeForwardDiscord(

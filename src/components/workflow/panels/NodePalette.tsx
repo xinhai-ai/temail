@@ -93,7 +93,7 @@ const categories = [
     id: "forward",
     label: "Forwards",
     description: "Send notifications",
-    types: ["forward:email", "forward:telegram", "forward:discord", "forward:slack", "forward:webhook"] as NodeType[],
+    types: ["forward:email", "forward:telegram-bound", "forward:telegram", "forward:discord", "forward:slack", "forward:webhook"] as NodeType[],
   },
   {
     id: "control",

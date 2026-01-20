@@ -421,6 +421,8 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
       return ((d.categories as string[])?.length > 0);
     case "forward:email":
       return !!(d.to as string);
+    case "forward:telegram-bound":
+      return true;
     case "forward:telegram":
       return !!(d.token as string) && !!(d.chatId as string);
     case "forward:discord":
@@ -579,6 +581,9 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       return to ? (
         <span className="font-mono text-[11px] truncate block">{to}</span>
       ) : null;
+
+    case "forward:telegram-bound":
+      return <span className="text-muted-foreground text-[11px]">Uses bound group</span>;
 
     case "forward:telegram":
       const chatId = d.chatId as string;

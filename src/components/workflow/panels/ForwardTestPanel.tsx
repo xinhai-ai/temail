@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Play, Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import type { NodeType, ForwardEmailData, ForwardTelegramData, ForwardDiscordData, ForwardSlackData, ForwardWebhookData } from "@/lib/workflow/types";
+import type { NodeType, ForwardEmailData, ForwardTelegramBoundData, ForwardTelegramData, ForwardDiscordData, ForwardSlackData, ForwardWebhookData } from "@/lib/workflow/types";
 import { DEFAULT_FORWARD_TEMPLATES } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,7 @@ interface ForwardTestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   nodeType: NodeType;
-  nodeData: ForwardEmailData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
+  nodeData: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
 }
 
 export function ForwardTestDialog({
@@ -106,6 +106,8 @@ export function ForwardTestDialog({
     switch (nodeType) {
       case "forward:email":
         return `To: ${(nodeData as ForwardEmailData).to || "Not configured"}`;
+      case "forward:telegram-bound":
+        return "Target: bound Telegram group";
       case "forward:telegram":
         return `Chat ID: ${(nodeData as ForwardTelegramData).chatId || "Not configured"}`;
       case "forward:discord":
@@ -123,6 +125,8 @@ export function ForwardTestDialog({
     switch (nodeType) {
       case "forward:email":
         return !!(nodeData as ForwardEmailData).to;
+      case "forward:telegram-bound":
+        return true;
       case "forward:telegram":
         return !!(nodeData as ForwardTelegramData).token && !!(nodeData as ForwardTelegramData).chatId;
       case "forward:discord":
@@ -274,7 +278,7 @@ export function TemplateSelector({ type, value, onChange }: TemplateSelectorProp
 // 测试按钮组件
 interface TestButtonProps {
   nodeType: NodeType;
-  nodeData: ForwardEmailData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
+  nodeData: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
 }
 
 export function ForwardTestButton({ nodeType, nodeData }: TestButtonProps) {

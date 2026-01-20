@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { readJsonBody } from "@/lib/request";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 import { rateLimit } from "@/lib/api-rate-limit";
+import { getTelegramBotToken } from "@/services/telegram/bot-api";
 import type {
   ForwardEmailData,
+  ForwardTelegramBoundData,
   ForwardTelegramData,
   ForwardDiscordData,
   ForwardSlackData,
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
     const body = bodyResult.data;
     const { type, config, email } = body as {
       type: NodeType;
-      config: ForwardEmailData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
+      config: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
       email: TestEmailData;
     };
 
@@ -73,6 +76,7 @@ export async function POST(req: NextRequest) {
         subject: email.subject,
         textBody: email.textBody,
         htmlBody: email.htmlBody,
+        previewUrl: "https://example.com/p/test",
         receivedAt: email.receivedAt,
       },
       mailbox: {
@@ -87,6 +91,9 @@ export async function POST(req: NextRequest) {
     switch (type) {
       case "forward:email":
         result = await testEmailForward(config as ForwardEmailData);
+        break;
+      case "forward:telegram-bound":
+        result = await testTelegramBoundForward(session.user.id, email, vars);
         break;
       case "forward:telegram":
         result = await testTelegramForward(config as ForwardTelegramData, email, vars);
@@ -142,7 +149,8 @@ async function testTelegramForward(
   email: TestEmailData,
   vars: Record<string, unknown>
 ): Promise<{ success: boolean; message: string; details?: string }> {
-  if (!config.token) {
+  const token = (config.token || "").trim();
+  if (!token) {
     return { success: false, message: "Bot token is required" };
   }
   if (!config.chatId) {
@@ -163,7 +171,7 @@ async function testTelegramForward(
 
   try {
     const response = await fetch(
-      `https://api.telegram.org/bot${config.token}/sendMessage`,
+      `https://api.telegram.org/bot${token}/sendMessage`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -188,6 +196,67 @@ async function testTelegramForward(
         details: `Error code: ${data.error_code}`,
       };
     }
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to connect to Telegram",
+    };
+  }
+}
+
+async function testTelegramBoundForward(
+  userId: string,
+  email: TestEmailData,
+  vars: Record<string, unknown>
+): Promise<{ success: boolean; message: string; details?: string }> {
+  const binding = await prisma.telegramChatBinding.findFirst({
+    where: { userId, enabled: true, mode: "MANAGE" },
+    select: { chatId: true, threadId: true, chatTitle: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (!binding) {
+    return { success: false, message: "No bound Telegram group. Bind a forum group first." };
+  }
+
+  const token = await getTelegramBotToken();
+
+  const template = `📧 Test Email\nFrom: {{email.fromAddress}}\nTo: {{email.toAddress}}\nSubject: {{email.subject}}\nTime: {{email.receivedAt}}`;
+  const text = replaceTemplateVariables(template, vars);
+
+  const messageThreadId = binding.threadId ? Number.parseInt(binding.threadId, 10) : null;
+  const requestBody: Record<string, unknown> = {
+    chat_id: binding.chatId,
+    text: `[TEST] ${text}`,
+    ...(Number.isFinite(messageThreadId) && (messageThreadId as number) > 0 ? { message_thread_id: messageThreadId } : {}),
+  };
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        redirect: "error",
+        signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    const data = await response.json().catch(() => null) as { ok?: boolean; result?: { message_id?: number }; description?: string; error_code?: number } | null;
+
+    if (response.ok && data?.ok) {
+      return {
+        success: true,
+        message: "Test message sent to bound Telegram group",
+        details: `Group: ${binding.chatTitle || binding.chatId} • message_id=${String(data.result?.message_id ?? "")}`,
+      };
+    }
+
+    return {
+      success: false,
+      message: data?.description || "Telegram API error",
+      details: data?.error_code ? `Error code: ${String(data.error_code)}` : undefined,
+    };
   } catch (error) {
     return {
       success: false,

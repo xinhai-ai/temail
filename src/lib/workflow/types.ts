@@ -51,6 +51,7 @@ export type NodeType =
   | "action:aiRewrite"
   // 转发
   | "forward:email"
+  | "forward:telegram-bound"
   | "forward:telegram"
   | "forward:discord"
   | "forward:slack"
@@ -84,6 +85,7 @@ export type NodeData =
   | ActionSetTagsData
   | ActionAiRewriteData
   | ForwardEmailData
+  | ForwardTelegramBoundData
   | ForwardTelegramData
   | ForwardDiscordData
   | ForwardSlackData
@@ -273,6 +275,10 @@ export interface ForwardEmailData {
     body?: string;
     html?: string;
   };
+}
+
+export interface ForwardTelegramBoundData {
+  label?: string;
 }
 
 export interface ForwardTelegramData {
@@ -778,6 +784,17 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     inputs: 1,
     outputs: 1,
     defaultData: { to: "" },
+  },
+  "forward:telegram-bound": {
+    type: "forward:telegram-bound",
+    category: "forward",
+    label: "Telegram Group (Bound)",
+    description: "Forward to your bound Telegram forum group",
+    icon: "MessageCircle",
+    color: "#8b5cf6",
+    inputs: 1,
+    outputs: 1,
+    defaultData: {},
   },
   "forward:telegram": {
     type: "forward:telegram",

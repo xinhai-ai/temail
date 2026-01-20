@@ -29,6 +29,7 @@ export const nodeManualLoaders: Record<NodeType, NodeManualLoader> = {
   "action:aiRewrite": () => import("./action-ai-rewrite"),
 
   "forward:email": () => import("./forward-email"),
+  "forward:telegram-bound": () => import("./forward-telegram-bound"),
   "forward:telegram": () => import("./forward-telegram"),
   "forward:discord": () => import("./forward-discord"),
   "forward:slack": () => import("./forward-slack"),

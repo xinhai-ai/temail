@@ -207,6 +207,10 @@ const forwardTelegramDataSchema = z
     }
   });
 
+const forwardTelegramBoundDataSchema = z.object({
+  label: z.string().optional(),
+});
+
 const forwardDiscordDataSchema = z.object({
   label: z.string().optional(),
   webhookUrl: z.string().url(),
@@ -268,6 +272,7 @@ const nodeTypeToDataSchema: Record<string, z.ZodType> = {
   "action:setTags": actionSetTagsDataSchema,
   "action:aiRewrite": actionAiRewriteDataSchema,
   "forward:email": forwardEmailDataSchema,
+  "forward:telegram-bound": forwardTelegramBoundDataSchema,
   "forward:telegram": forwardTelegramDataSchema,
   "forward:discord": forwardDiscordDataSchema,
   "forward:slack": forwardSlackDataSchema,
@@ -302,6 +307,7 @@ const nodeTypeSchema = z.enum([
   "action:setTags",
   "action:aiRewrite",
   "forward:email",
+  "forward:telegram-bound",
   "forward:telegram",
   "forward:discord",
   "forward:slack",
