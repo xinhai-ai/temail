@@ -51,6 +51,8 @@ export default function AdminTelegramPage() {
   const [webhookInfo, setWebhookInfo] = useState<WebhookInfo | null>(null);
   const [endpointStatus, setEndpointStatus] = useState<{ webhookSecretConfigured: boolean } | null>(null);
 
+  const [commandsLoading, setCommandsLoading] = useState(false);
+
   const [baseUrl, setBaseUrl] = useState("");
   const [dropPendingUpdates, setDropPendingUpdates] = useState(true);
 
@@ -193,6 +195,21 @@ export default function AdminTelegramPage() {
       toast.success("Webhook deleted");
     } finally {
       setWebhookLoading(false);
+    }
+  };
+
+  const syncCommands = async () => {
+    setCommandsLoading(true);
+    try {
+      const res = await fetch("/api/admin/telegram/commands", { method: "POST" });
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to sync bot commands");
+        return;
+      }
+      toast.success("Bot commands synced");
+    } finally {
+      setCommandsLoading(false);
     }
   };
 
@@ -362,7 +379,21 @@ export default function AdminTelegramPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Commands</CardTitle>
+          <CardDescription>Sync slash commands so users get suggestions when typing “/”</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button onClick={syncCommands} disabled={commandsLoading || saving || webhookLoading}>
+            {commandsLoading ? "Syncing..." : "Sync Bot Commands"}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Tip: after syncing, open a chat with the bot and type <span className="font-mono">/</span> to see the command list.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

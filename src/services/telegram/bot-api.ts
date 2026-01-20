@@ -21,6 +21,20 @@ export type TelegramInlineKeyboardMarkup = {
   inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
 };
 
+export type TelegramBotCommand = {
+  command: string;
+  description: string;
+};
+
+export type TelegramBotCommandScope =
+  | { type: "default" }
+  | { type: "all_private_chats" }
+  | { type: "all_group_chats" }
+  | { type: "all_chat_administrators" }
+  | { type: "chat"; chat_id: string }
+  | { type: "chat_administrators"; chat_id: string }
+  | { type: "chat_member"; chat_id: string; user_id: number };
+
 export async function telegramAnswerCallbackQuery(params: {
   callbackQueryId: string;
   text?: string;
@@ -56,6 +70,24 @@ export async function telegramEditMessageText(params: {
   };
 
   const result = await telegramApiRequest<boolean>(token, "editMessageText", payload);
+  if (result.ok) return;
+  const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
+  throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
+}
+
+export async function telegramSetMyCommands(params: {
+  commands: TelegramBotCommand[];
+  scope?: TelegramBotCommandScope;
+  languageCode?: string;
+}): Promise<void> {
+  const token = await getTelegramBotToken();
+  const payload: Record<string, unknown> = {
+    commands: params.commands,
+    ...(params.scope ? { scope: params.scope } : {}),
+    ...(params.languageCode ? { language_code: params.languageCode } : {}),
+  };
+
+  const result = await telegramApiRequest<boolean>(token, "setMyCommands", payload);
   if (result.ok) return;
   const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
   throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
