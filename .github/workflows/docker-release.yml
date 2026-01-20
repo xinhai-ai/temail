@@ -100,10 +100,14 @@ jobs:
           fi
 
           export CURRENT_TAG PREV_TAG
-          BODY="$(git log --no-merges --pretty=format:%H%x09%s "${RANGE}" | node <<'NODE'
+          COMMITS_FILE="$(mktemp)"
+          git log --no-merges --pretty=format:%H%x09%s "${RANGE}" > "${COMMITS_FILE}"
+
+          BODY="$(node - "${COMMITS_FILE}" <<'NODE'
           const fs = require("fs");
 
-          const input = fs.readFileSync(0, "utf8").trim();
+          const commitsFile = process.argv[2];
+          const input = commitsFile ? fs.readFileSync(commitsFile, "utf8").trim() : "";
           const currentTag = process.env.CURRENT_TAG || "";
           const prevTag = process.env.PREV_TAG || "";
           const repo = process.env.GITHUB_REPOSITORY || "";
