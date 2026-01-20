@@ -236,9 +236,13 @@ function buildTargets(drafts: TargetDraft[]): CreateTargetPayload[] {
         const chatId = t.chatId?.trim() || "";
         if (!token || !chatId) throw new Error(`${prefix}: Telegram token and chat ID are required`);
         const rawThreadId = t.messageThreadId?.trim() || "";
-        const messageThreadId = rawThreadId ? Number.parseInt(rawThreadId, 10) : undefined;
-        if (rawThreadId && (!Number.isFinite(messageThreadId) || messageThreadId <= 0)) {
-          throw new Error(`${prefix}: Telegram Topic ID (message_thread_id) must be a positive integer`);
+        let messageThreadId: number | undefined;
+        if (rawThreadId) {
+          const parsed = Number.parseInt(rawThreadId, 10);
+          if (!Number.isFinite(parsed) || parsed <= 0) {
+            throw new Error(`${prefix}: Telegram Topic ID (message_thread_id) must be a positive integer`);
+          }
+          messageThreadId = parsed;
         }
         return {
           ...(t.id ? { id: t.id } : {}),
