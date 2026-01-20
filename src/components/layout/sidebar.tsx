@@ -6,47 +6,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { ADMIN_NAV_ITEMS, APP_NAV_ITEMS, type NavItem } from "@/components/layout/navigation";
 import {
-  LayoutDashboard,
   Mail,
-  Inbox,
-  Globe,
-  Forward,
-  Settings,
-  Shield,
-  Users,
-  FileText,
-  Cog,
   PanelLeftClose,
   PanelLeftOpen,
-  Workflow,
-  Trash2,
 } from "lucide-react";
-
-interface NavItem {
-  title: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
-}
-
-const navItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Inbox", href: "/inbox", icon: Inbox },
-  { title: "Trash", href: "/trash", icon: Trash2 },
-  { title: "Domains", href: "/domains", icon: Globe, adminOnly: true },
-  { title: "Workflows", href: "/workflows", icon: Workflow },
-  { title: "Forwards", href: "/forwards", icon: Forward },
-  { title: "Settings", href: "/settings", icon: Settings },
-];
-
-const adminNavItems: NavItem[] = [
-  { title: "Admin", href: "/admin", icon: Shield },
-  { title: "Users", href: "/admin/users", icon: Users },
-  { title: "Inbound", href: "/admin/inbound", icon: Inbox },
-  { title: "Logs", href: "/admin/logs", icon: FileText },
-  { title: "System", href: "/admin/settings", icon: Cog },
-];
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -59,7 +24,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const collapsed = collapsedProp ?? uncontrolledCollapsed;
 
-  const userNavItems = navItems.filter((item) => !item.adminOnly || isAdmin);
+  const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   const setCollapsed = (next: boolean) => {
     if (collapsedProp === undefined) {
@@ -69,7 +34,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
   };
 
   const renderNavItem = (item: NavItem) => {
-    const isActive = pathname === item.href;
+    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
     const link = (
       <Link
@@ -141,7 +106,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
                     <div className="h-px bg-sidebar-border/70" />
                   )}
                 </div>
-                {adminNavItems.map(renderNavItem)}
+                {ADMIN_NAV_ITEMS.map(renderNavItem)}
               </>
             )}
           </nav>

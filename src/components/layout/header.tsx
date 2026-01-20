@@ -20,56 +20,16 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { ADMIN_NAV_ITEMS, APP_NAV_ITEMS, PAGE_TITLES, type NavItem } from "@/components/layout/navigation";
 import {
-  Cog,
-  FileText,
-  Forward,
-  Globe,
-  Inbox,
-  LayoutDashboard,
   LogOut,
   Mail,
   Menu,
   Settings,
-  Shield,
   User,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-
-interface NavItem {
-  title: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
-}
-
-const navItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Inbox", href: "/inbox", icon: Inbox },
-  { title: "Domains", href: "/domains", icon: Globe, adminOnly: true },
-  { title: "Forwards", href: "/forwards", icon: Forward },
-  { title: "Settings", href: "/settings", icon: Settings },
-];
-
-const adminNavItems: NavItem[] = [
-  { title: "Admin", href: "/admin", icon: Shield },
-  { title: "Users", href: "/admin/users", icon: Users },
-  { title: "Inbound", href: "/admin/inbound", icon: Inbox },
-  { title: "Logs", href: "/admin/logs", icon: FileText },
-  { title: "System", href: "/admin/settings", icon: Cog },
-];
-
-const pageTitles: Record<string, { title: string; description?: string }> = {
-  "/dashboard": { title: "Dashboard", description: "Overview of your email activity" },
-  "/inbox": { title: "Inbox", description: "Mailboxes, grouped — with instant email preview" },
-  "/domains": { title: "Domains", description: "Manage your email domains" },
-  "/forwards": { title: "Forwards", description: "Configure email forwarding rules" },
-  "/settings": { title: "Settings", description: "Manage your account settings" },
-  "/emails": { title: "Emails", description: "View all your emails" },
-  "/admin": { title: "Admin", description: "System administration" },
-};
 
 interface HeaderProps {
   isAdmin?: boolean;
@@ -80,15 +40,15 @@ export function Header({ isAdmin = false }: HeaderProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const userNavItems = navItems.filter((item) => !item.adminOnly || isAdmin);
+  const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   // Get page info based on pathname
   const getPageInfo = () => {
     // Check exact match first
-    if (pageTitles[pathname]) return pageTitles[pathname];
+    if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
     // Check prefix match for nested routes
     const basePath = "/" + pathname.split("/")[1];
-    return pageTitles[basePath] || null;
+    return PAGE_TITLES[basePath] || null;
   };
 
   const pageInfo = getPageInfo();
@@ -133,7 +93,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
+            <SheetContent side="left" className="w-72 p-0 flex flex-col">
               <SheetHeader className="p-4 border-b">
                 <SheetTitle className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-primary/10">
@@ -142,7 +102,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
                   <span className="text-xl font-bold">TEmail</span>
                 </SheetTitle>
               </SheetHeader>
-              <nav className="p-4 space-y-1">
+              <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                 {userNavItems.map(renderNavItem)}
 
                 {isAdmin && (
@@ -152,7 +112,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
                         Administration
                       </p>
                     </div>
-                    {adminNavItems.map(renderNavItem)}
+                    {ADMIN_NAV_ITEMS.map(renderNavItem)}
                   </>
                 )}
               </nav>
