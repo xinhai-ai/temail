@@ -5,7 +5,7 @@ import { formatRemainingTime, tryAcquireSyncLock } from "@/lib/rate-limit";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 import { moveOwnedEmailToTrash, purgeOwnedEmail, restoreOwnedEmailFromTrash } from "@/services/email-trash";
 import { rematchUnmatchedInboundEmailsForUser } from "@/services/inbound/rematch";
-import { telegramSendMessage } from "./bot-api";
+import { getTelegramForumGeneralTopicName, telegramCreateForumTopic, telegramSendMessage } from "./bot-api";
 import { consumeTelegramBindCode } from "./bind-codes";
 import { upsertTelegramNotifyWorkflowForBinding } from "./notify-workflows";
 import type { TelegramMessage, TelegramUpdate } from "./types";
@@ -39,14 +39,18 @@ function formatHelp() {
     "- /help — show this help",
     "- /unlink — unlink this Telegram account",
     "",
-    "Commands (group/topic):",
-    "- /bind <code> — bind this group topic for notifications",
+    "Commands (forum group):",
+    "- /bind <code> — bind this group and create a General topic",
+    "",
+    "Commands (forum topics):",
+    "- Run commands inside the created General topic (global)",
+    "- Run commands inside mailbox topics (per-mailbox)",
   ].join("\n");
 }
 
-function buildScopeKey(params: { chatId: string; threadId: string; mailboxId: string | null; mode: TelegramBindingMode }) {
+function buildScopeKey(params: { chatId: string; mailboxId: string | null; mode: TelegramBindingMode }) {
   const mailboxPart = params.mailboxId ? params.mailboxId : "all";
-  return `chat:${params.chatId}|thread:${params.threadId}|mailbox:${mailboxPart}|mode:${params.mode}`;
+  return `chat:${params.chatId}|mailbox:${mailboxPart}|mode:${params.mode}`;
 }
 
 async function replyToMessage(message: TelegramMessage, text: string) {
@@ -521,13 +525,7 @@ async function handleBind(message: TelegramMessage, args: string) {
   }
 
   if (message.chat.type === "private") {
-    await replyToMessage(message, "Please run /bind inside your target group topic.");
-    return;
-  }
-
-  const threadId = typeof message.message_thread_id === "number" ? String(message.message_thread_id) : "";
-  if (!threadId) {
-    await replyToMessage(message, "Please run /bind inside a Topic (thread) in your group.");
+    await replyToMessage(message, "Please run /bind inside your target forum group.");
     return;
   }
 
@@ -557,9 +555,25 @@ async function handleBind(message: TelegramMessage, args: string) {
     return;
   }
 
-  const mode: TelegramBindingMode = (consumed.mode || "NOTIFY") satisfies TelegramBindingMode;
+  const mode: TelegramBindingMode = "MANAGE" satisfies TelegramBindingMode;
   const chatId = String(message.chat.id);
-  const scopeKey = buildScopeKey({ chatId, threadId, mailboxId: consumed.mailboxId, mode });
+  const scopeKey = buildScopeKey({ chatId, mailboxId: null, mode });
+
+  let generalThreadId: number;
+  try {
+    const topicName = await getTelegramForumGeneralTopicName();
+    const created = await telegramCreateForumTopic({ chatId, name: topicName });
+    generalThreadId = created.messageThreadId;
+  } catch (error) {
+    const messageText = error instanceof Error ? error.message : String(error);
+    await replyToMessage(
+      message,
+      `Bind failed: cannot create Topics in this group.\n\nMake sure:\n- The group has Topics enabled\n- The bot is an admin with Manage Topics permission\n\nDetails: ${messageText}`
+    );
+    return;
+  }
+
+  const threadId = String(generalThreadId);
 
   const stored = await prisma.telegramChatBinding.upsert({
     where: { userId_scopeKey: { userId: link.userId, scopeKey } },
@@ -570,7 +584,7 @@ async function handleBind(message: TelegramMessage, args: string) {
       chatType: message.chat.type,
       chatTitle: message.chat.title || null,
       threadId,
-      mailboxId: consumed.mailboxId,
+      mailboxId: null,
     },
     create: {
       userId: link.userId,
@@ -581,14 +595,39 @@ async function handleBind(message: TelegramMessage, args: string) {
       chatType: message.chat.type,
       chatTitle: message.chat.title || null,
       threadId,
-      mailboxId: consumed.mailboxId,
+      mailboxId: null,
     },
     select: { id: true },
   });
 
+  await prisma.telegramChatBinding.deleteMany({
+    where: {
+      userId: link.userId,
+      chatId,
+      mode: "MANAGE",
+      id: { not: stored.id },
+    },
+  });
+
   await upsertTelegramNotifyWorkflowForBinding(stored.id);
 
-  await replyToMessage(message, "Bound. This topic will receive TEmail notifications.");
+  await replyToMessage(message, "Bound. A General topic has been created for TEmail management.");
+
+  await telegramSendMessage({
+    chatId,
+    messageThreadId: generalThreadId,
+    text: [
+      "✅ TEmail is connected to this group.",
+      "",
+      "Use this topic for global management:",
+      "- /mailboxes",
+      "- /search <q>",
+      "- /refresh",
+      "",
+      "Mailbox topics will be created automatically when emails are forwarded by workflows.",
+    ].join("\n"),
+    disableWebPagePreview: true,
+  });
 }
 
 export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
