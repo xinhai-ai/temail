@@ -19,6 +19,7 @@ import type { TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./t
 
 const TELEGRAM_MAX_MESSAGE_CHARS = 4096;
 const EMAILS_PAGE_SIZE = 6;
+const EMAILS_BUTTONS_PER_ROW = 5;
 const CALLBACK_PREFIX = "temail";
 
 function parseCommand(text: string): { command: string; args: string } | null {
@@ -384,15 +385,18 @@ async function buildEmailsListPayload(params: {
     : { kind: "all" };
 
   const inline_keyboard: TelegramInlineKeyboardMarkup["inline_keyboard"] = [];
+  let row: Array<{ text: string; callback_data: string }> = [];
   for (const [idx, email] of emails.entries()) {
-    const subject = truncateButtonText(email.subject || "(No subject)");
-    inline_keyboard.push([
-      {
-        text: `${idx + 1} · ${subject}`,
-        callback_data: buildOpenEmailCallback(email.id),
-      },
-    ]);
+    row.push({
+      text: String(idx + 1),
+      callback_data: buildOpenEmailCallback(email.id),
+    });
+    if (row.length >= EMAILS_BUTTONS_PER_ROW) {
+      inline_keyboard.push(row);
+      row = [];
+    }
   }
+  if (row.length) inline_keyboard.push(row);
 
   const navRow: Array<{ text: string; callback_data: string }> = [];
   if (page > 1) navRow.push({ text: "◀ Prev", callback_data: buildEmailsListCallback(scope, page - 1) });
