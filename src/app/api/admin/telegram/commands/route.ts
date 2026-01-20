@@ -42,6 +42,10 @@ export async function POST() {
 
   try {
     await telegramSetMyCommands({
+      scope: { type: "default" },
+      commands: buildGroupCommands(),
+    });
+    await telegramSetMyCommands({
       scope: { type: "all_private_chats" },
       commands: buildPrivateCommands(),
     });
@@ -56,4 +60,3 @@ export async function POST() {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-
