@@ -338,8 +338,20 @@ function buildEmailsListCallback(scope: { kind: "all" } | { kind: "mailbox"; mai
   return `${CALLBACK_PREFIX}:emails:mb:${scope.mailboxId}:${page}`;
 }
 
+function buildSearchListCallback(page: number) {
+  return `${CALLBACK_PREFIX}:search:${page}`;
+}
+
 function buildOpenEmailCallback(emailId: string) {
   return `${CALLBACK_PREFIX}:open:${emailId}`;
+}
+
+function parseSearchQueryFromMessageText(text: string | null | undefined): string | null {
+  const value = (text || "").trim();
+  if (!value) return null;
+  const match = value.match(/^Query:\s*(.+)\s*$/m);
+  const q = match?.[1]?.trim() || "";
+  return q ? q : null;
 }
 
 async function buildEmailsListPayload(params: {
@@ -417,6 +429,92 @@ async function buildEmailsListPayload(params: {
 
   return {
     text: `${title}\n\n${lines.join("\n")}\n\nClick a button to view the full email.`,
+    replyMarkup: { inline_keyboard },
+    hasNext,
+  };
+}
+
+async function buildSearchListPayload(params: {
+  userId: string;
+  mailboxId: string | null;
+  mailboxAddress: string | null;
+  query: string;
+  page: number;
+}) {
+  const page = Number.isFinite(params.page) && params.page > 0 ? Math.floor(params.page) : 1;
+  const skip = (page - 1) * EMAILS_PAGE_SIZE;
+  const rawQuery = (params.query || "").replace(/\s+/g, " ").trim();
+  const q = rawQuery.length > 200 ? rawQuery.slice(0, 200) : rawQuery;
+
+  const rows = await prisma.email.findMany({
+    where: {
+      mailbox: { userId: params.userId },
+      ...(params.mailboxId ? { mailboxId: params.mailboxId } : {}),
+      OR: [
+        { subject: { contains: q } },
+        { fromAddress: { contains: q } },
+        { fromName: { contains: q } },
+        { toAddress: { contains: q } },
+        { textBody: { contains: q } },
+      ],
+    },
+    select: {
+      id: true,
+      subject: true,
+      fromAddress: true,
+      fromName: true,
+      status: true,
+      isStarred: true,
+      receivedAt: true,
+      mailbox: { select: { address: true } },
+    },
+    orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+    skip,
+    take: EMAILS_PAGE_SIZE + 1,
+  });
+
+  const hasNext = rows.length > EMAILS_PAGE_SIZE;
+  const emails = rows.slice(0, EMAILS_PAGE_SIZE);
+
+  const headerMailbox = params.mailboxAddress ? `(${params.mailboxAddress})` : "(all mailboxes)";
+  const title = `Search ${headerMailbox} — page ${page}`;
+
+  if (emails.length === 0) {
+    return {
+      text: `${title}\nQuery: ${q}\n\nNo matches.`,
+      replyMarkup: undefined as TelegramInlineKeyboardMarkup | undefined,
+      hasNext: false,
+    };
+  }
+
+  const lines = emails.map((e, idx) => {
+    const subject = truncateLine(e.subject || "(No subject)", 80);
+    const from = truncateLine(e.fromName ? `${e.fromName} <${e.fromAddress}>` : e.fromAddress, 60);
+    const flags = `${e.status}${e.isStarred ? " ★" : ""}`;
+    return `${idx + 1}) [${flags}] ${subject}\n   from: ${from}\n   mailbox: ${e.mailbox.address}\n   id: ${e.id}`;
+  });
+
+  const inline_keyboard: TelegramInlineKeyboardMarkup["inline_keyboard"] = [];
+  let row: Array<{ text: string; callback_data: string }> = [];
+  for (const [idx, email] of emails.entries()) {
+    row.push({
+      text: String(idx + 1),
+      callback_data: buildOpenEmailCallback(email.id),
+    });
+    if (row.length >= EMAILS_BUTTONS_PER_ROW) {
+      inline_keyboard.push(row);
+      row = [];
+    }
+  }
+  if (row.length) inline_keyboard.push(row);
+
+  const navRow: Array<{ text: string; callback_data: string }> = [];
+  if (page > 1) navRow.push({ text: "◀ Prev", callback_data: buildSearchListCallback(page - 1) });
+  if (hasNext) navRow.push({ text: "Next ▶", callback_data: buildSearchListCallback(page + 1) });
+  if (navRow.length) inline_keyboard.push(navRow);
+
+  return {
+    text: `${title}\nQuery: ${q}\n\n${lines.join("\n")}\n\nClick a button to view the full email.`,
     replyMarkup: { inline_keyboard },
     hasNext,
   };
@@ -534,42 +632,25 @@ async function handleSearch(message: TelegramMessage, args: string) {
     return;
   }
 
-  const emails = await prisma.email.findMany({
-    where: {
-      mailbox: { userId },
-      ...(ctx.kind === "forum-mailbox" ? { mailboxId: ctx.mailboxId } : {}),
-      OR: [
-        { subject: { contains: q } },
-        { fromAddress: { contains: q } },
-        { fromName: { contains: q } },
-        { toAddress: { contains: q } },
-        { textBody: { contains: q } },
-      ],
-    },
-    select: {
-      id: true,
-      subject: true,
-      fromAddress: true,
-      fromName: true,
-      receivedAt: true,
-      mailbox: { select: { address: true } },
-    },
-    orderBy: { receivedAt: "desc" },
-    take: 10,
+  const mailboxId = ctx.kind === "forum-mailbox" ? ctx.mailboxId : null;
+  const mailboxAddress = mailboxId
+    ? (
+        await prisma.mailbox.findFirst({
+          where: { id: mailboxId, userId },
+          select: { address: true },
+        })
+      )?.address || null
+    : null;
+
+  const payload = await buildSearchListPayload({
+    userId,
+    mailboxId,
+    mailboxAddress,
+    query: q,
+    page: 1,
   });
 
-  if (emails.length === 0) {
-    await replyToMessage(message, `Search results for "${truncateLine(q, 60)}":\n\nNo matches.`);
-    return;
-  }
-
-  const lines = emails.map((e) => {
-    const subject = truncateLine(e.subject || "(No subject)", 80);
-    const from = truncateLine(e.fromName ? `${e.fromName} <${e.fromAddress}>` : e.fromAddress, 60);
-    return `- ${subject}\n  from: ${from}\n  mailbox: ${e.mailbox.address}\n  id: ${e.id}`;
-  });
-
-  await replyToMessage(message, `Search results for "${truncateLine(q, 60)}":\n\n${lines.join("\n")}`);
+  await replyToMessage(message, payload.text, payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : undefined);
 }
 
 async function handleOpen(message: TelegramMessage, args: string) {
@@ -936,6 +1017,61 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
         userId: link.userId,
         mailboxId,
         mailboxAddress,
+        page,
+      });
+
+      await telegramEditMessageText({
+        chatId,
+        messageId,
+        text: payload.text,
+        ...(payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : {}),
+        disableWebPagePreview: true,
+      });
+      return;
+    }
+
+    if (parts[1] === "search") {
+      const chatId = String(message.chat.id);
+      const messageId = message.message_id;
+      let page = Number.parseInt(parts[2] || "1", 10);
+      if (!Number.isFinite(page) || page <= 0) page = 1;
+
+      const query = parseSearchQueryFromMessageText(message.text);
+      if (!query) {
+        await telegramEditMessageText({
+          chatId,
+          messageId,
+          text: "Cannot parse search query. Please run /search <query> again.",
+          disableWebPagePreview: true,
+        });
+        return;
+      }
+
+      let mailboxId: string | null = null;
+      let mailboxAddress: string | null = null;
+      if (ctx.kind === "forum-mailbox") {
+        mailboxId = ctx.mailboxId;
+        const mailbox = await prisma.mailbox.findFirst({
+          where: { id: mailboxId, userId: link.userId },
+          select: { address: true },
+        });
+        if (!mailbox) {
+          await telegramEditMessageText({
+            chatId,
+            messageId,
+            text: "Mailbox not found.",
+            disableWebPagePreview: true,
+          });
+          return;
+        }
+        mailboxAddress = mailbox.address;
+      }
+
+      const payload = await buildSearchListPayload({
+        userId: link.userId,
+        mailboxId,
+        mailboxAddress,
+        query,
         page,
       });
 
