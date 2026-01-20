@@ -14,7 +14,7 @@ import {
   telegramSendMessage,
 } from "./bot-api";
 import { consumeTelegramBindCode } from "./bind-codes";
-import { upsertTelegramNotifyWorkflowForBinding } from "./notify-workflows";
+import { deleteTelegramNotifyWorkflowForBinding } from "./notify-workflows";
 import type { TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./types";
 
 const TELEGRAM_MAX_MESSAGE_CHARS = 4096;
@@ -725,7 +725,7 @@ async function handleUnlink(message: TelegramMessage) {
     where: { userId: link.userId, mode: "MANAGE" },
     select: { id: true },
   });
-  await Promise.all(bindingIds.map((b) => upsertTelegramNotifyWorkflowForBinding(b.id)));
+  await Promise.all(bindingIds.map((b) => deleteTelegramNotifyWorkflowForBinding(b.id)));
 
   await replyToMessage(message, "Unlinked. All Telegram notifications have been disabled.");
 }
@@ -821,8 +821,6 @@ async function handleBind(message: TelegramMessage, args: string) {
       id: { not: stored.id },
     },
   });
-
-  await upsertTelegramNotifyWorkflowForBinding(stored.id);
 
   await replyToMessage(message, "Bound. A General topic has been created for TEmail management.");
 

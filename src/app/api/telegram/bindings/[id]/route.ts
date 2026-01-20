@@ -3,7 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
-import { deleteTelegramNotifyWorkflowForBinding, upsertTelegramNotifyWorkflowForBinding } from "@/services/telegram/notify-workflows";
+import { deleteTelegramNotifyWorkflowForBinding } from "@/services/telegram/notify-workflows";
 
 const patchSchema = z.object({
   enabled: z.boolean(),
@@ -47,7 +47,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Binding not found" }, { status: 404 });
   }
 
-  await upsertTelegramNotifyWorkflowForBinding(id);
+  // Legacy cleanup: notifications are now configured explicitly via workflow nodes.
+  await deleteTelegramNotifyWorkflowForBinding(id);
 
   return NextResponse.json({ success: true });
 }
