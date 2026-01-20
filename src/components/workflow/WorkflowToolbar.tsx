@@ -30,8 +30,8 @@ export function WorkflowToolbar({ onTestClick, canTest = false }: WorkflowToolba
   const canRunTest = canTest && hasTrigger && validationErrors === 0;
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-background border rounded-lg shadow-sm">
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="flex flex-wrap items-center gap-2 px-3 py-2 sm:px-4 bg-background border rounded-lg shadow-sm max-w-[calc(100vw-2rem)]">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <span className="font-medium text-sm truncate">{name}</span>
         {status === "ACTIVE" && (
           <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
@@ -48,30 +48,32 @@ export function WorkflowToolbar({ onTestClick, canTest = false }: WorkflowToolba
         )}
       </div>
 
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:ml-auto">
         {/* Validation Status */}
         {!hasTrigger && (
           <div className="flex items-center gap-1 text-xs text-amber-600">
             <AlertCircle className="h-3 w-3" />
-            <span>No trigger</span>
+            <span className="hidden sm:inline">No trigger</span>
           </div>
         )}
         {validationErrors > 0 && (
           <div className="flex items-center gap-1 text-xs text-destructive">
             <AlertCircle className="h-3 w-3" />
-            <span>{validationErrors} error{validationErrors !== 1 ? "s" : ""}</span>
+            <span className="hidden sm:inline">
+              {validationErrors} error{validationErrors !== 1 ? "s" : ""}
+            </span>
           </div>
         )}
         {hasTrigger && validationErrors === 0 && nodes.length > 0 && (
           <div className="flex items-center gap-1 text-xs text-green-600">
             <CheckCircle className="h-3 w-3" />
-            <span>Valid</span>
+            <span className="hidden sm:inline">Valid</span>
           </div>
         )}
 
         {/* Save Indicator */}
         {isDirty && (
-          <span className="text-xs text-muted-foreground">Unsaved changes</span>
+          <span className="hidden sm:inline text-xs text-muted-foreground">Unsaved changes</span>
         )}
 
         {/* Actions */}
@@ -82,8 +84,8 @@ export function WorkflowToolbar({ onTestClick, canTest = false }: WorkflowToolba
           onClick={onTestClick}
           title={!canTest ? "Save workflow first" : !hasTrigger ? "Add a trigger node" : validationErrors > 0 ? "Fix validation errors" : "Test workflow"}
         >
-          <Play className="h-3 w-3 mr-1.5" />
-          Test
+          <Play className="h-3 w-3 sm:mr-1.5" />
+          <span className="hidden sm:inline">Test</span>
         </Button>
 
         <Button
@@ -92,8 +94,8 @@ export function WorkflowToolbar({ onTestClick, canTest = false }: WorkflowToolba
           onClick={resetWorkflow}
           disabled={nodes.length === 0}
         >
-          <Trash2 className="h-3 w-3 mr-1.5" />
-          Clear
+          <Trash2 className="h-3 w-3 sm:mr-1.5" />
+          <span className="hidden sm:inline">Clear</span>
         </Button>
       </div>
     </div>

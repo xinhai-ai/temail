@@ -50,9 +50,10 @@ import { NodeManualDialog } from "../node-manuals/NodeManualDialog";
 
 interface NodeConfigPanelProps {
   mailboxes?: { id: string; address: string }[];
+  onClose?: () => void;
 }
 
-export function NodeConfigPanel({ mailboxes = [] }: NodeConfigPanelProps) {
+export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProps) {
   const selectedNode = useWorkflowStore(selectSelectedNode);
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const deleteNode = useWorkflowStore((s) => s.deleteNode);
@@ -110,7 +111,13 @@ export function NodeConfigPanel({ mailboxes = [] }: NodeConfigPanelProps) {
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={() => setSelectedNodeId(null)}
+          onClick={() => {
+            if (onClose) {
+              onClose();
+              return;
+            }
+            setSelectedNodeId(null);
+          }}
         >
           <X className="h-4 w-4" />
         </Button>

@@ -169,7 +169,7 @@ export default function TrashPage() {
           />
         </div>
 
-        <div className="flex gap-2 justify-end">
+        <div className="flex flex-wrap gap-2 justify-end">
           <Button variant="outline" disabled={selectedIds.length === 0} onClick={bulkRestore}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Restore ({selectedIds.length})

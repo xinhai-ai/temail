@@ -20,7 +20,9 @@ import { NodePalette } from "./panels/NodePalette";
 import { NodeConfigPanel } from "./panels/NodeConfigPanel";
 import { WorkflowToolbar } from "./WorkflowToolbar";
 import type { NodeType } from "@/lib/workflow/types";
-import { Trash2, Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Trash2, Copy, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface WorkflowCanvasProps {
@@ -29,9 +31,33 @@ interface WorkflowCanvasProps {
   canTest?: boolean;
 }
 
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const media = window.matchMedia(query);
+    const onChange = () => setMatches(media.matches);
+
+    onChange();
+
+    if (media.addEventListener) {
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
+    }
+
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, [query]);
+
+  return matches;
+}
+
 function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+  const isLgUp = useMediaQuery("(min-width: 1024px)");
   const [contextMenu, setContextMenu] = useState<{
     node: Node;
     x: number;
@@ -42,9 +68,11 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
     x: number;
     y: number;
   } | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
 
   const nodes = useWorkflowStore((s) => s.nodes);
   const edges = useWorkflowStore((s) => s.edges);
+  const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId);
   const onNodesChange = useWorkflowStore((s) => s.onNodesChange);
   const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
   const onConnect = useWorkflowStore((s) => s.onConnect);
@@ -81,19 +109,28 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
       });
 
       addNode(type, position);
+
+      if (!isLgUp) {
+        setConfigOpen(true);
+      }
     },
-    [screenToFlowPosition, addNode]
+    [screenToFlowPosition, addNode, isLgUp]
   );
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => {
       setSelectedNodeId(node.id);
+
+      if (!isLgUp) {
+        setConfigOpen(true);
+      }
     },
-    [setSelectedNodeId]
+    [setSelectedNodeId, isLgUp]
   );
 
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
+    setConfigOpen(false);
     setContextMenu(null);
     setEdgeContextMenu(null);
   }, [setSelectedNodeId]);
@@ -123,10 +160,13 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
 
   const handleDeleteNode = useCallback(() => {
     if (contextMenu) {
+      if (!isLgUp && contextMenu.node.id === selectedNodeId) {
+        setConfigOpen(false);
+      }
       deleteNode(contextMenu.node.id);
       setContextMenu(null);
     }
-  }, [contextMenu, deleteNode]);
+  }, [contextMenu, deleteNode, isLgUp, selectedNodeId]);
 
   const handleDeleteEdge = useCallback(() => {
     if (edgeContextMenu) {
@@ -148,7 +188,12 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
 
   return (
     <div className="flex h-full overflow-hidden relative">
-      <NodePalette />
+      <div className="md:hidden">
+        <NodePalette collapsed={true} />
+      </div>
+      <div className="hidden md:block">
+        <NodePalette />
+      </div>
       <div className="flex-1 relative overflow-hidden" ref={reactFlowWrapper}>
         <ReactFlow
           nodes={nodes}
@@ -184,9 +229,27 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
           <Panel position="top-center">
             <WorkflowToolbar onTestClick={onTestClick} canTest={canTest} />
           </Panel>
+          <Panel position="top-right" className="lg:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Open node config"
+              onClick={() => setConfigOpen(true)}
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          </Panel>
         </ReactFlow>
       </div>
-      <NodeConfigPanel mailboxes={mailboxes} />
+      <div className="hidden lg:block">
+        <NodeConfigPanel mailboxes={mailboxes} />
+      </div>
+      <Sheet open={!isLgUp && configOpen} onOpenChange={setConfigOpen}>
+        <SheetContent side="right" className="w-80 p-0 lg:hidden">
+          <NodeConfigPanel mailboxes={mailboxes} onClose={() => setConfigOpen(false)} />
+        </SheetContent>
+      </Sheet>
 
       {/* Custom Context Menu */}
       {contextMenu && (

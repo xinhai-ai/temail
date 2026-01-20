@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Power, PowerOff, History } from "lucide-react";
+import { ArrowLeft, Save, Power, PowerOff, History, Settings } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -197,53 +197,57 @@ export default function WorkflowEditorPage() {
   return (
     <div className="-m-4 md:-m-6 h-[calc(100vh-64px)] flex flex-col overflow-hidden bg-background">
       {/* Header */}
-      <div className="flex-shrink-0 border-b px-4 py-3 flex items-center justify-between bg-background z-10">
-        <div className="flex items-center gap-3">
+      <div className="flex-shrink-0 border-b px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-background z-10">
+        <div className="flex items-center gap-3 min-w-0">
           <Button variant="ghost" size="icon-sm" asChild>
             <Link href="/workflows">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
-            <h1 className="font-semibold">{name}</h1>
-            <p className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="font-semibold truncate">{name}</h1>
+            <p className="text-xs text-muted-foreground truncate">
               {description || "No description"}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
           {!isNew && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowHistoryDialog(true)}
+              aria-label="Open execution history"
             >
-              <History className="h-3 w-3 mr-1.5" />
-              History
+              <History className="h-3 w-3 sm:mr-1.5" />
+              <span className="hidden sm:inline">History</span>
             </Button>
           )}
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowMetaDialog(true)}
+            aria-label="Open workflow settings"
           >
-            Settings
+            <Settings className="h-3 w-3 sm:mr-1.5" />
+            <span className="hidden sm:inline">Settings</span>
           </Button>
           {!isNew && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleToggleStatus}
+              aria-label={status === "ACTIVE" ? "Deactivate workflow" : "Activate workflow"}
             >
               {status === "ACTIVE" ? (
                 <>
-                  <PowerOff className="h-3 w-3 mr-1.5" />
-                  Deactivate
+                  <PowerOff className="h-3 w-3 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Deactivate</span>
                 </>
               ) : (
                 <>
-                  <Power className="h-3 w-3 mr-1.5" />
-                  Activate
+                  <Power className="h-3 w-3 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Activate</span>
                 </>
               )}
             </Button>
@@ -252,9 +256,11 @@ export default function WorkflowEditorPage() {
             onClick={handleSave}
             disabled={isSaving || (!isNew && !isDirty)}
             size="sm"
+            aria-label="Save workflow"
+            title={isSaving ? "Saving..." : "Save"}
           >
-            <Save className="h-3 w-3 mr-1.5" />
-            {isSaving ? "Saving..." : "Save"}
+            <Save className="h-3 w-3 sm:mr-1.5" />
+            <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
           </Button>
         </div>
       </div>
