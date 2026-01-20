@@ -21,6 +21,8 @@ import type { TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./t
 const TELEGRAM_MAX_MESSAGE_CHARS = 4096;
 const EMAILS_PAGE_SIZE = 6;
 const EMAILS_BUTTONS_PER_ROW = 5;
+const MAILBOXES_PAGE_SIZE = 10;
+const MAILBOXES_BUTTONS_PER_ROW = 5;
 const DOMAINS_PAGE_SIZE = 10;
 const DOMAINS_BUTTONS_PER_ROW = 5;
 const CALLBACK_PREFIX = "temail";
@@ -202,30 +204,13 @@ async function handleMailboxes(message: TelegramMessage) {
 
   const ctx = await requireTopicContext(message, userId);
   if (!ctx) return;
-
-  const mailboxes = await prisma.mailbox.findMany({
-    where: { userId, status: "ACTIVE" },
-    select: {
-      id: true,
-      address: true,
-      note: true,
-      _count: {
-        select: {
-          emails: { where: { status: "UNREAD" } },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-
-  if (mailboxes.length === 0) {
-    await replyToMessage(message, "No mailboxes yet. Create one with /new.");
+  if (ctx.kind === "forum-mailbox") {
+    await replyToMessage(message, "Please use the General topic to list all mailboxes.");
     return;
   }
 
-  const lines = mailboxes.map((m) => `- ${m.address} (unread: ${m._count.emails})\n  id: ${m.id}`);
-  await replyToMessage(message, `Mailboxes:\n\n${lines.join("\n")}\n\nTip: /emails <mailboxId|address>`);
+  const payload = await buildMailboxesListPayload({ userId, page: 1 });
+  await replyToMessage(message, payload.text, payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : undefined);
 }
 
 async function handleMailboxCreate(message: TelegramMessage, args: string) {
@@ -355,6 +340,10 @@ function buildEmailsListCallback(scope: { kind: "all" } | { kind: "mailbox"; mai
   return `${CALLBACK_PREFIX}:emails:mb:${scope.mailboxId}:${page}`;
 }
 
+function buildMailboxesListCallback(page: number) {
+  return `${CALLBACK_PREFIX}:mailboxes:${page}`;
+}
+
 function buildSearchListCallback(page: number) {
   return `${CALLBACK_PREFIX}:search:${page}`;
 }
@@ -480,6 +469,70 @@ async function buildNewDomainPickerPayload(params: { userId: string; page: numbe
 
   return {
     text: `${title}\n\n${lines.join("\n")}\n\nClick a number to create a new mailbox (prefix auto-generated).`,
+    replyMarkup: { inline_keyboard },
+    hasNext,
+  };
+}
+
+async function buildMailboxesListPayload(params: { userId: string; page: number }) {
+  const page = Number.isFinite(params.page) && params.page > 0 ? Math.floor(params.page) : 1;
+  const skip = (page - 1) * MAILBOXES_PAGE_SIZE;
+
+  const rows = await prisma.mailbox.findMany({
+    where: { userId: params.userId, status: "ACTIVE" },
+    select: {
+      id: true,
+      address: true,
+      note: true,
+      _count: {
+        select: {
+          emails: { where: { status: "UNREAD" } },
+        },
+      },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip,
+    take: MAILBOXES_PAGE_SIZE + 1,
+  });
+
+  const hasNext = rows.length > MAILBOXES_PAGE_SIZE;
+  const mailboxes = rows.slice(0, MAILBOXES_PAGE_SIZE);
+  const title = `Mailboxes — page ${page}`;
+
+  if (mailboxes.length === 0) {
+    return {
+      text: `${title}\n\nNo mailboxes yet. Create one with /new.`,
+      replyMarkup: undefined as TelegramInlineKeyboardMarkup | undefined,
+      hasNext: false,
+    };
+  }
+
+  const lines = mailboxes.map((m, idx) => {
+    const noteSuffix = m.note?.trim() ? ` — ${truncateLine(m.note, 60)}` : "";
+    return `${idx + 1}) ${m.address}${noteSuffix} (unread: ${m._count.emails})`;
+  });
+
+  const inline_keyboard: TelegramInlineKeyboardMarkup["inline_keyboard"] = [];
+  let row: Array<{ text: string; callback_data: string }> = [];
+  for (const [idx, mailbox] of mailboxes.entries()) {
+    row.push({
+      text: String(idx + 1),
+      callback_data: buildEmailsListCallback({ kind: "mailbox", mailboxId: mailbox.id }, 1),
+    });
+    if (row.length >= MAILBOXES_BUTTONS_PER_ROW) {
+      inline_keyboard.push(row);
+      row = [];
+    }
+  }
+  if (row.length) inline_keyboard.push(row);
+
+  const navRow: Array<{ text: string; callback_data: string }> = [];
+  if (page > 1) navRow.push({ text: "◀ Prev", callback_data: buildMailboxesListCallback(page - 1) });
+  if (hasNext) navRow.push({ text: "Next ▶", callback_data: buildMailboxesListCallback(page + 1) });
+  if (navRow.length) inline_keyboard.push(navRow);
+
+  return {
+    text: `${title}\n\n${lines.join("\n")}\n\nClick a number to list emails for that mailbox.`,
     replyMarkup: { inline_keyboard },
     hasNext,
   };
@@ -1152,6 +1205,33 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
         page,
       });
 
+      await telegramEditMessageText({
+        chatId,
+        messageId,
+        text: payload.text,
+        ...(payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : {}),
+        disableWebPagePreview: true,
+      });
+      return;
+    }
+
+    if (parts[1] === "mailboxes") {
+      const chatId = String(message.chat.id);
+      const messageId = message.message_id;
+      let page = Number.parseInt(parts[2] || "1", 10);
+      if (!Number.isFinite(page) || page <= 0) page = 1;
+
+      if (ctx.kind === "forum-mailbox") {
+        await telegramEditMessageText({
+          chatId,
+          messageId,
+          text: "Please use the General topic to list all mailboxes.",
+          disableWebPagePreview: true,
+        });
+        return;
+      }
+
+      const payload = await buildMailboxesListPayload({ userId: link.userId, page });
       await telegramEditMessageText({
         chatId,
         messageId,
