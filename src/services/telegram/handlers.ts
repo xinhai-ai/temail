@@ -5,10 +5,21 @@ import { formatRemainingTime, tryAcquireSyncLock } from "@/lib/rate-limit";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 import { moveOwnedEmailToTrash, purgeOwnedEmail, restoreOwnedEmailFromTrash } from "@/services/email-trash";
 import { rematchUnmatchedInboundEmailsForUser } from "@/services/inbound/rematch";
-import { getTelegramForumGeneralTopicName, telegramCreateForumTopic, telegramSendMessage } from "./bot-api";
+import type { TelegramInlineKeyboardMarkup } from "./bot-api";
+import {
+  getTelegramForumGeneralTopicName,
+  telegramAnswerCallbackQuery,
+  telegramCreateForumTopic,
+  telegramEditMessageText,
+  telegramSendMessage,
+} from "./bot-api";
 import { consumeTelegramBindCode } from "./bind-codes";
 import { upsertTelegramNotifyWorkflowForBinding } from "./notify-workflows";
-import type { TelegramMessage, TelegramUpdate } from "./types";
+import type { TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "./types";
+
+const TELEGRAM_MAX_MESSAGE_CHARS = 4096;
+const EMAILS_PAGE_SIZE = 6;
+const CALLBACK_PREFIX = "temail";
 
 function parseCommand(text: string): { command: string; args: string } | null {
   const trimmed = (text || "").trim();
@@ -53,11 +64,12 @@ function buildScopeKey(params: { chatId: string; mailboxId: string | null; mode:
   return `chat:${params.chatId}|mailbox:${mailboxPart}|mode:${params.mode}`;
 }
 
-async function replyToMessage(message: TelegramMessage, text: string) {
+async function replyToMessage(message: TelegramMessage, text: string, options?: { replyMarkup?: TelegramInlineKeyboardMarkup }) {
   await telegramSendMessage({
     chatId: String(message.chat.id),
     messageThreadId: typeof message.message_thread_id === "number" ? message.message_thread_id : undefined,
     text,
+    ...(options?.replyMarkup ? { replyMarkup: options.replyMarkup } : {}),
     disableWebPagePreview: true,
   });
 }
@@ -296,6 +308,160 @@ async function resolveMailboxIdForUser(userId: string, arg: string): Promise<{ i
   return mailbox || null;
 }
 
+function truncateTelegramText(input: string, maxChars: number) {
+  const value = (input || "").trim();
+  if (value.length <= maxChars) return value;
+  return value.slice(0, Math.max(0, maxChars - 1)) + "…";
+}
+
+function truncateButtonText(input: string, maxChars = 48) {
+  const value = (input || "").replace(/\s+/g, " ").trim();
+  if (value.length <= maxChars) return value;
+  return value.slice(0, Math.max(0, maxChars - 1)) + "…";
+}
+
+function buildEmailsListCallback(scope: { kind: "all" } | { kind: "mailbox"; mailboxId: string }, page: number) {
+  if (scope.kind === "all") return `${CALLBACK_PREFIX}:emails:all:${page}`;
+  return `${CALLBACK_PREFIX}:emails:mb:${scope.mailboxId}:${page}`;
+}
+
+function buildOpenEmailCallback(emailId: string) {
+  return `${CALLBACK_PREFIX}:open:${emailId}`;
+}
+
+async function buildEmailsListPayload(params: {
+  userId: string;
+  mailboxId: string | null;
+  mailboxAddress: string | null;
+  page: number;
+}) {
+  const page = Number.isFinite(params.page) && params.page > 0 ? Math.floor(params.page) : 1;
+  const skip = (page - 1) * EMAILS_PAGE_SIZE;
+
+  const rows = await prisma.email.findMany({
+    where: {
+      mailbox: { userId: params.userId },
+      ...(params.mailboxId ? { mailboxId: params.mailboxId } : {}),
+    },
+    select: {
+      id: true,
+      subject: true,
+      fromAddress: true,
+      fromName: true,
+      status: true,
+      isStarred: true,
+      receivedAt: true,
+      mailbox: { select: { address: true } },
+    },
+    orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+    skip,
+    take: EMAILS_PAGE_SIZE + 1,
+  });
+
+  const hasNext = rows.length > EMAILS_PAGE_SIZE;
+  const emails = rows.slice(0, EMAILS_PAGE_SIZE);
+
+  const headerMailbox = params.mailboxAddress ? `(${params.mailboxAddress})` : "(latest)";
+  const title = `Emails ${headerMailbox} — page ${page}`;
+
+  if (emails.length === 0) {
+    return {
+      text: `${title}\n\nNo emails found.`,
+      replyMarkup: undefined as TelegramInlineKeyboardMarkup | undefined,
+      hasNext: false,
+    };
+  }
+
+  const lines = emails.map((e, idx) => {
+    const subject = truncateLine(e.subject || "(No subject)", 80);
+    const from = truncateLine(e.fromName ? `${e.fromName} <${e.fromAddress}>` : e.fromAddress, 60);
+    const flags = `${e.status}${e.isStarred ? " ★" : ""}`;
+    return `${idx + 1}) [${flags}] ${subject}\n   from: ${from}\n   id: ${e.id}`;
+  });
+
+  const scope: { kind: "all" } | { kind: "mailbox"; mailboxId: string } = params.mailboxId
+    ? { kind: "mailbox", mailboxId: params.mailboxId }
+    : { kind: "all" };
+
+  const inline_keyboard: TelegramInlineKeyboardMarkup["inline_keyboard"] = [];
+  for (const [idx, email] of emails.entries()) {
+    const subject = truncateButtonText(email.subject || "(No subject)");
+    inline_keyboard.push([
+      {
+        text: `${idx + 1} · ${subject}`,
+        callback_data: buildOpenEmailCallback(email.id),
+      },
+    ]);
+  }
+
+  const navRow: Array<{ text: string; callback_data: string }> = [];
+  if (page > 1) navRow.push({ text: "◀ Prev", callback_data: buildEmailsListCallback(scope, page - 1) });
+  if (hasNext) navRow.push({ text: "Next ▶", callback_data: buildEmailsListCallback(scope, page + 1) });
+  if (navRow.length) inline_keyboard.push(navRow);
+
+  return {
+    text: `${title}\n\n${lines.join("\n")}\n\nClick a button to view the full email.`,
+    replyMarkup: { inline_keyboard },
+    hasNext,
+  };
+}
+
+async function sendEmailDetails(message: TelegramMessage, userId: string, emailId: string) {
+  const email = await prisma.email.findFirst({
+    where: { id: emailId, mailbox: { userId } },
+    select: {
+      id: true,
+      fromAddress: true,
+      fromName: true,
+      toAddress: true,
+      subject: true,
+      textBody: true,
+      receivedAt: true,
+      mailbox: { select: { address: true } },
+    },
+  });
+  if (!email) {
+    await replyToMessage(message, "Email not found.");
+    return;
+  }
+
+  const from = email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromAddress;
+  const body = (email.textBody || "").trim() || "(No text body)";
+  const bodyMax = 2600;
+
+  const link = await getOrCreateEmailPreviewLink(email.id);
+  const previewUrl = link?.url || null;
+
+  const parts: string[] = [];
+  parts.push("📧 Email");
+  parts.push(`Mailbox: ${email.mailbox.address}`);
+  parts.push(`From: ${truncateLine(from, 120)}`);
+  parts.push(`To: ${truncateLine(email.toAddress, 120)}`);
+  parts.push(`Subject: ${truncateLine(email.subject || "(No subject)", 200)}`);
+  parts.push(`Time: ${email.receivedAt.toISOString()}`);
+  parts.push("");
+  parts.push(truncateTelegramText(body, bodyMax));
+
+  if (previewUrl) {
+    parts.push("");
+    parts.push(`Preview link: ${previewUrl}`);
+  } else {
+    parts.push("");
+    parts.push("Preview link: (unavailable)");
+  }
+
+  let text = parts.join("\n");
+  if (text.length > TELEGRAM_MAX_MESSAGE_CHARS) {
+    text = truncateTelegramText(text, TELEGRAM_MAX_MESSAGE_CHARS);
+  }
+
+  const replyMarkup: TelegramInlineKeyboardMarkup | undefined = previewUrl
+    ? { inline_keyboard: [[{ text: "Open Preview", url: previewUrl }]] }
+    : undefined;
+
+  await replyToMessage(message, text, { replyMarkup });
+}
+
 async function handleEmails(message: TelegramMessage, args: string) {
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
@@ -303,7 +469,11 @@ async function handleEmails(message: TelegramMessage, args: string) {
   const ctx = await requireTopicContext(message, userId);
   if (!ctx) return;
 
-  const rawArg = (args || "").trim();
+  const tokens = (args || "").trim().split(/\s+/).filter(Boolean);
+  const last = tokens.length ? tokens[tokens.length - 1] : "";
+  const pageToken = last && /^[0-9]+$/.test(last) ? Number.parseInt(last, 10) : null;
+  const page = pageToken && Number.isFinite(pageToken) && pageToken > 0 ? pageToken : 1;
+  const rawArg = pageToken ? tokens.slice(0, -1).join(" ").trim() : (args || "").trim();
 
   let mailbox: { id: string; address: string } | null = null;
   if (ctx.kind === "forum-mailbox") {
@@ -325,40 +495,14 @@ async function handleEmails(message: TelegramMessage, args: string) {
     }
   }
 
-  const emails = await prisma.email.findMany({
-    where: {
-      mailbox: { userId },
-      ...(mailbox ? { mailboxId: mailbox.id } : {}),
-    },
-    select: {
-      id: true,
-      subject: true,
-      fromAddress: true,
-      fromName: true,
-      toAddress: true,
-      status: true,
-      isStarred: true,
-      receivedAt: true,
-      mailbox: { select: { address: true } },
-    },
-    orderBy: { receivedAt: "desc" },
-    take: 10,
+  const payload = await buildEmailsListPayload({
+    userId,
+    mailboxId: mailbox?.id || null,
+    mailboxAddress: mailbox?.address || null,
+    page,
   });
 
-  const header = mailbox ? `Emails (${mailbox.address}):` : "Emails (latest):";
-  if (emails.length === 0) {
-    await replyToMessage(message, `${header}\n\nNo emails found.`);
-    return;
-  }
-
-  const lines = emails.map((e) => {
-    const subject = truncateLine(e.subject || "(No subject)", 80);
-    const from = truncateLine(e.fromName ? `${e.fromName} <${e.fromAddress}>` : e.fromAddress, 60);
-    const flags = `${e.status}${e.isStarred ? " ★" : ""}`;
-    return `- [${flags}] ${subject}\n  from: ${from}\n  id: ${e.id}`;
-  });
-
-  await replyToMessage(message, `${header}\n\n${lines.join("\n")}\n\nTip: /open <emailId>`);
+  await replyToMessage(message, payload.text, payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : undefined);
 }
 
 async function handleSearch(message: TelegramMessage, args: string) {
@@ -425,22 +569,7 @@ async function handleOpen(message: TelegramMessage, args: string) {
     return;
   }
 
-  const owned = await prisma.email.findFirst({
-    where: { id: emailId, mailbox: { userId } },
-    select: { id: true },
-  });
-  if (!owned) {
-    await replyToMessage(message, "Email not found.");
-    return;
-  }
-
-  const link = await getOrCreateEmailPreviewLink(emailId);
-  if (!link) {
-    await replyToMessage(message, "Preview links are not available (missing database table).");
-    return;
-  }
-
-  await replyToMessage(message, `Preview link:\n${link.url}`);
+  await sendEmailDetails(message, userId, emailId);
 }
 
 async function handleDelete(message: TelegramMessage, args: string) {
@@ -698,7 +827,126 @@ async function handleBind(message: TelegramMessage, args: string) {
   });
 }
 
+async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promise<void> {
+  if (callbackQuery.from?.is_bot) return;
+  const message = callbackQuery.message;
+  const data = (callbackQuery.data || "").trim();
+  if (!message || !data) return;
+
+  if (!data.startsWith(`${CALLBACK_PREFIX}:`)) return;
+
+  const telegramUserId = String(callbackQuery.from.id);
+  const link = await prisma.telegramUserLink.findUnique({
+    where: { telegramUserId },
+    select: { userId: true, revokedAt: true },
+  });
+  if (!link || link.revokedAt) {
+    await telegramAnswerCallbackQuery({ callbackQueryId: callbackQuery.id, text: "Not linked. DM /start <code> first.", showAlert: true });
+    return;
+  }
+
+  const ctx = await resolveTopicContext(message, link.userId);
+  if (!ctx) {
+    await telegramAnswerCallbackQuery({ callbackQueryId: callbackQuery.id, text: "This Topic is not linked.", showAlert: true });
+    return;
+  }
+
+  const parts = data.split(":");
+  if (parts[0] !== CALLBACK_PREFIX) return;
+
+  try {
+    // Stop the Telegram spinner quickly.
+    await telegramAnswerCallbackQuery({ callbackQueryId: callbackQuery.id });
+
+    if (parts[1] === "open") {
+      const emailId = (parts[2] || "").trim();
+      if (!emailId) return;
+      await sendEmailDetails(message, link.userId, emailId);
+      return;
+    }
+
+    if (parts[1] === "emails") {
+      const kind = parts[2] || "";
+      const chatId = String(message.chat.id);
+      const messageId = message.message_id;
+
+      let mailboxId: string | null = null;
+      let mailboxAddress: string | null = null;
+      let page = 1;
+
+      if (kind === "all") {
+        page = Number.parseInt(parts[3] || "1", 10);
+      } else if (kind === "mb") {
+        mailboxId = (parts[3] || "").trim() || null;
+        page = Number.parseInt(parts[4] || "1", 10);
+      } else {
+        return;
+      }
+
+      if (!Number.isFinite(page) || page <= 0) page = 1;
+
+      if (mailboxId) {
+        const mailbox = await prisma.mailbox.findFirst({
+          where: { id: mailboxId, userId: link.userId },
+          select: { id: true, address: true },
+        });
+        if (!mailbox) {
+          await telegramEditMessageText({
+            chatId,
+            messageId,
+            text: "Mailbox not found.",
+            disableWebPagePreview: true,
+          });
+          return;
+        }
+        if (ctx.kind === "forum-mailbox" && ctx.mailboxId !== mailbox.id) {
+          await telegramEditMessageText({
+            chatId,
+            messageId,
+            text: "This Topic is bound to a different mailbox.",
+            disableWebPagePreview: true,
+          });
+          return;
+        }
+        mailboxAddress = mailbox.address;
+      } else if (ctx.kind === "forum-mailbox") {
+        mailboxId = ctx.mailboxId;
+        const mailbox = await prisma.mailbox.findFirst({
+          where: { id: mailboxId, userId: link.userId },
+          select: { address: true },
+        });
+        mailboxAddress = mailbox?.address || null;
+      }
+
+      const payload = await buildEmailsListPayload({
+        userId: link.userId,
+        mailboxId,
+        mailboxAddress,
+        page,
+      });
+
+      await telegramEditMessageText({
+        chatId,
+        messageId,
+        text: payload.text,
+        ...(payload.replyMarkup ? { replyMarkup: payload.replyMarkup } : {}),
+        disableWebPagePreview: true,
+      });
+      return;
+    }
+  } catch (error) {
+    const messageText = error instanceof Error ? error.message : String(error);
+    const clipped = truncateTelegramText(messageText, 180);
+    await telegramAnswerCallbackQuery({ callbackQueryId: callbackQuery.id, text: clipped, showAlert: true });
+  }
+}
+
 export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
+  if (update.callback_query) {
+    await handleCallbackQuery(update.callback_query);
+    return;
+  }
+
   const message = update.message || update.edited_message;
   if (message?.from?.is_bot) return;
 

@@ -21,6 +21,46 @@ export type TelegramInlineKeyboardMarkup = {
   inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
 };
 
+export async function telegramAnswerCallbackQuery(params: {
+  callbackQueryId: string;
+  text?: string;
+  showAlert?: boolean;
+}): Promise<void> {
+  const token = await getTelegramBotToken();
+  const payload: Record<string, unknown> = {
+    callback_query_id: params.callbackQueryId,
+    ...(params.text ? { text: params.text } : {}),
+    ...(typeof params.showAlert === "boolean" ? { show_alert: params.showAlert } : {}),
+  };
+
+  const result = await telegramApiRequest<boolean>(token, "answerCallbackQuery", payload);
+  if (result.ok) return;
+  const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
+  throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
+}
+
+export async function telegramEditMessageText(params: {
+  chatId: string;
+  messageId: number;
+  text: string;
+  replyMarkup?: TelegramInlineKeyboardMarkup;
+  disableWebPagePreview?: boolean;
+}): Promise<void> {
+  const token = await getTelegramBotToken();
+  const payload: Record<string, unknown> = {
+    chat_id: params.chatId,
+    message_id: params.messageId,
+    text: params.text,
+    ...(params.replyMarkup ? { reply_markup: params.replyMarkup } : {}),
+    ...(typeof params.disableWebPagePreview === "boolean" ? { disable_web_page_preview: params.disableWebPagePreview } : {}),
+  };
+
+  const result = await telegramApiRequest<boolean>(token, "editMessageText", payload);
+  if (result.ok) return;
+  const retry = typeof result.parameters?.retry_after === "number" ? ` (retry_after=${result.parameters.retry_after})` : "";
+  throw new Error(`Telegram API error (HTTP ${result.error_code}): ${result.description}${retry}`);
+}
+
 export async function getTelegramBotToken(): Promise<string> {
   const token = ((await getSystemSettingValue("telegram_bot_token")) || "").trim();
   if (!token) {
