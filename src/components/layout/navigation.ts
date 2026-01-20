@@ -6,6 +6,7 @@ import {
   Globe,
   Inbox,
   LayoutDashboard,
+  MessageCircle,
   Settings,
   Shield,
   Trash2,
@@ -27,6 +28,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
   { title: "Domains", href: "/domains", icon: Globe, adminOnly: true },
   { title: "Workflows", href: "/workflows", icon: Workflow },
   { title: "Forwards", href: "/forwards", icon: Forward },
+  { title: "Telegram", href: "/telegram", icon: MessageCircle },
   { title: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -45,6 +47,7 @@ export const PAGE_TITLES: Record<string, { title: string; description?: string }
   "/domains": { title: "Domains", description: "Manage inbound email domains" },
   "/workflows": { title: "Workflows", description: "Automate your email processing" },
   "/forwards": { title: "Forwards", description: "Configure email forwarding rules" },
+  "/telegram": { title: "Telegram", description: "Link Telegram and bind topics" },
   "/settings": { title: "Settings", description: "Manage your account settings" },
   "/admin": { title: "Admin", description: "System administration" },
 };
