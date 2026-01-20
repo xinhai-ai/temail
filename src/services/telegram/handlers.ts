@@ -80,6 +80,44 @@ async function requireLinkedUserId(message: TelegramMessage): Promise<string | n
   return link.userId;
 }
 
+type TelegramTopicContext =
+  | { kind: "private" }
+  | { kind: "forum-general"; chatId: string; threadId: string }
+  | { kind: "forum-mailbox"; chatId: string; threadId: string; mailboxId: string };
+
+async function resolveTopicContext(message: TelegramMessage, userId: string): Promise<TelegramTopicContext | null> {
+  if (message.chat.type === "private") return { kind: "private" };
+
+  const chatId = String(message.chat.id);
+  const threadId = typeof message.message_thread_id === "number" ? String(message.message_thread_id) : null;
+  if (!threadId) return null;
+
+  const general = await prisma.telegramChatBinding.findFirst({
+    where: { userId, enabled: true, chatId, mode: "MANAGE", threadId },
+    select: { id: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (general) return { kind: "forum-general", chatId, threadId };
+
+  const mailbox = await prisma.telegramChatBinding.findFirst({
+    where: { userId, enabled: true, chatId, mode: "NOTIFY", threadId, mailboxId: { not: null } },
+    select: { mailboxId: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (mailbox?.mailboxId) return { kind: "forum-mailbox", chatId, threadId, mailboxId: mailbox.mailboxId };
+
+  return null;
+}
+
+async function requireTopicContext(message: TelegramMessage, userId: string): Promise<TelegramTopicContext | null> {
+  const ctx = await resolveTopicContext(message, userId);
+  if (ctx) return ctx;
+  if (message.chat.type !== "private") {
+    await replyToMessage(message, "This Topic is not linked. Use /bind in the group to set it up.");
+  }
+  return null;
+}
+
 async function handleStart(message: TelegramMessage, args: string) {
   if (message.chat.type !== "private") {
     await replyToMessage(message, "Please DM me to link your account. Use /help for instructions.");
@@ -143,10 +181,11 @@ function truncateLine(input: string, max = 120) {
 }
 
 async function handleMailboxes(message: TelegramMessage) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
 
   const mailboxes = await prisma.mailbox.findMany({
     where: { userId, status: "ACTIVE" },
@@ -174,10 +213,15 @@ async function handleMailboxes(message: TelegramMessage) {
 }
 
 async function handleMailboxCreate(message: TelegramMessage, args: string) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
+  if (ctx.kind === "forum-mailbox") {
+    await replyToMessage(message, "Please use the General topic to create mailboxes.");
+    return;
+  }
 
   const raw = (args || "").trim();
   if (!raw) {
@@ -253,15 +297,32 @@ async function resolveMailboxIdForUser(userId: string, arg: string): Promise<{ i
 }
 
 async function handleEmails(message: TelegramMessage, args: string) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
 
-  const mailbox = args ? await resolveMailboxIdForUser(userId, args) : null;
-  if (args && !mailbox) {
-    await replyToMessage(message, "Mailbox not found. Use /mailboxes to list available mailboxes.");
-    return;
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
+
+  const rawArg = (args || "").trim();
+
+  let mailbox: { id: string; address: string } | null = null;
+  if (ctx.kind === "forum-mailbox") {
+    const mailboxArg = rawArg || ctx.mailboxId;
+    mailbox = await resolveMailboxIdForUser(userId, mailboxArg);
+    if (!mailbox) {
+      await replyToMessage(message, "Mailbox not found.");
+      return;
+    }
+    if (mailbox.id !== ctx.mailboxId) {
+      await replyToMessage(message, "This Topic is bound to a different mailbox. Use the General topic for other mailboxes.");
+      return;
+    }
+  } else if (rawArg) {
+    mailbox = await resolveMailboxIdForUser(userId, rawArg);
+    if (!mailbox) {
+      await replyToMessage(message, "Mailbox not found. Use /mailboxes to list available mailboxes.");
+      return;
+    }
   }
 
   const emails = await prisma.email.findMany({
@@ -301,10 +362,11 @@ async function handleEmails(message: TelegramMessage, args: string) {
 }
 
 async function handleSearch(message: TelegramMessage, args: string) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
 
   const q = (args || "").trim();
   if (!q) {
@@ -315,6 +377,7 @@ async function handleSearch(message: TelegramMessage, args: string) {
   const emails = await prisma.email.findMany({
     where: {
       mailbox: { userId },
+      ...(ctx.kind === "forum-mailbox" ? { mailboxId: ctx.mailboxId } : {}),
       OR: [
         { subject: { contains: q } },
         { fromAddress: { contains: q } },
@@ -350,10 +413,11 @@ async function handleSearch(message: TelegramMessage, args: string) {
 }
 
 async function handleOpen(message: TelegramMessage, args: string) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
 
   const emailId = (args || "").trim();
   if (!emailId) {
@@ -380,10 +444,11 @@ async function handleOpen(message: TelegramMessage, args: string) {
 }
 
 async function handleDelete(message: TelegramMessage, args: string) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
 
   const emailId = (args || "").trim();
   if (!emailId) {
@@ -401,10 +466,11 @@ async function handleDelete(message: TelegramMessage, args: string) {
 }
 
 async function handleRestore(message: TelegramMessage, args: string) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
 
   const emailId = (args || "").trim();
   if (!emailId) {
@@ -422,10 +488,11 @@ async function handleRestore(message: TelegramMessage, args: string) {
 }
 
 async function handlePurge(message: TelegramMessage, args: string) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
 
   const emailId = (args || "").trim();
   if (!emailId) {
@@ -443,10 +510,11 @@ async function handlePurge(message: TelegramMessage, args: string) {
 }
 
 async function handleRefresh(message: TelegramMessage) {
-  if (message.chat.type !== "private") return;
-
   const userId = await requireLinkedUserId(message);
   if (!userId) return;
+
+  const ctx = await requireTopicContext(message, userId);
+  if (!ctx) return;
 
   const inbound = await rematchUnmatchedInboundEmailsForUser(userId);
 
@@ -509,7 +577,7 @@ async function handleUnlink(message: TelegramMessage) {
   });
 
   const bindingIds = await prisma.telegramChatBinding.findMany({
-    where: { userId: link.userId },
+    where: { userId: link.userId, mode: "MANAGE" },
     select: { id: true },
   });
   await Promise.all(bindingIds.map((b) => upsertTelegramNotifyWorkflowForBinding(b.id)));
