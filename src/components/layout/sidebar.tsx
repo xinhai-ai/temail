@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV_ITEMS, APP_NAV_ITEMS, type NavItem } from "@/components/layout/navigation";
+import { ADMIN_NAV_ITEMS, APP_NAV_ITEMS, getActiveNavHref, type NavItem } from "@/components/layout/navigation";
 import {
   Mail,
   PanelLeftClose,
@@ -25,6 +25,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
   const collapsed = collapsedProp ?? uncontrolledCollapsed;
 
   const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const activeHref = getActiveNavHref(pathname, [...userNavItems, ...(isAdmin ? ADMIN_NAV_ITEMS : [])]);
 
   const setCollapsed = (next: boolean) => {
     if (collapsedProp === undefined) {
@@ -34,7 +35,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
   };
 
   const renderNavItem = (item: NavItem) => {
-    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+    const isActive = item.href === activeHref;
 
     const link = (
       <Link

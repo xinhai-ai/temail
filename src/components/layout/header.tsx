@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV_ITEMS, APP_NAV_ITEMS, PAGE_TITLES, type NavItem } from "@/components/layout/navigation";
+import { ADMIN_NAV_ITEMS, APP_NAV_ITEMS, getActiveNavHref, PAGE_TITLES, type NavItem } from "@/components/layout/navigation";
 import {
   LogOut,
   Mail,
@@ -41,6 +41,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const activeHref = getActiveNavHref(pathname, [...userNavItems, ...(isAdmin ? ADMIN_NAV_ITEMS : [])]);
 
   // Get page info based on pathname
   const getPageInfo = () => {
@@ -62,7 +63,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
     : session?.user?.email?.[0].toUpperCase() || "U";
 
   const renderNavItem = (item: NavItem) => {
-    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+    const isActive = item.href === activeHref;
     return (
       <Link
         key={item.href}

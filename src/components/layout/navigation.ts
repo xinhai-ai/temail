@@ -49,3 +49,18 @@ export const PAGE_TITLES: Record<string, { title: string; description?: string }
   "/admin": { title: "Admin", description: "System administration" },
 };
 
+function matchesPathname(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+export function getActiveNavHref(pathname: string, items: Pick<NavItem, "href">[]) {
+  let bestHref: string | null = null;
+  for (const item of items) {
+    if (!matchesPathname(pathname, item.href)) continue;
+    if (!bestHref || item.href.length > bestHref.length) {
+      bestHref = item.href;
+    }
+  }
+  return bestHref;
+}
