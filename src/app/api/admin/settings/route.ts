@@ -21,7 +21,14 @@ export async function GET() {
     orderBy: { key: "asc" },
   });
 
-  const secretKeys = new Set(["smtp_pass", "ai_classifier_api_key", "ai_rewrite_api_key", "turnstile_secret_key"]);
+  const secretKeys = new Set([
+    "smtp_pass",
+    "ai_classifier_api_key",
+    "ai_rewrite_api_key",
+    "turnstile_secret_key",
+    "telegram_bot_token",
+    "telegram_webhook_secret",
+  ]);
   const safeSettings = settings.map((row) =>
     secretKeys.has(row.key)
       ? { ...row, value: "", masked: Boolean(row.value) }
