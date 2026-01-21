@@ -1479,6 +1479,59 @@
       }
     }
   },
+  "telegram": {
+    "title": "Telegram",
+    "subtitle": "关联账号并绑定群组话题，用于接收通知。",
+    "actions": {
+      "refresh": "刷新",
+      "generate": "生成"
+    },
+    "link": {
+      "title": "1）关联账号",
+      "description": "生成一次性验证码，然后私聊机器人：<mono>/start &lt;code&gt;</mono>",
+      "linkedAs": "已关联为",
+      "unlinkHint": "在机器人私聊中使用 <mono>/unlink</mono> 可解除关联。",
+      "notLinked": "尚未关联。",
+      "codeLabel": "关联码",
+      "codePlaceholder": "点击生成",
+      "deepLinkLabel": "深度链接：",
+      "deepLinkHelp": "请让管理员在 <mono>/admin/telegram</mono> 中设置 <mono>telegram_bot_username</mono>，以显示深度链接。",
+      "expiresAt": "过期时间："
+    },
+    "bind": {
+      "title": "2）绑定论坛群组（Topics）",
+      "description": "生成绑定码，然后在目标群组运行 <mono>/bind &lt;code&gt;</mono>。机器人将创建用于管理的 <mono>TEmail · General</mono> 话题。",
+      "codeLabel": "绑定码",
+      "codePlaceholder": "点击生成",
+      "expiresAt": "过期时间："
+    },
+    "bindings": {
+      "title": "论坛群组绑定",
+      "description": "已绑定的群组。要转发邮件，请创建包含 <mono>Telegram Group (Bound)</mono> 节点的工作流。消息会自动路由到邮箱话题中。",
+      "empty": "暂无绑定。",
+      "status": {
+        "enabled": "已启用",
+        "disabled": "已禁用"
+      }
+    },
+    "topics": {
+      "title": "邮箱话题",
+      "description": "当工作流将邮件转发到 Telegram 时自动创建。",
+      "empty": "暂无邮箱话题。"
+    },
+    "toasts": {
+      "copied": "已复制到剪贴板",
+      "copyFailed": "复制失败",
+      "loadFailed": "加载 Telegram 绑定失败",
+      "generateFailed": "生成验证码失败",
+      "linkCodeGenerated": "关联码已生成",
+      "bindCodeGenerated": "绑定码已生成",
+      "bindingUpdateFailed": "更新绑定失败",
+      "bindingUpdated": "绑定已更新",
+      "bindingDeleteFailed": "删除绑定失败",
+      "bindingRemoved": "绑定已移除"
+    }
+  },
   "emailPreview": {
     "title": "邮件预览",
     "goToInbox": "前往收件箱",

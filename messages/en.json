@@ -1479,6 +1479,59 @@
       }
     }
   },
+  "telegram": {
+    "title": "Telegram",
+    "subtitle": "Link your account and bind group Topics for notifications.",
+    "actions": {
+      "refresh": "Refresh",
+      "generate": "Generate"
+    },
+    "link": {
+      "title": "1) Link your account",
+      "description": "Generate a one-time code, then DM the bot: <mono>/start &lt;code&gt;</mono>",
+      "linkedAs": "Linked as",
+      "unlinkHint": "Unlink via <mono>/unlink</mono> in the bot DM.",
+      "notLinked": "Not linked yet.",
+      "codeLabel": "Link code",
+      "codePlaceholder": "Click Generate",
+      "deepLinkLabel": "Deep-link:",
+      "deepLinkHelp": "Ask your admin to set <mono>telegram_bot_username</mono> in <mono>/admin/telegram</mono> to show a deep-link.",
+      "expiresAt": "Expires at:"
+    },
+    "bind": {
+      "title": "2) Bind a forum group (Topics)",
+      "description": "Generate a bind code, then in the target group run <mono>/bind &lt;code&gt;</mono>. The bot will create a <mono>TEmail · General</mono> topic for management.",
+      "codeLabel": "Bind code",
+      "codePlaceholder": "Click Generate",
+      "expiresAt": "Expires at:"
+    },
+    "bindings": {
+      "title": "Forum group bindings",
+      "description": "Bound groups. To forward emails, create a workflow with the <mono>Telegram Group (Bound)</mono> node. Messages will be routed into mailbox topics automatically.",
+      "empty": "No bindings yet.",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      }
+    },
+    "topics": {
+      "title": "Mailbox topics",
+      "description": "Auto-created when workflows forward emails to Telegram.",
+      "empty": "No mailbox topics yet."
+    },
+    "toasts": {
+      "copied": "Copied to clipboard",
+      "copyFailed": "Copy failed",
+      "loadFailed": "Failed to load Telegram bindings",
+      "generateFailed": "Failed to generate code",
+      "linkCodeGenerated": "Link code generated",
+      "bindCodeGenerated": "Bind code generated",
+      "bindingUpdateFailed": "Failed to update binding",
+      "bindingUpdated": "Binding updated",
+      "bindingDeleteFailed": "Failed to delete binding",
+      "bindingRemoved": "Binding removed"
+    }
+  },
   "emailPreview": {
     "title": "Email Preview",
     "goToInbox": "Go to Inbox",

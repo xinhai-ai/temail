@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Copy, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,15 +39,8 @@ type TelegramMailboxTopic = {
   mailbox: { id: string; address: string } | null;
 };
 
-function copyToClipboard(text: string) {
-  if (!text) return;
-  navigator.clipboard.writeText(text).then(
-    () => toast.success("Copied"),
-    () => toast.error("Copy failed")
-  );
-}
-
 export default function TelegramPage() {
+  const t = useTranslations("telegram");
   const [loading, setLoading] = useState(true);
   const [link, setLink] = useState<TelegramLink | null>(null);
   const [forumBindings, setForumBindings] = useState<TelegramForumBinding[]>([]);
@@ -61,6 +55,17 @@ export default function TelegramPage() {
   const [bindCode, setBindCode] = useState("");
   const [bindExpiresAt, setBindExpiresAt] = useState<string | null>(null);
 
+  const copyToClipboard = useCallback(
+    (text: string) => {
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(
+        () => toast.success(t("toasts.copied")),
+        () => toast.error(t("toasts.copyFailed"))
+      );
+    },
+    [t]
+  );
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -72,12 +77,12 @@ export default function TelegramPage() {
         setForumBindings(Array.isArray(bindingsData?.forumBindings) ? (bindingsData.forumBindings as TelegramForumBinding[]) : []);
         setMailboxTopics(Array.isArray(bindingsData?.mailboxTopics) ? (bindingsData.mailboxTopics as TelegramMailboxTopic[]) : []);
       } else {
-        toast.error(bindingsData?.error || "Failed to load Telegram bindings");
+        toast.error(bindingsData?.error || t("toasts.loadFailed"));
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchAll().catch(() => setLoading(false));
@@ -97,15 +102,15 @@ export default function TelegramPage() {
       const res = await fetch("/api/telegram/link-code", { method: "POST" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to generate code");
+        toast.error(data?.error || t("toasts.generateFailed"));
         return;
       }
       setLinkCode(String(data?.code || ""));
       setLinkDeepLink(typeof data?.deepLink === "string" ? data.deepLink : null);
       setLinkExpiresAt(typeof data?.expiresAt === "string" ? data.expiresAt : null);
-      toast.success("Link code generated");
+      toast.success(t("toasts.linkCodeGenerated"));
     } catch {
-      toast.error("Failed to generate code");
+      toast.error(t("toasts.generateFailed"));
     } finally {
       setCreatingLinkCode(false);
     }
@@ -121,14 +126,14 @@ export default function TelegramPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to generate code");
+        toast.error(data?.error || t("toasts.generateFailed"));
         return;
       }
       setBindCode(String(data?.code || ""));
       setBindExpiresAt(typeof data?.expiresAt === "string" ? data.expiresAt : null);
-      toast.success("Bind code generated");
+      toast.success(t("toasts.bindCodeGenerated"));
     } catch {
-      toast.error("Failed to generate code");
+      toast.error(t("toasts.generateFailed"));
     } finally {
       setCreatingBindCode(false);
     }
@@ -146,13 +151,13 @@ export default function TelegramPage() {
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setForumBindings(prev);
-        toast.error(data?.error || "Failed to update binding");
+        toast.error(data?.error || t("toasts.bindingUpdateFailed"));
         return;
       }
-      toast.success("Binding updated");
+      toast.success(t("toasts.bindingUpdated"));
     } catch {
       setForumBindings(prev);
-      toast.error("Failed to update binding");
+      toast.error(t("toasts.bindingUpdateFailed"));
     }
   };
 
@@ -161,13 +166,13 @@ export default function TelegramPage() {
       const res = await fetch(`/api/telegram/bindings/${id}`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to delete binding");
+        toast.error(data?.error || t("toasts.bindingDeleteFailed"));
         return;
       }
       await fetchAll();
-      toast.success("Binding removed");
+      toast.success(t("toasts.bindingRemoved"));
     } catch {
-      toast.error("Failed to delete binding");
+      toast.error(t("toasts.bindingDeleteFailed"));
     }
   };
 
@@ -175,64 +180,57 @@ export default function TelegramPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Telegram</h1>
-          <p className="text-sm text-muted-foreground">
-            Link your account and bind group Topics for notifications.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button variant="outline" onClick={() => fetchAll()} disabled={loading}>
           <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
+          {t("actions.refresh")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>1) Link your account</CardTitle>
-          <CardDescription>
-            Generate a one-time code, then DM the bot: <span className="font-mono">/start &lt;code&gt;</span>
-          </CardDescription>
+          <CardTitle>{t("link.title")}</CardTitle>
+          <CardDescription>{t.rich("link.description", { mono: (chunks) => <span className="font-mono">{chunks}</span> })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {link ? (
             <div className="text-sm">
-              Linked as{" "}
-              <span className="font-mono">
-                {link.telegramUsername ? `@${link.telegramUsername}` : link.telegramUserId}
-              </span>
-              . Unlink via <span className="font-mono">/unlink</span> in the bot DM.
+              {t("link.linkedAs")}{" "}
+              <span className="font-mono">{link.telegramUsername ? `@${link.telegramUsername}` : link.telegramUserId}</span>.{" "}
+              {t.rich("link.unlinkHint", { mono: (chunks) => <span className="font-mono">{chunks}</span> })}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">Not linked yet.</div>
+            <div className="text-sm text-muted-foreground">{t("link.notLinked")}</div>
           )}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-2">
-              <Label>Link code</Label>
+              <Label>{t("link.codeLabel")}</Label>
               <div className="flex gap-2">
-                <Input value={linkCode} readOnly placeholder="Click Generate" className="font-mono" />
+                <Input value={linkCode} readOnly placeholder={t("link.codePlaceholder")} className="font-mono" />
                 <Button variant="outline" onClick={() => copyToClipboard(linkCode)} disabled={!linkCode}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
               {linkDeepLink ? (
                 <div className="text-xs text-muted-foreground break-all">
-                  Deep-link: <span className="font-mono">{linkDeepLink}</span>
+                  {t("link.deepLinkLabel")} <span className="font-mono">{linkDeepLink}</span>
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground">
-                  Ask your admin to set <span className="font-mono">telegram_bot_username</span> in{" "}
-                  <span className="font-mono">/admin/telegram</span> to show a deep-link.
+                  {t.rich("link.deepLinkHelp", { mono: (chunks) => <span className="font-mono">{chunks}</span> })}
                 </div>
               )}
               {linkExpiresAt ? (
                 <div className="text-xs text-muted-foreground">
-                  Expires at: <span className="font-mono">{linkExpiresAt}</span>
+                  {t("link.expiresAt")} <span className="font-mono">{linkExpiresAt}</span>
                 </div>
               ) : null}
             </div>
             <Button onClick={createLinkCode} disabled={creatingLinkCode}>
-              Generate
+              {t("actions.generate")}
             </Button>
           </div>
         </CardContent>
@@ -240,44 +238,39 @@ export default function TelegramPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>2) Bind a forum group (Topics)</CardTitle>
-          <CardDescription>
-            Generate a bind code, then in the target group run <span className="font-mono">/bind &lt;code&gt;</span>. The bot will create a{" "}
-            <span className="font-mono">TEmail · General</span> topic for management.
-          </CardDescription>
+          <CardTitle>{t("bind.title")}</CardTitle>
+          <CardDescription>{t.rich("bind.description", { mono: (chunks) => <span className="font-mono">{chunks}</span> })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Bind code</Label>
+            <Label>{t("bind.codeLabel")}</Label>
             <div className="flex gap-2">
-              <Input value={bindCode} readOnly placeholder="Click Generate" className="font-mono" />
+              <Input value={bindCode} readOnly placeholder={t("bind.codePlaceholder")} className="font-mono" />
               <Button variant="outline" onClick={() => copyToClipboard(bindCode)} disabled={!bindCode}>
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
             {bindExpiresAt ? (
               <div className="text-xs text-muted-foreground">
-                Expires at: <span className="font-mono">{bindExpiresAt}</span>
+                {t("bind.expiresAt")} <span className="font-mono">{bindExpiresAt}</span>
               </div>
             ) : null}
           </div>
 
           <Button onClick={createChatBindCode} disabled={creatingBindCode}>
-            Generate
+            {t("actions.generate")}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Forum group bindings</CardTitle>
-          <CardDescription>
-            Bound groups. To forward emails, create a workflow with the <span className="font-mono">Telegram Group (Bound)</span> node. Messages will be routed into mailbox topics automatically.
-          </CardDescription>
+          <CardTitle>{t("bindings.title")}</CardTitle>
+          <CardDescription>{t.rich("bindings.description", { mono: (chunks) => <span className="font-mono">{chunks}</span> })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {forumBindings.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No bindings yet.</div>
+            <div className="text-sm text-muted-foreground">{t("bindings.empty")}</div>
           ) : (
             forumBindings.map((b) => (
               <div key={b.id} className="rounded-lg border p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -295,7 +288,7 @@ export default function TelegramPage() {
                 <div className="flex items-center gap-3 justify-end">
                   <div className="flex items-center gap-2">
                     <Switch checked={b.enabled} onCheckedChange={(v) => updateBindingEnabled(b.id, v)} />
-                    <span className="text-xs text-muted-foreground">{b.enabled ? "Enabled" : "Disabled"}</span>
+                    <span className="text-xs text-muted-foreground">{b.enabled ? t("bindings.status.enabled") : t("bindings.status.disabled")}</span>
                   </div>
                   <Button variant="outline" size="icon" onClick={() => deleteBinding(b.id)}>
                     <Trash2 className="h-4 w-4" />
@@ -309,12 +302,12 @@ export default function TelegramPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Mailbox topics</CardTitle>
-          <CardDescription>Auto-created when workflows forward emails to Telegram.</CardDescription>
+          <CardTitle>{t("topics.title")}</CardTitle>
+          <CardDescription>{t("topics.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {mailboxTopics.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No mailbox topics yet.</div>
+            <div className="text-sm text-muted-foreground">{t("topics.empty")}</div>
           ) : (
             mailboxTopics.map((t) => (
               <div key={t.id} className="rounded-lg border p-3 space-y-1">
