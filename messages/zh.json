@@ -1372,6 +1372,49 @@
           "cancel": "取消",
           "save": "保存条件"
         }
+      },
+      "keywordMulti": {
+        "toast": {
+          "categoryExists": "分类已存在"
+        },
+        "mode": "模式",
+        "useBooleanMode": "使用布尔模式",
+        "categories": "分类",
+        "addCategoryPlaceholder": "添加分类（例如：紧急）",
+        "removeCategoryAria": "移除分类 {category}",
+        "emptyCategoriesHelp": "至少添加一个分类以创建输出连接点。",
+        "matchFields": "匹配字段",
+        "addField": "添加字段",
+        "removeFieldAria": "移除字段 {field}",
+        "keywordsPerCategory": "每个分类的关键词",
+        "edit": "编辑",
+        "keywordsCommaLabel": "关键词（逗号分隔）",
+        "keywordsPlaceholder": "紧急，尽快，重要",
+        "matchType": "匹配方式",
+        "matchTypeOptions": {
+          "any": "任意关键词",
+          "all": "所有关键词"
+        },
+        "caseSensitive": "区分大小写",
+        "defaultCategory": "默认分类",
+        "selectDefaultCategory": "选择默认分类",
+        "defaultOption": "default（未匹配）",
+        "defaultHelp": "当没有关键词匹配时使用",
+        "keywordSetDialog": {
+          "title": "关键词集",
+          "description": "编辑该分类的关键词与匹配规则。",
+          "keywords": "关键词",
+          "keywordsPlaceholder": "紧急，尽快，重要",
+          "keywordsHelp": "使用逗号分隔关键词。",
+          "matchType": "匹配方式",
+          "matchTypeOptions": {
+            "any": "任意关键词",
+            "all": "所有关键词"
+          },
+          "caseSensitive": "区分大小写",
+          "cancel": "取消",
+          "save": "保存"
+        }
       }
     },
     "baseNode": {

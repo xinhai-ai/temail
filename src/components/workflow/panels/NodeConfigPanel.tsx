@@ -1034,6 +1034,7 @@ function KeywordMultiClassifierConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const categories = (data.categories as string[]) || [];
   const keywordSets = (data.keywordSets as KeywordSet[]) || [];
   const defaultCategory = (data.defaultCategory as string) || "default";
@@ -1050,7 +1051,7 @@ function KeywordMultiClassifierConfig({
     const category = newCategory.trim();
     if (!category) return;
     if (categories.includes(category)) {
-      toast.error("Category already exists");
+      toast.error(t("nodeConfigPanel.keywordMulti.toast.categoryExists"));
       return;
     }
 
@@ -1132,7 +1133,7 @@ function KeywordMultiClassifierConfig({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium">Mode</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordMulti.mode")}</Label>
         <Button
           variant="outline"
           size="sm"
@@ -1143,15 +1144,15 @@ function KeywordMultiClassifierConfig({
             onChange("defaultCategory", undefined);
           }}
         >
-          Use Boolean Mode
+          {t("nodeConfigPanel.keywordMulti.useBooleanMode")}
         </Button>
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Categories</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordMulti.categories")}</Label>
         <div className="flex gap-2">
           <Input
-            placeholder="Add category (e.g., urgent)"
+            placeholder={t("nodeConfigPanel.keywordMulti.addCategoryPlaceholder")}
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addCategory()}
@@ -1170,7 +1171,7 @@ function KeywordMultiClassifierConfig({
                 type="button"
                 onClick={() => removeCategory(category)}
                 className="ml-0.5 hover:text-destructive"
-                aria-label={`Remove category ${category}`}
+                aria-label={t("nodeConfigPanel.keywordMulti.removeCategoryAria", { category })}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -1178,7 +1179,7 @@ function KeywordMultiClassifierConfig({
           ))}
           {categories.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              Add at least one category to create output handles.
+              {t("nodeConfigPanel.keywordMulti.emptyCategoriesHelp")}
             </p>
           )}
         </div>
@@ -1187,7 +1188,7 @@ function KeywordMultiClassifierConfig({
       <Separator />
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Match Fields</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordMulti.matchFields")}</Label>
         <div className="flex flex-wrap gap-1.5">
           {fields.map((field) => (
             <Badge key={field} variant="outline" className="gap-1 text-[10px]">
@@ -1196,7 +1197,7 @@ function KeywordMultiClassifierConfig({
                 type="button"
                 onClick={() => removeField(field)}
                 className="ml-0.5 hover:text-destructive"
-                aria-label={`Remove field ${MATCH_FIELD_LABELS[field]}`}
+                aria-label={t("nodeConfigPanel.keywordMulti.removeFieldAria", { field: MATCH_FIELD_LABELS[field] })}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -1205,7 +1206,7 @@ function KeywordMultiClassifierConfig({
         </div>
         <Select onValueChange={(v) => addField(v as MatchField)}>
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Add field" />
+            <SelectValue placeholder={t("nodeConfigPanel.keywordMulti.addField")} />
           </SelectTrigger>
           <SelectContent>
             {(Object.keys(MATCH_FIELD_LABELS) as MatchField[])
@@ -1222,7 +1223,7 @@ function KeywordMultiClassifierConfig({
       <Separator />
 
       <div className="space-y-3">
-        <Label className="text-xs font-medium">Keywords per Category</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordMulti.keywordsPerCategory")}</Label>
         {categories.map((category) => {
           const set =
             keywordSets.find((s) => s.category === category) || ({
@@ -1244,15 +1245,15 @@ function KeywordMultiClassifierConfig({
                     onClick={() => openKeywordSetModal(category)}
                   >
                     <Pencil className="h-3.5 w-3.5 mr-1" />
-                    Edit
+                    {t("nodeConfigPanel.keywordMulti.edit")}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
-                  <Label className="text-xs">Keywords (comma-separated)</Label>
+                  <Label className="text-xs">{t("nodeConfigPanel.keywordMulti.keywordsCommaLabel")}</Label>
                   <Textarea
-                    placeholder="urgent, asap, important"
+                    placeholder={t("nodeConfigPanel.keywordMulti.keywordsPlaceholder")}
                     value={set.keywords.join(", ")}
                     onChange={(e) => {
                       const keywords = e.target.value
@@ -1268,7 +1269,7 @@ function KeywordMultiClassifierConfig({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">Match Type</Label>
+                    <Label className="text-xs">{t("nodeConfigPanel.keywordMulti.matchType")}</Label>
                     <Select
                       value={set.matchType || "any"}
                       onValueChange={(value) =>
@@ -1279,8 +1280,8 @@ function KeywordMultiClassifierConfig({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="any">Any keyword</SelectItem>
-                        <SelectItem value="all">All keywords</SelectItem>
+                        <SelectItem value="any">{t("nodeConfigPanel.keywordMulti.matchTypeOptions.any")}</SelectItem>
+                        <SelectItem value="all">{t("nodeConfigPanel.keywordMulti.matchTypeOptions.all")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1293,7 +1294,7 @@ function KeywordMultiClassifierConfig({
                           updateKeywordSet(category, { caseSensitive: checked })
                         }
                       />
-                      <Label className="text-xs">Case sensitive</Label>
+                      <Label className="text-xs">{t("nodeConfigPanel.keywordMulti.caseSensitive")}</Label>
                     </div>
                   </div>
                 </div>
@@ -1306,16 +1307,16 @@ function KeywordMultiClassifierConfig({
       <Separator />
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Default Category</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordMulti.defaultCategory")}</Label>
         <Select
           value={defaultCategory}
           onValueChange={(value) => onChange("defaultCategory", value)}
         >
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Select default category" />
+            <SelectValue placeholder={t("nodeConfigPanel.keywordMulti.selectDefaultCategory")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="default">default (no match)</SelectItem>
+            <SelectItem value="default">{t("nodeConfigPanel.keywordMulti.defaultOption")}</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
@@ -1324,7 +1325,7 @@ function KeywordMultiClassifierConfig({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Used when no keywords match
+          {t("nodeConfigPanel.keywordMulti.defaultHelp")}
         </p>
       </div>
 
@@ -1336,33 +1337,33 @@ function KeywordMultiClassifierConfig({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5" />
-              Keyword Set
+              {t("nodeConfigPanel.keywordMulti.keywordSetDialog.title")}
               {keywordSetModalCategory ? `: ${keywordSetModalCategory}` : ""}
             </DialogTitle>
             <DialogDescription>
-              Edit keywords and matching rules for this category.
+              {t("nodeConfigPanel.keywordMulti.keywordSetDialog.description")}
             </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="flex-1 pr-4 -mr-4">
             <div className="py-4 space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-medium">Keywords</Label>
+                <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordMulti.keywordSetDialog.keywords")}</Label>
                 <Textarea
                   value={keywordSetKeywordsText}
                   onChange={(e) => setKeywordSetKeywordsText(e.target.value)}
-                  placeholder="urgent, asap, important"
+                  placeholder={t("nodeConfigPanel.keywordMulti.keywordSetDialog.keywordsPlaceholder")}
                   rows={6}
                   className="text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Separate keywords with commas.
+                  {t("nodeConfigPanel.keywordMulti.keywordSetDialog.keywordsHelp")}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Match Type</Label>
+                  <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordMulti.keywordSetDialog.matchType")}</Label>
                   <Select
                     value={keywordSetMatchType}
                     onValueChange={(value) => setKeywordSetMatchType(value as "any" | "all")}
@@ -1371,8 +1372,8 @@ function KeywordMultiClassifierConfig({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any keyword</SelectItem>
-                      <SelectItem value="all">All keywords</SelectItem>
+                      <SelectItem value="any">{t("nodeConfigPanel.keywordMulti.keywordSetDialog.matchTypeOptions.any")}</SelectItem>
+                      <SelectItem value="all">{t("nodeConfigPanel.keywordMulti.keywordSetDialog.matchTypeOptions.all")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1383,7 +1384,7 @@ function KeywordMultiClassifierConfig({
                       checked={keywordSetCaseSensitive}
                       onCheckedChange={setKeywordSetCaseSensitive}
                     />
-                    <Label className="text-xs">Case sensitive</Label>
+                    <Label className="text-xs">{t("nodeConfigPanel.keywordMulti.keywordSetDialog.caseSensitive")}</Label>
                   </div>
                 </div>
               </div>
@@ -1395,10 +1396,10 @@ function KeywordMultiClassifierConfig({
               variant="outline"
               onClick={closeKeywordSetModal}
             >
-              Cancel
+              {t("nodeConfigPanel.keywordMulti.keywordSetDialog.cancel")}
             </Button>
             <Button onClick={saveKeywordSetModal} disabled={!keywordSetModalCategory}>
-              Save
+              {t("nodeConfigPanel.keywordMulti.keywordSetDialog.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1372,6 +1372,49 @@
           "cancel": "Cancel",
           "save": "Save Conditions"
         }
+      },
+      "keywordMulti": {
+        "toast": {
+          "categoryExists": "Category already exists"
+        },
+        "mode": "Mode",
+        "useBooleanMode": "Use Boolean Mode",
+        "categories": "Categories",
+        "addCategoryPlaceholder": "Add category (e.g., urgent)",
+        "removeCategoryAria": "Remove category {category}",
+        "emptyCategoriesHelp": "Add at least one category to create output handles.",
+        "matchFields": "Match Fields",
+        "addField": "Add field",
+        "removeFieldAria": "Remove field {field}",
+        "keywordsPerCategory": "Keywords per Category",
+        "edit": "Edit",
+        "keywordsCommaLabel": "Keywords (comma-separated)",
+        "keywordsPlaceholder": "urgent, asap, important",
+        "matchType": "Match Type",
+        "matchTypeOptions": {
+          "any": "Any keyword",
+          "all": "All keywords"
+        },
+        "caseSensitive": "Case sensitive",
+        "defaultCategory": "Default Category",
+        "selectDefaultCategory": "Select default category",
+        "defaultOption": "default (no match)",
+        "defaultHelp": "Used when no keywords match",
+        "keywordSetDialog": {
+          "title": "Keyword Set",
+          "description": "Edit keywords and matching rules for this category.",
+          "keywords": "Keywords",
+          "keywordsPlaceholder": "urgent, asap, important",
+          "keywordsHelp": "Separate keywords with commas.",
+          "matchType": "Match Type",
+          "matchTypeOptions": {
+            "any": "Any keyword",
+            "all": "All keywords"
+          },
+          "caseSensitive": "Case sensitive",
+          "cancel": "Cancel",
+          "save": "Save"
+        }
       }
     },
     "baseNode": {
