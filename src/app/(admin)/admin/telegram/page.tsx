@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Copy, RefreshCw, Save, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,20 +29,13 @@ type WebhookInfo = {
   allowed_updates?: string[];
 };
 
-function copyToClipboard(text: string) {
-  if (!text) return;
-  navigator.clipboard.writeText(text).then(
-    () => toast.success("Copied"),
-    () => toast.error("Copy failed")
-  );
-}
-
 function formatUnixSeconds(seconds: number | undefined) {
   if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return "-";
   return new Date(seconds * 1000).toLocaleString();
 }
 
 export default function AdminTelegramPage() {
+  const t = useTranslations("admin");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -62,6 +56,14 @@ export default function AdminTelegramPage() {
     return `${origin}/api/telegram/webhook`;
   }, [baseUrl]);
 
+  const copyToClipboard = useCallback((text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(
+      () => toast.success(t("telegram.toasts.copied")),
+      () => toast.error(t("telegram.toasts.copyFailed"))
+    );
+  }, [t]);
+
   const setValue = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
   };
@@ -73,7 +75,7 @@ export default function AdminTelegramPage() {
       const data = (await res.json().catch(() => null)) as SettingRow[] | { error?: string } | null;
       if (!res.ok) {
         const error = data && typeof data === "object" && "error" in data ? String((data as { error?: string }).error || "") : "";
-        toast.error(error || "Failed to load Telegram settings");
+        toast.error(error || t("telegram.toasts.loadSettingsFailed"));
         return;
       }
       const map: Record<string, string> = {};
@@ -87,7 +89,7 @@ export default function AdminTelegramPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchWebhook = useCallback(async () => {
     setWebhookLoading(true);
@@ -102,7 +104,7 @@ export default function AdminTelegramPage() {
       if (webhookRes.ok) {
         setWebhookInfo(webhookData?.webhookInfo || null);
       } else {
-        toast.error(webhookData?.error || "Failed to load Telegram webhook info");
+        toast.error(webhookData?.error || t("telegram.toasts.loadWebhookFailed"));
       }
 
       if (endpointRes.ok && typeof endpointData?.webhookSecretConfigured === "boolean") {
@@ -111,7 +113,7 @@ export default function AdminTelegramPage() {
     } finally {
       setWebhookLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchSettings().catch(() => setLoading(false));
@@ -146,10 +148,10 @@ export default function AdminTelegramPage() {
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        toast.error(data?.error || "Failed to save settings");
+        toast.error(data?.error || t("telegram.toasts.saveFailed"));
         return;
       }
-      toast.success("Telegram settings saved");
+      toast.success(t("telegram.toasts.saved"));
       await fetchSettings();
     } finally {
       setSaving(false);
@@ -159,7 +161,7 @@ export default function AdminTelegramPage() {
   const setWebhook = async () => {
     const url = webhookUrl;
     if (!url) {
-      toast.error("Webhook URL is required");
+      toast.error(t("telegram.toasts.webhookUrlRequired"));
       return;
     }
     setWebhookLoading(true);
@@ -171,11 +173,11 @@ export default function AdminTelegramPage() {
       });
       const data = (await res.json().catch(() => null)) as { webhookInfo?: WebhookInfo; error?: string } | null;
       if (!res.ok) {
-        toast.error(data?.error || "Failed to set webhook");
+        toast.error(data?.error || t("telegram.toasts.setWebhookFailed"));
         return;
       }
       setWebhookInfo(data?.webhookInfo || null);
-      toast.success("Webhook set");
+      toast.success(t("telegram.toasts.webhookSet"));
     } finally {
       setWebhookLoading(false);
     }
@@ -188,11 +190,11 @@ export default function AdminTelegramPage() {
       const res = await fetch(`/api/admin/telegram/webhook${qp}`, { method: "DELETE" });
       const data = (await res.json().catch(() => null)) as { webhookInfo?: WebhookInfo; error?: string } | null;
       if (!res.ok) {
-        toast.error(data?.error || "Failed to delete webhook");
+        toast.error(data?.error || t("telegram.toasts.deleteWebhookFailed"));
         return;
       }
       setWebhookInfo(data?.webhookInfo || null);
-      toast.success("Webhook deleted");
+      toast.success(t("telegram.toasts.webhookDeleted"));
     } finally {
       setWebhookLoading(false);
     }
@@ -204,10 +206,10 @@ export default function AdminTelegramPage() {
       const res = await fetch("/api/admin/telegram/commands", { method: "POST" });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
-        toast.error(data?.error || "Failed to sync bot commands");
+        toast.error(data?.error || t("telegram.toasts.syncCommandsFailed"));
         return;
       }
-      toast.success("Bot commands synced");
+      toast.success(t("telegram.toasts.commandsSynced"));
     } finally {
       setCommandsLoading(false);
     }
@@ -225,17 +227,17 @@ export default function AdminTelegramPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Telegram</h1>
-          <p className="text-muted-foreground">Manage the site-owned Telegram bot and webhooks</p>
+          <h1 className="text-3xl font-bold">{t("telegram.title")}</h1>
+          <p className="text-muted-foreground">{t("telegram.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => fetchWebhook()} disabled={webhookLoading || saving}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            {t("common.refresh")}
           </Button>
           <Button onClick={saveSettings} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </div>
@@ -244,42 +246,42 @@ export default function AdminTelegramPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
-            Bot Settings
+            {t("telegram.botSettings.title")}
           </CardTitle>
-          <CardDescription>Configured by the admin and shared for all users</CardDescription>
+          <CardDescription>{t("telegram.botSettings.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Bot Token</Label>
+            <Label>{t("telegram.botSettings.fields.botToken.label")}</Label>
             <Input
               placeholder={
                 maskedValues.telegram_bot_token && !(values.telegram_bot_token || "").trim()
-                  ? "•••••••• (configured)"
+                  ? t("telegram.common.secretConfigured")
                   : "123456:ABC-DEF..."
               }
               value={values.telegram_bot_token || ""}
               type="password"
               onChange={(e) => setValue("telegram_bot_token", e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Get from @BotFather. Required for sending messages and managing Topics.</p>
+            <p className="text-xs text-muted-foreground">{t("telegram.botSettings.fields.botToken.help")}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Bot Username</Label>
+            <Label>{t("telegram.botSettings.fields.botUsername.label")}</Label>
             <Input
               placeholder="YourBot"
               value={values.telegram_bot_username || ""}
               onChange={(e) => setValue("telegram_bot_username", e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Optional: used to generate /start deep-links on the user dashboard.</p>
+            <p className="text-xs text-muted-foreground">{t("telegram.botSettings.fields.botUsername.help")}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Webhook Secret</Label>
+            <Label>{t("telegram.botSettings.fields.webhookSecret.label")}</Label>
             <Input
               placeholder={
                 maskedValues.telegram_webhook_secret && !(values.telegram_webhook_secret || "").trim()
-                  ? "•••••••• (configured)"
+                  ? t("telegram.common.secretConfigured")
                   : "random-secret"
               }
               value={values.telegram_webhook_secret || ""}
@@ -287,57 +289,60 @@ export default function AdminTelegramPage() {
               onChange={(e) => setValue("telegram_webhook_secret", e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Recommended. Telegram will send it as <span className="font-mono">X-Telegram-Bot-Api-Secret-Token</span>.
+              {t("telegram.botSettings.fields.webhookSecret.helpPrefix")}{" "}
+              <span className="font-mono">X-Telegram-Bot-Api-Secret-Token</span>
+              {t("telegram.botSettings.fields.webhookSecret.helpSuffix")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>Forum General Topic Name</Label>
+            <Label>{t("telegram.botSettings.fields.forumGeneralTopicName.label")}</Label>
             <Input
               placeholder="TEmail · General"
               value={values.telegram_forum_general_topic_name || ""}
               onChange={(e) => setValue("telegram_forum_general_topic_name", e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Created when a user binds a forum group via /bind.</p>
+            <p className="text-xs text-muted-foreground">{t("telegram.botSettings.fields.forumGeneralTopicName.help")}</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Webhook</CardTitle>
-          <CardDescription>Set the Telegram webhook to point to this server</CardDescription>
+          <CardTitle>{t("telegram.webhook.title")}</CardTitle>
+          <CardDescription>{t("telegram.webhook.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Public Base URL</Label>
+            <Label>{t("telegram.webhook.fields.publicBaseUrl.label")}</Label>
             <Input
               placeholder="https://example.com"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Telegram requires HTTPS. Your webhook URL will be: <span className="font-mono break-all">{webhookUrl || "-"}</span>
+              {t("telegram.webhook.fields.publicBaseUrl.helpPrefix")}{" "}
+              <span className="font-mono break-all">{webhookUrl || "-"}</span>
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => copyToClipboard(webhookUrl)} disabled={!webhookUrl}>
                 <Copy className="h-4 w-4 mr-2" />
-                Copy Webhook URL
+                {t("telegram.webhook.actions.copyWebhookUrl")}
               </Button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Switch checked={dropPendingUpdates} onCheckedChange={setDropPendingUpdates} />
-            <Label className="text-sm">Drop pending updates</Label>
+            <Label className="text-sm">{t("telegram.webhook.options.dropPendingUpdates")}</Label>
           </div>
 
           <div className="flex gap-2 flex-wrap">
             <Button onClick={setWebhook} disabled={webhookLoading || !webhookUrl}>
-              Set Webhook
+              {t("telegram.webhook.actions.setWebhook")}
             </Button>
             <Button variant="outline" onClick={deleteWebhook} disabled={webhookLoading}>
-              Delete Webhook
+              {t("telegram.webhook.actions.deleteWebhook")}
             </Button>
           </div>
 
@@ -345,7 +350,7 @@ export default function AdminTelegramPage() {
 
           <div className="space-y-2 text-sm">
             <div>
-              <span className="text-muted-foreground">Endpoint status:</span>{" "}
+              <span className="text-muted-foreground">{t("telegram.webhook.status.endpointStatus")}</span>{" "}
               {endpointStatus ? (
                 <span className="font-mono">
                   webhookSecretConfigured={endpointStatus.webhookSecretConfigured ? "true" : "false"}
@@ -356,23 +361,23 @@ export default function AdminTelegramPage() {
             </div>
             <div className="grid gap-1 text-xs">
               <div>
-                <span className="text-muted-foreground">Telegram URL:</span>{" "}
+                <span className="text-muted-foreground">{t("telegram.webhook.status.telegramUrl")}</span>{" "}
                 <span className="font-mono break-all">{webhookInfo?.url || "-"}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Pending updates:</span>{" "}
+                <span className="text-muted-foreground">{t("telegram.webhook.status.pendingUpdates")}</span>{" "}
                 <span className="font-mono">{String(webhookInfo?.pending_update_count ?? "-")}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Last error:</span>{" "}
+                <span className="text-muted-foreground">{t("telegram.webhook.status.lastError")}</span>{" "}
                 <span className="font-mono break-all">{webhookInfo?.last_error_message || "-"}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Last error date:</span>{" "}
+                <span className="text-muted-foreground">{t("telegram.webhook.status.lastErrorDate")}</span>{" "}
                 <span className="font-mono">{formatUnixSeconds(webhookInfo?.last_error_date)}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">IP address:</span>{" "}
+                <span className="text-muted-foreground">{t("telegram.webhook.status.ipAddress")}</span>{" "}
                 <span className="font-mono">{webhookInfo?.ip_address || "-"}</span>
               </div>
             </div>
@@ -382,15 +387,15 @@ export default function AdminTelegramPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Commands</CardTitle>
-          <CardDescription>Sync slash commands so users get suggestions when typing “/”</CardDescription>
+          <CardTitle>{t("telegram.commands.title")}</CardTitle>
+          <CardDescription>{t("telegram.commands.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Button onClick={syncCommands} disabled={commandsLoading || saving || webhookLoading}>
-            {commandsLoading ? "Syncing..." : "Sync Bot Commands"}
+            {commandsLoading ? t("telegram.commands.actions.syncing") : t("telegram.commands.actions.sync")}
           </Button>
           <p className="text-xs text-muted-foreground">
-            Tip: after syncing, open a chat with the bot and type <span className="font-mono">/</span> to see the command list.
+            {t("telegram.commands.tipPrefix")} <span className="font-mono">/</span> {t("telegram.commands.tipSuffix")}
           </p>
         </CardContent>
       </Card>

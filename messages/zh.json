@@ -547,6 +547,87 @@
         }
       }
     },
+    "telegram": {
+      "title": "Telegram",
+      "subtitle": "管理站点自有 Telegram 机器人与 Webhook",
+      "common": {
+        "secretConfigured": "••••••••（已配置）"
+      },
+      "toasts": {
+        "copied": "已复制",
+        "copyFailed": "复制失败",
+        "loadSettingsFailed": "加载 Telegram 设置失败",
+        "loadWebhookFailed": "加载 Telegram Webhook 信息失败",
+        "saveFailed": "保存设置失败",
+        "saved": "Telegram 设置已保存",
+        "webhookUrlRequired": "需要 Webhook URL",
+        "setWebhookFailed": "设置 Webhook 失败",
+        "webhookSet": "Webhook 已设置",
+        "deleteWebhookFailed": "删除 Webhook 失败",
+        "webhookDeleted": "Webhook 已删除",
+        "syncCommandsFailed": "同步 Bot 命令失败",
+        "commandsSynced": "Bot 命令已同步"
+      },
+      "botSettings": {
+        "title": "机器人设置",
+        "description": "由管理员配置，所有用户共享",
+        "fields": {
+          "botToken": {
+            "label": "机器人 Token",
+            "help": "从 @BotFather 获取。发送消息与管理 Topics 必需。"
+          },
+          "botUsername": {
+            "label": "机器人用户名",
+            "help": "可选：用于在用户面板生成 /start 深度链接。"
+          },
+          "webhookSecret": {
+            "label": "Webhook 密钥",
+            "helpPrefix": "建议配置。Telegram 会以",
+            "helpSuffix": "发送该值。"
+          },
+          "forumGeneralTopicName": {
+            "label": "论坛通用话题名称",
+            "help": "用户通过 /bind 绑定论坛群组时会创建。"
+          }
+        }
+      },
+      "webhook": {
+        "title": "Webhook",
+        "description": "将 Telegram Webhook 指向本服务器",
+        "fields": {
+          "publicBaseUrl": {
+            "label": "公网 Base URL",
+            "helpPrefix": "Telegram 要求 HTTPS。你的 Webhook URL 将是："
+          }
+        },
+        "actions": {
+          "copyWebhookUrl": "复制 Webhook URL",
+          "setWebhook": "设置 Webhook",
+          "deleteWebhook": "删除 Webhook"
+        },
+        "options": {
+          "dropPendingUpdates": "丢弃待处理更新"
+        },
+        "status": {
+          "endpointStatus": "端点状态：",
+          "telegramUrl": "Telegram URL：",
+          "pendingUpdates": "待处理更新：",
+          "lastError": "最后错误：",
+          "lastErrorDate": "最后错误时间：",
+          "ipAddress": "IP 地址："
+        }
+      },
+      "commands": {
+        "title": "命令",
+        "description": "同步斜杠命令，让用户输入 / 时获得提示",
+        "actions": {
+          "syncing": "同步中...",
+          "sync": "同步 Bot 命令"
+        },
+        "tipPrefix": "提示：同步后，打开与机器人聊天并输入",
+        "tipSuffix": "查看命令列表。"
+      }
+    },
     "dashboard": {
       "title": "管理员面板",
       "subtitle": "系统概览",

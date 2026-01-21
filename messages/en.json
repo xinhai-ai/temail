@@ -547,6 +547,87 @@
         }
       }
     },
+    "telegram": {
+      "title": "Telegram",
+      "subtitle": "Manage the site-owned Telegram bot and webhooks",
+      "common": {
+        "secretConfigured": "•••••••• (configured)"
+      },
+      "toasts": {
+        "copied": "Copied",
+        "copyFailed": "Copy failed",
+        "loadSettingsFailed": "Failed to load Telegram settings",
+        "loadWebhookFailed": "Failed to load Telegram webhook info",
+        "saveFailed": "Failed to save settings",
+        "saved": "Telegram settings saved",
+        "webhookUrlRequired": "Webhook URL is required",
+        "setWebhookFailed": "Failed to set webhook",
+        "webhookSet": "Webhook set",
+        "deleteWebhookFailed": "Failed to delete webhook",
+        "webhookDeleted": "Webhook deleted",
+        "syncCommandsFailed": "Failed to sync bot commands",
+        "commandsSynced": "Bot commands synced"
+      },
+      "botSettings": {
+        "title": "Bot Settings",
+        "description": "Configured by the admin and shared for all users",
+        "fields": {
+          "botToken": {
+            "label": "Bot Token",
+            "help": "Get from @BotFather. Required for sending messages and managing Topics."
+          },
+          "botUsername": {
+            "label": "Bot Username",
+            "help": "Optional: used to generate /start deep-links on the user dashboard."
+          },
+          "webhookSecret": {
+            "label": "Webhook Secret",
+            "helpPrefix": "Recommended. Telegram will send it as",
+            "helpSuffix": "."
+          },
+          "forumGeneralTopicName": {
+            "label": "Forum General Topic Name",
+            "help": "Created when a user binds a forum group via /bind."
+          }
+        }
+      },
+      "webhook": {
+        "title": "Webhook",
+        "description": "Set the Telegram webhook to point to this server",
+        "fields": {
+          "publicBaseUrl": {
+            "label": "Public Base URL",
+            "helpPrefix": "Telegram requires HTTPS. Your webhook URL will be:"
+          }
+        },
+        "actions": {
+          "copyWebhookUrl": "Copy Webhook URL",
+          "setWebhook": "Set Webhook",
+          "deleteWebhook": "Delete Webhook"
+        },
+        "options": {
+          "dropPendingUpdates": "Drop pending updates"
+        },
+        "status": {
+          "endpointStatus": "Endpoint status:",
+          "telegramUrl": "Telegram URL:",
+          "pendingUpdates": "Pending updates:",
+          "lastError": "Last error:",
+          "lastErrorDate": "Last error date:",
+          "ipAddress": "IP address:"
+        }
+      },
+      "commands": {
+        "title": "Commands",
+        "description": "Sync slash commands so users get suggestions when typing /",
+        "actions": {
+          "syncing": "Syncing...",
+          "sync": "Sync Bot Commands"
+        },
+        "tipPrefix": "Tip: after syncing, open a chat with the bot and type",
+        "tipSuffix": "to see the command list."
+      }
+    },
     "dashboard": {
       "title": "Admin Dashboard",
       "subtitle": "System overview",
