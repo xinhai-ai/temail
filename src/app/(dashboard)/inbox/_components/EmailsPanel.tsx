@@ -26,8 +26,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
 import { Archive, ArchiveRestore, Copy, ExternalLink, Mail, MailOpen, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import type { EmailListItem, Tag } from "../types";
 
 export type EmailStatusFilter = "all" | "unread" | "archived";
@@ -107,6 +109,11 @@ export function EmailsPanel({
   onNextPage,
   onStatusFilterChange,
 }: EmailsPanelProps) {
+  const locale = useLocale();
+  const t = useTranslations("inbox");
+  const tCommon = useTranslations("common");
+  const distanceLocale = locale === "zh" ? zhCN : enUS;
+
   const safePages = Math.max(1, pages);
   const [emailSearchInput, setEmailSearchInput] = useState(() => emailSearch);
   const [pageSizeInput, setPageSizeInput] = useState(() => String(pageSize));
@@ -170,6 +177,11 @@ export function EmailsPanel({
     }
   };
 
+  const unreadTabLabel =
+    unreadCount > 0
+      ? t("emails.tabs.unreadWithCount", { count: unreadCount })
+      : t("emails.tabs.unread");
+
   return (
     <Card className="border-border/50 overflow-hidden min-h-0 py-0 gap-0 h-full flex flex-col">
       <div className="p-4 space-y-3 border-b border-border/50 flex-shrink-0">
@@ -177,7 +189,7 @@ export function EmailsPanel({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search emails... (press Enter)"
+              placeholder={t("emails.searchPlaceholder")}
               value={emailSearchInput}
               onChange={(e) => setEmailSearchInput(e.target.value)}
               onKeyDown={(e) => {
@@ -193,26 +205,26 @@ export function EmailsPanel({
 
         <Tabs value={statusFilter} onValueChange={(v) => onStatusFilterChange(v as EmailStatusFilter)}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="all">{t("emails.tabs.all")}</TabsTrigger>
             <TabsTrigger value="unread">
-              Unread{unreadCount > 0 && ` (${unreadCount})`}
+              {unreadTabLabel}
             </TabsTrigger>
-            <TabsTrigger value="archived">Archived</TabsTrigger>
+            <TabsTrigger value="archived">{t("emails.tabs.archived")}</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Tag</span>
+            <span className="text-xs text-muted-foreground">{t("emails.tag.label")}</span>
             <Select
               value={tagFilterValue}
               onValueChange={(value) => onTagFilterChange(value === "__all__" ? null : value)}
             >
               <SelectTrigger className="h-8 text-sm w-[180px]">
-                <SelectValue placeholder="All tags" />
+                <SelectValue placeholder={t("emails.tag.allTags")} />
               </SelectTrigger>
               <SelectContent align="start">
-                <SelectItem value="__all__">All tags</SelectItem>
+                <SelectItem value="__all__">{t("emails.tag.allTags")}</SelectItem>
                 {tags.length > 0 && <SelectSeparator />}
                 {tags.map((tag) => (
                   <SelectItem key={tag.id} value={tag.id}>
@@ -238,8 +250,8 @@ export function EmailsPanel({
               />
               <span className="text-muted-foreground">
                 {selectedEmailIds.length > 0
-                  ? `${selectedEmailIds.length} selected`
-                  : "Select"}
+                  ? t("emails.selection.selected", { count: selectedEmailIds.length })
+                  : t("emails.selection.select")}
               </span>
             </label>
             {selectedEmailIds.length > 0 && (
@@ -251,12 +263,12 @@ export function EmailsPanel({
                       size="icon-sm"
                       variant="outline"
                       onClick={onBulkMarkRead}
-                      aria-label="Mark selected as read"
+                      aria-label={t("emails.bulk.markRead.aria")}
                     >
                       <MailOpen className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Mark read</TooltipContent>
+                  <TooltipContent>{t("emails.bulk.markRead.tooltip")}</TooltipContent>
                 </Tooltip>
                 {statusFilter !== "archived" ? (
                   <Tooltip>
@@ -266,12 +278,12 @@ export function EmailsPanel({
                         size="icon-sm"
                         variant="outline"
                         onClick={onBulkArchive}
-                        aria-label="Archive selected"
+                        aria-label={t("emails.bulk.archive.aria")}
                       >
                         <Archive className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Archive</TooltipContent>
+                    <TooltipContent>{t("emails.bulk.archive.tooltip")}</TooltipContent>
                   </Tooltip>
                 ) : null}
                 <Tooltip>
@@ -281,12 +293,12 @@ export function EmailsPanel({
                       size="icon-sm"
                       variant="destructive"
                       onClick={onOpenBulkDelete}
-                      aria-label="Delete selected"
+                      aria-label={t("emails.bulk.delete.aria")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Delete</TooltipContent>
+                  <TooltipContent>{t("emails.bulk.delete.tooltip")}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -295,12 +307,12 @@ export function EmailsPanel({
                       size="icon-sm"
                       variant="ghost"
                       onClick={onClearSelection}
-                      aria-label="Clear selection"
+                      aria-label={t("emails.bulk.clear.aria")}
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Clear</TooltipContent>
+                  <TooltipContent>{t("emails.bulk.clear.tooltip")}</TooltipContent>
                 </Tooltip>
               </div>
             )}
@@ -328,16 +340,16 @@ export function EmailsPanel({
           ) : emails.length === 0 ? (
             <EmptyState
               icon={<Mail className="h-8 w-8 text-muted-foreground" />}
-              title={emailSearch ? "No results found" : "No emails"}
+              title={emailSearch ? t("emails.empty.noResultsTitle") : t("emails.empty.noEmailsTitle")}
               description={
                 emailSearch
-                  ? `No emails matching "${emailSearch}"`
-                  : "Incoming emails will appear here automatically"
+                  ? t("emails.empty.noResultsDescription", { search: emailSearch })
+                  : t("emails.empty.noEmailsDescription")
               }
               action={
                 emailSearch
                   ? {
-                      label: "Clear search",
+                      label: t("emails.empty.clearSearch"),
                       onClick: () => {
                         setEmailSearchInput("");
                         onEmailSearchChange("");
@@ -399,7 +411,7 @@ export function EmailsPanel({
                                     : "font-medium text-foreground/90"
                                 )}
                               >
-                                {email.subject || "(No subject)"}
+                                {email.subject || t("email.noSubject")}
                               </span>
                               {email.isStarred && (
                                 <Star className="h-4 w-4 flex-shrink-0 fill-yellow-400 text-yellow-400" />
@@ -413,6 +425,7 @@ export function EmailsPanel({
                               <span className="flex-shrink-0">
                                 {formatDistanceToNow(new Date(email.receivedAt), {
                                   addSuffix: true,
+                                  locale: distanceLocale,
                                 })}
                               </span>
                             </div>
@@ -440,29 +453,29 @@ export function EmailsPanel({
                       </div>
                     </ContextMenuTrigger>
                     <ContextMenuContent className="w-48">
-                      <ContextMenuLabel>Email</ContextMenuLabel>
+                      <ContextMenuLabel>{t("emails.context.email")}</ContextMenuLabel>
                       <ContextMenuSeparator />
                       <ContextMenuItem asChild>
                         <Link href={`/emails/${email.id}`}>
                           <ExternalLink />
-                          Open
+                          {t("emails.context.open")}
                         </Link>
                       </ContextMenuItem>
                       <ContextMenuItem
                         onClick={() => onCopySenderAddress(email.fromAddress)}
                       >
                         <Copy />
-                        Copy Sender
+                        {t("emails.context.copySender")}
                       </ContextMenuItem>
                       <ContextMenuSub>
                         <ContextMenuSubTrigger>
                           <TagIcon />
-                          Tags
+                          {t("emails.context.tags")}
                         </ContextMenuSubTrigger>
                         <ContextMenuSubContent className="w-56">
                           {tags.length === 0 ? (
                             <ContextMenuItem disabled>
-                              No tags yet
+                              {t("emails.context.noTagsYet")}
                             </ContextMenuItem>
                           ) : (
                             tags.map((tag) => {
@@ -489,7 +502,7 @@ export function EmailsPanel({
                           <ContextMenuSeparator />
                           <ContextMenuItem onClick={() => openAddTagDialog(email.id)}>
                             <Plus />
-                            Add new…
+                            {t("emails.context.addNew")}
                           </ContextMenuItem>
                         </ContextMenuSubContent>
                       </ContextMenuSub>
@@ -498,7 +511,7 @@ export function EmailsPanel({
                           onClick={() => onMarkEmailRead(email.id)}
                         >
                           <MailOpen />
-                          Mark as Read
+                          {t("emails.context.markAsRead")}
                         </ContextMenuItem>
                       )}
                       <ContextMenuItem
@@ -507,12 +520,12 @@ export function EmailsPanel({
                         {email.isStarred ? (
                           <>
                             <StarOff />
-                            Unstar
+                            {t("emails.context.unstar")}
                           </>
                         ) : (
                           <>
                             <Star />
-                            Star
+                            {t("emails.context.star")}
                           </>
                         )}
                       </ContextMenuItem>
@@ -521,14 +534,14 @@ export function EmailsPanel({
                           onClick={() => onUnarchiveEmail(email.id)}
                         >
                           <ArchiveRestore />
-                          Unarchive
+                          {t("emails.context.unarchive")}
                         </ContextMenuItem>
                       ) : (
                         <ContextMenuItem
                           onClick={() => onArchiveEmail(email.id)}
                         >
                           <Archive />
-                          Archive
+                          {t("emails.context.archive")}
                         </ContextMenuItem>
                       )}
                       <ContextMenuSeparator />
@@ -537,7 +550,7 @@ export function EmailsPanel({
                         onClick={() => onDeleteEmail(email.id)}
                       >
                         <Trash2 />
-                        Delete
+                        {tCommon("delete")}
                       </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
@@ -560,19 +573,19 @@ export function EmailsPanel({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add tag</DialogTitle>
+            <DialogTitle>{t("emails.addTag.title")}</DialogTitle>
             <DialogDescription>
-              Create a new tag or attach an existing tag by name.
+              {t("emails.addTag.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="add-tag-name">Tag name</Label>
+            <Label htmlFor="add-tag-name">{t("emails.addTag.nameLabel")}</Label>
             <Input
               id="add-tag-name"
               list={tagSuggestionsId}
               value={addTagName}
               onChange={(e) => setAddTagName(e.target.value)}
-              placeholder="e.g. urgent"
+              placeholder={t("emails.addTag.namePlaceholder")}
               onKeyDown={(e) => {
                 if (e.key !== "Enter") return;
                 if (e.nativeEvent.isComposing) return;
@@ -588,10 +601,10 @@ export function EmailsPanel({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setAddTagDialogOpen(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button type="button" onClick={() => void submitAddTag()} disabled={!addTagName.trim()}>
-              Add
+              {t("emails.addTag.add")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -599,7 +612,7 @@ export function EmailsPanel({
 
       <div className="p-3 border-t border-border/50 flex items-center justify-between gap-2 flex-shrink-0">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>Per page</span>
+          <span>{t("emails.pagination.perPage")}</span>
           <Select
             open={pageSizeOpen}
             onOpenChange={setPageSizeOpen}
@@ -627,7 +640,7 @@ export function EmailsPanel({
               )}
               <SelectSeparator />
               <div className="p-2">
-                <div className="text-xs text-muted-foreground mb-1">Custom</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("emails.pagination.custom")}</div>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
@@ -653,7 +666,7 @@ export function EmailsPanel({
                       commitPageSize();
                     }}
                   >
-                    Set
+                    {t("emails.pagination.set")}
                   </Button>
                 </div>
               </div>
@@ -661,7 +674,7 @@ export function EmailsPanel({
           </Select>
           <span className="text-muted-foreground/50">·</span>
           <span>
-            Page {page} / {safePages}
+            {t("emails.pagination.page", { page, pages: safePages })}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -672,7 +685,7 @@ export function EmailsPanel({
             onClick={onPrevPage}
             disabled={loadingEmails || page <= 1}
           >
-            Prev
+            {t("emails.pagination.prev")}
           </Button>
           <Button
             type="button"
@@ -681,7 +694,7 @@ export function EmailsPanel({
             onClick={onNextPage}
             disabled={loadingEmails || page >= safePages}
           >
-            Next
+            {t("emails.pagination.next")}
           </Button>
         </div>
       </div>

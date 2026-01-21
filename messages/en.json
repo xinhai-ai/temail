@@ -299,6 +299,76 @@
         "noGroups": "No groups"
       }
     },
+    "emails": {
+      "searchPlaceholder": "Search emails... (press Enter)",
+      "tabs": {
+        "all": "All",
+        "unread": "Unread",
+        "unreadWithCount": "Unread ({count})",
+        "archived": "Archived"
+      },
+      "tag": {
+        "label": "Tag",
+        "allTags": "All tags"
+      },
+      "selection": {
+        "select": "Select",
+        "selected": "{count} selected"
+      },
+      "bulk": {
+        "markRead": {
+          "aria": "Mark selected as read",
+          "tooltip": "Mark read"
+        },
+        "archive": {
+          "aria": "Archive selected",
+          "tooltip": "Archive"
+        },
+        "delete": {
+          "aria": "Delete selected",
+          "tooltip": "Delete"
+        },
+        "clear": {
+          "aria": "Clear selection",
+          "tooltip": "Clear"
+        }
+      },
+      "empty": {
+        "noResultsTitle": "No results found",
+        "noEmailsTitle": "No emails",
+        "noResultsDescription": "No emails matching \"{search}\"",
+        "noEmailsDescription": "Incoming emails will appear here automatically",
+        "clearSearch": "Clear search"
+      },
+      "context": {
+        "email": "Email",
+        "open": "Open",
+        "copySender": "Copy sender",
+        "tags": "Tags",
+        "noTagsYet": "No tags yet",
+        "addNew": "Add new…",
+        "markAsRead": "Mark as Read",
+        "star": "Star",
+        "unstar": "Unstar",
+        "archive": "Archive",
+        "unarchive": "Unarchive"
+      },
+      "addTag": {
+        "title": "Add tag",
+        "description": "Create a new tag or attach an existing tag by name.",
+        "nameLabel": "Tag name",
+        "namePlaceholder": "e.g. urgent",
+        "add": "Add"
+      },
+      "pagination": {
+        "perPage": "Per page",
+        "custom": "Custom",
+        "set": "Set",
+        "page": "Page {page} / {pages}",
+        "prev": "Prev",
+        "next": "Next"
+      }
+    },
     "confirm": {
       "moveToTrash": {
         "title": "Move to Trash",
