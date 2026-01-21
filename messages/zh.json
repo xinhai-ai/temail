@@ -709,5 +709,43 @@
       "passkeyRemoveFailed": "移除 Passkey 失败",
       "passkeyRemoved": "Passkey 已移除"
     }
+  },
+  "trash": {
+    "title": "回收站",
+    "description": "已删除的邮件会保留在这里，直到被永久删除",
+    "searchPlaceholder": "搜索回收站...",
+    "bulk": {
+      "restore": "恢复（{count}）",
+      "purge": "永久删除"
+    },
+    "empty": {
+      "title": "回收站为空",
+      "description": "已删除的邮件会显示在这里"
+    },
+    "table": {
+      "selectAll": "全选",
+      "selectEmail": "选择邮件",
+      "from": "发件人",
+      "subject": "主题",
+      "to": "收件箱",
+      "deleted": "删除时间",
+      "actions": "操作"
+    },
+    "pagination": {
+      "page": "第 {page} / {pages} 页",
+      "prev": "上一页",
+      "next": "下一页"
+    },
+    "confirm": {
+      "purgeOne": "确定永久删除这封邮件吗？此操作无法撤销。",
+      "purgeBulk": "确定永久删除 {count} 封邮件吗？此操作无法撤销。"
+    },
+    "toast": {
+      "loadFailed": "加载回收站失败",
+      "restoreFailed": "恢复失败",
+      "restored": "已恢复",
+      "purgeFailed": "永久删除失败",
+      "purged": "已永久删除"
+    }
   }
 }

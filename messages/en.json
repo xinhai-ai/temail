@@ -709,5 +709,43 @@
       "passkeyRemoveFailed": "Failed to remove passkey",
       "passkeyRemoved": "Passkey removed"
     }
+  },
+  "trash": {
+    "title": "Trash",
+    "description": "Deleted emails stay here until permanently removed",
+    "searchPlaceholder": "Search trash...",
+    "bulk": {
+      "restore": "Restore ({count})",
+      "purge": "Delete Permanently"
+    },
+    "empty": {
+      "title": "Trash is empty",
+      "description": "Deleted emails will appear here"
+    },
+    "table": {
+      "selectAll": "Select all",
+      "selectEmail": "Select email",
+      "from": "From",
+      "subject": "Subject",
+      "to": "To",
+      "deleted": "Deleted",
+      "actions": "Actions"
+    },
+    "pagination": {
+      "page": "Page {page} / {pages}",
+      "prev": "Prev",
+      "next": "Next"
+    },
+    "confirm": {
+      "purgeOne": "Delete this email permanently? This cannot be undone.",
+      "purgeBulk": "Delete {count} email(s) permanently? This cannot be undone."
+    },
+    "toast": {
+      "loadFailed": "Failed to load trash",
+      "restoreFailed": "Failed to restore",
+      "restored": "Restored",
+      "purgeFailed": "Failed to delete permanently",
+      "purged": "Deleted permanently"
+    }
   }
 }

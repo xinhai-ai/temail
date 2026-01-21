@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
 import { Mail, RotateCcw, Search, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLocale, useTranslations } from "next-intl";
 
 type TrashEmail = {
   id: string;
@@ -22,16 +24,21 @@ type TrashEmail = {
   mailbox: { address: string };
 };
 
-function formatRelativeTime(value: string | null | undefined) {
-  if (!value) return "-";
-  try {
-    return formatDistanceToNow(new Date(value), { addSuffix: true });
-  } catch {
-    return "-";
-  }
-}
-
 export default function TrashPage() {
+  const locale = useLocale();
+  const t = useTranslations("trash");
+  const tInbox = useTranslations("inbox");
+  const distanceLocale = locale === "zh" ? zhCN : enUS;
+
+  const formatRelativeTime = (value: string | null | undefined) => {
+    if (!value) return "-";
+    try {
+      return formatDistanceToNow(new Date(value), { addSuffix: true, locale: distanceLocale });
+    } catch {
+      return "-";
+    }
+  };
+
   const [emails, setEmails] = useState<TrashEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -57,7 +64,7 @@ export default function TrashPage() {
 
   useEffect(() => {
     fetchEmails().catch(() => {
-      toast.error("Failed to load trash");
+      toast.error(t("toast.loadFailed"));
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,23 +94,23 @@ export default function TrashPage() {
     const res = await fetch(`/api/emails/${id}/restore`, { method: "POST" });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      toast.error(data?.error || "Failed to restore");
+      toast.error(data?.error || t("toast.restoreFailed"));
       return;
     }
-    toast.success("Restored");
+    toast.success(t("toast.restored"));
     setEmails((prev) => prev.filter((e) => e.id !== id));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
   };
 
   const purgeOne = async (id: string) => {
-    if (!confirm("Delete this email permanently? This cannot be undone.")) return;
+    if (!confirm(t("confirm.purgeOne"))) return;
     const res = await fetch(`/api/emails/${id}/purge`, { method: "DELETE" });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      toast.error(data?.error || "Failed to delete permanently");
+      toast.error(data?.error || t("toast.purgeFailed"));
       return;
     }
-    toast.success("Deleted permanently");
+    toast.success(t("toast.purged"));
     setEmails((prev) => prev.filter((e) => e.id !== id));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
   };
@@ -118,10 +125,10 @@ export default function TrashPage() {
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      toast.error(data?.error || "Failed to restore");
+      toast.error(data?.error || t("toast.restoreFailed"));
       return;
     }
-    toast.success("Restored");
+    toast.success(t("toast.restored"));
     setSelectedIds([]);
     setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
   };
@@ -129,7 +136,7 @@ export default function TrashPage() {
   const bulkPurge = async () => {
     const ids = selectedIds;
     if (ids.length === 0) return;
-    if (!confirm(`Delete ${ids.length} email(s) permanently? This cannot be undone.`)) return;
+    if (!confirm(t("confirm.purgeBulk", { count: ids.length }))) return;
     const res = await fetch("/api/emails/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -137,10 +144,10 @@ export default function TrashPage() {
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      toast.error(data?.error || "Failed to delete permanently");
+      toast.error(data?.error || t("toast.purgeFailed"));
       return;
     }
-    toast.success("Deleted permanently");
+    toast.success(t("toast.purged"));
     setSelectedIds([]);
     setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
   };
@@ -151,15 +158,15 @@ export default function TrashPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Trash</h1>
-        <p className="text-muted-foreground mt-1">Deleted emails stay here until permanently removed</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground mt-1">{t("description")}</p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search trash..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -172,11 +179,11 @@ export default function TrashPage() {
         <div className="flex flex-wrap gap-2 justify-end">
           <Button variant="outline" disabled={selectedIds.length === 0} onClick={bulkRestore}>
             <RotateCcw className="h-4 w-4 mr-2" />
-            Restore ({selectedIds.length})
+            {t("bulk.restore", { count: selectedIds.length })}
           </Button>
           <Button variant="destructive" disabled={selectedIds.length === 0} onClick={bulkPurge}>
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete Permanently
+            {t("bulk.purge")}
           </Button>
         </div>
       </div>
@@ -193,8 +200,8 @@ export default function TrashPage() {
             <div className="p-4 rounded-full bg-muted mb-4">
               <Mail className="h-8 w-8 text-muted-foreground" />
             </div>
-            <p className="text-muted-foreground font-medium">Trash is empty</p>
-            <p className="text-sm text-muted-foreground/60 mt-1">Deleted emails will appear here</p>
+            <p className="text-muted-foreground font-medium">{t("empty.title")}</p>
+            <p className="text-sm text-muted-foreground/60 mt-1">{t("empty.description")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -206,14 +213,14 @@ export default function TrashPage() {
                   <Checkbox
                     checked={allOnPageSelected || (someOnPageSelected ? "indeterminate" : false)}
                     onCheckedChange={(v) => toggleSelectAllOnPage(Boolean(v))}
-                    aria-label="Select all"
+                    aria-label={t("table.selectAll")}
                   />
                 </TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>To</TableHead>
-                <TableHead>Deleted</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("table.from")}</TableHead>
+                <TableHead>{t("table.subject")}</TableHead>
+                <TableHead>{t("table.to")}</TableHead>
+                <TableHead>{t("table.deleted")}</TableHead>
+                <TableHead className="text-right">{t("table.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -223,7 +230,7 @@ export default function TrashPage() {
                     <Checkbox
                       checked={selectedSet.has(email.id)}
                       onCheckedChange={(v) => toggleSelect(email.id, Boolean(v))}
-                      aria-label="Select email"
+                      aria-label={t("table.selectEmail")}
                     />
                   </TableCell>
                   <TableCell>
@@ -238,7 +245,7 @@ export default function TrashPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {email.subject || "(No subject)"}
+                      {email.subject || tInbox("email.noSubject")}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -282,14 +289,14 @@ export default function TrashPage() {
       {pages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {page} / {pages}
+            {t("pagination.page", { page, pages })}
           </p>
           <div className="flex gap-2">
             <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-              Prev
+              {t("pagination.prev")}
             </Button>
             <Button variant="outline" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>
-              Next
+              {t("pagination.next")}
             </Button>
           </div>
         </div>
