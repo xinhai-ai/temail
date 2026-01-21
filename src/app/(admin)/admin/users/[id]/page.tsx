@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -106,6 +107,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const { id } = use(params);
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const t = useTranslations("admin");
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserDetail | null>(null);
@@ -159,7 +161,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     const res = await fetch(`/api/admin/users/${id}`);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to load user");
+      toast.error(data.error || t("userDetail.toasts.loadUserFailed"));
       return;
     }
 
@@ -240,11 +242,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     });
 
     if (res.ok) {
-      toast.success("User updated");
+      toast.success(t("userDetail.toasts.userUpdated"));
       await fetchUser();
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to update user");
+      toast.error(data.error || t("userDetail.toasts.updateUserFailed"));
     }
 
     setSavingProfile(false);
@@ -252,7 +254,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
   const handleResetPassword = async () => {
     if (!newPassword) {
-      toast.error("Please enter a new password");
+      toast.error(t("userDetail.toasts.newPasswordRequired"));
       return;
     }
 
@@ -264,11 +266,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     });
 
     if (res.ok) {
-      toast.success("Password reset");
+      toast.success(t("userDetail.toasts.passwordReset"));
       setNewPassword("");
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to reset password");
+      toast.error(data.error || t("userDetail.toasts.resetPasswordFailed"));
     }
     setResettingPassword(false);
   };
@@ -282,29 +284,29 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         setOtpEnabled(Boolean(data.otpEnabled));
         setPasskeyCount(Number(data.passkeyCount || 0));
       } else {
-        toast.error(data.error || "Failed to load auth status");
+        toast.error(data.error || t("userDetail.toasts.loadAuthFailed"));
       }
     } catch {
-      toast.error("Failed to load auth status");
+      toast.error(t("userDetail.toasts.loadAuthFailed"));
     }
     setAuthLoading(false);
   };
 
   const handleDeleteOtp = async () => {
     if (!user) return;
-    if (!confirm(`Delete OTP (2FA) for ${user.email}?`)) return;
+    if (!confirm(t("userDetail.confirm.deleteOtp", { email: user.email }))) return;
     setAuthWorking(true);
     try {
       const res = await fetch(`/api/admin/users/${id}/otp`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast.success("OTP deleted");
+        toast.success(t("userDetail.toasts.otpDeleted"));
         await fetchAuth();
       } else {
-        toast.error(data.error || "Failed to delete OTP");
+        toast.error(data.error || t("userDetail.toasts.deleteOtpFailed"));
       }
     } catch {
-      toast.error("Failed to delete OTP");
+      toast.error(t("userDetail.toasts.deleteOtpFailed"));
     } finally {
       setAuthWorking(false);
     }
@@ -312,19 +314,19 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
   const handleDeletePasskeys = async () => {
     if (!user) return;
-    if (!confirm(`Delete all passkeys for ${user.email}?`)) return;
+    if (!confirm(t("userDetail.confirm.deletePasskeys", { email: user.email }))) return;
     setAuthWorking(true);
     try {
       const res = await fetch(`/api/admin/users/${id}/passkeys`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast.success("Passkeys deleted");
+        toast.success(t("userDetail.toasts.passkeysDeleted"));
         await fetchAuth();
       } else {
-        toast.error(data.error || "Failed to delete passkeys");
+        toast.error(data.error || t("userDetail.toasts.deletePasskeysFailed"));
       }
     } catch {
-      toast.error("Failed to delete passkeys");
+      toast.error(t("userDetail.toasts.deletePasskeysFailed"));
     } finally {
       setAuthWorking(false);
     }
@@ -339,24 +341,24 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     });
 
     if (res.ok) {
-      toast.success("Mailbox updated");
+      toast.success(t("userDetail.toasts.mailboxUpdated"));
       fetchMailboxes();
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to update mailbox");
+      toast.error(data.error || t("userDetail.toasts.updateMailboxFailed"));
     }
   };
 
   const handleDeleteMailbox = async (mailboxId: string) => {
-    if (!confirm("Delete this mailbox? This will delete all emails under it.")) return;
+    if (!confirm(t("userDetail.confirm.deleteMailbox"))) return;
     const res = await fetch(`/api/admin/mailboxes/${mailboxId}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Mailbox deleted");
+      toast.success(t("userDetail.toasts.mailboxDeleted"));
       fetchMailboxes();
       fetchUser();
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to delete mailbox");
+      toast.error(data.error || t("userDetail.toasts.deleteMailboxFailed"));
     }
   };
 
@@ -364,7 +366,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     const res = await fetch(`/api/admin/emails/${emailId}`);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to load email");
+      toast.error(data.error || t("userDetail.toasts.loadEmailFailed"));
       return;
     }
     const data: EmailDetail = await res.json();
@@ -373,15 +375,15 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   };
 
   const handleDeleteEmail = async (emailId: string) => {
-    if (!confirm("Delete this email?")) return;
+    if (!confirm(t("userDetail.confirm.deleteEmail"))) return;
     const res = await fetch(`/api/admin/emails/${emailId}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Email deleted");
+      toast.success(t("userDetail.toasts.emailDeleted"));
       fetchEmails();
       fetchUser();
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to delete email");
+      toast.error(data.error || t("userDetail.toasts.deleteEmailFailed"));
     }
   };
 
@@ -395,7 +397,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     if (!renameWorkflowId) return;
     const trimmed = renameWorkflowName.trim();
     if (!trimmed) {
-      toast.error("Please enter a workflow name");
+      toast.error(t("userDetail.toasts.workflowNameRequired"));
       return;
     }
 
@@ -407,14 +409,14 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     });
 
     if (res.ok) {
-      toast.success("Workflow renamed");
+      toast.success(t("userDetail.toasts.workflowRenamed"));
       setRenameWorkflowOpen(false);
       setRenameWorkflowId(null);
       setRenameWorkflowName("");
       fetchWorkflows();
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to rename workflow");
+      toast.error(data.error || t("userDetail.toasts.renameWorkflowFailed"));
     }
 
     setRenamingWorkflow(false);
@@ -429,24 +431,24 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     });
 
     if (res.ok) {
-      toast.success("Workflow updated");
+      toast.success(t("userDetail.toasts.workflowUpdated"));
       fetchWorkflows();
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to update workflow");
+      toast.error(data.error || t("userDetail.toasts.updateWorkflowFailed"));
     }
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
-    if (!confirm("Delete this workflow? This will delete its execution history.")) return;
+    if (!confirm(t("userDetail.confirm.deleteWorkflow"))) return;
     const res = await fetch(`/api/admin/workflows/${workflowId}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Workflow deleted");
+      toast.success(t("userDetail.toasts.workflowDeleted"));
       fetchWorkflows();
       fetchUser();
     } else {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to delete workflow");
+      toast.error(data.error || t("userDetail.toasts.deleteWorkflowFailed"));
     }
   };
 
@@ -464,7 +466,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         <Button variant="ghost" size="sm" asChild>
           <Link href="/admin/users">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            {t("common.back")}
           </Link>
         </Button>
       </div>
@@ -479,10 +481,10 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             <div className="flex items-center gap-2 mt-1">
               <Badge variant={roleBadgeVariant}>{user.role}</Badge>
               <Badge variant={user.isActive ? "default" : "secondary"}>
-                {user.isActive ? "Active" : "Inactive"}
+                {user.isActive ? t("common.status.active") : t("common.status.inactive")}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                Created {format(new Date(user.createdAt), "PP")}
+                {t("userDetail.summary.created", { date: format(new Date(user.createdAt), "PP") })}
               </span>
             </div>
           </div>
@@ -490,16 +492,16 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary" className="gap-1">
-            <Inbox className="h-3 w-3" /> {user._count.mailboxes} mailboxes
+            <Inbox className="h-3 w-3" /> {t("userDetail.summary.mailboxesCount", { count: user._count.mailboxes })}
           </Badge>
           <Badge variant="secondary" className="gap-1">
-            <MailOpen className="h-3 w-3" /> {user._count.emails} emails
+            <MailOpen className="h-3 w-3" /> {t("userDetail.summary.emailsCount", { count: user._count.emails })}
           </Badge>
           <Badge variant="secondary" className="gap-1">
-            <Workflow className="h-3 w-3" /> {user._count.workflows} workflows
+            <Workflow className="h-3 w-3" /> {t("userDetail.summary.workflowsCount", { count: user._count.workflows })}
           </Badge>
           <Badge variant="secondary" className="gap-1">
-            <Shield className="h-3 w-3" /> {user._count.domains} domains
+            <Shield className="h-3 w-3" /> {t("userDetail.summary.domainsCount", { count: user._count.domains })}
           </Badge>
         </div>
       </div>
@@ -508,46 +510,46 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         <TabsList>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
-            Profile
+            {t("userDetail.tabs.profile")}
           </TabsTrigger>
           <TabsTrigger value="security" className="gap-2">
             <Lock className="h-4 w-4" />
-            Security
+            {t("userDetail.tabs.security")}
           </TabsTrigger>
           <TabsTrigger value="mailboxes" className="gap-2">
             <Inbox className="h-4 w-4" />
-            Mailboxes
+            {t("userDetail.tabs.mailboxes")}
           </TabsTrigger>
           <TabsTrigger value="emails" className="gap-2">
             <Mail className="h-4 w-4" />
-            Emails
+            {t("userDetail.tabs.emails")}
           </TabsTrigger>
           <TabsTrigger value="workflows" className="gap-2">
             <Workflow className="h-4 w-4" />
-            Workflows
+            {t("userDetail.tabs.workflows")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6">
           <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
+              <CardTitle>{t("userDetail.profile.title")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>{t("common.table.email")}</Label>
                   <Input value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Name</Label>
+                  <Label>{t("common.table.name")}</Label>
                   <Input value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label>{t("common.table.role")}</Label>
                   <Select
                     value={role}
                     onValueChange={(v) => setRole(v as UserDetail["role"])}
@@ -564,12 +566,12 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   </Select>
                   {!isSuperAdmin && (
                     <p className="text-xs text-muted-foreground">
-                      Only SUPER_ADMIN can change roles.
+                      {t("userDetail.profile.roleHelp")}
                     </p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Email Verified (ISO)</Label>
+                  <Label>{t("userDetail.profile.emailVerified")}</Label>
                   <Input
                     placeholder="2026-01-16T00:00:00.000Z"
                     value={emailVerified}
@@ -580,8 +582,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Active</Label>
-                  <p className="text-sm text-muted-foreground">Disable user login</p>
+                  <Label>{t("userDetail.profile.active")}</Label>
+                  <p className="text-sm text-muted-foreground">{t("userDetail.profile.activeHelp")}</p>
                 </div>
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
               </div>
@@ -589,7 +591,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <div className="pt-2">
                 <Button onClick={handleSaveProfile} disabled={savingProfile}>
                   <Save className="h-4 w-4 mr-2" />
-                  {savingProfile ? "Saving..." : "Save"}
+                  {savingProfile ? t("common.saving") : t("common.save")}
                 </Button>
               </div>
             </CardContent>
@@ -599,11 +601,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         <TabsContent value="security" className="space-y-6">
           <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Reset Password</CardTitle>
+              <CardTitle>{t("userDetail.security.resetPassword.title")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>New Password</Label>
+                <Label>{t("userDetail.security.resetPassword.newPassword")}</Label>
                 <Input
                   type="password"
                   value={newPassword}
@@ -612,26 +614,26 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               </div>
               <Button onClick={handleResetPassword} disabled={resettingPassword}>
                 <Lock className="h-4 w-4 mr-2" />
-                {resettingPassword ? "Resetting..." : "Reset Password"}
+                {resettingPassword ? t("userDetail.security.resetPassword.resetting") : t("userDetail.security.resetPassword.action")}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Note: JWT sessions are not revoked automatically yet.
+                {t("userDetail.security.resetPassword.note")}
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>OTP / Passkeys</CardTitle>
+              <CardTitle>{t("userDetail.security.otpPasskeys.title")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-sm text-muted-foreground">
                 {authLoading ? (
-                  "Loading…"
+                  t("common.loading")
                 ) : (
                   <>
-                    <p>OTP enabled: {otpEnabled ? "Yes" : "No"}</p>
-                    <p>Passkeys: {passkeyCount}</p>
+                    <p>{t("userDetail.security.authStatus.otpEnabled", { value: otpEnabled ? t("common.yes") : t("common.no") })}</p>
+                    <p>{t("userDetail.security.authStatus.passkeys", { count: passkeyCount })}</p>
                   </>
                 )}
               </div>
@@ -641,22 +643,22 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   onClick={handleDeleteOtp}
                   disabled={authWorking || authLoading || (user?.role !== "USER" && !isSuperAdmin)}
                 >
-                  Delete OTP
+                  {t("userDetail.security.actions.deleteOtp")}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDeletePasskeys}
                   disabled={authWorking || authLoading || passkeyCount === 0 || (user?.role !== "USER" && !isSuperAdmin)}
                 >
-                  Delete Passkeys
+                  {t("userDetail.security.actions.deletePasskeys")}
                 </Button>
                 <Button variant="outline" onClick={fetchAuth} disabled={authWorking || authLoading}>
-                  Reload
+                  {t("common.reload")}
                 </Button>
               </div>
               {!isSuperAdmin && user?.role !== "USER" && (
                 <p className="text-xs text-muted-foreground">
-                  Only SUPER_ADMIN can reset admin authentication methods.
+                  {t("userDetail.security.adminAuthHelp")}
                 </p>
               )}
             </CardContent>
@@ -667,10 +669,10 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           <Card className="border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Mailboxes</span>
+                <span>{t("userDetail.tabs.mailboxes")}</span>
                 <Input
                   className="max-w-xs"
-                  placeholder="Search…"
+                  placeholder={t("common.searchPlaceholder")}
                   value={mailboxSearch}
                   onChange={(e) => setMailboxSearch(e.target.value)}
                 />
@@ -678,19 +680,19 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             </CardHeader>
             <CardContent>
               {mailboxesLoading ? (
-                <div className="flex justify-center p-8">Loading…</div>
+                <div className="flex justify-center p-8">{t("common.loading")}</div>
               ) : mailboxes.length === 0 ? (
-                <div className="text-center p-8 text-muted-foreground">No mailboxes</div>
+                <div className="text-center p-8 text-muted-foreground">{t("userDetail.mailboxes.empty")}</div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Address</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Emails</TableHead>
-                      <TableHead>Expires</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("common.table.address")}</TableHead>
+                      <TableHead>{t("common.table.status")}</TableHead>
+                      <TableHead>{t("common.table.emails")}</TableHead>
+                      <TableHead>{t("common.table.expires")}</TableHead>
+                      <TableHead>{t("common.table.created")}</TableHead>
+                      <TableHead className="text-right">{t("common.table.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -713,6 +715,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                               variant="outline"
                               size="sm"
                               onClick={() => handleToggleMailbox(m.id, m.status)}
+                              aria-label={
+                                m.status === "ACTIVE"
+                                  ? t("userDetail.mailboxes.actions.deactivate")
+                                  : t("userDetail.mailboxes.actions.activate")
+                              }
                             >
                               {m.status === "ACTIVE" ? (
                                 <PowerOff className="h-4 w-4" />
@@ -724,6 +731,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteMailbox(m.id)}
+                              aria-label={t("common.delete")}
                               className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -743,10 +751,10 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           <Card className="border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Emails</span>
+                <span>{t("userDetail.tabs.emails")}</span>
                 <Input
                   className="max-w-xs"
-                  placeholder="Search…"
+                  placeholder={t("common.searchPlaceholder")}
                   value={emailSearch}
                   onChange={(e) => setEmailSearch(e.target.value)}
                 />
@@ -754,19 +762,19 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             </CardHeader>
             <CardContent>
               {emailsLoading ? (
-                <div className="flex justify-center p-8">Loading…</div>
+                <div className="flex justify-center p-8">{t("common.loading")}</div>
               ) : emails.length === 0 ? (
-                <div className="text-center p-8 text-muted-foreground">No emails</div>
+                <div className="text-center p-8 text-muted-foreground">{t("userDetail.emails.empty")}</div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>From</TableHead>
-                      <TableHead>Mailbox</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Received</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("common.table.subject")}</TableHead>
+                      <TableHead>{t("common.table.from")}</TableHead>
+                      <TableHead>{t("common.table.mailbox")}</TableHead>
+                      <TableHead>{t("common.table.status")}</TableHead>
+                      <TableHead>{t("common.table.received")}</TableHead>
+                      <TableHead className="text-right">{t("common.table.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -787,6 +795,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                               variant="outline"
                               size="sm"
                               onClick={() => handleViewEmail(e.id)}
+                              aria-label={t("common.view")}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -794,6 +803,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteEmail(e.id)}
+                              aria-label={t("common.delete")}
                               className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -811,36 +821,36 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           <Dialog open={emailDetailOpen} onOpenChange={setEmailDetailOpen}>
             <DialogContent className="max-w-3xl">
               <DialogHeader>
-                <DialogTitle>Email Details</DialogTitle>
+                <DialogTitle>{t("userDetail.emails.detail.title")}</DialogTitle>
               </DialogHeader>
               {!emailDetail ? (
-                <div className="p-6 text-muted-foreground">Loading…</div>
+                <div className="p-6 text-muted-foreground">{t("common.loading")}</div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Subject</p>
+                      <p className="text-xs text-muted-foreground">{t("common.table.subject")}</p>
                       <p className="font-medium">{emailDetail.subject}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Received</p>
+                      <p className="text-xs text-muted-foreground">{t("common.table.received")}</p>
                       <p className="font-medium">
                         {format(new Date(emailDetail.receivedAt), "PPpp")}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">From</p>
+                      <p className="text-xs text-muted-foreground">{t("common.table.from")}</p>
                       <p className="font-medium">{emailDetail.fromAddress}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">To</p>
+                      <p className="text-xs text-muted-foreground">{t("common.table.to")}</p>
                       <p className="font-medium">{emailDetail.toAddress}</p>
                     </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Text</Label>
+                      <Label>{t("userDetail.emails.detail.sections.text")}</Label>
                       <Textarea
                         value={emailDetail.textBody || ""}
                         readOnly
@@ -848,7 +858,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>HTML</Label>
+                      <Label>{t("userDetail.emails.detail.sections.html")}</Label>
                       <Textarea
                         value={emailDetail.htmlBody || ""}
                         readOnly
@@ -859,25 +869,29 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Headers</Label>
+                      <Label>{t("userDetail.emails.detail.sections.headers")}</Label>
                       <div className="max-h-48 overflow-auto border rounded-md p-3 text-sm font-mono">
                         {emailDetail.headers.length === 0
-                          ? "(none)"
+                          ? t("common.none")
                           : emailDetail.headers
                               .map((h) => `${h.name}: ${h.value}`)
                               .join("\\n")}
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Attachments</Label>
+                      <Label>{t("userDetail.emails.detail.sections.attachments")}</Label>
                       <div className="max-h-48 overflow-auto border rounded-md p-3 text-sm">
                         {emailDetail.attachments.length === 0 ? (
-                          "(none)"
+                          t("common.none")
                         ) : (
                           <ul className="space-y-1">
                             {emailDetail.attachments.map((a) => (
                               <li key={a.id}>
-                                {a.filename} ({a.contentType}, {a.size} bytes)
+                                {t("userDetail.emails.detail.attachmentMeta", {
+                                  filename: a.filename,
+                                  contentType: a.contentType,
+                                  size: a.size,
+                                })}
                               </li>
                             ))}
                           </ul>
@@ -895,27 +909,27 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           <Card className="border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Workflows</span>
+                <span>{t("userDetail.tabs.workflows")}</span>
                 <Button variant="outline" size="sm" onClick={fetchWorkflows}>
-                  Refresh
+                  {t("common.refresh")}
                 </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
               {workflowsLoading ? (
-                <div className="flex justify-center p-8">Loading…</div>
+                <div className="flex justify-center p-8">{t("common.loading")}</div>
               ) : workflows.length === 0 ? (
-                <div className="text-center p-8 text-muted-foreground">No workflows</div>
+                <div className="text-center p-8 text-muted-foreground">{t("userDetail.workflows.empty")}</div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Mailbox</TableHead>
-                      <TableHead>Executions</TableHead>
-                      <TableHead>Updated</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("common.table.name")}</TableHead>
+                      <TableHead>{t("common.table.status")}</TableHead>
+                      <TableHead>{t("common.table.mailbox")}</TableHead>
+                      <TableHead>{t("common.table.executions")}</TableHead>
+                      <TableHead>{t("common.table.updated")}</TableHead>
+                      <TableHead className="text-right">{t("common.table.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -935,7 +949,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                             {w.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>{w.mailbox?.address || "All mailboxes"}</TableCell>
+                        <TableCell>{w.mailbox?.address || t("userDetail.workflows.allMailboxes")}</TableCell>
                         <TableCell className="tabular-nums">{w._count.executions}</TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {format(new Date(w.updatedAt), "PPpp")}
@@ -946,6 +960,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                               variant="outline"
                               size="sm"
                               onClick={() => handleToggleWorkflow(w.id, w.status)}
+                              aria-label={
+                                w.status === "ACTIVE"
+                                  ? t("userDetail.workflows.actions.deactivate")
+                                  : t("userDetail.workflows.actions.activate")
+                              }
                             >
                               {w.status === "ACTIVE" ? (
                                 <PowerOff className="h-4 w-4" />
@@ -957,6 +976,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                               variant="outline"
                               size="sm"
                               onClick={() => openRenameWorkflow(w)}
+                              aria-label={t("userDetail.workflows.actions.rename")}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -964,6 +984,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteWorkflow(w.id)}
+                              aria-label={t("common.delete")}
                               className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -979,11 +1000,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <Dialog open={renameWorkflowOpen} onOpenChange={setRenameWorkflowOpen}>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Rename Workflow</DialogTitle>
+                    <DialogTitle>{t("userDetail.workflows.renameDialog.title")}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label>Workflow Name</Label>
+                      <Label>{t("userDetail.workflows.renameDialog.nameLabel")}</Label>
                       <Input
                         value={renameWorkflowName}
                         onChange={(e) => setRenameWorkflowName(e.target.value)}
@@ -991,7 +1012,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex gap-2 pt-2">
                       <Button className="flex-1" onClick={handleRenameWorkflow} disabled={renamingWorkflow}>
-                        {renamingWorkflow ? "Saving..." : "Save"}
+                        {renamingWorkflow ? t("common.saving") : t("common.save")}
                       </Button>
                       <Button
                         variant="outline"
@@ -1001,7 +1022,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                           setRenameWorkflowName("");
                         }}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                     </div>
                   </div>

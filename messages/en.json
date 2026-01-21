@@ -117,12 +117,20 @@
       "delete": "Delete",
       "back": "Back",
       "manage": "Manage",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "reload": "Reload",
+      "yes": "Yes",
+      "no": "No",
       "search": "Search",
+      "searchPlaceholder": "Search…",
       "clear": "Clear",
       "prev": "Prev",
       "next": "Next",
       "pagination": "Page {page} / {pages} • Total {total}",
       "loading": "Loading...",
+      "none": "(none)",
       "unmatched": "Unmatched",
       "unknownError": "Unknown error",
       "lastUpdated": "Last updated: {date}",
@@ -137,9 +145,13 @@
       "table": {
         "action": "Action",
         "actions": "Actions",
+        "address": "Address",
         "created": "Created",
         "domain": "Domain",
         "email": "Email",
+        "emails": "Emails",
+        "executions": "Executions",
+        "expires": "Expires",
         "from": "From",
         "inbound": "Inbound",
         "mailbox": "Mailbox",
@@ -155,6 +167,7 @@
         "subject": "Subject",
         "time": "Time",
         "to": "To",
+        "updated": "Updated",
         "user": "User"
       }
     },
@@ -199,6 +212,117 @@
       "title": "User Management",
       "subtitle": "Manage system users",
       "empty": "No users found"
+    },
+    "userDetail": {
+      "summary": {
+        "created": "Created {date}",
+        "mailboxesCount": "{count, plural, one {# mailbox} other {# mailboxes}}",
+        "emailsCount": "{count, plural, one {# email} other {# emails}}",
+        "workflowsCount": "{count, plural, one {# workflow} other {# workflows}}",
+        "domainsCount": "{count, plural, one {# domain} other {# domains}}"
+      },
+      "tabs": {
+        "profile": "Profile",
+        "security": "Security",
+        "mailboxes": "Mailboxes",
+        "emails": "Emails",
+        "workflows": "Workflows"
+      },
+      "profile": {
+        "title": "Profile",
+        "roleHelp": "Only SUPER_ADMIN can change roles.",
+        "emailVerified": "Email Verified (ISO)",
+        "active": "Active",
+        "activeHelp": "Disable user login"
+      },
+      "security": {
+        "resetPassword": {
+          "title": "Reset Password",
+          "newPassword": "New Password",
+          "resetting": "Resetting...",
+          "action": "Reset Password",
+          "note": "Note: JWT sessions are not revoked automatically yet."
+        },
+        "otpPasskeys": {
+          "title": "OTP / Passkeys"
+        },
+        "authStatus": {
+          "otpEnabled": "OTP enabled: {value}",
+          "passkeys": "Passkeys: {count}"
+        },
+        "actions": {
+          "deleteOtp": "Delete OTP",
+          "deletePasskeys": "Delete Passkeys"
+        },
+        "adminAuthHelp": "Only SUPER_ADMIN can reset admin authentication methods."
+      },
+      "mailboxes": {
+        "empty": "No mailboxes",
+        "actions": {
+          "activate": "Activate mailbox",
+          "deactivate": "Deactivate mailbox"
+        }
+      },
+      "emails": {
+        "empty": "No emails",
+        "detail": {
+          "title": "Email Details",
+          "sections": {
+            "text": "Text",
+            "html": "HTML",
+            "headers": "Headers",
+            "attachments": "Attachments"
+          },
+          "attachmentMeta": "{filename} ({contentType}, {size} bytes)"
+        }
+      },
+      "workflows": {
+        "empty": "No workflows",
+        "allMailboxes": "All mailboxes",
+        "actions": {
+          "activate": "Activate workflow",
+          "deactivate": "Deactivate workflow",
+          "rename": "Rename workflow"
+        },
+        "renameDialog": {
+          "title": "Rename Workflow",
+          "nameLabel": "Workflow Name"
+        }
+      },
+      "confirm": {
+        "deleteOtp": "Delete OTP (2FA) for {email}?",
+        "deletePasskeys": "Delete all passkeys for {email}?",
+        "deleteMailbox": "Delete this mailbox? This will delete all emails under it.",
+        "deleteEmail": "Delete this email?",
+        "deleteWorkflow": "Delete this workflow? This will delete its execution history."
+      },
+      "toasts": {
+        "loadUserFailed": "Failed to load user",
+        "userUpdated": "User updated",
+        "updateUserFailed": "Failed to update user",
+        "newPasswordRequired": "Please enter a new password",
+        "passwordReset": "Password reset",
+        "resetPasswordFailed": "Failed to reset password",
+        "loadAuthFailed": "Failed to load auth status",
+        "otpDeleted": "OTP deleted",
+        "deleteOtpFailed": "Failed to delete OTP",
+        "passkeysDeleted": "Passkeys deleted",
+        "deletePasskeysFailed": "Failed to delete passkeys",
+        "mailboxUpdated": "Mailbox updated",
+        "updateMailboxFailed": "Failed to update mailbox",
+        "mailboxDeleted": "Mailbox deleted",
+        "deleteMailboxFailed": "Failed to delete mailbox",
+        "loadEmailFailed": "Failed to load email",
+        "emailDeleted": "Email deleted",
+        "deleteEmailFailed": "Failed to delete email",
+        "workflowNameRequired": "Please enter a workflow name",
+        "workflowRenamed": "Workflow renamed",
+        "renameWorkflowFailed": "Failed to rename workflow",
+        "workflowUpdated": "Workflow updated",
+        "updateWorkflowFailed": "Failed to update workflow",
+        "workflowDeleted": "Workflow deleted",
+        "deleteWorkflowFailed": "Failed to delete workflow"
+      }
     },
     "dashboard": {
       "title": "Admin Dashboard",
