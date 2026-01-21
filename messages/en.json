@@ -132,6 +132,7 @@
       "loading": "Loading...",
       "none": "(none)",
       "unmatched": "Unmatched",
+      "unknown": "Unknown",
       "unknownError": "Unknown error",
       "lastUpdated": "Last updated: {date}",
       "status": {
@@ -322,6 +323,228 @@
         "updateWorkflowFailed": "Failed to update workflow",
         "workflowDeleted": "Workflow deleted",
         "deleteWorkflowFailed": "Failed to delete workflow"
+      }
+    },
+    "settings": {
+      "title": "System Settings",
+      "subtitle": "Configure system settings",
+      "tabs": {
+        "general": "General",
+        "registration": "Registration",
+        "security": "Security",
+        "smtp": "SMTP",
+        "ai": "AI",
+        "workflow": "Workflow"
+      },
+      "toasts": {
+        "loadFailed": "Failed to load settings",
+        "saved": "Settings saved",
+        "saveFailed": "Failed to save settings",
+        "checkUpdatesFailed": "Failed to check updates",
+        "updateAvailable": "Update available",
+        "upToDate": "Up to date",
+        "checkCompleted": "Update check completed"
+      },
+      "common": {
+        "secretConfigured": "•••••••• (configured)"
+      },
+      "general": {
+        "cardTitle": "General Settings"
+      },
+      "about": {
+        "cardTitle": "About & Updates",
+        "version": "Version",
+        "commit": "Commit",
+        "github": "GitHub",
+        "checkUpdates": "Check updates",
+        "checking": "Checking...",
+        "updateAvailable": "Update available",
+        "upToDate": "Up to date",
+        "viewLatest": "View latest",
+        "checked": "Checked: {date}",
+        "checkFailed": "Failed to check updates",
+        "latest": "Latest: {tag}",
+        "published": "Published: {date}",
+        "noReleaseInfo": "No release info found."
+      },
+      "registration": {
+        "cardTitle": "Registration Settings",
+        "mode": {
+          "label": "Registration Mode",
+          "help": "Control whether new users can sign up.",
+          "placeholder": "Select mode",
+          "options": {
+            "open": "Open",
+            "invite": "Invite Code",
+            "closed": "Closed"
+          }
+        },
+        "inviteCodes": {
+          "label": "Invite Codes",
+          "help": "Used when Registration Mode is set to Invite Code. Separate multiple codes by commas or newlines.",
+          "placeholder": "code-1\\ncode-2",
+          "warning": "Invite-code registration is enabled but no invite codes are configured."
+        }
+      },
+      "security": {
+        "cardTitle": "Security Settings",
+        "subtitle": "Configure bot protection for authentication flows.",
+        "turnstile": {
+          "enable": {
+            "label": "Enable Cloudflare Turnstile",
+            "help": "Protect login and registration with a CAPTCHA-like challenge."
+          },
+          "status": {
+            "title": "Turnstile status",
+            "siteKey": {
+              "configured": "Site Key: configured",
+              "missing": "Site Key: missing"
+            },
+            "secretKey": {
+              "configured": "Secret Key: configured",
+              "missing": "Secret Key: missing"
+            },
+            "enforcedWhenReady": "Turnstile is only enforced when enabled and both keys are configured."
+          },
+          "devBypass": {
+            "title": "Development Bypass",
+            "p1": "In development, you can bypass Turnstile verification by setting",
+            "p2": "Create your keys in Cloudflare Turnstile and paste the Site Key and Secret Key above."
+          }
+        },
+        "passkey": {
+          "enable": {
+            "label": "Enable Passkey Login (WebAuthn)",
+            "help": "Allow users to sign in with passkeys (no password required)."
+          }
+        },
+        "otp": {
+          "enable": {
+            "label": "Enable OTP (2FA)",
+            "help": "Allow users to enable OTP-based two-factor authentication."
+          }
+        }
+      },
+      "smtp": {
+        "cardTitle": "SMTP Settings",
+        "secure": {
+          "label": "SMTP Secure",
+          "help": "Use SSL/TLS (or set port 465)"
+        }
+      },
+      "ai": {
+        "templateVariables": {
+          "title": "Template Variables",
+          "help": "You can use these variables in the prompt template:"
+        },
+        "classifier": {
+          "cardTitle": "AI Classifier Settings",
+          "subtitle": "Configure AI-powered email classification for workflows",
+          "enable": {
+            "label": "Enable AI Classifier",
+            "help": "Allow workflows to use AI for email classification"
+          },
+          "templateVariables": {
+            "categories": "List of classification categories",
+            "emailSubject": "Email subject line",
+            "fromAddress": "Sender email address",
+            "fromName": "Sender display name",
+            "textBody": "Email body (plain text)",
+            "htmlBody": "Email body (HTML)"
+          }
+        },
+        "rewrite": {
+          "cardTitle": "AI Rewrite Settings",
+          "subtitle": "Configure AI-powered rewrite/extraction nodes for workflows",
+          "enable": {
+            "label": "Enable AI Rewrite",
+            "help": "Allow workflows to use AI to rewrite or extract email content"
+          },
+          "templateVariables": {
+            "emailSubject": "Email subject line",
+            "textBody": "Email body (plain text)",
+            "htmlBody": "Email body (HTML)",
+            "variablesJson": "Current workflow variables as JSON",
+            "instruction": "Node-specific instruction text",
+            "variablesAnyKey": "Access a specific workflow variable"
+          }
+        }
+      },
+      "workflow": {
+        "cardTitle": "Workflow Settings",
+        "subtitle": "Configure workflow execution and logging behavior",
+        "maxExecutionLogs": {
+          "label": "Max Execution Logs per Workflow",
+          "help": "Maximum number of execution logs to keep for each workflow. Older logs will be automatically deleted when this limit is exceeded.",
+          "recommended": "Recommended: 50-500. Higher values will use more database storage."
+        }
+      },
+      "fields": {
+        "site_name": {
+          "label": "Site Name"
+        },
+        "site_url": {
+          "label": "Site URL"
+        },
+        "smtp_host": {
+          "label": "SMTP Host"
+        },
+        "smtp_port": {
+          "label": "SMTP Port"
+        },
+        "smtp_user": {
+          "label": "SMTP User"
+        },
+        "smtp_pass": {
+          "label": "SMTP Password"
+        },
+        "smtp_from": {
+          "label": "SMTP From"
+        },
+        "turnstile_site_key": {
+          "label": "Site Key"
+        },
+        "turnstile_secret_key": {
+          "label": "Secret Key"
+        },
+        "webauthn_origin": {
+          "label": "WebAuthn Origin (optional)"
+        },
+        "webauthn_rp_id": {
+          "label": "WebAuthn RP ID (optional)"
+        },
+        "ai_classifier_base_url": {
+          "label": "API Base URL",
+          "description": "OpenAI-compatible API endpoint"
+        },
+        "ai_classifier_model": {
+          "label": "Model",
+          "description": "Model to use for classification (e.g., gpt-4o-mini, gpt-4o)"
+        },
+        "ai_classifier_api_key": {
+          "label": "API Key",
+          "description": "OpenAI API key or compatible provider key"
+        },
+        "ai_classifier_default_prompt": {
+          "label": "Default Prompt Template",
+          "description": "Default classification prompt (supports template variables)"
+        },
+        "ai_rewrite_base_url": {
+          "label": "API Base URL",
+          "description": "OpenAI-compatible API endpoint"
+        },
+        "ai_rewrite_model": {
+          "label": "Model",
+          "description": "Model to use for rewriting/extraction (e.g., gpt-4o-mini, gpt-4o)"
+        },
+        "ai_rewrite_api_key": {
+          "label": "API Key",
+          "description": "OpenAI API key or compatible provider key"
+        },
+        "ai_rewrite_default_prompt": {
+          "label": "Default Prompt Template",
+          "description": "Default rewrite/extraction prompt (supports template variables)"
+        }
       }
     },
     "dashboard": {

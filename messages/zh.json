@@ -132,6 +132,7 @@
       "loading": "加载中...",
       "none": "（无）",
       "unmatched": "未匹配",
+      "unknown": "未知",
       "unknownError": "未知错误",
       "lastUpdated": "最后更新：{date}",
       "status": {
@@ -322,6 +323,228 @@
         "updateWorkflowFailed": "更新工作流失败",
         "workflowDeleted": "工作流已删除",
         "deleteWorkflowFailed": "删除工作流失败"
+      }
+    },
+    "settings": {
+      "title": "系统设置",
+      "subtitle": "配置系统设置",
+      "tabs": {
+        "general": "通用",
+        "registration": "注册",
+        "security": "安全",
+        "smtp": "SMTP",
+        "ai": "AI",
+        "workflow": "工作流"
+      },
+      "toasts": {
+        "loadFailed": "加载设置失败",
+        "saved": "设置已保存",
+        "saveFailed": "保存设置失败",
+        "checkUpdatesFailed": "检查更新失败",
+        "updateAvailable": "有可用更新",
+        "upToDate": "已是最新",
+        "checkCompleted": "更新检查完成"
+      },
+      "common": {
+        "secretConfigured": "••••••••（已配置）"
+      },
+      "general": {
+        "cardTitle": "通用设置"
+      },
+      "about": {
+        "cardTitle": "关于与更新",
+        "version": "版本",
+        "commit": "提交",
+        "github": "GitHub",
+        "checkUpdates": "检查更新",
+        "checking": "检查中...",
+        "updateAvailable": "有可用更新",
+        "upToDate": "已是最新",
+        "viewLatest": "查看最新版本",
+        "checked": "已检查：{date}",
+        "checkFailed": "检查更新失败",
+        "latest": "最新：{tag}",
+        "published": "发布时间：{date}",
+        "noReleaseInfo": "未找到发布信息。"
+      },
+      "registration": {
+        "cardTitle": "注册设置",
+        "mode": {
+          "label": "注册模式",
+          "help": "控制新用户是否可以注册。",
+          "placeholder": "选择模式",
+          "options": {
+            "open": "开放",
+            "invite": "邀请码",
+            "closed": "关闭"
+          }
+        },
+        "inviteCodes": {
+          "label": "邀请码",
+          "help": "当注册模式为“邀请码”时使用。多个邀请码用逗号或换行分隔。",
+          "placeholder": "code-1\\ncode-2",
+          "warning": "已启用邀请码注册，但未配置任何邀请码。"
+        }
+      },
+      "security": {
+        "cardTitle": "安全设置",
+        "subtitle": "为认证流程配置机器人防护。",
+        "turnstile": {
+          "enable": {
+            "label": "启用 Cloudflare Turnstile",
+            "help": "使用类似验证码的挑战保护登录和注册。"
+          },
+          "status": {
+            "title": "Turnstile 状态",
+            "siteKey": {
+              "configured": "Site Key：已配置",
+              "missing": "Site Key：未配置"
+            },
+            "secretKey": {
+              "configured": "Secret Key：已配置",
+              "missing": "Secret Key：未配置"
+            },
+            "enforcedWhenReady": "仅当启用并且已配置 Site Key 与 Secret Key 时，才会强制启用 Turnstile。"
+          },
+          "devBypass": {
+            "title": "开发环境绕过",
+            "p1": "在开发环境中，你可以通过设置",
+            "p2": "在 Cloudflare Turnstile 中创建密钥，并将 Site Key 与 Secret Key 粘贴到上方。"
+          }
+        },
+        "passkey": {
+          "enable": {
+            "label": "启用 Passkey 登录（WebAuthn）",
+            "help": "允许用户使用 Passkey 登录（无需密码）。"
+          }
+        },
+        "otp": {
+          "enable": {
+            "label": "启用 OTP（2FA）",
+            "help": "允许用户启用基于 OTP 的双因素认证。"
+          }
+        }
+      },
+      "smtp": {
+        "cardTitle": "SMTP 设置",
+        "secure": {
+          "label": "SMTP 安全连接",
+          "help": "使用 SSL/TLS（或将端口设置为 465）"
+        }
+      },
+      "ai": {
+        "templateVariables": {
+          "title": "模板变量",
+          "help": "你可以在提示词模板中使用这些变量："
+        },
+        "classifier": {
+          "cardTitle": "AI 分类器设置",
+          "subtitle": "为工作流配置 AI 邮件分类能力",
+          "enable": {
+            "label": "启用 AI 分类器",
+            "help": "允许工作流使用 AI 进行邮件分类"
+          },
+          "templateVariables": {
+            "categories": "分类类别列表",
+            "emailSubject": "邮件主题",
+            "fromAddress": "发件人邮箱",
+            "fromName": "发件人显示名称",
+            "textBody": "邮件正文（纯文本）",
+            "htmlBody": "邮件正文（HTML）"
+          }
+        },
+        "rewrite": {
+          "cardTitle": "AI 改写设置",
+          "subtitle": "为工作流配置 AI 改写/抽取节点",
+          "enable": {
+            "label": "启用 AI 改写",
+            "help": "允许工作流使用 AI 改写或抽取邮件内容"
+          },
+          "templateVariables": {
+            "emailSubject": "邮件主题",
+            "textBody": "邮件正文（纯文本）",
+            "htmlBody": "邮件正文（HTML）",
+            "variablesJson": "当前工作流变量（JSON）",
+            "instruction": "节点指令文本",
+            "variablesAnyKey": "访问指定的工作流变量"
+          }
+        }
+      },
+      "workflow": {
+        "cardTitle": "工作流设置",
+        "subtitle": "配置工作流执行与日志保留策略",
+        "maxExecutionLogs": {
+          "label": "每个工作流最大执行日志数",
+          "help": "每个工作流保留的执行日志上限，超过后会自动删除更旧的日志。",
+          "recommended": "建议：50-500。数值越大占用的数据库存储越多。"
+        }
+      },
+      "fields": {
+        "site_name": {
+          "label": "站点名称"
+        },
+        "site_url": {
+          "label": "站点 URL"
+        },
+        "smtp_host": {
+          "label": "SMTP 主机"
+        },
+        "smtp_port": {
+          "label": "SMTP 端口"
+        },
+        "smtp_user": {
+          "label": "SMTP 用户名"
+        },
+        "smtp_pass": {
+          "label": "SMTP 密码"
+        },
+        "smtp_from": {
+          "label": "SMTP 发件人"
+        },
+        "turnstile_site_key": {
+          "label": "Site Key"
+        },
+        "turnstile_secret_key": {
+          "label": "Secret Key"
+        },
+        "webauthn_origin": {
+          "label": "WebAuthn Origin（可选）"
+        },
+        "webauthn_rp_id": {
+          "label": "WebAuthn RP ID（可选）"
+        },
+        "ai_classifier_base_url": {
+          "label": "API 基础地址",
+          "description": "兼容 OpenAI 的 API 端点"
+        },
+        "ai_classifier_model": {
+          "label": "模型",
+          "description": "用于分类的模型（例如：gpt-4o-mini、gpt-4o）"
+        },
+        "ai_classifier_api_key": {
+          "label": "API Key",
+          "description": "OpenAI API Key 或兼容供应商的 Key"
+        },
+        "ai_classifier_default_prompt": {
+          "label": "默认提示词模板",
+          "description": "默认分类提示词（支持模板变量）"
+        },
+        "ai_rewrite_base_url": {
+          "label": "API 基础地址",
+          "description": "兼容 OpenAI 的 API 端点"
+        },
+        "ai_rewrite_model": {
+          "label": "模型",
+          "description": "用于改写/抽取的模型（例如：gpt-4o-mini、gpt-4o）"
+        },
+        "ai_rewrite_api_key": {
+          "label": "API Key",
+          "description": "OpenAI API Key 或兼容供应商的 Key"
+        },
+        "ai_rewrite_default_prompt": {
+          "label": "默认提示词模板",
+          "description": "默认改写/抽取提示词（支持模板变量）"
+        }
       }
     },
     "dashboard": {

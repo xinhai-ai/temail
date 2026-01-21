@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -100,6 +101,7 @@ export default function AdminSettingsPage() {
   const [appInfoLoading, setAppInfoLoading] = useState(true);
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckResponse | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const t = useTranslations("admin");
 
   const setValue = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -107,25 +109,25 @@ export default function AdminSettingsPage() {
 
   const generalItems = useMemo(
     () => [
-      { key: "site_name", label: "Site Name", placeholder: "TEmail" },
-      { key: "site_url", label: "Site URL", placeholder: "http://localhost:3000" },
+      { key: "site_name", labelKey: "settings.fields.site_name.label", placeholder: "TEmail" },
+      { key: "site_url", labelKey: "settings.fields.site_url.label", placeholder: "http://localhost:3000" },
     ],
     []
   );
   const smtpItems = useMemo(
     () => [
-      { key: "smtp_host", label: "SMTP Host", placeholder: "smtp.example.com" },
-      { key: "smtp_port", label: "SMTP Port", placeholder: "587" },
-      { key: "smtp_user", label: "SMTP User", placeholder: "user@example.com" },
-      { key: "smtp_pass", label: "SMTP Password", placeholder: "••••••••", secret: true },
-      { key: "smtp_from", label: "SMTP From", placeholder: "TEmail <no-reply@example.com>" },
+      { key: "smtp_host", labelKey: "settings.fields.smtp_host.label", placeholder: "smtp.example.com" },
+      { key: "smtp_port", labelKey: "settings.fields.smtp_port.label", placeholder: "587" },
+      { key: "smtp_user", labelKey: "settings.fields.smtp_user.label", placeholder: "user@example.com" },
+      { key: "smtp_pass", labelKey: "settings.fields.smtp_pass.label", placeholder: "••••••••", secret: true },
+      { key: "smtp_from", labelKey: "settings.fields.smtp_from.label", placeholder: "TEmail <no-reply@example.com>" },
     ],
     []
   );
   const turnstileItems = useMemo(
     () => [
-      { key: "turnstile_site_key", label: "Site Key", placeholder: "0x4AAAAAA..." },
-      { key: "turnstile_secret_key", label: "Secret Key", placeholder: "0x4AAAAAA...", secret: true },
+      { key: "turnstile_site_key", labelKey: "settings.fields.turnstile_site_key.label", placeholder: "0x4AAAAAA..." },
+      { key: "turnstile_secret_key", labelKey: "settings.fields.turnstile_secret_key.label", placeholder: "0x4AAAAAA...", secret: true },
     ],
     []
   );
@@ -133,12 +135,12 @@ export default function AdminSettingsPage() {
     () => [
       {
         key: "webauthn_origin",
-        label: "WebAuthn Origin (optional)",
+        labelKey: "settings.fields.webauthn_origin.label",
         placeholder: "https://example.com",
       },
       {
         key: "webauthn_rp_id",
-        label: "WebAuthn RP ID (optional)",
+        labelKey: "settings.fields.webauthn_rp_id.label",
         placeholder: "example.com",
       },
     ],
@@ -148,29 +150,29 @@ export default function AdminSettingsPage() {
     () => [
       {
         key: "ai_classifier_base_url",
-        label: "API Base URL",
+        labelKey: "settings.fields.ai_classifier_base_url.label",
         placeholder: "https://api.openai.com/v1",
-        description: "OpenAI-compatible API endpoint",
+        descriptionKey: "settings.fields.ai_classifier_base_url.description",
       },
       {
         key: "ai_classifier_model",
-        label: "Model",
+        labelKey: "settings.fields.ai_classifier_model.label",
         placeholder: "gpt-4o-mini",
-        description: "Model to use for classification (e.g., gpt-4o-mini, gpt-4o)",
+        descriptionKey: "settings.fields.ai_classifier_model.description",
       },
       {
         key: "ai_classifier_api_key",
-        label: "API Key",
+        labelKey: "settings.fields.ai_classifier_api_key.label",
         placeholder: "sk-...",
         secret: true,
-        description: "OpenAI API key or compatible provider key",
+        descriptionKey: "settings.fields.ai_classifier_api_key.description",
       },
       {
         key: "ai_classifier_default_prompt",
-        label: "Default Prompt Template",
+        labelKey: "settings.fields.ai_classifier_default_prompt.label",
         type: "textarea" as const,
         placeholder: DEFAULT_AI_CLASSIFIER_PROMPT,
-        description: "Default classification prompt (supports template variables)",
+        descriptionKey: "settings.fields.ai_classifier_default_prompt.description",
       },
     ],
     []
@@ -179,41 +181,41 @@ export default function AdminSettingsPage() {
     () => [
       {
         key: "ai_rewrite_base_url",
-        label: "API Base URL",
+        labelKey: "settings.fields.ai_rewrite_base_url.label",
         placeholder: "https://api.openai.com/v1",
-        description: "OpenAI-compatible API endpoint",
+        descriptionKey: "settings.fields.ai_rewrite_base_url.description",
       },
       {
         key: "ai_rewrite_model",
-        label: "Model",
+        labelKey: "settings.fields.ai_rewrite_model.label",
         placeholder: "gpt-4o-mini",
-        description: "Model to use for rewriting/extraction (e.g., gpt-4o-mini, gpt-4o)",
+        descriptionKey: "settings.fields.ai_rewrite_model.description",
       },
       {
         key: "ai_rewrite_api_key",
-        label: "API Key",
+        labelKey: "settings.fields.ai_rewrite_api_key.label",
         placeholder: "sk-...",
         secret: true,
-        description: "OpenAI API key or compatible provider key",
+        descriptionKey: "settings.fields.ai_rewrite_api_key.description",
       },
       {
         key: "ai_rewrite_default_prompt",
-        label: "Default Prompt Template",
+        labelKey: "settings.fields.ai_rewrite_default_prompt.label",
         type: "textarea" as const,
         placeholder: DEFAULT_AI_REWRITE_PROMPT,
-        description: "Default rewrite/extraction prompt (supports template variables)",
+        descriptionKey: "settings.fields.ai_rewrite_default_prompt.description",
       },
     ],
     []
   );
 
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/admin/settings");
     const data = await res.json().catch(() => []);
 
     if (!res.ok) {
-      toast.error(data?.error || "Failed to load settings");
+      toast.error(data?.error || t("settings.toasts.loadFailed"));
       setLoading(false);
       return;
     }
@@ -238,11 +240,11 @@ export default function AdminSettingsPage() {
     setRegistrationInviteCodes(map.registration_invite_codes || "");
     setWorkflowMaxExecutionLogs(map.workflow_max_execution_logs || "100");
     setLoading(false);
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
 
   useEffect(() => {
     const load = async () => {
@@ -263,7 +265,7 @@ export default function AdminSettingsPage() {
       const res = await fetch("/api/admin/app-update");
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to check updates");
+        toast.error(data?.error || t("settings.toasts.checkUpdatesFailed"));
         return;
       }
 
@@ -271,23 +273,23 @@ export default function AdminSettingsPage() {
       setUpdateCheck(payload);
 
       if (!payload.ok) {
-        toast.error(payload.error || "Failed to check updates");
+        toast.error(payload.error || t("settings.toasts.checkUpdatesFailed"));
         return;
       }
 
       if (payload.hasUpdate === true) {
-        toast.info("Update available");
+        toast.info(t("settings.toasts.updateAvailable"));
         return;
       }
 
       if (payload.hasUpdate === false) {
-        toast.success("Up to date");
+        toast.success(t("settings.toasts.upToDate"));
         return;
       }
 
-      toast.message("Update check completed");
+      toast.message(t("settings.toasts.checkCompleted"));
     } catch {
-      toast.error("Failed to check updates");
+      toast.error(t("settings.toasts.checkUpdatesFailed"));
     } finally {
       setCheckingUpdate(false);
     }
@@ -340,11 +342,11 @@ export default function AdminSettingsPage() {
       });
 
       if (res.ok) {
-        toast.success("Settings saved");
+        toast.success(t("settings.toasts.saved"));
         await fetchSettings();
       } else {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Failed to save settings");
+        toast.error(data.error || t("settings.toasts.saveFailed"));
       }
     } finally {
       setSaving(false);
@@ -363,27 +365,27 @@ export default function AdminSettingsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">System Settings</h1>
-          <p className="text-muted-foreground">Configure system settings</p>
+          <h1 className="text-3xl font-bold">{t("settings.title")}</h1>
+          <p className="text-muted-foreground">{t("settings.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={fetchSettings} disabled={saving}>
-            Reload
+            {t("common.reload")}
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
           <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
-            <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="registration">Registration</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="smtp">SMTP</TabsTrigger>
-          <TabsTrigger value="ai">AI</TabsTrigger>
-          <TabsTrigger value="workflow">Workflow</TabsTrigger>
+            <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
+          <TabsTrigger value="registration">{t("settings.tabs.registration")}</TabsTrigger>
+          <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
+          <TabsTrigger value="smtp">{t("settings.tabs.smtp")}</TabsTrigger>
+          <TabsTrigger value="ai">{t("settings.tabs.ai")}</TabsTrigger>
+          <TabsTrigger value="workflow">{t("settings.tabs.workflow")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -392,13 +394,13 @@ export default function AdminSettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  General Settings
+                  {t("settings.general.cardTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {generalItems.map((item) => (
                   <div key={item.key} className="space-y-2">
-                    <Label>{item.label}</Label>
+                    <Label>{t(item.labelKey)}</Label>
                     <Input
                       placeholder={item.placeholder}
                       value={values[item.key] || ""}
@@ -413,24 +415,24 @@ export default function AdminSettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Info className="h-5 w-5" />
-                  About & Updates
+                  {t("settings.about.cardTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Version</span>
+                  <span className="text-muted-foreground">{t("settings.about.version")}</span>
                   <Badge variant="secondary" className="font-mono">
-                    {appInfoLoading ? "…" : appInfo?.version || "unknown"}
+                    {appInfoLoading ? "…" : appInfo?.version || t("common.unknown")}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Commit</span>
+                  <span className="text-muted-foreground">{t("settings.about.commit")}</span>
                   <Badge variant="outline" className="font-mono" title={appInfo?.commitSha || ""}>
-                    {appInfoLoading ? "…" : appInfo?.commitShortSha || appInfo?.commitSha || "unknown"}
+                    {appInfoLoading ? "…" : appInfo?.commitShortSha || appInfo?.commitSha || t("common.unknown")}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">GitHub</span>
+                  <span className="text-muted-foreground">{t("settings.about.github")}</span>
                   <a
                     className="underline underline-offset-4 hover:text-foreground"
                     href={appInfo?.repository.url || "https://github.com/xinhai-ai/temail"}
@@ -448,13 +450,13 @@ export default function AdminSettingsPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={handleCheckUpdates} disabled={checkingUpdate}>
-                      {checkingUpdate ? "Checking..." : "Check updates"}
+                      {checkingUpdate ? t("settings.about.checking") : t("settings.about.checkUpdates")}
                     </Button>
                     {updateCheck?.ok && updateCheck.hasUpdate === true && (
-                      <Badge variant="destructive">Update available</Badge>
+                      <Badge variant="destructive">{t("settings.about.updateAvailable")}</Badge>
                     )}
                     {updateCheck?.ok && updateCheck.hasUpdate === false && (
-                      <Badge variant="secondary">Up to date</Badge>
+                      <Badge variant="secondary">{t("settings.about.upToDate")}</Badge>
                     )}
                   </div>
                   {updateCheck?.ok && updateCheck.latest?.url && (
@@ -464,7 +466,7 @@ export default function AdminSettingsPage() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      View latest
+                      {t("settings.about.viewLatest")}
                     </a>
                   )}
                 </div>
@@ -472,19 +474,23 @@ export default function AdminSettingsPage() {
                 {updateCheck && (
                   <div className="rounded-md border p-3 space-y-1">
                     <p className="text-xs text-muted-foreground">
-                      Checked: {new Date(updateCheck.checkedAt).toLocaleString()}
+                      {t("settings.about.checked", { date: new Date(updateCheck.checkedAt).toLocaleString() })}
                     </p>
                     {!updateCheck.ok ? (
                       <p className="text-sm text-destructive">
-                        {updateCheck.error || "Failed to check updates"}
+                        {updateCheck.error || t("settings.about.checkFailed")}
                       </p>
                     ) : updateCheck.latest ? (
                       <p className="text-sm">
-                        Latest: <span className="font-mono">{updateCheck.latest.tag}</span>
-                        {updateCheck.latest.publishedAt ? ` · Published: ${new Date(updateCheck.latest.publishedAt).toLocaleString()}` : ""}
+                        {t("settings.about.latest", { tag: updateCheck.latest.tag })}
+                        {updateCheck.latest.publishedAt
+                          ? ` · ${t("settings.about.published", {
+                              date: new Date(updateCheck.latest.publishedAt).toLocaleString(),
+                            })}`
+                          : ""}
                       </p>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No release info found.</p>
+                      <p className="text-sm text-muted-foreground">{t("settings.about.noReleaseInfo")}</p>
                     )}
                   </div>
                 )}
@@ -498,37 +504,37 @@ export default function AdminSettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Registration Settings
+                {t("settings.registration.cardTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Registration Mode</Label>
+                <Label>{t("settings.registration.mode.label")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Control whether new users can sign up.
+                  {t("settings.registration.mode.help")}
                 </p>
                 <Select
                   value={registrationMode}
                   onValueChange={(v) => setRegistrationMode(v as "open" | "invite" | "closed")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select mode" />
+                    <SelectValue placeholder={t("settings.registration.mode.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="invite">Invite Code</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
+                    <SelectItem value="open">{t("settings.registration.mode.options.open")}</SelectItem>
+                    <SelectItem value="invite">{t("settings.registration.mode.options.invite")}</SelectItem>
+                    <SelectItem value="closed">{t("settings.registration.mode.options.closed")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Invite Codes</Label>
+                <Label>{t("settings.registration.inviteCodes.label")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Used when Registration Mode is set to Invite Code. Separate multiple codes by commas or newlines.
+                  {t("settings.registration.inviteCodes.help")}
                 </p>
                 <Textarea
-                  placeholder="code-1\ncode-2"
+                  placeholder={t("settings.registration.inviteCodes.placeholder")}
                   value={registrationInviteCodes}
                   onChange={(e) => setRegistrationInviteCodes(e.target.value)}
                   rows={4}
@@ -537,7 +543,7 @@ export default function AdminSettingsPage() {
                 />
                 {registrationMode === "invite" && !registrationInviteCodes.trim() && (
                   <p className="text-xs text-destructive">
-                    Invite-code registration is enabled but no invite codes are configured.
+                    {t("settings.registration.inviteCodes.warning")}
                   </p>
                 )}
               </div>
@@ -550,18 +556,18 @@ export default function AdminSettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Security Settings
+                {t("settings.security.cardTitle")}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Configure bot protection for authentication flows.
+                {t("settings.security.subtitle")}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Enable Cloudflare Turnstile</Label>
+                  <Label>{t("settings.security.turnstile.enable.label")}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Protect login and registration with a CAPTCHA-like challenge.
+                    {t("settings.security.turnstile.enable.help")}
                   </p>
                 </div>
                 <Switch checked={turnstileEnabled} onCheckedChange={setTurnstileEnabled} />
@@ -571,9 +577,9 @@ export default function AdminSettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Enable Passkey Login (WebAuthn)</Label>
+                  <Label>{t("settings.security.passkey.enable.label")}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Allow users to sign in with passkeys (no password required).
+                    {t("settings.security.passkey.enable.help")}
                   </p>
                 </div>
                 <Switch checked={passkeyEnabled} onCheckedChange={setPasskeyEnabled} />
@@ -581,9 +587,9 @@ export default function AdminSettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Enable OTP (2FA)</Label>
+                  <Label>{t("settings.security.otp.enable.label")}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Allow users to enable OTP-based two-factor authentication.
+                    {t("settings.security.otp.enable.help")}
                   </p>
                 </div>
                 <Switch checked={otpEnabled} onCheckedChange={setOtpEnabled} />
@@ -594,18 +600,18 @@ export default function AdminSettingsPage() {
               {turnstileEnabled && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                   <div className="text-xs text-amber-900 space-y-1">
-                    <p className="font-medium">Turnstile status</p>
+                    <p className="font-medium">{t("settings.security.turnstile.status.title")}</p>
                     <p>
                       {(values["turnstile_site_key"] || "").trim()
-                        ? "Site Key: configured"
-                        : "Site Key: missing"}
+                        ? t("settings.security.turnstile.status.siteKey.configured")
+                        : t("settings.security.turnstile.status.siteKey.missing")}
                       {" · "}
                       {maskedValues["turnstile_secret_key"] || (values["turnstile_secret_key"] || "").trim()
-                        ? "Secret Key: configured"
-                        : "Secret Key: missing"}
+                        ? t("settings.security.turnstile.status.secretKey.configured")
+                        : t("settings.security.turnstile.status.secretKey.missing")}
                     </p>
                     <p>
-                      Turnstile is only enforced when enabled and both keys are configured.
+                      {t("settings.security.turnstile.status.enforcedWhenReady")}
                     </p>
                   </div>
                 </div>
@@ -613,11 +619,11 @@ export default function AdminSettingsPage() {
 
               {turnstileItems.map((item) => (
                 <div key={item.key} className="space-y-2">
-                  <Label>{item.label}</Label>
+                  <Label>{t(item.labelKey)}</Label>
                   <Input
                     placeholder={
                       item.secret && maskedValues[item.key] && !values[item.key]
-                        ? "•••••••• (configured)"
+                        ? t("settings.common.secretConfigured")
                         : item.placeholder
                     }
                     value={values[item.key] || ""}
@@ -629,7 +635,7 @@ export default function AdminSettingsPage() {
 
               {webauthnItems.map((item) => (
                 <div key={item.key} className="space-y-2">
-                  <Label>{item.label}</Label>
+                  <Label>{t(item.labelKey)}</Label>
                   <Input
                     placeholder={item.placeholder}
                     value={values[item.key] || ""}
@@ -642,13 +648,13 @@ export default function AdminSettingsPage() {
                 <div className="flex items-start gap-2">
                   <Info className="h-4 w-4 text-blue-600 mt-0.5" />
                   <div className="text-xs text-blue-900 space-y-1">
-                    <p className="font-medium">Development Bypass</p>
+                    <p className="font-medium">{t("settings.security.turnstile.devBypass.title")}</p>
                     <p>
-                      In development, you can bypass Turnstile verification by setting{" "}
+                      {t("settings.security.turnstile.devBypass.p1")}{" "}
                       <code>TURNSTILE_DEV_BYPASS=1</code>.
                     </p>
                     <p>
-                      Create your keys in Cloudflare Turnstile and paste the Site Key and Secret Key above.
+                      {t("settings.security.turnstile.devBypass.p2")}
                     </p>
                   </div>
                 </div>
@@ -662,15 +668,15 @@ export default function AdminSettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                SMTP Settings
+                {t("settings.smtp.cardTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>SMTP Secure</Label>
+                  <Label>{t("settings.smtp.secure.label")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Use SSL/TLS (or set port 465)
+                    {t("settings.smtp.secure.help")}
                   </p>
                 </div>
                 <Switch checked={smtpSecure} onCheckedChange={setSmtpSecure} />
@@ -678,7 +684,7 @@ export default function AdminSettingsPage() {
 
               {smtpItems.map((item) => (
                 <div key={item.key} className="space-y-2">
-                  <Label>{item.label}</Label>
+                  <Label>{t(item.labelKey)}</Label>
                   <Input
                     placeholder={item.placeholder}
                     value={values[item.key] || ""}
@@ -697,18 +703,18 @@ export default function AdminSettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  AI Classifier Settings
+                  {t("settings.ai.classifier.cardTitle")}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Configure AI-powered email classification for workflows
+                  {t("settings.ai.classifier.subtitle")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Enable AI Classifier</Label>
+                    <Label>{t("settings.ai.classifier.enable.label")}</Label>
                     <p className="text-xs text-muted-foreground">
-                      Allow workflows to use AI for email classification
+                      {t("settings.ai.classifier.enable.help")}
                     </p>
                   </div>
                   <Switch checked={aiClassifierEnabled} onCheckedChange={setAiClassifierEnabled} />
@@ -718,9 +724,9 @@ export default function AdminSettingsPage() {
 
                 {aiClassifierItems.map((item) => (
                   <div key={item.key} className="space-y-2">
-                    <Label>{item.label}</Label>
-                    {item.description && (
-                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                    <Label>{t(item.labelKey)}</Label>
+                    {item.descriptionKey && (
+                      <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
                     )}
                     {item.type === "textarea" ? (
                       <Textarea
@@ -741,23 +747,23 @@ export default function AdminSettingsPage() {
                   </div>
                 ))}
 
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                  <div className="flex items-start gap-2">
-                    <Info className="h-4 w-4 text-blue-600 mt-0.5" />
-                    <div className="text-xs text-blue-900 space-y-1">
-                      <p className="font-medium">Template Variables</p>
-                      <p>You can use these variables in the prompt template:</p>
-                      <ul className="list-disc list-inside pl-2 space-y-0.5">
-                        <li><code>{"{{categories}}"}</code> - List of classification categories</li>
-                        <li><code>{"{{email.subject}}"}</code> - Email subject line</li>
-                        <li><code>{"{{email.fromAddress}}"}</code> - Sender email address</li>
-                        <li><code>{"{{email.fromName}}"}</code> - Sender display name</li>
-                        <li><code>{"{{email.textBody}}"}</code> - Email body (plain text)</li>
-                        <li><code>{"{{email.htmlBody}}"}</code> - Email body (HTML)</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
+	                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+	                  <div className="flex items-start gap-2">
+	                    <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+	                    <div className="text-xs text-blue-900 space-y-1">
+	                      <p className="font-medium">{t("settings.ai.templateVariables.title")}</p>
+	                      <p>{t("settings.ai.templateVariables.help")}</p>
+	                      <ul className="list-disc list-inside pl-2 space-y-0.5">
+	                        <li><code>{"{{categories}}"}</code> - {t("settings.ai.classifier.templateVariables.categories")}</li>
+	                        <li><code>{"{{email.subject}}"}</code> - {t("settings.ai.classifier.templateVariables.emailSubject")}</li>
+	                        <li><code>{"{{email.fromAddress}}"}</code> - {t("settings.ai.classifier.templateVariables.fromAddress")}</li>
+	                        <li><code>{"{{email.fromName}}"}</code> - {t("settings.ai.classifier.templateVariables.fromName")}</li>
+	                        <li><code>{"{{email.textBody}}"}</code> - {t("settings.ai.classifier.templateVariables.textBody")}</li>
+	                        <li><code>{"{{email.htmlBody}}"}</code> - {t("settings.ai.classifier.templateVariables.htmlBody")}</li>
+	                      </ul>
+	                    </div>
+	                  </div>
+	                </div>
               </CardContent>
             </Card>
 
@@ -765,18 +771,18 @@ export default function AdminSettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  AI Rewrite Settings
+                  {t("settings.ai.rewrite.cardTitle")}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Configure AI-powered rewrite/extraction nodes for workflows
+                  {t("settings.ai.rewrite.subtitle")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Enable AI Rewrite</Label>
+                    <Label>{t("settings.ai.rewrite.enable.label")}</Label>
                     <p className="text-xs text-muted-foreground">
-                      Allow workflows to use AI to rewrite or extract email content
+                      {t("settings.ai.rewrite.enable.help")}
                     </p>
                   </div>
                   <Switch checked={aiRewriteEnabled} onCheckedChange={setAiRewriteEnabled} />
@@ -786,9 +792,9 @@ export default function AdminSettingsPage() {
 
                 {aiRewriteItems.map((item) => (
                   <div key={item.key} className="space-y-2">
-                    <Label>{item.label}</Label>
-                    {item.description && (
-                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                    <Label>{t(item.labelKey)}</Label>
+                    {item.descriptionKey && (
+                      <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
                     )}
                     {item.type === "textarea" ? (
                       <Textarea
@@ -813,15 +819,15 @@ export default function AdminSettingsPage() {
                   <div className="flex items-start gap-2">
                     <Info className="h-4 w-4 text-blue-600 mt-0.5" />
                     <div className="text-xs text-blue-900 space-y-1">
-                      <p className="font-medium">Template Variables</p>
-                      <p>You can use these variables in the prompt template:</p>
+                      <p className="font-medium">{t("settings.ai.templateVariables.title")}</p>
+                      <p>{t("settings.ai.templateVariables.help")}</p>
                       <ul className="list-disc list-inside pl-2 space-y-0.5">
-                        <li><code>{"{{email.subject}}"}</code> - Email subject line</li>
-                        <li><code>{"{{email.textBody}}"}</code> - Email body (plain text)</li>
-                        <li><code>{"{{email.htmlBody}}"}</code> - Email body (HTML)</li>
-                        <li><code>{"{{variablesJson}}"}</code> - Current workflow variables as JSON</li>
-                        <li><code>{"{{instruction}}"}</code> - Node-specific instruction text</li>
-                        <li><code>{"{{variables.anyKey}}"}</code> - Access a specific workflow variable</li>
+                        <li><code>{"{{email.subject}}"}</code> - {t("settings.ai.rewrite.templateVariables.emailSubject")}</li>
+                        <li><code>{"{{email.textBody}}"}</code> - {t("settings.ai.rewrite.templateVariables.textBody")}</li>
+                        <li><code>{"{{email.htmlBody}}"}</code> - {t("settings.ai.rewrite.templateVariables.htmlBody")}</li>
+                        <li><code>{"{{variablesJson}}"}</code> - {t("settings.ai.rewrite.templateVariables.variablesJson")}</li>
+                        <li><code>{"{{instruction}}"}</code> - {t("settings.ai.rewrite.templateVariables.instruction")}</li>
+                        <li><code>{"{{variables.anyKey}}"}</code> - {t("settings.ai.rewrite.templateVariables.variablesAnyKey")}</li>
                       </ul>
                     </div>
                   </div>
@@ -836,17 +842,17 @@ export default function AdminSettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Workflow Settings
+                {t("settings.workflow.cardTitle")}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Configure workflow execution and logging behavior
+                {t("settings.workflow.subtitle")}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Max Execution Logs per Workflow</Label>
+                <Label>{t("settings.workflow.maxExecutionLogs.label")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Maximum number of execution logs to keep for each workflow. Older logs will be automatically deleted when this limit is exceeded.
+                  {t("settings.workflow.maxExecutionLogs.help")}
                 </p>
                 <Input
                   type="number"
@@ -857,7 +863,7 @@ export default function AdminSettingsPage() {
                   onChange={(e) => setWorkflowMaxExecutionLogs(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Recommended: 50-500. Higher values will use more database storage.
+                  {t("settings.workflow.maxExecutionLogs.recommended")}
                 </p>
               </div>
             </CardContent>
