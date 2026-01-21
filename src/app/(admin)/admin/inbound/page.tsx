@@ -36,7 +36,7 @@ export default async function AdminInboundEmailsPage({
 }) {
   const [t, resolvedSearchParams] = await Promise.all([
     getTranslations("admin"),
-    searchParams ?? Promise.resolve({}),
+    searchParams ?? Promise.resolve<Record<string, string | string[] | undefined>>({}),
   ]);
 
   const getParam = (key: string) => {
