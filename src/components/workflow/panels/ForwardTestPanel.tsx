@@ -57,7 +57,7 @@ export function ForwardTestDialog({
       replyTo: "sender@example.com",
       subject: t("forwardTest.sample.subject"),
       textBody: t("forwardTest.sample.textBody"),
-      htmlBody: t("forwardTest.sample.htmlBody"),
+      htmlBody: t.raw("forwardTest.sample.htmlBody") as string,
       receivedAt: new Date().toISOString(),
     }),
     [t]
