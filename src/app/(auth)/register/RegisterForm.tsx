@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,7 @@ export default function RegisterForm({
   turnstile: TurnstileConfig;
 }) {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,22 +55,22 @@ export default function RegisterForm({
     setError("");
 
     if (mode === "invite" && !inviteCode.trim()) {
-      setError("Invite code is required");
+      setError(t("errors.inviteCodeRequired"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("errors.passwordsDoNotMatch"));
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("errors.passwordTooShort"));
       return;
     }
 
     if (turnstileRequired && !turnstileToken) {
-      setError("Please complete the Turnstile challenge.");
+      setError(t("errors.turnstileRequired"));
       return;
     }
 
@@ -94,7 +96,7 @@ export default function RegisterForm({
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const message = data?.error || "Registration failed";
+        const message = data?.error || t("errors.registrationFailed");
         setError(message);
         if (turnstileRequired && typeof message === "string" && message.toLowerCase().includes("turnstile")) {
           setTurnstileToken(null);
@@ -105,7 +107,7 @@ export default function RegisterForm({
 
       router.push("/login?registered=true");
     } catch {
-      setError("An error occurred. Please try again.");
+      setError(t("errors.generic"));
     } finally {
       setLoading(false);
     }
@@ -126,10 +128,10 @@ export default function RegisterForm({
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-center tracking-tight">
-            Create Account
+            {t("createAccount")}
           </CardTitle>
           <CardDescription className="text-center text-muted-foreground">
-            {mode === "invite" ? "Sign up with an invite code" : "Sign up for a new TEmail account"}
+            {mode === "invite" ? t("registerPage.descriptionInvite") : t("registerPage.description")}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -140,13 +142,13 @@ export default function RegisterForm({
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t("name")}</Label>
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Your name"
+                  placeholder={t("placeholders.name")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -154,13 +156,13 @@ export default function RegisterForm({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder={t("placeholders.email")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -171,13 +173,13 @@ export default function RegisterForm({
 
             {mode === "invite" && (
               <div className="space-y-2">
-                <Label htmlFor="inviteCode">Invite Code</Label>
+                <Label htmlFor="inviteCode">{t("inviteCode")}</Label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="inviteCode"
                     type="text"
-                    placeholder="Enter invite code"
+                    placeholder={t("placeholders.inviteCode")}
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
                     className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -188,13 +190,13 @@ export default function RegisterForm({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Create a password"
+                  placeholder={t("placeholders.newPassword")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -203,13 +205,13 @@ export default function RegisterForm({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="Confirm your password"
+                  placeholder={t("placeholders.confirmPassword")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -227,25 +229,25 @@ export default function RegisterForm({
                   className="flex justify-center"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Protected by Cloudflare Turnstile.
+                  {t("turnstile.protected")}
                 </p>
               </div>
             )}
             {!turnstileRequired && turnstile.bypass && (
               <p className="text-[11px] text-muted-foreground">
-                Turnstile bypass is enabled in development.
+                {t("turnstile.bypassEnabled")}
               </p>
             )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4 pt-2">
             <Button type="submit" className="w-full h-11 font-medium" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account
+              {t("createAccount")}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
-              Already have an account?{" "}
+              {t("registerPage.alreadyHaveAccount")}{" "}
               <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
-                Sign in
+                {t("login")}
               </Link>
             </p>
           </CardFooter>

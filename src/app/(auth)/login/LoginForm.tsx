@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { startAuthentication } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/types";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export default function LoginForm({
   passkeyEnabled?: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -55,7 +57,7 @@ export default function LoginForm({
   const completeLogin = async (loginToken: string) => {
     const result = await signIn("credentials", { loginToken, redirect: false });
     if (result?.error) {
-      setError("Sign in failed");
+      setError(t("errors.signInFailed"));
       return;
     }
 
@@ -69,7 +71,7 @@ export default function LoginForm({
     if (step !== "primary") return;
 
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
-      setError("Passkeys are not supported in this browser.");
+      setError(t("errors.passkeyNotSupported"));
       return;
     }
 
@@ -80,14 +82,14 @@ export default function LoginForm({
         | { options?: unknown; challengeId?: string; error?: string }
         | null;
       if (!beginRes.ok) {
-        setError(beginData?.error || "Passkey sign-in failed");
+        setError(beginData?.error || t("errors.passkeySignInFailed"));
         return;
       }
 
       const options = beginData?.options;
       const challengeId = beginData?.challengeId;
       if (!options || !challengeId) {
-        setError("Passkey sign-in failed");
+        setError(t("errors.passkeySignInFailed"));
         return;
       }
 
@@ -102,13 +104,13 @@ export default function LoginForm({
         | { loginToken?: string; requiresOtp?: boolean; mfaToken?: string; error?: string }
         | null;
       if (!finishRes.ok) {
-        setError(finishData?.error || "Passkey sign-in failed");
+        setError(finishData?.error || t("errors.passkeySignInFailed"));
         return;
       }
 
       if (finishData?.requiresOtp) {
         if (!finishData.mfaToken) {
-          setError("Passkey sign-in failed");
+          setError(t("errors.passkeySignInFailed"));
           return;
         }
         setMfaToken(finishData.mfaToken);
@@ -120,7 +122,7 @@ export default function LoginForm({
 
       const loginToken = finishData?.loginToken;
       if (!loginToken) {
-        setError("Passkey sign-in failed");
+        setError(t("errors.passkeySignInFailed"));
         return;
       }
 
@@ -130,7 +132,7 @@ export default function LoginForm({
       if (message.toLowerCase().includes("abort") || message.toLowerCase().includes("cancel")) {
         return;
       }
-      setError("Passkey sign-in failed");
+      setError(t("errors.passkeySignInFailed"));
     } finally {
       setLoading(false);
     }
@@ -141,7 +143,7 @@ export default function LoginForm({
     setError("");
 
     if (step === "primary" && turnstileRequired && !turnstileToken) {
-      setError("Please complete the Turnstile challenge.");
+      setError(t("errors.turnstileRequired"));
       return;
     }
 
@@ -163,7 +165,7 @@ export default function LoginForm({
           | { loginToken?: string; requiresOtp?: boolean; mfaToken?: string; error?: string }
           | null;
         if (!res.ok) {
-          const message = data?.error || "Sign in failed";
+          const message = data?.error || t("errors.signInFailed");
           setError(message);
           if (turnstileRequired && message.toLowerCase().includes("turnstile")) {
             setTurnstileToken(null);
@@ -174,7 +176,7 @@ export default function LoginForm({
 
         if (data?.requiresOtp) {
           if (!data.mfaToken) {
-            setError("Sign in failed");
+            setError(t("errors.signInFailed"));
             return;
           }
           setMfaToken(data.mfaToken);
@@ -186,7 +188,7 @@ export default function LoginForm({
 
         const loginToken = data?.loginToken;
         if (!loginToken) {
-          setError("Sign in failed");
+          setError(t("errors.signInFailed"));
           return;
         }
 
@@ -196,12 +198,12 @@ export default function LoginForm({
 
       const currentMfaToken = mfaToken;
       if (!currentMfaToken) {
-        setError("Sign in failed");
+        setError(t("errors.signInFailed"));
         setStep("primary");
         return;
       }
       if (!otpCode.trim()) {
-        setError("Please enter your code.");
+        setError(t("errors.enterCode"));
         return;
       }
 
@@ -213,19 +215,19 @@ export default function LoginForm({
 
       const data = (await res.json().catch(() => null)) as { loginToken?: string; error?: string } | null;
       if (!res.ok) {
-        setError(data?.error || "Invalid code");
+        setError(data?.error || t("errors.invalidCode"));
         return;
       }
 
       const loginToken = data?.loginToken;
       if (!loginToken) {
-        setError("Sign in failed");
+        setError(t("errors.signInFailed"));
         return;
       }
 
       await completeLogin(loginToken);
     } catch {
-      setError("An error occurred. Please try again.");
+      setError(t("errors.generic"));
     } finally {
       setLoading(false);
     }
@@ -246,10 +248,10 @@ export default function LoginForm({
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-center tracking-tight">
-            Welcome Back
+            {t("welcomeBack")}
           </CardTitle>
           <CardDescription className="text-center text-muted-foreground">
-            Sign in to your TEmail account
+            {t("loginPage.description")}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -268,17 +270,17 @@ export default function LoginForm({
                 disabled={loading}
               >
                 <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />
-                Use passkey
+                {t("usePasskey")}
               </Button>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder={t("placeholders.email")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -289,13 +291,13 @@ export default function LoginForm({
             </div>
             {step === "primary" ? (
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("password")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={t("placeholders.password")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -306,11 +308,11 @@ export default function LoginForm({
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="otp">Verification code</Label>
+                <Label htmlFor="otp">{t("verificationCode")}</Label>
                 <Input
                   id="otp"
                   inputMode="numeric"
-                  placeholder="123456"
+                  placeholder={t("placeholders.otpCode")}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
                   className="h-11 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -318,7 +320,7 @@ export default function LoginForm({
                   disabled={loading}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter the code from your authenticator app or a backup code.
+                  {t("loginPage.otpHelp")}
                 </p>
                 <Button
                   type="button"
@@ -330,7 +332,7 @@ export default function LoginForm({
                   }}
                   disabled={loading}
                 >
-                  Back
+                  {t("back")}
                 </Button>
               </div>
             )}
@@ -344,13 +346,13 @@ export default function LoginForm({
                   className="flex justify-center"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Protected by Cloudflare Turnstile.
+                  {t("turnstile.protected")}
                 </p>
               </div>
             )}
             {step === "primary" && !turnstileRequired && turnstile.bypass && (
               <p className="text-[11px] text-muted-foreground">
-                Turnstile bypass is enabled in development.
+                {t("turnstile.bypassEnabled")}
               </p>
             )}
           </CardContent>
@@ -361,21 +363,21 @@ export default function LoginForm({
               disabled={loading}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {step === "primary" ? "Sign In" : "Verify"}
+              {step === "primary" ? t("login") : t("verify")}
             </Button>
             {showRegisterLink ? (
               <p className="text-sm text-center text-muted-foreground">
-                Don&apos;t have an account?{" "}
+                {t("loginPage.dontHaveAccount")}{" "}
                 <Link
                   href="/register"
                   className="text-primary hover:text-primary/80 font-medium transition-colors"
                 >
-                  Sign up
+                  {t("register")}
                 </Link>
               </p>
             ) : (
               <p className="text-sm text-center text-muted-foreground">
-                Registration is disabled on this server.
+                {t("loginPage.registrationDisabled")}
               </p>
             )}
           </CardFooter>

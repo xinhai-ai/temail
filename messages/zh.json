@@ -18,7 +18,56 @@
     "password": "密码",
     "name": "姓名",
     "welcomeBack": "欢迎回来",
-    "createAccount": "创建账户"
+    "createAccount": "创建账户",
+    "confirmPassword": "确认密码",
+    "inviteCode": "邀请码",
+    "verificationCode": "验证码",
+    "usePasskey": "使用 Passkey",
+    "verify": "验证",
+    "back": "返回",
+    "placeholders": {
+      "email": "name@example.com",
+      "password": "请输入密码",
+      "newPassword": "设置密码",
+      "confirmPassword": "再次输入密码",
+      "name": "你的姓名",
+      "inviteCode": "请输入邀请码",
+      "otpCode": "123456"
+    },
+    "loginPage": {
+      "description": "登录到你的 TEmail 账户",
+      "otpHelp": "请输入身份验证器中的验证码或备用码。",
+      "dontHaveAccount": "还没有账户？",
+      "registrationDisabled": "本服务器已关闭注册。"
+    },
+    "registerPage": {
+      "description": "注册一个新的 TEmail 账户",
+      "descriptionInvite": "使用邀请码注册",
+      "alreadyHaveAccount": "已有账户？"
+    },
+    "registerClosed": {
+      "title": "已关闭注册",
+      "description": "该服务器不接受新的注册。",
+      "details": "如果你已有账户，请登录；否则请联系管理员。",
+      "goToLogin": "前往登录"
+    },
+    "turnstile": {
+      "protected": "由 Cloudflare Turnstile 保护。",
+      "bypassEnabled": "开发环境已启用 Turnstile 绕过。"
+    },
+    "errors": {
+      "signInFailed": "登录失败",
+      "passkeyNotSupported": "此浏览器不支持 Passkey。",
+      "passkeySignInFailed": "Passkey 登录失败",
+      "turnstileRequired": "请完成 Turnstile 验证。",
+      "enterCode": "请输入验证码。",
+      "invalidCode": "验证码无效",
+      "registrationFailed": "注册失败",
+      "inviteCodeRequired": "请输入邀请码",
+      "passwordsDoNotMatch": "两次输入的密码不一致",
+      "passwordTooShort": "密码至少需要 6 个字符",
+      "generic": "发生错误，请重试。"
+    }
   },
   "nav": {
     "dashboard": "仪表盘",

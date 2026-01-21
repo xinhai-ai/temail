@@ -18,7 +18,56 @@
     "password": "Password",
     "name": "Name",
     "welcomeBack": "Welcome Back",
-    "createAccount": "Create Account"
+    "createAccount": "Create Account",
+    "confirmPassword": "Confirm Password",
+    "inviteCode": "Invite Code",
+    "verificationCode": "Verification code",
+    "usePasskey": "Use passkey",
+    "verify": "Verify",
+    "back": "Back",
+    "placeholders": {
+      "email": "name@example.com",
+      "password": "Enter your password",
+      "newPassword": "Create a password",
+      "confirmPassword": "Confirm your password",
+      "name": "Your name",
+      "inviteCode": "Enter invite code",
+      "otpCode": "123456"
+    },
+    "loginPage": {
+      "description": "Sign in to your TEmail account",
+      "otpHelp": "Enter the code from your authenticator app or a backup code.",
+      "dontHaveAccount": "Don't have an account?",
+      "registrationDisabled": "Registration is disabled on this server."
+    },
+    "registerPage": {
+      "description": "Sign up for a new TEmail account",
+      "descriptionInvite": "Sign up with an invite code",
+      "alreadyHaveAccount": "Already have an account?"
+    },
+    "registerClosed": {
+      "title": "Registration Disabled",
+      "description": "This server is not accepting new sign-ups.",
+      "details": "If you already have an account, sign in. Otherwise, contact the administrator.",
+      "goToLogin": "Go to Login"
+    },
+    "turnstile": {
+      "protected": "Protected by Cloudflare Turnstile.",
+      "bypassEnabled": "Turnstile bypass is enabled in development."
+    },
+    "errors": {
+      "signInFailed": "Sign in failed",
+      "passkeyNotSupported": "Passkeys are not supported in this browser.",
+      "passkeySignInFailed": "Passkey sign-in failed",
+      "turnstileRequired": "Please complete the Turnstile challenge.",
+      "enterCode": "Please enter your code.",
+      "invalidCode": "Invalid code",
+      "registrationFailed": "Registration failed",
+      "inviteCodeRequired": "Invite code is required",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "generic": "An error occurred. Please try again."
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
