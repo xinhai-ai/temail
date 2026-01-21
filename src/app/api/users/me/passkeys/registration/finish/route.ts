@@ -74,13 +74,19 @@ export async function POST(request: NextRequest) {
 
     const config = await getWebAuthnConfig({ request });
 
-    const verification = await verifyRegistrationResponse({
-      response: parsed.response,
-      expectedChallenge: challenge.challenge,
-      expectedOrigin: config.origin,
-      expectedRPID: config.rpID,
-      requireUserVerification: true,
-    });
+    let verification;
+    try {
+      verification = await verifyRegistrationResponse({
+        response: parsed.response,
+        expectedChallenge: challenge.challenge,
+        expectedOrigin: config.origin,
+        expectedRPID: config.rpID,
+        requireUserVerification: true,
+      });
+    } catch (error) {
+      console.warn("[api/users/me/passkeys/registration/finish] verification error:", error);
+      return NextResponse.json({ error: "Invalid attestation" }, { status: 400 });
+    }
 
     if (!verification.verified || !verification.registrationInfo) {
       return NextResponse.json({ error: "Invalid attestation" }, { status: 400 });
@@ -92,11 +98,13 @@ export async function POST(request: NextRequest) {
     const transportsJson = stringifyAuthenticatorTransports(parsed.response.response.transports);
 
     try {
-      await prisma.$transaction(async (tx) => {
-        await tx.authChallenge.update({
-          where: { id: challenge.id },
+      const consumed = await prisma.$transaction(async (tx) => {
+        const used = await tx.authChallenge.updateMany({
+          where: { id: challenge.id, usedAt: null },
           data: { usedAt: now },
         });
+        if (used.count !== 1) return false;
+
         await tx.passkeyCredential.create({
           data: {
             userId: user.id,
@@ -110,7 +118,11 @@ export async function POST(request: NextRequest) {
           },
           select: { id: true },
         });
+        return true;
       });
+      if (!consumed) {
+        return NextResponse.json({ error: "Invalid or expired challenge" }, { status: 400 });
+      }
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         return NextResponse.json({ error: "This passkey is already registered" }, { status: 400 });

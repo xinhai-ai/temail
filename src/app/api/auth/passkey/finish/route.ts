@@ -77,19 +77,25 @@ export async function POST(request: NextRequest) {
 
     const transports = parseAuthenticatorTransportsJson(credential.transports);
 
-    const verification = await verifyAuthenticationResponse({
-      response: parsed.response,
-      expectedChallenge: challenge.challenge,
-      expectedOrigin: config.origin,
-      expectedRPID: config.rpID,
-      requireUserVerification: true,
-      authenticator: {
-        credentialID: Buffer.from(credential.credentialId, "base64url"),
-        credentialPublicKey: credential.publicKey,
-        counter: credential.counter,
-        transports,
-      },
-    });
+    let verification;
+    try {
+      verification = await verifyAuthenticationResponse({
+        response: parsed.response,
+        expectedChallenge: challenge.challenge,
+        expectedOrigin: config.origin,
+        expectedRPID: config.rpID,
+        requireUserVerification: true,
+        authenticator: {
+          credentialID: Buffer.from(credential.credentialId, "base64url"),
+          credentialPublicKey: credential.publicKey,
+          counter: credential.counter,
+          transports,
+        },
+      });
+    } catch (error) {
+      console.warn("[api/auth/passkey/finish] verification error:", error);
+      return NextResponse.json({ error: "Invalid assertion" }, { status: 400 });
+    }
 
     if (!verification.verified) {
       return NextResponse.json({ error: "Invalid assertion" }, { status: 400 });
@@ -103,19 +109,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.$transaction([
-      prisma.authChallenge.update({
-        where: { id: challenge.id },
+    const newCounter = verification.authenticationInfo.newCounter;
+    const consumed = await prisma.$transaction(async (tx) => {
+      const used = await tx.authChallenge.updateMany({
+        where: { id: challenge.id, usedAt: null },
         data: { usedAt: now },
-      }),
-      prisma.passkeyCredential.update({
+      });
+      if (used.count !== 1) return false;
+
+      await tx.passkeyCredential.updateMany({
+        where: { id: credential.id, counter: { lt: newCounter } },
+        data: { counter: newCounter },
+      });
+      await tx.passkeyCredential.update({
         where: { id: credential.id },
-        data: {
-          counter: verification.authenticationInfo.newCounter,
-          lastUsedAt: now,
-        },
-      }),
-    ]);
+        data: { lastUsedAt: now },
+      });
+
+      return true;
+    });
+    if (!consumed) {
+      return NextResponse.json({ error: "Invalid or expired challenge" }, { status: 400 });
+    }
 
     if (flags.otpEnabled) {
       const totp = await prisma.userTotp.findUnique({
