@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Trash2, Copy, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface WorkflowCanvasProps {
   mailboxes?: { id: string; address: string }[];
@@ -55,6 +56,7 @@ function useMediaQuery(query: string) {
 }
 
 function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvasProps) {
+  const t = useTranslations("workflows");
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const isLgUp = useMediaQuery("(min-width: 1024px)");
@@ -234,7 +236,7 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
               type="button"
               variant="outline"
               size="icon-sm"
-              aria-label="Open node config"
+              aria-label={t("canvas.openNodeConfig")}
               onClick={() => setConfigOpen(true)}
             >
               <Settings2 className="h-4 w-4" />
@@ -269,7 +271,7 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
             )}
           >
             <Copy className="mr-2 h-4 w-4" />
-            Duplicate
+            {t("canvas.contextMenu.duplicate")}
           </button>
           <button
             onClick={handleDeleteNode}
@@ -279,7 +281,7 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
             )}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            {t("canvas.contextMenu.delete")}
           </button>
         </div>
       )}
@@ -302,7 +304,7 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
             )}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Disconnect
+            {t("canvas.contextMenu.disconnect")}
           </button>
         </div>
       )}

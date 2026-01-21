@@ -1064,6 +1064,14 @@
           "testWorkflow": "测试工作流"
         }
       }
+    },
+    "canvas": {
+      "openNodeConfig": "打开节点配置",
+      "contextMenu": {
+        "duplicate": "复制",
+        "delete": "删除",
+        "disconnect": "断开连接"
+      }
     }
   }
 }
