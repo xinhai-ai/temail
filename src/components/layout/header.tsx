@@ -1,7 +1,8 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { LOCALE_COOKIE, type Locale } from "@/i18n/config";
 
 interface HeaderProps {
   isAdmin?: boolean;
@@ -38,6 +40,8 @@ interface HeaderProps {
 export function Header({ isAdmin = false }: HeaderProps) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const locale = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
@@ -61,6 +65,16 @@ export function Header({ isAdmin = false }: HeaderProps) {
         .join("")
         .toUpperCase()
     : session?.user?.email?.[0].toUpperCase() || "U";
+
+  const setLocale = (nextLocale: Locale) => {
+    if (nextLocale === locale) return;
+    try {
+      document.cookie = `${LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    } catch {
+      // ignore
+    }
+    router.refresh();
+  };
 
   const renderNavItem = (item: NavItem) => {
     const isActive = item.href === activeHref;
@@ -159,6 +173,14 @@ export function Header({ isAdmin = false }: HeaderProps) {
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Language</DropdownMenuLabel>
+            <DropdownMenuItem onSelect={() => setLocale("en")}>
+              English{locale === "en" ? " ✓" : ""}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setLocale("zh")}>
+              中文{locale === "zh" ? " ✓" : ""}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
