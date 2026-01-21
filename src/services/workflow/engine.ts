@@ -13,6 +13,67 @@ import { executeNode } from "./executor";
 import { WorkflowLogger, cleanupWorkflowExecutionLogs } from "./logging";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 
+const DEFAULT_MAX_STEPS = 1_000;
+const DEFAULT_MAX_DURATION_MS = 26 * 60 * 60_000;
+const DEFAULT_MAX_LOG_STRING_CHARS = 2_000;
+const DEFAULT_MAX_LOG_OBJECT_DEPTH = 6;
+
+const SECRET_KEY_PATTERN = /(token|secret|password|api[_-]?key|authorization)/i;
+
+function truncateForLogs(value: string | undefined, maxChars = DEFAULT_MAX_LOG_STRING_CHARS): string | undefined {
+  if (typeof value !== "string") return undefined;
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars)}…`;
+}
+
+function redactSecrets(value: unknown, depth: number = 0): unknown {
+  if (value === null || value === undefined) return value;
+  if (depth >= DEFAULT_MAX_LOG_OBJECT_DEPTH) return "[REDACTED]";
+
+  if (Array.isArray(value)) {
+    return value.slice(0, 100).map((item) => redactSecrets(item, depth + 1));
+  }
+
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [key, v] of Object.entries(obj)) {
+      if (SECRET_KEY_PATTERN.test(key)) {
+        out[key] = "[REDACTED]";
+        continue;
+      }
+      if (key.toLowerCase() === "headers" && v && typeof v === "object" && !Array.isArray(v)) {
+        const headersObj = v as Record<string, unknown>;
+        const redactedHeaders: Record<string, unknown> = {};
+        for (const [headerName, headerValue] of Object.entries(headersObj)) {
+          if (SECRET_KEY_PATTERN.test(headerName)) {
+            redactedHeaders[headerName] = "[REDACTED]";
+          } else {
+            redactedHeaders[headerName] = truncateForLogs(typeof headerValue === "string" ? headerValue : String(headerValue));
+          }
+        }
+        out[key] = redactedHeaders;
+        continue;
+      }
+      out[key] = redactSecrets(v, depth + 1);
+    }
+    return out;
+  }
+
+  if (typeof value === "string") return truncateForLogs(value);
+  return value;
+}
+
+function buildSafeEmailContextForLogs(email: EmailContext | undefined): EmailContext | undefined {
+  if (!email) return undefined;
+  return {
+    ...email,
+    subject: truncateForLogs(email.subject, 512) || email.subject,
+    textBody: truncateForLogs(email.textBody),
+    htmlBody: truncateForLogs(email.htmlBody),
+  };
+}
+
 export class WorkflowEngine {
   private workflowId: string;
   private executionId: string;
@@ -20,8 +81,18 @@ export class WorkflowEngine {
   private context: ExecutionContext;
   private aborted: boolean = false;
   private logger: WorkflowLogger;
+  private startedAtMs: number = Date.now();
+  private stepsExecuted: number = 0;
+  private maxSteps: number;
+  private maxDurationMs: number;
 
-  constructor(workflowId: string, executionId: string, config: WorkflowConfig, isTestMode: boolean = false) {
+  constructor(
+    workflowId: string,
+    executionId: string,
+    config: WorkflowConfig,
+    isTestMode: boolean = false,
+    options?: { maxSteps?: number; maxDurationMs?: number }
+  ) {
     this.workflowId = workflowId;
     this.executionId = executionId;
     this.config = config;
@@ -31,9 +102,16 @@ export class WorkflowEngine {
       isTestMode,
     };
     this.logger = new WorkflowLogger(executionId);
+    this.maxSteps = typeof options?.maxSteps === "number" && Number.isFinite(options.maxSteps) && options.maxSteps > 0
+      ? Math.floor(options.maxSteps)
+      : DEFAULT_MAX_STEPS;
+    this.maxDurationMs = typeof options?.maxDurationMs === "number" && Number.isFinite(options.maxDurationMs) && options.maxDurationMs > 0
+      ? Math.floor(options.maxDurationMs)
+      : DEFAULT_MAX_DURATION_MS;
   }
 
   async execute(emailContext?: EmailContext): Promise<void> {
+    this.startedAtMs = Date.now();
     if (emailContext) {
       this.context.email = emailContext;
       if (!this.context.isTestMode) {
@@ -77,6 +155,13 @@ export class WorkflowEngine {
 
   private async executeFromNode(nodeId: string): Promise<void> {
     if (this.aborted) return;
+    if (Date.now() - this.startedAtMs > this.maxDurationMs) {
+      throw new Error(`Workflow execution timed out after ${this.maxDurationMs}ms`);
+    }
+    this.stepsExecuted += 1;
+    if (this.stepsExecuted > this.maxSteps) {
+      throw new Error(`Workflow exceeded maximum steps (${this.maxSteps})`);
+    }
 
     const node = this.config.nodes.find((n) => n.id === nodeId);
     if (!node) {
@@ -89,8 +174,8 @@ export class WorkflowEngine {
 
     // Build input for logging
     const nodeInput = {
-      nodeConfig: node.data,
-      emailContext: this.context.email,
+      nodeConfig: redactSecrets(node.data),
+      emailContext: buildSafeEmailContextForLogs(this.context.email),
       variables: this.context.variables,
     };
 
