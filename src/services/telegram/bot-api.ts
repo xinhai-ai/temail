@@ -160,6 +160,8 @@ async function telegramApiRequest<T>(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
   });
 
   const data = (await res.json().catch(() => null)) as TelegramApiResponse<T> | null;

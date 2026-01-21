@@ -6,6 +6,7 @@ import { handleTelegramUpdate } from "@/services/telegram/handlers";
 import type { TelegramUpdate } from "@/services/telegram/types";
 import { Prisma } from "@prisma/client";
 import { getSystemSettingValue } from "@/services/system-settings";
+import { getAdminSession } from "@/lib/rbac";
 
 function extractUpdateId(payload: unknown): number | null {
   if (!payload || typeof payload !== "object") return null;
@@ -19,6 +20,11 @@ function isMissingTableError(error: unknown) {
 }
 
 export async function GET() {
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const configured = ((await getSystemSettingValue("telegram_webhook_secret")) || "").trim();
   return NextResponse.json({
     status: "ok",
