@@ -250,6 +250,67 @@
       "privacy": "Privacy"
     }
   },
+  "inbox": {
+    "confirm": {
+      "moveToTrash": {
+        "title": "Move to Trash",
+        "description": "This email will be moved to Trash. You can restore it later from the Trash page.",
+        "action": "Move to Trash"
+      },
+      "bulkMoveToTrash": {
+        "title": "Move Emails to Trash",
+        "description": "Move {count} selected emails to Trash? You can restore them later from the Trash page."
+      },
+      "dontRemindAgain": "Don't remind me again",
+      "moving": "Moving...",
+      "deleting": "Deleting...",
+      "deleteMailbox": {
+        "title": "Delete Mailbox",
+        "description": "Are you sure you want to delete mailbox \"{address}\"? All emails in this mailbox will also be deleted."
+      },
+      "deleteGroup": {
+        "title": "Delete Group",
+        "description": "Are you sure you want to delete group \"{name}\"? Mailboxes in this group will become ungrouped."
+      }
+    },
+    "email": {
+      "noSubject": "(No subject)",
+      "status": {
+        "new": "New",
+        "read": "Read"
+      }
+    },
+    "preview": {
+      "empty": {
+        "title": "Select an email",
+        "description": "Choose an email from the list to preview its content"
+      },
+      "emailNotFound": "Email not found",
+      "to": "To",
+      "mailbox": "Mailbox",
+      "mode": {
+        "text": "Text",
+        "html": "HTML",
+        "raw": "Raw"
+      },
+      "remoteImages": {
+        "warning": "Loading remote images may reveal your IP address to the sender.",
+        "enabled": "Remote images enabled",
+        "disabled": "Remote images disabled",
+        "enable": "Enable remote images",
+        "disable": "Disable remote images"
+      },
+      "raw": {
+        "loadFailed": "Failed to load raw content",
+        "loading": "Loading raw content...",
+        "unavailable": "Raw content not available"
+      },
+      "text": {
+        "unavailable": "No text content"
+      },
+      "attachments": "Attachments ({count})"
+    }
+  },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome back",

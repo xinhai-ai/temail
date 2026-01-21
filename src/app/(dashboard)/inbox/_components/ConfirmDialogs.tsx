@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +54,9 @@ export function ConfirmDialogs({
   onConfirmDeleteMailbox,
   onConfirmDeleteGroup,
 }: ConfirmDialogsProps) {
+  const tCommon = useTranslations("common");
+  const t = useTranslations("inbox");
+
   const deleteMailboxAddress = deleteMailboxId
     ? mailboxes.find((m) => m.id === deleteMailboxId)?.address
     : null;
@@ -65,9 +69,9 @@ export function ConfirmDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move to Trash</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirm.moveToTrash.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This email will be moved to Trash. You can restore it later from the Trash page.
+              {t("confirm.moveToTrash.description")}
             </AlertDialogDescription>
             <div className="flex items-center gap-2 pt-3">
               <Checkbox
@@ -76,18 +80,18 @@ export function ConfirmDialogs({
                 onCheckedChange={(checked) => onSkipEmailDeleteConfirmChange(Boolean(checked))}
               />
               <Label htmlFor="skip-delete-email-confirm" className="text-sm text-muted-foreground">
-                Don&apos;t remind me again
+                {t("confirm.dontRemindAgain")}
               </Label>
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={onConfirmDeleteEmail}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Moving..." : "Move to Trash"}
+              {deleting ? t("confirm.moving") : t("confirm.moveToTrash.action")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -96,9 +100,9 @@ export function ConfirmDialogs({
       <AlertDialog open={bulkDeleteOpen} onOpenChange={onBulkDeleteOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move Emails to Trash</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirm.bulkMoveToTrash.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Move {selectedEmailCount} selected emails to Trash? You can restore them later from the Trash page.
+              {t("confirm.bulkMoveToTrash.description", { count: selectedEmailCount })}
             </AlertDialogDescription>
             <div className="flex items-center gap-2 pt-3">
               <Checkbox
@@ -107,18 +111,18 @@ export function ConfirmDialogs({
                 onCheckedChange={(checked) => onSkipEmailDeleteConfirmChange(Boolean(checked))}
               />
               <Label htmlFor="skip-bulk-delete-email-confirm" className="text-sm text-muted-foreground">
-                Don&apos;t remind me again
+                {t("confirm.dontRemindAgain")}
               </Label>
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={onConfirmBulkDelete}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Moving..." : "Move to Trash"}
+              {deleting ? t("confirm.moving") : t("confirm.moveToTrash.action")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -130,20 +134,19 @@ export function ConfirmDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Mailbox</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirm.deleteMailbox.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete mailbox &quot;
-              {deleteMailboxAddress || "-"}&quot;? All emails in this mailbox will also be deleted.
+              {t("confirm.deleteMailbox.description", { address: deleteMailboxAddress || "-" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={onConfirmDeleteMailbox}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("confirm.deleting") : tCommon("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -155,20 +158,19 @@ export function ConfirmDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Group</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirm.deleteGroup.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete group &quot;{deleteGroup?.name}&quot;? Mailboxes in
-              this group will become ungrouped.
+              {t("confirm.deleteGroup.description", { name: deleteGroup?.name ?? "-" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={onConfirmDeleteGroup}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("confirm.deleting") : tCommon("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

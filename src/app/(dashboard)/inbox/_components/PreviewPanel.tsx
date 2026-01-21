@@ -12,6 +12,7 @@ import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
 import { Image as ImageIcon, ImageOff as ImageOffIcon, Mail, Paperclip, Download } from "lucide-react";
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
+import { useLocale, useTranslations } from "next-intl";
 
 type PreviewPanelProps = {
   selectedEmailId: string | null;
@@ -32,6 +33,9 @@ export function PreviewPanel({
   selectedEmail,
   loadingPreview,
 }: PreviewPanelProps) {
+  const locale = useLocale();
+  const t = useTranslations("inbox");
+
   const REMOTE_RESOURCES_KEY = "temail.preview.allowRemoteResources";
   const REMOTE_RESOURCES_WARNED_KEY = "temail.preview.remoteResourcesWarned";
 
@@ -74,7 +78,7 @@ export function PreviewPanel({
     try {
       const warned = localStorage.getItem(REMOTE_RESOURCES_WARNED_KEY) === "1";
       if (!warned) {
-        toast.warning("Loading remote images may reveal your IP address to the sender.");
+        toast.warning(t("preview.remoteImages.warning"));
         localStorage.setItem(REMOTE_RESOURCES_WARNED_KEY, "1");
       }
     } catch {
@@ -102,18 +106,18 @@ export function PreviewPanel({
       setLoadingRaw(true);
       try {
         const res = await fetch(`/api/emails/${selectedEmailId}/raw`);
-        if (res.ok) {
-          const text = await res.text();
-          setRawContent(text);
-        } else {
-          toast.error("Failed to load raw content");
-        }
-      } catch (error) {
-        console.error("Failed to load raw content:", error);
-        toast.error("Failed to load raw content");
-      } finally {
-        setLoadingRaw(false);
-      }
+	        if (res.ok) {
+	          const text = await res.text();
+	          setRawContent(text);
+	        } else {
+	          toast.error(t("preview.raw.loadFailed"));
+	        }
+	      } catch (error) {
+	        console.error("Failed to load raw content:", error);
+	        toast.error(t("preview.raw.loadFailed"));
+	      } finally {
+	        setLoadingRaw(false);
+	      }
     }
   };
 
@@ -134,24 +138,24 @@ export function PreviewPanel({
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
       <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
-        {!selectedEmailId ? (
-          <EmptyState
-            icon={<Mail className="h-8 w-8 text-muted-foreground" />}
-            title="Select an email"
-            description="Choose an email from the list to preview its content"
-          />
-        ) : (
+	        {!selectedEmailId ? (
+	          <EmptyState
+	            icon={<Mail className="h-8 w-8 text-muted-foreground" />}
+	            title={t("preview.empty.title")}
+	            description={t("preview.empty.description")}
+	          />
+	        ) : (
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               {loadingPreview ? (
                 <Skeleton className="h-6 w-3/4" />
-              ) : selectedEmail ? (
-                <h2 className="text-lg font-semibold leading-tight flex-1">
-                  {selectedEmail.subject || "(No subject)"}
-                </h2>
-              ) : (
-                <h2 className="text-lg font-semibold leading-tight flex-1">Email not found</h2>
-              )}
+	              ) : selectedEmail ? (
+	                <h2 className="text-lg font-semibold leading-tight flex-1">
+	                  {selectedEmail.subject || t("email.noSubject")}
+	                </h2>
+	              ) : (
+	                <h2 className="text-lg font-semibold leading-tight flex-1">{t("preview.emailNotFound")}</h2>
+	              )}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <DkimStatusIndicator emailId={selectedEmailId} />
                 {loadingPreview ? (
@@ -163,10 +167,10 @@ export function PreviewPanel({
                       selectedEmail.status === "UNREAD" &&
                         "bg-primary/10 text-primary border-primary/20"
                     )}
-                  >
-                    {selectedEmail.status === "UNREAD" ? "New" : "Read"}
-                  </Badge>
-                ) : null}
+	                  >
+	                    {selectedEmail.status === "UNREAD" ? t("email.status.new") : t("email.status.read")}
+	                  </Badge>
+	                ) : null}
               </div>
             </div>
 
@@ -183,9 +187,9 @@ export function PreviewPanel({
                 </div>
                 <Skeleton className="h-[400px] w-full rounded-md" />
               </div>
-            ) : !selectedEmail ? (
-              <div className="text-sm text-muted-foreground">Email not found</div>
-            ) : (
+	            ) : !selectedEmail ? (
+	              <div className="text-sm text-muted-foreground">{t("preview.emailNotFound")}</div>
+	            ) : (
               <>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
@@ -199,27 +203,27 @@ export function PreviewPanel({
                       {selectedEmail.fromAddress}
                     </p>
                   </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    <p>{new Date(selectedEmail.receivedAt).toLocaleDateString()}</p>
-                    <p>
-                      {new Date(selectedEmail.receivedAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
+	                  <div className="text-right text-xs text-muted-foreground">
+	                    <p>{new Date(selectedEmail.receivedAt).toLocaleDateString(locale)}</p>
+	                    <p>
+	                      {new Date(selectedEmail.receivedAt).toLocaleTimeString(locale, {
+	                        hour: "2-digit",
+	                        minute: "2-digit",
+	                      })}
+	                    </p>
+	                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>
-                    <span className="text-muted-foreground/60">To:</span>{" "}
-                    <span className="font-mono">{selectedEmail.toAddress}</span>
-                  </span>
-                  <span>
-                    <span className="text-muted-foreground/60">Mailbox:</span>{" "}
-                    <span className="font-mono">{selectedEmail.mailbox.address}</span>
-                  </span>
-                </div>
+	                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+	                  <span>
+	                    <span className="text-muted-foreground/60">{t("preview.to")}:</span>{" "}
+	                    <span className="font-mono">{selectedEmail.toAddress}</span>
+	                  </span>
+	                  <span>
+	                    <span className="text-muted-foreground/60">{t("preview.mailbox")}:</span>{" "}
+	                    <span className="font-mono">{selectedEmail.mailbox.address}</span>
+	                  </span>
+	                </div>
 
                 {selectedEmail.tags && selectedEmail.tags.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-2">
@@ -231,41 +235,41 @@ export function PreviewPanel({
                   </div>
                 ) : null}
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant={previewMode === "text" ? "default" : "outline"}
-                    onClick={() => setManualPreviewMode("text")}
-                  >
-                    Text
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={previewMode === "html" ? "default" : "outline"}
-                    onClick={() => setManualPreviewMode("html")}
-                    disabled={!selectedEmail.htmlBody}
-                  >
-                    HTML
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={previewMode === "raw" ? "default" : "outline"}
-                    onClick={handleRawClick}
-                    disabled={!hasRawContent}
-                  >
-                    Raw
-                  </Button>
-                  {selectedEmail.htmlBody ? (
-                    <Button
-                      size="icon-sm"
-                      variant="outline"
-                      className={cn(
-                        allowRemoteResources && "bg-primary/10 border-primary/20 text-primary"
-                      )}
-                      title={allowRemoteResources ? "Remote images enabled" : "Remote images disabled"}
-                      aria-label={allowRemoteResources ? "Disable remote images" : "Enable remote images"}
-                      onClick={() => handleAllowRemoteResourcesChange(!allowRemoteResources)}
-                    >
+	                <div className="flex items-center gap-2">
+	                  <Button
+	                    size="sm"
+	                    variant={previewMode === "text" ? "default" : "outline"}
+	                    onClick={() => setManualPreviewMode("text")}
+	                  >
+	                    {t("preview.mode.text")}
+	                  </Button>
+	                  <Button
+	                    size="sm"
+	                    variant={previewMode === "html" ? "default" : "outline"}
+	                    onClick={() => setManualPreviewMode("html")}
+	                    disabled={!selectedEmail.htmlBody}
+	                  >
+	                    {t("preview.mode.html")}
+	                  </Button>
+	                  <Button
+	                    size="sm"
+	                    variant={previewMode === "raw" ? "default" : "outline"}
+	                    onClick={handleRawClick}
+	                    disabled={!hasRawContent}
+	                  >
+	                    {t("preview.mode.raw")}
+	                  </Button>
+	                  {selectedEmail.htmlBody ? (
+	                    <Button
+	                      size="icon-sm"
+	                      variant="outline"
+	                      className={cn(
+	                        allowRemoteResources && "bg-primary/10 border-primary/20 text-primary"
+	                      )}
+	                      title={allowRemoteResources ? t("preview.remoteImages.enabled") : t("preview.remoteImages.disabled")}
+	                      aria-label={allowRemoteResources ? t("preview.remoteImages.disable") : t("preview.remoteImages.enable")}
+	                      onClick={() => handleAllowRemoteResourcesChange(!allowRemoteResources)}
+	                    >
                       {allowRemoteResources ? (
                         <ImageIcon className="h-4 w-4" />
                       ) : (
@@ -277,33 +281,33 @@ export function PreviewPanel({
 
                 {previewMode === "html" && selectedEmail.htmlBody ? (
                   <EmailHtmlPreview html={selectedEmail.htmlBody} allowRemoteResources={allowRemoteResources} />
-                ) : previewMode === "raw" ? (
-                  loadingRaw ? (
-                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
-                      <div className="text-slate-400">Loading raw content...</div>
-                    </div>
-                  ) : displayRawContent ? (
+	                ) : previewMode === "raw" ? (
+	                  loadingRaw ? (
+	                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
+	                      <div className="text-slate-400">{t("preview.raw.loading")}</div>
+	                    </div>
+	                  ) : displayRawContent ? (
                     <pre className="whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
                       {displayRawContent}
                     </pre>
-                  ) : (
-                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
-                      <div className="text-slate-400">Raw content not available</div>
-                    </div>
-                  )
-                ) : (
-                  <pre className="whitespace-pre-wrap break-words text-sm bg-white p-4 rounded-md border min-h-[360px]">
-                    {selectedEmail.textBody || "No text content"}
-                  </pre>
-                )}
+	                  ) : (
+	                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
+	                      <div className="text-slate-400">{t("preview.raw.unavailable")}</div>
+	                    </div>
+	                  )
+	                ) : (
+	                  <pre className="whitespace-pre-wrap break-words text-sm bg-white p-4 rounded-md border min-h-[360px]">
+	                    {selectedEmail.textBody || t("preview.text.unavailable")}
+	                  </pre>
+	                )}
 
                 {/* Attachments section */}
-                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
-                  <div className="rounded-md border bg-muted/30 p-3">
-                    <div className="flex items-center gap-2 text-sm font-medium mb-2">
-                      <Paperclip className="h-4 w-4" />
-                      <span>Attachments ({selectedEmail.attachments.length})</span>
-                    </div>
+	                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+	                  <div className="rounded-md border bg-muted/30 p-3">
+	                    <div className="flex items-center gap-2 text-sm font-medium mb-2">
+	                      <Paperclip className="h-4 w-4" />
+	                      <span>{t("preview.attachments", { count: selectedEmail.attachments.length })}</span>
+	                    </div>
                     <div className="space-y-1">
                       {selectedEmail.attachments.map((attachment) => (
                         <div

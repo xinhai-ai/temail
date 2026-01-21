@@ -250,6 +250,67 @@
       "privacy": "隐私"
     }
   },
+  "inbox": {
+    "confirm": {
+      "moveToTrash": {
+        "title": "移到回收站",
+        "description": "这封邮件将被移到回收站。你可以稍后在回收站页面恢复。",
+        "action": "移到回收站"
+      },
+      "bulkMoveToTrash": {
+        "title": "批量移到回收站",
+        "description": "将选中的 {count} 封邮件移到回收站？你可以稍后在回收站页面恢复。"
+      },
+      "dontRemindAgain": "不再提示",
+      "moving": "移动中...",
+      "deleting": "删除中...",
+      "deleteMailbox": {
+        "title": "删除邮箱",
+        "description": "确定删除邮箱“{address}”吗？该邮箱中的所有邮件也会被删除。"
+      },
+      "deleteGroup": {
+        "title": "删除分组",
+        "description": "确定删除分组“{name}”吗？该分组内的邮箱将变为未分组。"
+      }
+    },
+    "email": {
+      "noSubject": "（无主题）",
+      "status": {
+        "new": "新",
+        "read": "已读"
+      }
+    },
+    "preview": {
+      "empty": {
+        "title": "请选择一封邮件",
+        "description": "从列表中选择邮件以预览内容"
+      },
+      "emailNotFound": "未找到邮件",
+      "to": "收件人",
+      "mailbox": "邮箱",
+      "mode": {
+        "text": "文本",
+        "html": "HTML",
+        "raw": "原始"
+      },
+      "remoteImages": {
+        "warning": "加载远程图片可能会向发件人暴露你的 IP 地址。",
+        "enabled": "已启用远程图片",
+        "disabled": "已禁用远程图片",
+        "enable": "启用远程图片",
+        "disable": "禁用远程图片"
+      },
+      "raw": {
+        "loadFailed": "原始内容加载失败",
+        "loading": "正在加载原始内容...",
+        "unavailable": "原始内容不可用"
+      },
+      "text": {
+        "unavailable": "无文本内容"
+      },
+      "attachments": "附件（{count}）"
+    }
+  },
   "dashboard": {
     "title": "仪表盘",
     "welcome": "欢迎回来",
