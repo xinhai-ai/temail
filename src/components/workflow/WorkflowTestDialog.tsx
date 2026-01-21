@@ -93,7 +93,7 @@ interface WorkflowTestDialogProps {
   getConfig: () => WorkflowConfig;
 }
 
-type Translator = (key: string, values?: Record<string, unknown>) => string;
+type Translator = (key: string, values?: Record<string, string | number | Date>) => string;
 
 export function WorkflowTestDialog({
   open,

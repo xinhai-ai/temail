@@ -468,7 +468,7 @@ function ExecutionDetails({
 }
 
 // Helper functions
-type Translator = (key: string, values?: Record<string, unknown>) => string;
+type Translator = (key: string, values?: Record<string, string | number | Date>) => string;
 
 function getExecutionStatusLabel(t: Translator, status: Execution["status"]) {
   switch (status) {

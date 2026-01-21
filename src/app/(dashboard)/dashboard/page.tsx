@@ -10,7 +10,7 @@ import { QuickActions } from "./_components/QuickActions";
 import { TopMailboxes } from "./_components/TopMailboxes";
 import { RecentActivity } from "./_components/RecentActivity";
 
-type TFunction = (key: string, values?: Record<string, unknown>) => string;
+type TFunction = (key: string, values?: Record<string, string | number | Date>) => string;
 
 async function getStats(userId: string) {
   const [mailboxCount, emailCount] = await Promise.all([

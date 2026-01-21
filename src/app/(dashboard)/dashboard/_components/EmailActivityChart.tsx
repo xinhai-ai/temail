@@ -53,10 +53,13 @@ export function EmailActivityChart({ data }: EmailActivityChartProps) {
                 }}
                 labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 500 }}
                 itemStyle={{ color: "hsl(var(--primary))" }}
-                formatter={(value) => [
-                  t("widgets.emailActivity.tooltipValue", { count: value }),
-                  t("widgets.emailActivity.tooltipLabel"),
-                ]}
+                formatter={(value) => {
+                  const count = typeof value === "number" ? value : typeof value === "string" ? Number(value) : 0;
+                  return [
+                    t("widgets.emailActivity.tooltipValue", { count }),
+                    t("widgets.emailActivity.tooltipLabel"),
+                  ];
+                }}
               />
               <Bar
                 dataKey="count"

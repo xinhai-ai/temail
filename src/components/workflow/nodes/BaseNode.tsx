@@ -67,7 +67,7 @@ interface BaseNodeProps extends NodeProps<NodeData> {
   type: NodeType;
 }
 
-type Translator = (key: string, values?: Record<string, unknown>) => string;
+type Translator = (key: string, values?: Record<string, string | number | Date>) => string;
 
 function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
   const t = useTranslations("workflows");

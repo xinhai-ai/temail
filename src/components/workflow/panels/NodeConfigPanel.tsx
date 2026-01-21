@@ -54,7 +54,7 @@ interface NodeConfigPanelProps {
   onClose?: () => void;
 }
 
-type Translator = (key: string, values?: Record<string, unknown>) => string;
+type Translator = (key: string, values?: Record<string, string | number | Date>) => string;
 
 export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProps) {
   const t = useTranslations("workflows");
