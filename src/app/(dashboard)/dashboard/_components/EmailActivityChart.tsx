@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart,
@@ -16,11 +17,13 @@ type EmailActivityChartProps = {
 };
 
 export function EmailActivityChart({ data }: EmailActivityChartProps) {
+  const t = useTranslations("dashboard");
+
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium">Email Activity</CardTitle>
-        <p className="text-xs text-muted-foreground">Emails received in the last 7 days</p>
+        <CardTitle className="text-base font-medium">{t("widgets.emailActivity.title")}</CardTitle>
+        <p className="text-xs text-muted-foreground">{t("widgets.emailActivity.subtitle")}</p>
       </CardHeader>
       <CardContent>
         <div className="h-[200px] w-full">
@@ -50,7 +53,10 @@ export function EmailActivityChart({ data }: EmailActivityChartProps) {
                 }}
                 labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 500 }}
                 itemStyle={{ color: "hsl(var(--primary))" }}
-                formatter={(value) => [`${value} emails`, "Received"]}
+                formatter={(value) => [
+                  t("widgets.emailActivity.tooltipValue", { count: value }),
+                  t("widgets.emailActivity.tooltipLabel"),
+                ]}
               />
               <Bar
                 dataKey="count"

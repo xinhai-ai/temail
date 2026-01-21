@@ -2,8 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
 import { Mail, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
 
 type RecentEmail = {
   id: string;
@@ -19,21 +21,27 @@ type RecentEmailsProps = {
   emails: RecentEmail[];
 };
 
-export function RecentEmails({ emails }: RecentEmailsProps) {
+export async function RecentEmails({ emails }: RecentEmailsProps) {
+  const [locale, t] = await Promise.all([
+    getLocale(),
+    getTranslations("dashboard"),
+  ]);
+  const distanceLocale = locale === "zh" ? zhCN : enUS;
+
   if (emails.length === 0) {
     return (
       <Card className="border-border/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Recent Emails</CardTitle>
+          <CardTitle className="text-base font-medium">{t("widgets.recentEmails.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="p-3 rounded-full bg-muted mb-3">
               <Mail className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">No emails yet</p>
+            <p className="text-sm text-muted-foreground">{t("widgets.recentEmails.empty")}</p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              Emails will appear here when received
+              {t("widgets.recentEmails.emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -45,12 +53,12 @@ export function RecentEmails({ emails }: RecentEmailsProps) {
     <Card className="border-border/50">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div>
-          <CardTitle className="text-base font-medium">Recent Emails</CardTitle>
-          <p className="text-xs text-muted-foreground">Latest incoming messages</p>
+          <CardTitle className="text-base font-medium">{t("widgets.recentEmails.title")}</CardTitle>
+          <p className="text-xs text-muted-foreground">{t("widgets.recentEmails.subtitle")}</p>
         </div>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/inbox">
-            View All
+            {t("widgets.recentEmails.viewAll")}
             <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </Button>
@@ -69,11 +77,11 @@ export function RecentEmails({ emails }: RecentEmailsProps) {
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm truncate">
-                    {email.subject || "(No subject)"}
+                    {email.subject || t("email.noSubject")}
                   </span>
                   {email.status === "UNREAD" && (
                     <Badge variant="default" className="text-[10px] h-5 px-1.5 bg-primary/10 text-primary border-primary/20">
-                      New
+                      {t("email.new")}
                     </Badge>
                   )}
                 </div>
@@ -81,11 +89,11 @@ export function RecentEmails({ emails }: RecentEmailsProps) {
                   <span className="truncate">{email.fromName || email.fromAddress}</span>
                   <span className="text-muted-foreground/50">·</span>
                   <span className="flex-shrink-0">
-                    {formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true, locale: distanceLocale })}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground/70">
-                  To: {email.mailbox.address}
+                  {t("email.to")}: {email.mailbox.address}
                 </div>
               </div>
             </Link>

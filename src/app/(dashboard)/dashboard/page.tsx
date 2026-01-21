@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Inbox, Mail, Globe, TrendingUp, TrendingDown } from "lucide-react";
@@ -8,6 +9,8 @@ import { RecentEmails } from "./_components/RecentEmails";
 import { QuickActions } from "./_components/QuickActions";
 import { TopMailboxes } from "./_components/TopMailboxes";
 import { RecentActivity } from "./_components/RecentActivity";
+
+type TFunction = (key: string, values?: Record<string, unknown>) => string;
 
 async function getStats(userId: string) {
   const [mailboxCount, emailCount] = await Promise.all([
@@ -56,7 +59,7 @@ async function getStats(userId: string) {
   };
 }
 
-async function getEmailActivityData(userId: string) {
+async function getEmailActivityData(userId: string, locale: string) {
   const days = 7;
   const data: { date: string; count: number }[] = [];
 
@@ -76,7 +79,7 @@ async function getEmailActivityData(userId: string) {
     });
 
     data.push({
-      date: date.toLocaleDateString("en-US", { weekday: "short" }),
+      date: date.toLocaleDateString(locale, { weekday: "short" }),
       count,
     });
   }
@@ -115,7 +118,7 @@ async function getTopMailboxes(userId: string) {
   });
 }
 
-async function getRecentActivity(userId: string) {
+async function getRecentActivity(userId: string, t: TFunction) {
   // Get recent emails
   const recentEmails = await prisma.email.findMany({
     where: { mailbox: { userId } },
@@ -146,13 +149,13 @@ async function getRecentActivity(userId: string) {
     ...recentEmails.map((email) => ({
       id: `email-${email.id}`,
       type: "email" as const,
-      message: `Received email: "${email.subject || "(No subject)"}"`,
+      message: t("activity.emailReceived", { subject: email.subject || t("email.noSubject") }),
       timestamp: email.receivedAt,
     })),
     ...recentMailboxes.map((mailbox) => ({
       id: `mailbox-${mailbox.id}`,
       type: "mailbox" as const,
-      message: `Created mailbox: ${mailbox.address}`,
+      message: t("activity.mailboxCreated", { address: mailbox.address }),
       timestamp: mailbox.createdAt,
     })),
   ];
@@ -168,15 +171,21 @@ async function getAvailableDomainsCount() {
 
 export default async function DashboardPage() {
   const session = await auth();
+  const [locale, tDashboard, tNav, tLayout] = await Promise.all([
+    getLocale(),
+    getTranslations("dashboard"),
+    getTranslations("nav"),
+    getTranslations("layout"),
+  ]);
   const userId = session!.user.id;
 
   const [stats, activityData, recentEmails, topMailboxes, activities, availableDomains] =
     await Promise.all([
       getStats(userId),
-      getEmailActivityData(userId),
+      getEmailActivityData(userId, locale),
       getRecentEmails(userId),
       getTopMailboxes(userId),
-      getRecentActivity(userId),
+      getRecentActivity(userId, tDashboard),
       getAvailableDomainsCount(),
     ]);
 
@@ -195,14 +204,14 @@ export default async function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{tNav("dashboard")}</h1>
           <p className="text-muted-foreground mt-1">
-            Welcome back, {session?.user?.name || "User"}
+            {tDashboard("header.welcome", { name: session?.user?.name || tLayout("user") })}
           </p>
         </div>
         <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          System Online
+          {tDashboard("header.systemOnline")}
         </div>
       </div>
 
@@ -210,7 +219,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-border/50 hover:border-primary/30 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Mailboxes</CardTitle>
+            <CardTitle className="text-sm font-medium">{tNav("mailboxes")}</CardTitle>
             <div className="p-2 rounded-lg bg-primary/10">
               <Inbox className="h-4 w-4 text-primary" />
             </div>
@@ -218,14 +227,15 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold">{stats.mailboxCount}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-yellow-500 font-medium">{stats.starredCount}</span> starred
+              <span className="text-yellow-500 font-medium">{stats.starredCount}</span>{" "}
+              {tDashboard("stats.starred")}
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-border/50 hover:border-primary/30 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Emails</CardTitle>
+            <CardTitle className="text-sm font-medium">{tNav("emails")}</CardTitle>
             <div className="p-2 rounded-lg bg-blue-500/10">
               <Mail className="h-4 w-4 text-blue-500" />
             </div>
@@ -234,7 +244,7 @@ export default async function DashboardPage() {
             <div className="text-3xl font-bold">{stats.emailCount}</div>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
-                {stats.unreadCount} unread
+                {tDashboard("stats.unread", { count: stats.unreadCount })}
               </Badge>
               {emailTrend !== 0 && (
                 <span className="flex items-center text-xs">
@@ -254,14 +264,14 @@ export default async function DashboardPage() {
 
         <Card className="border-border/50 hover:border-primary/30 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Domains</CardTitle>
+            <CardTitle className="text-sm font-medium">{tNav("domains")}</CardTitle>
             <div className="p-2 rounded-lg bg-green-500/10">
               <Globe className="h-4 w-4 text-green-500" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{availableDomains}</div>
-            <p className="text-xs text-muted-foreground mt-1">Available for use</p>
+            <p className="text-xs text-muted-foreground mt-1">{tDashboard("stats.domainsAvailable")}</p>
           </CardContent>
         </Card>
       </div>

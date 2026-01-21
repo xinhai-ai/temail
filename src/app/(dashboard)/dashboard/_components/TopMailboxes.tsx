@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Inbox, Star } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 type TopMailbox = {
   id: string;
@@ -16,21 +17,23 @@ type TopMailboxesProps = {
   maxEmails: number;
 };
 
-export function TopMailboxes({ mailboxes, maxEmails }: TopMailboxesProps) {
+export async function TopMailboxes({ mailboxes, maxEmails }: TopMailboxesProps) {
+  const t = await getTranslations("dashboard");
+
   if (mailboxes.length === 0) {
     return (
       <Card className="border-border/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Top Mailboxes</CardTitle>
+          <CardTitle className="text-base font-medium">{t("widgets.topMailboxes.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="p-3 rounded-full bg-muted mb-3">
               <Inbox className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">No mailboxes yet</p>
+            <p className="text-sm text-muted-foreground">{t("widgets.topMailboxes.empty")}</p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              Create a mailbox to get started
+              {t("widgets.topMailboxes.emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -41,8 +44,8 @@ export function TopMailboxes({ mailboxes, maxEmails }: TopMailboxesProps) {
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium">Top Mailboxes</CardTitle>
-        <p className="text-xs text-muted-foreground">Most active mailboxes by email count</p>
+        <CardTitle className="text-base font-medium">{t("widgets.topMailboxes.title")}</CardTitle>
+        <p className="text-xs text-muted-foreground">{t("widgets.topMailboxes.subtitle")}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {mailboxes.map((mailbox, index) => {

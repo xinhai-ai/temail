@@ -256,6 +256,58 @@
     "mailboxes": "邮箱",
     "emails": "邮件",
     "domains": "域名",
-    "forwards": "转发"
+    "forwards": "转发",
+    "header": {
+      "welcome": "欢迎回来，{name}",
+      "systemOnline": "系统在线"
+    },
+    "stats": {
+      "starred": "星标",
+      "unread": "{count} 未读",
+      "domainsAvailable": "可用"
+    },
+    "email": {
+      "noSubject": "（无主题）",
+      "new": "新",
+      "to": "收件人"
+    },
+    "activity": {
+      "emailReceived": "收到邮件：「{subject}」",
+      "mailboxCreated": "创建邮箱：{address}"
+    },
+    "widgets": {
+      "emailActivity": {
+        "title": "邮件活动",
+        "subtitle": "最近 7 天收件数量",
+        "tooltipValue": "{count} 封邮件",
+        "tooltipLabel": "收件"
+      },
+      "recentEmails": {
+        "title": "最近邮件",
+        "subtitle": "最新收件邮件",
+        "viewAll": "查看全部",
+        "empty": "暂无邮件",
+        "emptyDescription": "收到邮件后会显示在这里"
+      },
+      "quickActions": {
+        "title": "快捷操作",
+        "subtitle": "常用任务触手可及",
+        "goToInbox": "前往收件箱",
+        "newMailbox": "新建邮箱",
+        "settings": "设置"
+      },
+      "topMailboxes": {
+        "title": "活跃邮箱",
+        "subtitle": "按邮件数量排行",
+        "empty": "暂无邮箱",
+        "emptyDescription": "创建一个邮箱开始使用"
+      },
+      "recentActivity": {
+        "title": "最近活动",
+        "subtitle": "账户最新事件",
+        "empty": "暂无活动",
+        "emptyDescription": "活动将显示在这里"
+      }
+    }
   }
 }

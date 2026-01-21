@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
 import { Mail, Inbox, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getLocale, getTranslations } from "next-intl/server";
 
 type ActivityItem = {
   id: string;
@@ -25,21 +27,27 @@ const activityColors = {
   mailbox: "text-primary bg-primary/10",
 };
 
-export function RecentActivity({ activities }: RecentActivityProps) {
+export async function RecentActivity({ activities }: RecentActivityProps) {
+  const [locale, t] = await Promise.all([
+    getLocale(),
+    getTranslations("dashboard"),
+  ]);
+  const distanceLocale = locale === "zh" ? zhCN : enUS;
+
   if (activities.length === 0) {
     return (
       <Card className="border-border/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Recent Activity</CardTitle>
+          <CardTitle className="text-base font-medium">{t("widgets.recentActivity.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="p-3 rounded-full bg-muted mb-3">
               <Activity className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">No recent activity</p>
+            <p className="text-sm text-muted-foreground">{t("widgets.recentActivity.empty")}</p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              Activity will appear here
+              {t("widgets.recentActivity.emptyDescription")}
             </p>
           </div>
         </CardContent>
@@ -50,8 +58,8 @@ export function RecentActivity({ activities }: RecentActivityProps) {
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium">Recent Activity</CardTitle>
-        <p className="text-xs text-muted-foreground">Latest events in your account</p>
+        <CardTitle className="text-base font-medium">{t("widgets.recentActivity.title")}</CardTitle>
+        <p className="text-xs text-muted-foreground">{t("widgets.recentActivity.subtitle")}</p>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -71,7 +79,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                 <div className="flex-1 min-w-0 pt-0.5">
                   <p className="text-sm">{activity.message}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true, locale: distanceLocale })}
                   </p>
                 </div>
               </div>

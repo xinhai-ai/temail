@@ -256,6 +256,58 @@
     "mailboxes": "Mailboxes",
     "emails": "Emails",
     "domains": "Domains",
-    "forwards": "Forwards"
+    "forwards": "Forwards",
+    "header": {
+      "welcome": "Welcome back, {name}",
+      "systemOnline": "System Online"
+    },
+    "stats": {
+      "starred": "starred",
+      "unread": "{count} unread",
+      "domainsAvailable": "Available for use"
+    },
+    "email": {
+      "noSubject": "(No subject)",
+      "new": "New",
+      "to": "To"
+    },
+    "activity": {
+      "emailReceived": "Received email: \"{subject}\"",
+      "mailboxCreated": "Created mailbox: {address}"
+    },
+    "widgets": {
+      "emailActivity": {
+        "title": "Email Activity",
+        "subtitle": "Emails received in the last 7 days",
+        "tooltipValue": "{count} emails",
+        "tooltipLabel": "Received"
+      },
+      "recentEmails": {
+        "title": "Recent Emails",
+        "subtitle": "Latest incoming messages",
+        "viewAll": "View All",
+        "empty": "No emails yet",
+        "emptyDescription": "Emails will appear here when received"
+      },
+      "quickActions": {
+        "title": "Quick Actions",
+        "subtitle": "Common tasks at your fingertips",
+        "goToInbox": "Go to Inbox",
+        "newMailbox": "New Mailbox",
+        "settings": "Settings"
+      },
+      "topMailboxes": {
+        "title": "Top Mailboxes",
+        "subtitle": "Most active mailboxes by email count",
+        "empty": "No mailboxes yet",
+        "emptyDescription": "Create a mailbox to get started"
+      },
+      "recentActivity": {
+        "title": "Recent Activity",
+        "subtitle": "Latest events in your account",
+        "empty": "No recent activity",
+        "emptyDescription": "Activity will appear here"
+      }
+    }
   }
 }
