@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,6 +68,7 @@ function MatchConditionEditor({
   onRemove,
   canRemove,
 }: MatchConditionEditorProps) {
+  const t = useTranslations("workflows");
   const needsValue = VALUE_OPERATORS.includes(condition.operator);
 
   return (
@@ -82,9 +84,9 @@ function MatchConditionEditor({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(MATCH_FIELD_LABELS).map(([value, label]) => (
+            {(Object.keys(MATCH_FIELD_LABELS) as MatchField[]).map((value) => (
               <SelectItem key={value} value={value}>
-                {label}
+                {t(`conditionBuilder.fields.${value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -100,9 +102,9 @@ function MatchConditionEditor({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(MATCH_OPERATOR_LABELS).map(([value, label]) => (
+            {(Object.keys(MATCH_OPERATOR_LABELS) as MatchOperator[]).map((value) => (
               <SelectItem key={value} value={value}>
-                {label}
+                {t(`conditionBuilder.operators.${value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -125,7 +127,9 @@ function MatchConditionEditor({
           value={condition.value}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
           placeholder={
-            condition.operator === "regex" ? "Regular expression" : "Value"
+            condition.operator === "regex"
+              ? t("conditionBuilder.placeholders.regex")
+              : t("conditionBuilder.placeholders.value")
           }
           className="h-8 text-xs"
         />
@@ -139,7 +143,7 @@ function MatchConditionEditor({
           className="scale-75"
         />
         <Label htmlFor="caseSensitive" className="text-xs text-muted-foreground">
-          Case sensitive
+          {t("conditionBuilder.caseSensitive")}
         </Label>
       </div>
     </div>
@@ -160,6 +164,7 @@ function ConditionGroupEditor({
   onRemove,
   depth = 0,
 }: ConditionGroupEditorProps) {
+  const t = useTranslations("workflows");
   const [expanded, setExpanded] = useState(true);
 
   const handleConditionChange = (index: number, newCondition: CompositeCondition) => {
@@ -249,7 +254,7 @@ function ConditionGroupEditor({
         </Button>
 
         <span className="text-xs text-muted-foreground">
-          {condition.conditions.length} condition{condition.conditions.length !== 1 && "s"}
+          {t("conditionBuilder.groupCount", { count: condition.conditions.length })}
         </span>
 
         <div className="flex-1" />
@@ -303,7 +308,7 @@ function ConditionGroupEditor({
               onClick={handleAddCondition}
             >
               <Plus className="h-3 w-3 mr-1" />
-              Add Rule
+              {t("conditionBuilder.buttons.addRule")}
             </Button>
             <Button
               variant="outline"
@@ -312,7 +317,7 @@ function ConditionGroupEditor({
               onClick={() => handleAddGroup("and")}
             >
               <Parentheses className="h-3 w-3 mr-1" />
-              AND Group
+              {t("conditionBuilder.buttons.andGroup")}
             </Button>
             <Button
               variant="outline"
@@ -321,7 +326,7 @@ function ConditionGroupEditor({
               onClick={() => handleAddGroup("or")}
             >
               <Parentheses className="h-3 w-3 mr-1" />
-              OR Group
+              {t("conditionBuilder.buttons.orGroup")}
             </Button>
             <Button
               variant="outline"
@@ -330,7 +335,7 @@ function ConditionGroupEditor({
               onClick={handleAddNot}
             >
               <CirclePlus className="h-3 w-3 mr-1" />
-              NOT
+              {t("conditionBuilder.buttons.not")}
             </Button>
           </div>
         </div>
@@ -353,6 +358,7 @@ function NotConditionEditor({
   onRemove,
   depth,
 }: NotConditionEditorProps) {
+  const t = useTranslations("workflows");
   const handleInnerChange = (newCondition: CompositeCondition) => {
     onChange({ kind: "not", condition: newCondition });
   };
@@ -368,7 +374,7 @@ function NotConditionEditor({
         <span className="text-xs font-semibold text-red-600 px-2 py-0.5 bg-red-100 rounded">
           NOT
         </span>
-        <span className="text-xs text-muted-foreground">Negate the following condition</span>
+        <span className="text-xs text-muted-foreground">{t("conditionBuilder.notHelp")}</span>
         <div className="flex-1" />
         <Button
           variant="ghost"
@@ -412,6 +418,7 @@ export function ConditionBuilder({
   onChange,
   className,
 }: ConditionBuilderProps) {
+  const t = useTranslations("workflows");
   const handleCreateCondition = () => {
     onChange(createEmptyGroup("and"));
   };
@@ -420,7 +427,7 @@ export function ConditionBuilder({
     return (
       <div className={cn("space-y-2", className)}>
         <Label className="text-xs text-muted-foreground">
-          No conditions configured
+          {t("conditionBuilder.empty")}
         </Label>
         <Button
           variant="outline"
@@ -429,7 +436,7 @@ export function ConditionBuilder({
           onClick={handleCreateCondition}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Conditions
+          {t("conditionBuilder.buttons.addConditions")}
         </Button>
       </div>
     );
@@ -465,7 +472,7 @@ export function ConditionBuilder({
             }
           >
             <Plus className="h-3 w-3 mr-1" />
-            Add Another Condition
+            {t("conditionBuilder.buttons.addAnotherCondition")}
           </Button>
         </div>
       ) : value.kind === "not" ? (
@@ -508,12 +515,13 @@ export function SimpleConditionEditor({
   caseSensitive,
   onChange,
 }: SimpleConditionEditorProps) {
+  const t = useTranslations("workflows");
   const needsValue = VALUE_OPERATORS.includes(operator);
 
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        <Label>Field</Label>
+        <Label>{t("conditionBuilder.labels.field")}</Label>
         <Select
           value={field}
           onValueChange={(v) => onChange({ field: v as MatchField, operator, value, caseSensitive })}
@@ -522,9 +530,9 @@ export function SimpleConditionEditor({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(MATCH_FIELD_LABELS).map(([val, label]) => (
+            {(Object.keys(MATCH_FIELD_LABELS) as MatchField[]).map((val) => (
               <SelectItem key={val} value={val}>
-                {label}
+                {t(`conditionBuilder.fields.${val}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -532,7 +540,7 @@ export function SimpleConditionEditor({
       </div>
 
       <div className="space-y-2">
-        <Label>Operator</Label>
+        <Label>{t("conditionBuilder.labels.operator")}</Label>
         <Select
           value={operator}
           onValueChange={(v) => onChange({ field, operator: v as MatchOperator, value, caseSensitive })}
@@ -541,9 +549,9 @@ export function SimpleConditionEditor({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(MATCH_OPERATOR_LABELS).map(([val, label]) => (
+            {(Object.keys(MATCH_OPERATOR_LABELS) as MatchOperator[]).map((val) => (
               <SelectItem key={val} value={val}>
-                {label}
+                {t(`conditionBuilder.operators.${val}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -552,12 +560,16 @@ export function SimpleConditionEditor({
 
       {needsValue && (
         <div className="space-y-2">
-          <Label htmlFor="conditionValue">Value</Label>
+          <Label htmlFor="conditionValue">{t("conditionBuilder.labels.value")}</Label>
           <Input
             id="conditionValue"
             value={value}
             onChange={(e) => onChange({ field, operator, value: e.target.value, caseSensitive })}
-            placeholder={operator === "regex" ? "Regular expression" : "Enter value"}
+            placeholder={
+              operator === "regex"
+                ? t("conditionBuilder.placeholders.regex")
+                : t("conditionBuilder.placeholders.enterValue")
+            }
           />
         </div>
       )}
@@ -568,7 +580,7 @@ export function SimpleConditionEditor({
           checked={caseSensitive || false}
           onCheckedChange={(v) => onChange({ field, operator, value, caseSensitive: v })}
         />
-        <Label htmlFor="simpleCaseSensitive">Case Sensitive</Label>
+        <Label htmlFor="simpleCaseSensitive">{t("conditionBuilder.caseSensitive")}</Label>
       </div>
     </div>
   );

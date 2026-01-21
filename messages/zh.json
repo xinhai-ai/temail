@@ -1547,6 +1547,59 @@
         "availableVariables": "可用变量"
       }
     },
+    "conditionBuilder": {
+      "empty": "未配置条件",
+      "caseSensitive": "区分大小写",
+      "labels": {
+        "field": "字段",
+        "operator": "操作符",
+        "value": "值"
+      },
+      "placeholders": {
+        "value": "值",
+        "enterValue": "输入值",
+        "regex": "正则表达式"
+      },
+      "buttons": {
+        "addConditions": "添加条件",
+        "addAnotherCondition": "再添加一个条件",
+        "addRule": "添加规则",
+        "andGroup": "AND 组",
+        "orGroup": "OR 组",
+        "not": "NOT"
+      },
+      "notHelp": "对下面的条件取反",
+      "groupCount": "{count} 条条件",
+      "fields": {
+        "subject": "主题",
+        "fromAddress": "发件人邮箱",
+        "fromName": "发件人名称",
+        "toAddress": "收件人邮箱",
+        "textBody": "正文（文本）",
+        "htmlBody": "正文（HTML）",
+        "messageId": "消息 ID",
+        "replyTo": "Reply-To"
+      },
+      "operators": {
+        "contains": "包含",
+        "notContains": "不包含",
+        "equals": "等于",
+        "notEquals": "不等于",
+        "startsWith": "开头是",
+        "endsWith": "结尾是",
+        "regex": "匹配正则",
+        "isEmpty": "为空",
+        "isNotEmpty": "不为空"
+      },
+      "summary": {
+        "none": "无条件",
+        "and": "{count} 条条件（AND）",
+        "or": "{count} 条条件（OR）",
+        "not": "NOT（{inner}）",
+        "match": "{field} {operator} \"{value}\"",
+        "unknown": "未知条件"
+      }
+    },
     "baseNode": {
       "unknown": "未知：{type}",
       "triggerBadge": "触发器",

@@ -771,21 +771,28 @@ function KeywordConditionConfig({
 
   // 获取条件摘要
   const getConditionSummary = (condition?: CompositeCondition): string => {
-    if (!condition) return "No conditions";
+    if (!condition) return t("conditionBuilder.summary.none");
 
     switch (condition.kind) {
       case "and":
-        if (condition.conditions.length === 0) return "No conditions";
-        return `${condition.conditions.length} conditions (AND)`;
+        if (condition.conditions.length === 0) return t("conditionBuilder.summary.none");
+        return t("conditionBuilder.summary.and", { count: condition.conditions.length });
       case "or":
-        if (condition.conditions.length === 0) return "No conditions";
-        return `${condition.conditions.length} conditions (OR)`;
+        if (condition.conditions.length === 0) return t("conditionBuilder.summary.none");
+        return t("conditionBuilder.summary.or", { count: condition.conditions.length });
       case "not":
-        return `NOT (${getConditionSummary(condition.condition)})`;
-      case "match":
-        return `${MATCH_FIELD_LABELS[condition.field]} ${MATCH_OPERATOR_LABELS[condition.operator]} "${condition.value}"`;
+        return t("conditionBuilder.summary.not", { inner: getConditionSummary(condition.condition) });
+      case "match": {
+        const fieldLabel = t(`conditionBuilder.fields.${condition.field}`);
+        const operatorLabel = t(`conditionBuilder.operators.${condition.operator}`);
+        return t("conditionBuilder.summary.match", {
+          field: fieldLabel,
+          operator: operatorLabel,
+          value: condition.value,
+        });
+      }
       default:
-        return "Unknown condition";
+        return t("conditionBuilder.summary.unknown");
     }
   };
 

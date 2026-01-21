@@ -1547,6 +1547,59 @@
         "availableVariables": "Available Variables"
       }
     },
+    "conditionBuilder": {
+      "empty": "No conditions configured",
+      "caseSensitive": "Case sensitive",
+      "labels": {
+        "field": "Field",
+        "operator": "Operator",
+        "value": "Value"
+      },
+      "placeholders": {
+        "value": "Value",
+        "enterValue": "Enter value",
+        "regex": "Regular expression"
+      },
+      "buttons": {
+        "addConditions": "Add Conditions",
+        "addAnotherCondition": "Add Another Condition",
+        "addRule": "Add Rule",
+        "andGroup": "AND Group",
+        "orGroup": "OR Group",
+        "not": "NOT"
+      },
+      "notHelp": "Negate the following condition",
+      "groupCount": "{count, plural, one {# condition} other {# conditions}}",
+      "fields": {
+        "subject": "Subject",
+        "fromAddress": "From Address",
+        "fromName": "From Name",
+        "toAddress": "To Address",
+        "textBody": "Body (Text)",
+        "htmlBody": "Body (HTML)",
+        "messageId": "Message ID",
+        "replyTo": "Reply-To"
+      },
+      "operators": {
+        "contains": "Contains",
+        "notContains": "Does not contain",
+        "equals": "Equals",
+        "notEquals": "Does not equal",
+        "startsWith": "Starts with",
+        "endsWith": "Ends with",
+        "regex": "Matches regex",
+        "isEmpty": "Is empty",
+        "isNotEmpty": "Is not empty"
+      },
+      "summary": {
+        "none": "No conditions",
+        "and": "{count, plural, one {# condition} other {# conditions}} (AND)",
+        "or": "{count, plural, one {# condition} other {# conditions}} (OR)",
+        "not": "NOT ({inner})",
+        "match": "{field} {operator} \"{value}\"",
+        "unknown": "Unknown condition"
+      }
+    },
     "baseNode": {
       "unknown": "Unknown: {type}",
       "triggerBadge": "TRIGGER",
