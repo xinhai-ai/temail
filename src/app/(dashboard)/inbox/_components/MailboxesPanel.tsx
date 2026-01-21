@@ -39,6 +39,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import {
   Bell,
   BellOff,
@@ -170,11 +171,15 @@ export function MailboxesPanel({
   refreshingImap,
   refreshCooldown,
 }: MailboxesPanelProps) {
+  const t = useTranslations("inbox");
+  const tNav = useTranslations("nav");
+  const tCommon = useTranslations("common");
+
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
       <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Mailboxes</p>
+          <p className="text-sm font-medium">{tNav("mailboxes")}</p>
           <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -184,7 +189,7 @@ export function MailboxesPanel({
                   size="icon-sm"
                   onClick={onRefreshImap}
                   disabled={refreshingImap || refreshCooldown > 0}
-                  aria-label="Refresh emails"
+                  aria-label={t("mailboxes.refresh.aria")}
                 >
                   {refreshCooldown > 0 ? (
                     <span className="text-xs font-medium tabular-nums">{refreshCooldown}</span>
@@ -195,10 +200,10 @@ export function MailboxesPanel({
               </TooltipTrigger>
               <TooltipContent>
                 {refreshingImap
-                  ? "Refreshing..."
+                  ? t("mailboxes.refresh.refreshing")
                   : refreshCooldown > 0
-                    ? `Wait ${refreshCooldown}s`
-                    : "Refresh emails"}
+                    ? t("mailboxes.refresh.wait", { seconds: refreshCooldown })
+                    : t("mailboxes.refresh.tooltip")}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -210,8 +215,8 @@ export function MailboxesPanel({
                   onClick={onToggleNotifications}
                   aria-label={
                     notificationsEnabled
-                      ? "Disable desktop notifications"
-                      : "Enable desktop notifications"
+                      ? t("mailboxes.notifications.disable")
+                      : t("mailboxes.notifications.enable")
                   }
                 >
                   {notificationsEnabled ? (
@@ -223,8 +228,8 @@ export function MailboxesPanel({
               </TooltipTrigger>
               <TooltipContent>
                 {notificationsEnabled
-                  ? "Disable desktop notifications"
-                  : "Enable desktop notifications"}
+                  ? t("mailboxes.notifications.disable")
+                  : t("mailboxes.notifications.enable")}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -232,7 +237,7 @@ export function MailboxesPanel({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search mailboxes..."
+            placeholder={t("mailboxes.searchPlaceholder")}
             value={mailboxSearch}
             onChange={(e) => onMailboxSearchChange(e.target.value)}
             className="pl-10 h-10 bg-muted/50 border-border/50 focus:bg-background transition-colors"
@@ -247,13 +252,13 @@ export function MailboxesPanel({
             className="flex-1 min-w-[140px]"
           >
             <Inbox className="mr-2 h-4 w-4" />
-            All Emails
+            {t("mailboxes.allEmails")}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
-                New
+                {t("mailboxes.new")}
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -262,10 +267,10 @@ export function MailboxesPanel({
                 onSelect={() => onMailboxDialogOpenChange(true)}
                 disabled={loadingDomains}
               >
-                New Mailbox
+                {t("mailboxes.newMailbox")}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => onGroupDialogOpenChange(true)}>
-                New Group
+                {t("mailboxes.newGroup")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -274,18 +279,18 @@ export function MailboxesPanel({
         <Dialog open={mailboxDialogOpen} onOpenChange={onMailboxDialogOpenChange}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Mailbox</DialogTitle>
+              <DialogTitle>{t("mailboxes.dialog.createMailbox")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label>Domain</Label>
+                <Label>{t("mailboxes.dialog.domain")}</Label>
                 <Select
                   value={newMailboxDomainId}
                   onValueChange={onNewMailboxDomainIdChange}
                 >
                   <SelectTrigger>
                     <SelectValue
-                      placeholder={loadingDomains ? "Loading..." : "Select domain"}
+                      placeholder={loadingDomains ? tCommon("loading") : t("mailboxes.dialog.selectDomain")}
                     />
                   </SelectTrigger>
                   <SelectContent>
@@ -298,22 +303,22 @@ export function MailboxesPanel({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Prefix</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="username"
-                    value={newMailboxPrefix}
-                    onChange={(e) => onNewMailboxPrefixChange(e.target.value)}
-                  />
-                  <Button variant="outline" onClick={onGenerateRandomPrefix} type="button">
-                    Random
+                <div className="space-y-2">
+                  <Label>{t("mailboxes.dialog.prefix")}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t("mailboxes.dialog.prefixPlaceholder")}
+                      value={newMailboxPrefix}
+                      onChange={(e) => onNewMailboxPrefixChange(e.target.value)}
+                    />
+                    <Button variant="outline" onClick={onGenerateRandomPrefix} type="button">
+                      {t("mailboxes.dialog.random")}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Group (Optional)</Label>
+                <Label>{t("mailboxes.dialog.groupOptional")}</Label>
                 <Select
                   value={newMailboxGroupId}
                   onValueChange={(value) =>
@@ -321,10 +326,10 @@ export function MailboxesPanel({
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Ungrouped" />
+                    <SelectValue placeholder={t("mailboxes.dialog.ungrouped")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ungroupedSelectValue}>Ungrouped</SelectItem>
+                    <SelectItem value={ungroupedSelectValue}>{t("mailboxes.dialog.ungrouped")}</SelectItem>
                     {groups.map((group) => (
                       <SelectItem key={group.id} value={group.id}>
                         {group.name}
@@ -335,16 +340,16 @@ export function MailboxesPanel({
               </div>
 
               <div className="space-y-2">
-                <Label>Note (Optional)</Label>
+                <Label>{t("mailboxes.dialog.noteOptional")}</Label>
                 <Input
-                  placeholder="Add a note"
+                  placeholder={t("mailboxes.dialog.notePlaceholder")}
                   value={newMailboxNote}
                   onChange={(e) => onNewMailboxNoteChange(e.target.value)}
                 />
               </div>
 
               <Button onClick={onCreateMailbox} className="w-full" disabled={creatingMailbox}>
-                {creatingMailbox ? "Creating..." : "Create"}
+                {creatingMailbox ? t("mailboxes.actions.creating") : tCommon("create")}
               </Button>
             </div>
           </DialogContent>
@@ -353,20 +358,20 @@ export function MailboxesPanel({
         <Dialog open={groupDialogOpen} onOpenChange={onGroupDialogOpenChange}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Group</DialogTitle>
+              <DialogTitle>{t("mailboxes.dialog.createGroup")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="groupName">Name</Label>
+                <Label htmlFor="groupName">{t("mailboxes.dialog.name")}</Label>
                 <Input
                   id="groupName"
-                  placeholder="e.g. Shopping, Work"
+                  placeholder={t("mailboxes.dialog.groupNamePlaceholder")}
                   value={newGroupName}
                   onChange={(e) => onNewGroupNameChange(e.target.value)}
                 />
               </div>
               <Button onClick={onCreateGroup} className="w-full" disabled={creatingGroup}>
-                {creatingGroup ? "Creating..." : "Create"}
+                {creatingGroup ? t("mailboxes.actions.creating") : tCommon("create")}
               </Button>
             </div>
           </DialogContent>
@@ -375,11 +380,11 @@ export function MailboxesPanel({
         <Dialog open={renameDialogOpen} onOpenChange={onRenameDialogOpenChange}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Rename Group</DialogTitle>
+              <DialogTitle>{t("mailboxes.dialog.renameGroup")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="renameGroupName">Name</Label>
+                <Label htmlFor="renameGroupName">{t("mailboxes.dialog.name")}</Label>
                 <Input
                   id="renameGroupName"
                   value={renameGroupName}
@@ -387,7 +392,7 @@ export function MailboxesPanel({
                 />
               </div>
               <Button onClick={onRenameGroupSave} className="w-full" disabled={renamingGroup}>
-                {renamingGroup ? "Saving..." : "Save"}
+                {renamingGroup ? t("mailboxes.actions.saving") : tCommon("save")}
               </Button>
             </div>
           </DialogContent>
@@ -395,13 +400,13 @@ export function MailboxesPanel({
 
         <span className="text-xs text-muted-foreground">
           {loadingGroups || loadingMailboxes
-            ? "Loading..."
-            : `${mailboxes.length} mailboxes • ${groups.length} groups`}
+            ? tCommon("loading")
+            : t("mailboxes.summary", { mailboxCount: mailboxes.length, groupCount: groups.length })}
         </span>
 
-        <div className="space-y-2">
-          {loadingMailboxes ? (
-            <div className="space-y-3">
+          <div className="space-y-2">
+            {loadingMailboxes ? (
+              <div className="space-y-3">
               {[1, 2].map((group) => (
                 <div key={group} className="space-y-2">
                   <Skeleton className="h-4 w-20" />
@@ -416,16 +421,16 @@ export function MailboxesPanel({
                   ))}
                 </div>
               ))}
-            </div>
-          ) : (
-            groupedMailboxes.map((groupItem) => {
-              const label =
-                groupItem.key === "__ungrouped__"
-                  ? "Ungrouped"
-                  : groupItem.group?.name || "Group";
-              const collapsed = Boolean(collapsedGroups[groupItem.key]);
-              return (
-                <div key={groupItem.key} className="space-y-1">
+              </div>
+            ) : (
+              groupedMailboxes.map((groupItem) => {
+                const label =
+                  groupItem.key === "__ungrouped__"
+                    ? t("mailboxes.dialog.ungrouped")
+                    : groupItem.group?.name || t("mailboxes.context.group");
+                const collapsed = Boolean(collapsedGroups[groupItem.key]);
+                return (
+                  <div key={groupItem.key} className="space-y-1">
                   <div className="flex items-center justify-between px-1 py-1">
                     <button
                       type="button"
@@ -443,31 +448,31 @@ export function MailboxesPanel({
                       <span className="text-[11px] text-muted-foreground">
                         {groupItem.mailboxes.length}
                       </span>
-                      {groupItem.group && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
-                              <Pencil />
-                              Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
-                            >
-                              <Trash2 />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                        {groupItem.group && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
+                                <Pencil />
+                                {t("mailboxes.context.rename")}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
+                              >
+                                <Trash2 />
+                                {tCommon("delete")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
                   {!collapsed && (
                     <div className="space-y-1">
@@ -523,52 +528,52 @@ export function MailboxesPanel({
                                   )}
                                 </div>
                               </div>
-                            </ContextMenuTrigger>
-                            <ContextMenuContent className="w-48">
-                              <ContextMenuLabel>Mailbox</ContextMenuLabel>
-                              <ContextMenuSeparator />
-                              <ContextMenuItem
-                                onClick={() => onCopyMailboxAddress(mailbox.address)}
-                              >
-                                <Copy />
-                                Copy Address
-                              </ContextMenuItem>
-                              <ContextMenuItem
-                                onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}
-                              >
-                                {mailbox.isStarred ? (
-                                  <>
-                                    <StarOff />
-                                    Unstar
-                                  </>
-                                ) : (
-                                  <>
-                                    <Star />
-                                    Star
-                                  </>
-                                )}
-                              </ContextMenuItem>
-                              <ContextMenuSeparator />
-                              <ContextMenuSub>
-                                <ContextMenuSubTrigger>
-                                  <FolderInput />
-                                  Move to Group
-                                </ContextMenuSubTrigger>
-                                <ContextMenuSubContent className="w-40">
-                                  <ContextMenuItem
-                                    onClick={() => onMoveMailboxToGroup(mailbox.id, null)}
-                                    disabled={!mailbox.group}
-                                  >
-                                    <FolderMinus />
-                                    Ungrouped
-                                  </ContextMenuItem>
-                                  {groups.length === 0 ? (
-                                    <ContextMenuItem disabled>
-                                      <FolderInput />
-                                      No groups
-                                    </ContextMenuItem>
+                              </ContextMenuTrigger>
+                              <ContextMenuContent className="w-48">
+                                <ContextMenuLabel>{t("mailboxes.context.mailbox")}</ContextMenuLabel>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem
+                                  onClick={() => onCopyMailboxAddress(mailbox.address)}
+                                >
+                                  <Copy />
+                                  {t("mailboxes.context.copyAddress")}
+                                </ContextMenuItem>
+                                <ContextMenuItem
+                                  onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}
+                                >
+                                  {mailbox.isStarred ? (
+                                    <>
+                                      <StarOff />
+                                      {t("mailboxes.context.unstar")}
+                                    </>
                                   ) : (
-                                    groups.map((group) => (
+                                    <>
+                                      <Star />
+                                      {t("mailboxes.context.star")}
+                                    </>
+                                  )}
+                                </ContextMenuItem>
+                                <ContextMenuSeparator />
+                                <ContextMenuSub>
+                                  <ContextMenuSubTrigger>
+                                    <FolderInput />
+                                    {t("mailboxes.context.moveToGroup")}
+                                  </ContextMenuSubTrigger>
+                                  <ContextMenuSubContent className="w-40">
+                                    <ContextMenuItem
+                                      onClick={() => onMoveMailboxToGroup(mailbox.id, null)}
+                                      disabled={!mailbox.group}
+                                    >
+                                      <FolderMinus />
+                                      {t("mailboxes.dialog.ungrouped")}
+                                    </ContextMenuItem>
+                                    {groups.length === 0 ? (
+                                      <ContextMenuItem disabled>
+                                        <FolderInput />
+                                        {t("mailboxes.context.noGroups")}
+                                      </ContextMenuItem>
+                                    ) : (
+                                      groups.map((group) => (
                                       <ContextMenuItem
                                         key={group.id}
                                         onClick={() => onMoveMailboxToGroup(mailbox.id, group.id)}
@@ -582,17 +587,17 @@ export function MailboxesPanel({
                                 </ContextMenuSubContent>
                               </ContextMenuSub>
                               <ContextMenuSeparator />
-                              <ContextMenuItem
-                                variant="destructive"
-                                onClick={() => onRequestDeleteMailbox(mailbox.id)}
-                              >
-                                <Trash2 />
-                                Delete
-                              </ContextMenuItem>
-                            </ContextMenuContent>
-                          </ContextMenu>
-                        );
-                      })}
+                                <ContextMenuItem
+                                  variant="destructive"
+                                  onClick={() => onRequestDeleteMailbox(mailbox.id)}
+                                >
+                                  <Trash2 />
+                                  {tCommon("delete")}
+                                </ContextMenuItem>
+                              </ContextMenuContent>
+                            </ContextMenu>
+                          );
+                        })}
                     </div>
                   )}
                 </div>

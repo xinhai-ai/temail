@@ -251,6 +251,54 @@
     }
   },
   "inbox": {
+    "mailboxes": {
+      "refresh": {
+        "aria": "Refresh emails",
+        "refreshing": "Refreshing...",
+        "wait": "Wait {seconds}s",
+        "tooltip": "Refresh emails"
+      },
+      "notifications": {
+        "enable": "Enable desktop notifications",
+        "disable": "Disable desktop notifications"
+      },
+      "searchPlaceholder": "Search mailboxes...",
+      "allEmails": "All Emails",
+      "new": "New",
+      "newMailbox": "New Mailbox",
+      "newGroup": "New Group",
+      "summary": "{mailboxCount} mailboxes • {groupCount} groups",
+      "actions": {
+        "creating": "Creating...",
+        "saving": "Saving..."
+      },
+      "dialog": {
+        "createMailbox": "Create Mailbox",
+        "domain": "Domain",
+        "selectDomain": "Select a domain",
+        "prefix": "Prefix",
+        "prefixPlaceholder": "username",
+        "random": "Random",
+        "groupOptional": "Group (Optional)",
+        "ungrouped": "Ungrouped",
+        "noteOptional": "Note (Optional)",
+        "notePlaceholder": "e.g. Newsletters",
+        "createGroup": "Create Group",
+        "name": "Name",
+        "groupNamePlaceholder": "e.g. Shopping, Work",
+        "renameGroup": "Rename Group"
+      },
+      "context": {
+        "group": "Group",
+        "rename": "Rename",
+        "mailbox": "Mailbox",
+        "copyAddress": "Copy Address",
+        "star": "Star",
+        "unstar": "Unstar",
+        "moveToGroup": "Move to Group",
+        "noGroups": "No groups"
+      }
+    },
     "confirm": {
       "moveToTrash": {
         "title": "Move to Trash",

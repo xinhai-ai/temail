@@ -251,6 +251,54 @@
     }
   },
   "inbox": {
+    "mailboxes": {
+      "refresh": {
+        "aria": "刷新邮件",
+        "refreshing": "刷新中...",
+        "wait": "等待 {seconds} 秒",
+        "tooltip": "刷新邮件"
+      },
+      "notifications": {
+        "enable": "开启桌面通知",
+        "disable": "关闭桌面通知"
+      },
+      "searchPlaceholder": "搜索邮箱...",
+      "allEmails": "全部邮件",
+      "new": "新建",
+      "newMailbox": "新建邮箱",
+      "newGroup": "新建分组",
+      "summary": "{mailboxCount} 个邮箱 • {groupCount} 个分组",
+      "actions": {
+        "creating": "创建中...",
+        "saving": "保存中..."
+      },
+      "dialog": {
+        "createMailbox": "创建邮箱",
+        "domain": "域名",
+        "selectDomain": "选择域名",
+        "prefix": "前缀",
+        "prefixPlaceholder": "username",
+        "random": "随机",
+        "groupOptional": "分组（可选）",
+        "ungrouped": "未分组",
+        "noteOptional": "备注（可选）",
+        "notePlaceholder": "例如：订阅邮件",
+        "createGroup": "创建分组",
+        "name": "名称",
+        "groupNamePlaceholder": "如：购物、工作",
+        "renameGroup": "重命名分组"
+      },
+      "context": {
+        "group": "分组",
+        "rename": "重命名",
+        "mailbox": "邮箱",
+        "copyAddress": "复制地址",
+        "star": "收藏",
+        "unstar": "取消收藏",
+        "moveToGroup": "移动到分组",
+        "noGroups": "暂无分组"
+      }
+    },
     "confirm": {
       "moveToTrash": {
         "title": "移到回收站",
