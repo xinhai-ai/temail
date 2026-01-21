@@ -1454,6 +1454,13 @@
           "title": "AI Classifier Configuration",
           "description": "Configure base URL, model and API key in Admin Settings to enable AI classification."
         }
+      },
+      "forwardEmail": {
+        "recipientEmail": "Recipient Email",
+        "subject": "Subject",
+        "bodyTemplate": "Body Template",
+        "useDefault": "Default",
+        "bodyPlaceholder": "Original email content..."
       }
     },
     "baseNode": {

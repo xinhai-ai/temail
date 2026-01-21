@@ -1454,6 +1454,13 @@
           "title": "AI 分类器配置",
           "description": "在后台设置中配置 Base URL、模型和 API Key 以启用 AI 分类。"
         }
+      },
+      "forwardEmail": {
+        "recipientEmail": "收件人邮箱",
+        "subject": "主题",
+        "bodyTemplate": "正文模板",
+        "useDefault": "默认",
+        "bodyPlaceholder": "原始邮件内容..."
       }
     },
     "baseNode": {

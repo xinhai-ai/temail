@@ -1717,12 +1717,13 @@ function ForwardEmailConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const template = (data.template as { subject?: string; body?: string; html?: string }) || {};
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="to" className="text-xs font-medium">Recipient Email</Label>
+        <Label htmlFor="to" className="text-xs font-medium">{t("nodeConfigPanel.forwardEmail.recipientEmail")}</Label>
         <Input
           id="to"
           type="email"
@@ -1735,7 +1736,7 @@ function ForwardEmailConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="subjectTemplate" className="text-xs font-medium">Subject</Label>
+          <Label htmlFor="subjectTemplate" className="text-xs font-medium">{t("nodeConfigPanel.forwardEmail.subject")}</Label>
           <Button
             variant="ghost"
             size="sm"
@@ -1746,7 +1747,7 @@ function ForwardEmailConfig({
             })}
           >
             <FileText className="h-3 w-3 mr-1" />
-            Default
+            {t("nodeConfigPanel.forwardEmail.useDefault")}
           </Button>
         </div>
         <Input
@@ -1762,7 +1763,7 @@ function ForwardEmailConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="bodyTemplate" className="text-xs font-medium">Body Template</Label>
+          <Label htmlFor="bodyTemplate" className="text-xs font-medium">{t("nodeConfigPanel.forwardEmail.bodyTemplate")}</Label>
           <Button
             variant="ghost"
             size="sm"
@@ -1773,7 +1774,7 @@ function ForwardEmailConfig({
             })}
           >
             <FileText className="h-3 w-3 mr-1" />
-            Default
+            {t("nodeConfigPanel.forwardEmail.useDefault")}
           </Button>
         </div>
         <Textarea
@@ -1782,7 +1783,7 @@ function ForwardEmailConfig({
           onChange={(e) =>
             onChange("template", { ...template, body: e.target.value })
           }
-          placeholder="Original email content..."
+          placeholder={t("nodeConfigPanel.forwardEmail.bodyPlaceholder")}
           rows={4}
           className="text-xs font-mono"
         />
