@@ -559,9 +559,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USER">USER</SelectItem>
-                      <SelectItem value="ADMIN">ADMIN</SelectItem>
-                      <SelectItem value="SUPER_ADMIN">SUPER_ADMIN</SelectItem>
+                      <SelectItem value="USER">{t("userDetail.profile.roles.user")}</SelectItem>
+                      <SelectItem value="ADMIN">{t("userDetail.profile.roles.admin")}</SelectItem>
+                      <SelectItem value="SUPER_ADMIN">{t("userDetail.profile.roles.superAdmin")}</SelectItem>
                     </SelectContent>
                   </Select>
                   {!isSuperAdmin && (

@@ -232,6 +232,11 @@
       "profile": {
         "title": "资料",
         "roleHelp": "只有 SUPER_ADMIN 可以修改角色。",
+        "roles": {
+          "user": "用户",
+          "admin": "管理员",
+          "superAdmin": "超级管理员"
+        },
         "emailVerified": "邮箱验证时间（ISO）",
         "active": "启用",
         "activeHelp": "禁用用户登录"

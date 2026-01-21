@@ -232,6 +232,11 @@
       "profile": {
         "title": "Profile",
         "roleHelp": "Only SUPER_ADMIN can change roles.",
+        "roles": {
+          "user": "User",
+          "admin": "Admin",
+          "superAdmin": "Super Admin"
+        },
         "emailVerified": "Email Verified (ISO)",
         "active": "Active",
         "activeHelp": "Disable user login"
