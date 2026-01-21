@@ -27,7 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
-import { Archive, ArchiveRestore, Copy, ExternalLink, Mail, MailOpen, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, ExternalLink, ListChecks, Mail, MailOpen, MousePointerClick, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type { EmailListItem, Tag } from "../types";
@@ -207,24 +207,38 @@ export function EmailsPanel({
             />
           </div>
           <div className="flex items-center gap-1 rounded-md border bg-muted/30 p-1 flex-shrink-0">
-            <Button
-              type="button"
-              variant={selectionMode ? "ghost" : "secondary"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => onMultiSelectModeChange(false)}
-            >
-              {t("emails.selectionMode.single")}
-            </Button>
-            <Button
-              type="button"
-              variant={selectionMode ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => onMultiSelectModeChange(true)}
-            >
-              {t("emails.selectionMode.multi")}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={selectionMode ? "ghost" : "secondary"}
+                  size="icon-sm"
+                  className="h-8 w-8"
+                  onClick={() => onMultiSelectModeChange(false)}
+                  aria-label={t("emails.selectionMode.single")}
+                  aria-pressed={!selectionMode}
+                >
+                  <MousePointerClick className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("emails.selectionMode.single")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={selectionMode ? "secondary" : "ghost"}
+                  size="icon-sm"
+                  className="h-8 w-8"
+                  onClick={() => onMultiSelectModeChange(true)}
+                  aria-label={t("emails.selectionMode.multi")}
+                  aria-pressed={selectionMode}
+                >
+                  <ListChecks className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("emails.selectionMode.multi")}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
