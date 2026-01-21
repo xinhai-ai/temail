@@ -1230,6 +1230,24 @@
         "forward": "Forwards",
         "control": "Control Flow"
       }
+    },
+    "nodeConfigPanel": {
+      "empty": "Select a node to configure",
+      "nodeFallback": "Node",
+      "openManual": "Open node manual",
+      "displayName": "Display Name",
+      "deleteNode": "Delete Node",
+      "triggerEmail": {
+        "mailboxFilter": "Mailbox Filter",
+        "selectMailbox": "Select mailbox",
+        "allMailboxes": "All Mailboxes",
+        "help": "Trigger when emails arrive at this mailbox"
+      },
+      "triggerSchedule": {
+        "cronExpression": "Cron Expression",
+        "examples": "Examples: \"0 * * * *\" (hourly), \"0 9 * * *\" (daily at 9am)",
+        "timezone": "Timezone"
+      }
     }
   }
 }

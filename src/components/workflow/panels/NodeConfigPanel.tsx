@@ -47,13 +47,17 @@ import { ForwardTestButton, TemplateSelector } from "./ForwardTestPanel";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { NodeManualDialog } from "../node-manuals/NodeManualDialog";
+import { useTranslations } from "next-intl";
 
 interface NodeConfigPanelProps {
   mailboxes?: { id: string; address: string }[];
   onClose?: () => void;
 }
 
+type Translator = (key: string, values?: Record<string, unknown>) => string;
+
 export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProps) {
+  const t = useTranslations("workflows");
   const selectedNode = useWorkflowStore(selectSelectedNode);
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const deleteNode = useWorkflowStore((s) => s.deleteNode);
@@ -64,7 +68,7 @@ export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProp
     return (
       <div className="w-80 border-l bg-muted/30 p-4 flex items-center justify-center h-full">
         <p className="text-sm text-muted-foreground text-center">
-          Select a node to configure
+          {t("nodeConfigPanel.empty")}
         </p>
       </div>
     );
@@ -94,12 +98,12 @@ export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProp
           </div>
           <div>
             <div className="flex items-center gap-1">
-              <h3 className="font-semibold text-sm">{definition?.label || "Node"}</h3>
+              <h3 className="font-semibold text-sm">{definition?.label || t("nodeConfigPanel.nodeFallback")}</h3>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 className="h-6 w-6"
-                aria-label="Open node manual"
+                aria-label={t("nodeConfigPanel.openManual")}
                 onClick={() => setManualOpen(true)}
               >
                 <HelpCircle className="h-4 w-4" />
@@ -128,7 +132,7 @@ export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProp
         <div className="p-3 space-y-4">
           {/* 通用标签 */}
           <div className="space-y-2">
-            <Label htmlFor="label" className="text-xs font-medium">Display Name</Label>
+            <Label htmlFor="label" className="text-xs font-medium">{t("nodeConfigPanel.displayName")}</Label>
             <Input
               id="label"
               value={(data.label as string) || ""}
@@ -139,7 +143,7 @@ export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProp
           </div>
 
           {/* 根据节点类型显示不同的配置项 */}
-          {renderNodeConfig(selectedNode.id, selectedNode.type as NodeType, data, handleChange, mailboxes)}
+          {renderNodeConfig(selectedNode.id, selectedNode.type as NodeType, data, handleChange, mailboxes, t)}
         </div>
       </div>
 
@@ -159,7 +163,7 @@ export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProp
           onClick={handleDelete}
         >
           <Trash2 className="h-4 w-4 mr-2" />
-          Delete Node
+          {t("nodeConfigPanel.deleteNode")}
         </Button>
       </div>
 
@@ -177,23 +181,24 @@ function renderNodeConfig(
   type: NodeType,
   data: Record<string, unknown>,
   onChange: (key: string, value: unknown) => void,
-  mailboxes: { id: string; address: string }[]
+  mailboxes: { id: string; address: string }[],
+  t: Translator
 ) {
   switch (type) {
     case "trigger:email":
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-xs font-medium">Mailbox Filter</Label>
+            <Label className="text-xs font-medium">{t("nodeConfigPanel.triggerEmail.mailboxFilter")}</Label>
             <Select
               value={(data.mailboxId as string) || "all"}
               onValueChange={(v) => onChange("mailboxId", v === "all" ? undefined : v)}
             >
               <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Select mailbox" />
+                <SelectValue placeholder={t("nodeConfigPanel.triggerEmail.selectMailbox")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Mailboxes</SelectItem>
+                <SelectItem value="all">{t("nodeConfigPanel.triggerEmail.allMailboxes")}</SelectItem>
                 {mailboxes.map((mb) => (
                   <SelectItem key={mb.id} value={mb.id}>
                     {mb.address}
@@ -202,7 +207,7 @@ function renderNodeConfig(
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Trigger when emails arrive at this mailbox
+              {t("nodeConfigPanel.triggerEmail.help")}
             </p>
           </div>
         </div>
@@ -212,7 +217,7 @@ function renderNodeConfig(
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="cron" className="text-xs font-medium">Cron Expression</Label>
+            <Label htmlFor="cron" className="text-xs font-medium">{t("nodeConfigPanel.triggerSchedule.cronExpression")}</Label>
             <Input
               id="cron"
               value={(data.cron as string) || ""}
@@ -221,11 +226,11 @@ function renderNodeConfig(
               className="h-8 text-sm font-mono"
             />
             <p className="text-xs text-muted-foreground">
-              Examples: &quot;0 * * * *&quot; (hourly), &quot;0 9 * * *&quot; (daily at 9am)
+              {t("nodeConfigPanel.triggerSchedule.examples")}
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="timezone" className="text-xs font-medium">Timezone</Label>
+            <Label htmlFor="timezone" className="text-xs font-medium">{t("nodeConfigPanel.triggerSchedule.timezone")}</Label>
             <Input
               id="timezone"
               value={(data.timezone as string) || ""}
