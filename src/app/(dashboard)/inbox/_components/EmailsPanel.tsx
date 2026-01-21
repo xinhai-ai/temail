@@ -113,6 +113,7 @@ export function EmailsPanel({
   const t = useTranslations("inbox");
   const tCommon = useTranslations("common");
   const distanceLocale = locale === "zh" ? zhCN : enUS;
+  const selectionMode = selectedEmailIds.length > 0;
 
   const safePages = Math.max(1, pages);
   const [emailSearchInput, setEmailSearchInput] = useState(() => emailSearch);
@@ -387,7 +388,14 @@ export function EmailsPanel({
                         )}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="pt-1">
+                          <div
+                            className={cn(
+                              "pt-1 transition-opacity",
+                              selectionMode
+                                ? "opacity-100"
+                                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto"
+                            )}
+                          >
                             <input
                               type="checkbox"
                               checked={selectedEmailIdSet.has(email.id)}
