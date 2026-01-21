@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import {
   Play,
   CheckCircle2,
@@ -92,13 +93,7 @@ interface WorkflowTestDialogProps {
   getConfig: () => WorkflowConfig;
 }
 
-const defaultTestEmail: TestEmailData = {
-  fromAddress: "sender@example.com",
-  fromName: "Test Sender",
-  toAddress: "recipient@example.com",
-  subject: "Test Email for Workflow",
-  textBody: "This is a test email body for testing the workflow execution.\n\nYou can modify this content to test different conditions.",
-};
+type Translator = (key: string, values?: Record<string, unknown>) => string;
 
 export function WorkflowTestDialog({
   open,
@@ -107,7 +102,14 @@ export function WorkflowTestDialog({
   workflowName,
   getConfig,
 }: WorkflowTestDialogProps) {
-  const [testEmail, setTestEmail] = useState<TestEmailData>(defaultTestEmail);
+  const t = useTranslations("workflows");
+  const [testEmail, setTestEmail] = useState<TestEmailData>(() => ({
+    fromAddress: "sender@example.com",
+    fromName: t("testDialog.default.fromName"),
+    toAddress: "recipient@example.com",
+    subject: t("testDialog.default.subject"),
+    textBody: t("testDialog.default.textBody"),
+  }));
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [activeTab, setActiveTab] = useState<"input" | "result">("input");
@@ -115,7 +117,7 @@ export function WorkflowTestDialog({
 
   const handleTest = async () => {
     if (!workflowId) {
-      toast.error("Please save the workflow first");
+      toast.error(t("testDialog.toast.saveFirst"));
       return;
     }
 
@@ -137,7 +139,7 @@ export function WorkflowTestDialog({
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || "Test failed");
+        toast.error(data.error || t("testDialog.toast.testFailed"));
         return;
       }
 
@@ -145,12 +147,12 @@ export function WorkflowTestDialog({
       setActiveTab("result");
 
       if (data.success) {
-        toast.success("Workflow test completed successfully");
+        toast.success(t("testDialog.toast.completedSuccess"));
       } else {
-        toast.error("Workflow test completed with errors");
+        toast.error(t("testDialog.toast.completedErrors"));
       }
     } catch (error) {
-      toast.error("Failed to run test");
+      toast.error(t("testDialog.toast.runFailed"));
       console.error("Test error:", error);
     } finally {
       setTesting(false);
@@ -183,7 +185,7 @@ export function WorkflowTestDialog({
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Play className="h-4 w-4" />
-            Test Workflow: {workflowName}
+            {t("testDialog.title", { name: workflowName })}
           </DialogTitle>
         </DialogHeader>
 
@@ -193,14 +195,14 @@ export function WorkflowTestDialog({
           className="flex-1 flex flex-col min-h-0"
         >
           <TabsList className="mx-6 mt-4 w-fit">
-            <TabsTrigger value="input">Test Input</TabsTrigger>
+            <TabsTrigger value="input">{t("testDialog.tabs.input")}</TabsTrigger>
             <TabsTrigger value="result" disabled={!result}>
-              Results {result && (
+              {t("testDialog.tabs.results")} {result && (
                 <Badge
                   variant={result.success ? "default" : "destructive"}
                   className="ml-2 text-xs"
                 >
-                  {result.success ? "Success" : "Failed"}
+                  {result.success ? t("testDialog.result.success") : t("testDialog.result.failed")}
                 </Badge>
               )}
             </TabsTrigger>
@@ -209,12 +211,12 @@ export function WorkflowTestDialog({
           <TabsContent value="input" className="flex-1 min-h-0 overflow-auto px-6 pb-4 mt-4">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Configure the test email data that will be used to trigger the workflow.
+                {t("testDialog.description")}
               </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fromAddress">From Address</Label>
+                  <Label htmlFor="fromAddress">{t("testDialog.form.fromAddress")}</Label>
                   <Input
                     id="fromAddress"
                     value={testEmail.fromAddress}
@@ -225,20 +227,20 @@ export function WorkflowTestDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fromName">From Name</Label>
+                  <Label htmlFor="fromName">{t("testDialog.form.fromName")}</Label>
                   <Input
                     id="fromName"
                     value={testEmail.fromName}
                     onChange={(e) =>
                       setTestEmail({ ...testEmail, fromName: e.target.value })
                     }
-                    placeholder="Sender Name"
+                    placeholder={t("testDialog.form.placeholders.fromName")}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="toAddress">To Address</Label>
+                <Label htmlFor="toAddress">{t("testDialog.form.toAddress")}</Label>
                 <Input
                   id="toAddress"
                   value={testEmail.toAddress}
@@ -250,26 +252,26 @@ export function WorkflowTestDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
+                <Label htmlFor="subject">{t("testDialog.form.subject")}</Label>
                 <Input
                   id="subject"
                   value={testEmail.subject}
                   onChange={(e) =>
                     setTestEmail({ ...testEmail, subject: e.target.value })
                   }
-                  placeholder="Email Subject"
+                  placeholder={t("testDialog.form.placeholders.subject")}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="textBody">Email Body</Label>
+                <Label htmlFor="textBody">{t("testDialog.form.textBody")}</Label>
                 <Textarea
                   id="textBody"
                   value={testEmail.textBody}
                   onChange={(e) =>
                     setTestEmail({ ...testEmail, textBody: e.target.value })
                   }
-                  placeholder="Email content..."
+                  placeholder={t("testDialog.form.placeholders.textBody")}
                   rows={6}
                 />
               </div>
@@ -282,21 +284,21 @@ export function WorkflowTestDialog({
                 {/* Summary */}
                 <div className="grid grid-cols-4 gap-3">
                   <SummaryCard
-                    label="Total Nodes"
+                    label={t("testDialog.summary.totalNodes")}
                     value={result.summary.totalNodes}
                   />
                   <SummaryCard
-                    label="Success"
+                    label={t("testDialog.summary.success")}
                     value={result.summary.successCount}
                     color="text-green-600"
                   />
                   <SummaryCard
-                    label="Failed"
+                    label={t("testDialog.summary.failed")}
                     value={result.summary.failedCount}
                     color="text-red-600"
                   />
                   <SummaryCard
-                    label="Duration"
+                    label={t("testDialog.summary.duration")}
                     value={formatDuration(result.summary.totalDuration)}
                     isText
                   />
@@ -319,7 +321,7 @@ export function WorkflowTestDialog({
                       "font-medium",
                       result.success ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
                     )}>
-                      {result.success ? "Workflow executed successfully" : "Workflow execution failed"}
+                      {result.success ? t("testDialog.status.executedSuccess") : t("testDialog.status.executedFailed")}
                     </span>
                   </div>
                   {result.execution.error && (
@@ -331,7 +333,7 @@ export function WorkflowTestDialog({
 
                 {/* Node Execution Timeline */}
                 <div>
-                  <h4 className="text-sm font-medium mb-3">Execution Timeline</h4>
+                  <h4 className="text-sm font-medium mb-3">{t("testDialog.timeline.title")}</h4>
                   <div className="space-y-2">
                     {result.nodeLogs.map((log, index) => (
                       <NodeLogItem
@@ -340,13 +342,14 @@ export function WorkflowTestDialog({
                         isLast={index === result.nodeLogs.length - 1}
                         isExpanded={expandedNodes.has(log.id)}
                         onToggle={() => toggleNode(log.id)}
+                        t={t}
                       />
                     ))}
                     {result.nodeLogs.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
                         <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No nodes were executed</p>
-                        <p className="text-xs mt-1">Check if the workflow has a valid trigger</p>
+                        <p className="text-sm">{t("testDialog.timeline.emptyTitle")}</p>
+                        <p className="text-xs mt-1">{t("testDialog.timeline.emptyHint")}</p>
                       </div>
                     )}
                   </div>
@@ -356,12 +359,12 @@ export function WorkflowTestDialog({
                 <div>
                   <div className="flex items-center gap-2 text-sm font-medium mb-2">
                     <Mail className="h-4 w-4" />
-                    Test Email Used
+                    {t("testDialog.emailSummary.title")}
                   </div>
                   <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
-                    <div><span className="text-muted-foreground">From:</span> {result.testInput.fromName} &lt;{result.testInput.fromAddress}&gt;</div>
-                    <div><span className="text-muted-foreground">To:</span> {result.testInput.toAddress}</div>
-                    <div><span className="text-muted-foreground">Subject:</span> {result.testInput.subject}</div>
+                    <div><span className="text-muted-foreground">{t("testDialog.emailSummary.from")}</span> {result.testInput.fromName} &lt;{result.testInput.fromAddress}&gt;</div>
+                    <div><span className="text-muted-foreground">{t("testDialog.emailSummary.to")}</span> {result.testInput.toAddress}</div>
+                    <div><span className="text-muted-foreground">{t("testDialog.emailSummary.subject")}</span> {result.testInput.subject}</div>
                   </div>
                 </div>
               </div>
@@ -371,18 +374,18 @@ export function WorkflowTestDialog({
 
         <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={handleClose}>
-            Close
+            {t("testDialog.footer.close")}
           </Button>
           <Button onClick={handleTest} disabled={testing || !workflowId}>
             {testing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Running Test...
+                {t("testDialog.footer.running")}
               </>
             ) : (
               <>
                 <Play className="h-4 w-4 mr-2" />
-                Run Test
+                {t("testDialog.footer.run")}
               </>
             )}
           </Button>
@@ -418,11 +421,13 @@ function NodeLogItem({
   isLast,
   isExpanded,
   onToggle,
+  t,
 }: {
   log: NodeLog;
   isLast: boolean;
   isExpanded: boolean;
   onToggle: () => void;
+  t: Translator;
 }) {
   const statusColor = getStatusColor(log.status);
 
@@ -430,6 +435,9 @@ function NodeLogItem({
     const Icon = getStatusIcon(log.status);
     return <Icon className="h-5 w-5" />;
   };
+
+  const statusLabel = getStatusLabel(t, log.status);
+  const timelineMeta = formatTimelineMeta(t, log);
 
   return (
     <div className="relative">
@@ -449,7 +457,7 @@ function NodeLogItem({
                 {log.nodeLabel || log.nodeType}
               </span>
               <Badge variant="outline" className="text-xs">
-                {log.status}
+                {statusLabel}
               </Badge>
               {log.duration !== undefined && (
                 <span className="text-xs text-muted-foreground">
@@ -478,7 +486,7 @@ function NodeLogItem({
           {log.input !== null && log.input !== undefined && (
             <div>
               <div className="text-xs font-medium text-muted-foreground mb-1">
-                Input
+                {t("testDialog.log.input")}
               </div>
               <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-32">
                 {String(JSON.stringify(log.input, null, 2))}
@@ -488,7 +496,7 @@ function NodeLogItem({
           {log.output !== null && log.output !== undefined && (
             <div>
               <div className="text-xs font-medium text-muted-foreground mb-1">
-                Output
+                {t("testDialog.log.output")}
               </div>
               <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-32">
                 {String(JSON.stringify(log.output, null, 2))}
@@ -498,7 +506,7 @@ function NodeLogItem({
           {log.metadata !== null && log.metadata !== undefined && (
             <div>
               <div className="text-xs font-medium text-muted-foreground mb-1">
-                Metadata
+                {t("testDialog.log.metadata")}
               </div>
               <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-32">
                 {String(JSON.stringify(log.metadata, null, 2))}
@@ -506,14 +514,49 @@ function NodeLogItem({
             </div>
           )}
           <div className="text-xs text-muted-foreground">
-            Step #{log.stepOrder}
-            {log.startedAt && ` | Started: ${format(new Date(log.startedAt), "HH:mm:ss.SSS")}`}
-            {log.finishedAt && ` | Finished: ${format(new Date(log.finishedAt), "HH:mm:ss.SSS")}`}
+            {timelineMeta}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function getStatusLabel(t: Translator, status: NodeLog["status"]) {
+  switch (status) {
+    case "RUNNING":
+      return t("testDialog.log.status.running");
+    case "SUCCESS":
+      return t("testDialog.log.status.success");
+    case "FAILED":
+      return t("testDialog.log.status.failed");
+    case "SKIPPED":
+      return t("testDialog.log.status.skipped");
+    default:
+      return status;
+  }
+}
+
+function formatTimelineMeta(t: Translator, log: NodeLog) {
+  const parts: string[] = [t("testDialog.log.step", { step: log.stepOrder })];
+
+  if (log.startedAt) {
+    parts.push(
+      t("testDialog.log.started", {
+        time: format(new Date(log.startedAt), "HH:mm:ss.SSS"),
+      })
+    );
+  }
+
+  if (log.finishedAt) {
+    parts.push(
+      t("testDialog.log.finished", {
+        time: format(new Date(log.finishedAt), "HH:mm:ss.SSS"),
+      })
+    );
+  }
+
+  return parts.join(" | ");
 }
 
 function getStatusIcon(status: string) {
