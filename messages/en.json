@@ -1461,6 +1461,37 @@
         "bodyTemplate": "Body Template",
         "useDefault": "Default",
         "bodyPlaceholder": "Original email content..."
+      },
+      "forwardTelegram": {
+        "useAppBot": "Use App Bot",
+        "useAppBotHelp": "Uses the admin-configured app bot token (telegram_bot_token).",
+        "botToken": "Bot Token",
+        "botTokenHelp": "Get from @BotFather on Telegram",
+        "chatId": "Chat ID",
+        "chatIdHelp": "Use @userinfobot to get your chat ID",
+        "topicId": "Topic ID (optional)",
+        "topicIdHelp": "Telegram message_thread_id for Topics (forum threads).",
+        "parseMode": "Parse Mode",
+        "parseModeHelp": "Select \"None\" to omit \"parse_mode\" in the Telegram API request.",
+        "messageTemplate": "Message Template",
+        "templatePlaceholder": "Template",
+        "presets": {
+          "default": "Default",
+          "compact": "Compact",
+          "detailed": "Detailed"
+        }
+      },
+      "forwardTelegramBound": {
+        "description": "Forwards to your /bind-bound Telegram forum group and routes messages into mailbox topics automatically.",
+        "parseMode": "Parse Mode",
+        "parseModeHelp": "Select \"None\" to omit \"parse_mode\" in the Telegram API request.",
+        "messageTemplate": "Message Template",
+        "templatePlaceholder": "Template",
+        "presets": {
+          "default": "Default",
+          "compact": "Compact",
+          "detailed": "Detailed"
+        }
       }
     },
     "baseNode": {

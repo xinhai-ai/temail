@@ -1803,6 +1803,7 @@ function ForwardTelegramConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
 
   const handlePresetSelect = (preset: string) => {
@@ -1822,14 +1823,14 @@ function ForwardTelegramConfig({
           checked={(data.useAppBot as boolean) || false}
           onCheckedChange={(v) => onChange("useAppBot", v)}
         />
-        <Label htmlFor="useAppBot" className="text-xs">Use App Bot</Label>
+        <Label htmlFor="useAppBot" className="text-xs">{t("nodeConfigPanel.forwardTelegram.useAppBot")}</Label>
       </div>
       <p className="text-xs text-muted-foreground">
-        Uses the admin-configured app bot token (<span className="font-mono">telegram_bot_token</span>).
+        {t("nodeConfigPanel.forwardTelegram.useAppBotHelp")}
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="token" className="text-xs font-medium">Bot Token</Label>
+        <Label htmlFor="token" className="text-xs font-medium">{t("nodeConfigPanel.forwardTelegram.botToken")}</Label>
         <Input
           id="token"
           type="password"
@@ -1840,12 +1841,12 @@ function ForwardTelegramConfig({
           disabled={(data.useAppBot as boolean) || false}
         />
         <p className="text-xs text-muted-foreground">
-          Get from @BotFather on Telegram
+          {t("nodeConfigPanel.forwardTelegram.botTokenHelp")}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="chatId" className="text-xs font-medium">Chat ID</Label>
+        <Label htmlFor="chatId" className="text-xs font-medium">{t("nodeConfigPanel.forwardTelegram.chatId")}</Label>
         <Input
           id="chatId"
           value={(data.chatId as string) || ""}
@@ -1854,12 +1855,12 @@ function ForwardTelegramConfig({
           className="h-8 text-sm font-mono"
         />
         <p className="text-xs text-muted-foreground">
-          Use @userinfobot to get your chat ID
+          {t("nodeConfigPanel.forwardTelegram.chatIdHelp")}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="messageThreadId" className="text-xs font-medium">Topic ID (optional)</Label>
+        <Label htmlFor="messageThreadId" className="text-xs font-medium">{t("nodeConfigPanel.forwardTelegram.topicId")}</Label>
         <Input
           id="messageThreadId"
           value={typeof data.messageThreadId === "number" ? String(data.messageThreadId) : ""}
@@ -1871,12 +1872,12 @@ function ForwardTelegramConfig({
           className="h-8 text-sm font-mono"
         />
         <p className="text-xs text-muted-foreground">
-          Telegram <span className="font-mono">message_thread_id</span> for Topics (forum threads).
+          {t("nodeConfigPanel.forwardTelegram.topicIdHelp")}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Parse Mode</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.forwardTelegram.parseMode")}</Label>
         <Select
           value={(data.parseMode as string) || "Markdown"}
           onValueChange={(v) => onChange("parseMode", v)}
@@ -1892,21 +1893,21 @@ function ForwardTelegramConfig({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Select <span className="font-mono">None</span> to omit <span className="font-mono">parse_mode</span> in the Telegram API request.
+          {t("nodeConfigPanel.forwardTelegram.parseModeHelp")}
         </p>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="template" className="text-xs font-medium">Message Template</Label>
+          <Label htmlFor="template" className="text-xs font-medium">{t("nodeConfigPanel.forwardTelegram.messageTemplate")}</Label>
           <Select value={selectedPreset} onValueChange={handlePresetSelect}>
             <SelectTrigger className="w-[100px] h-6 text-xs">
-              <SelectValue placeholder="Template" />
+              <SelectValue placeholder={t("nodeConfigPanel.forwardTelegram.templatePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Default</SelectItem>
-              <SelectItem value="compact">Compact</SelectItem>
-              <SelectItem value="detailed">Detailed</SelectItem>
+              <SelectItem value="default">{t("nodeConfigPanel.forwardTelegram.presets.default")}</SelectItem>
+              <SelectItem value="compact">{t("nodeConfigPanel.forwardTelegram.presets.compact")}</SelectItem>
+              <SelectItem value="detailed">{t("nodeConfigPanel.forwardTelegram.presets.detailed")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1932,6 +1933,7 @@ function ForwardTelegramBoundConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
 
   const handlePresetSelect = (preset: string) => {
@@ -1946,11 +1948,11 @@ function ForwardTelegramBoundConfig({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Forwards to your <span className="font-mono">/bind</span>-bound Telegram forum group and routes messages into mailbox topics automatically.
+        {t("nodeConfigPanel.forwardTelegramBound.description")}
       </p>
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Parse Mode</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.forwardTelegramBound.parseMode")}</Label>
         <Select
           value={(data.parseMode as string) || "None"}
           onValueChange={(v) => onChange("parseMode", v)}
@@ -1966,21 +1968,21 @@ function ForwardTelegramBoundConfig({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Select <span className="font-mono">None</span> to omit <span className="font-mono">parse_mode</span> in the Telegram API request.
+          {t("nodeConfigPanel.forwardTelegramBound.parseModeHelp")}
         </p>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="template" className="text-xs font-medium">Message Template</Label>
+          <Label htmlFor="template" className="text-xs font-medium">{t("nodeConfigPanel.forwardTelegramBound.messageTemplate")}</Label>
           <Select value={selectedPreset} onValueChange={handlePresetSelect}>
             <SelectTrigger className="w-[100px] h-6 text-xs">
-              <SelectValue placeholder="Template" />
+              <SelectValue placeholder={t("nodeConfigPanel.forwardTelegramBound.templatePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Default</SelectItem>
-              <SelectItem value="compact">Compact</SelectItem>
-              <SelectItem value="detailed">Detailed</SelectItem>
+              <SelectItem value="default">{t("nodeConfigPanel.forwardTelegramBound.presets.default")}</SelectItem>
+              <SelectItem value="compact">{t("nodeConfigPanel.forwardTelegramBound.presets.compact")}</SelectItem>
+              <SelectItem value="detailed">{t("nodeConfigPanel.forwardTelegramBound.presets.detailed")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -1461,6 +1461,37 @@
         "bodyTemplate": "正文模板",
         "useDefault": "默认",
         "bodyPlaceholder": "原始邮件内容..."
+      },
+      "forwardTelegram": {
+        "useAppBot": "使用应用 Bot",
+        "useAppBotHelp": "使用后台配置的应用 Bot Token（telegram_bot_token）。",
+        "botToken": "Bot Token",
+        "botTokenHelp": "从 Telegram 的 @BotFather 获取",
+        "chatId": "Chat ID",
+        "chatIdHelp": "使用 @userinfobot 获取你的 Chat ID",
+        "topicId": "话题 ID（可选）",
+        "topicIdHelp": "用于 Topics（论坛主题）的 Telegram message_thread_id。",
+        "parseMode": "解析模式",
+        "parseModeHelp": "选择“None”将在 Telegram API 请求中省略“parse_mode”。",
+        "messageTemplate": "消息模板",
+        "templatePlaceholder": "模板",
+        "presets": {
+          "default": "默认",
+          "compact": "精简",
+          "detailed": "详细"
+        }
+      },
+      "forwardTelegramBound": {
+        "description": "转发到你通过 /bind 绑定的 Telegram 论坛群，并自动路由到邮箱话题。",
+        "parseMode": "解析模式",
+        "parseModeHelp": "选择“None”将在 Telegram API 请求中省略“parse_mode”。",
+        "messageTemplate": "消息模板",
+        "templatePlaceholder": "模板",
+        "presets": {
+          "default": "默认",
+          "compact": "精简",
+          "detailed": "详细"
+        }
       }
     },
     "baseNode": {
