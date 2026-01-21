@@ -1259,6 +1259,11 @@
         "cronExpression": "Cron 表达式",
         "examples": "示例：\"0 * * * *\"（每小时），\"0 9 * * *\"（每天 9 点）",
         "timezone": "时区"
+      },
+      "controlDelay": {
+        "delayDuration": "延迟时长",
+        "unitSeconds": "秒",
+        "maxHelp": "最大：{maxSeconds} 秒（{maxHours} 小时）"
       }
     },
     "baseNode": {

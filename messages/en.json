@@ -1259,6 +1259,11 @@
         "cronExpression": "Cron Expression",
         "examples": "Examples: \"0 * * * *\" (hourly), \"0 9 * * *\" (daily at 9am)",
         "timezone": "Timezone"
+      },
+      "controlDelay": {
+        "delayDuration": "Delay Duration",
+        "unitSeconds": "seconds",
+        "maxHelp": "Max: {maxSeconds} seconds ({maxHours} hours)"
       }
     },
     "baseNode": {

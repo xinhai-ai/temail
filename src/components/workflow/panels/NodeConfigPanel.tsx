@@ -291,29 +291,29 @@ function renderNodeConfig(
     case "forward:webhook":
       return <ForwardWebhookConfig data={data} onChange={onChange} />;
 
-    case "control:delay":
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="duration" className="text-xs font-medium">Delay Duration</Label>
-            <div className="flex gap-2">
-              <Input
-                id="duration"
-                type="number"
-                min={1}
-                max={86400}
-                value={(data.duration as number) || 60}
-                onChange={(e) => onChange("duration", parseInt(e.target.value) || 60)}
-                className="h-8 text-sm"
-              />
-              <span className="text-sm text-muted-foreground self-center">seconds</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Max: 86400 seconds (24 hours)
-            </p>
-          </div>
-        </div>
-      );
+	    case "control:delay":
+	      return (
+	        <div className="space-y-4">
+	          <div className="space-y-2">
+	            <Label htmlFor="duration" className="text-xs font-medium">{t("nodeConfigPanel.controlDelay.delayDuration")}</Label>
+	            <div className="flex gap-2">
+	              <Input
+	                id="duration"
+	                type="number"
+	                min={1}
+	                max={86400}
+	                value={(data.duration as number) || 60}
+	                onChange={(e) => onChange("duration", parseInt(e.target.value) || 60)}
+	                className="h-8 text-sm"
+	              />
+	              <span className="text-sm text-muted-foreground self-center">{t("nodeConfigPanel.controlDelay.unitSeconds")}</span>
+	            </div>
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.controlDelay.maxHelp", { maxSeconds: 86400, maxHours: 24 })}
+	            </p>
+	          </div>
+	        </div>
+	      );
 
     case "action:setVariable":
       return (
