@@ -444,6 +444,47 @@
         "wait": "请稍后再刷新",
         "failed": "刷新失败",
         "triggered": "已触发刷新"
+      },
+      "trash": {
+        "failed": "移动到回收站失败",
+        "moved": "已移到回收站"
+      },
+      "email": {
+        "archiveFailed": "归档邮件失败",
+        "archived": "邮件已归档",
+        "unarchiveFailed": "取消归档失败",
+        "unarchived": "已取消归档"
+      },
+      "bulk": {
+        "archiveFailed": "归档邮件失败",
+        "archived": "邮件已归档",
+        "markReadFailed": "标记已读失败",
+        "markedRead": "已标记为已读"
+      },
+      "tags": {
+        "updateFailed": "更新标签失败"
+      },
+      "groups": {
+        "nameRequired": "请输入分组名称",
+        "createFailed": "创建分组失败",
+        "created": "分组已创建",
+        "renameFailed": "重命名分组失败",
+        "renamed": "分组已重命名",
+        "deleteFailed": "删除分组失败",
+        "deleted": "分组已删除"
+      },
+      "mailboxes": {
+        "requiredFields": "请填写所有必填项",
+        "createFailed": "创建邮箱失败",
+        "created": "邮箱已创建",
+        "updateFailed": "更新邮箱失败",
+        "updated": "邮箱已更新",
+        "deleteFailed": "删除邮箱失败",
+        "deleted": "邮箱已删除"
+      },
+      "clipboard": {
+        "copied": "已复制到剪贴板",
+        "senderCopied": "发件人地址已复制"
       }
     }
   },

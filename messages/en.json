@@ -444,6 +444,47 @@
         "wait": "Please wait before refreshing again",
         "failed": "Failed to refresh",
         "triggered": "Refresh triggered"
+      },
+      "trash": {
+        "failed": "Failed to move to Trash",
+        "moved": "Moved to Trash"
+      },
+      "email": {
+        "archiveFailed": "Failed to archive email",
+        "archived": "Email archived",
+        "unarchiveFailed": "Failed to unarchive email",
+        "unarchived": "Email unarchived"
+      },
+      "bulk": {
+        "archiveFailed": "Failed to archive emails",
+        "archived": "Emails archived",
+        "markReadFailed": "Failed to mark emails as read",
+        "markedRead": "Marked as read"
+      },
+      "tags": {
+        "updateFailed": "Failed to update tags"
+      },
+      "groups": {
+        "nameRequired": "Group name is required",
+        "createFailed": "Failed to create group",
+        "created": "Group created",
+        "renameFailed": "Failed to rename group",
+        "renamed": "Group renamed",
+        "deleteFailed": "Failed to delete group",
+        "deleted": "Group deleted"
+      },
+      "mailboxes": {
+        "requiredFields": "Please fill in all required fields",
+        "createFailed": "Failed to create mailbox",
+        "created": "Mailbox created",
+        "updateFailed": "Failed to update mailbox",
+        "updated": "Mailbox updated",
+        "deleteFailed": "Failed to delete mailbox",
+        "deleted": "Mailbox deleted"
+      },
+      "clipboard": {
+        "copied": "Copied to clipboard",
+        "senderCopied": "Sender address copied"
       }
     }
   },

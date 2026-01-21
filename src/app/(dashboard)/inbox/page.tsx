@@ -297,9 +297,9 @@ export default function InboxPage() {
     toast.success(t("notifications.enabled"));
   };
 
-  useEffect(() => {
-    const disconnect = connectRealtime({
-      onEvent: (event) => {
+	  useEffect(() => {
+	    const disconnect = connectRealtime({
+	      onEvent: (event) => {
 	        if (event.type === "email.created") {
 	          if (notificationsEnabled && notificationPermission === "granted") {
 	            try {
@@ -417,11 +417,11 @@ export default function InboxPage() {
             setEmails((prev) => prev.filter((e) => !event.data.ids.includes(e.id)));
           }
         }
-      },
-    });
+	      },
+	    });
 
-    return disconnect;
-  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize]);
+	    return disconnect;
+	  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize, t]);
 
   useEffect(() => {
     setSelectedEmailIds([]);
@@ -481,15 +481,15 @@ export default function InboxPage() {
     const shouldDecrementUnread =
       emailForCount?.status === "UNREAD" && typeof emailForCount?.mailboxId === "string";
 
-    setDeleting(true);
-    const res = await fetch(`/api/emails/${id}`, { method: "DELETE" });
-    setDeleting(false);
-    if (!res.ok) {
-      toast.error("Failed to move email to Trash");
-      return false;
-    }
+	    setDeleting(true);
+	    const res = await fetch(`/api/emails/${id}`, { method: "DELETE" });
+	    setDeleting(false);
+	    if (!res.ok) {
+	      toast.error(t("toast.trash.failed"));
+	      return false;
+	    }
 
-    toast.success("Moved to Trash");
+	    toast.success(t("toast.trash.moved"));
 
     if (shouldDecrementUnread) {
       setMailboxes((prev) =>
@@ -598,12 +598,12 @@ export default function InboxPage() {
       body: JSON.stringify({ status: "ARCHIVED" }),
     });
 
-    if (!res.ok) {
-      toast.error("Failed to archive email");
-      return;
-    }
+	    if (!res.ok) {
+	      toast.error(t("toast.email.archiveFailed"));
+	      return;
+	    }
 
-    toast.success("Email archived");
+	    toast.success(t("toast.email.archived"));
     // Remove from list if not viewing archived
     if (statusFilter !== "archived") {
       setEmails((prev) => prev.filter((e) => e.id !== emailId));
@@ -628,12 +628,12 @@ export default function InboxPage() {
       body: JSON.stringify({ status: "READ" }),
     });
 
-    if (!res.ok) {
-      toast.error("Failed to unarchive email");
-      return;
-    }
+	    if (!res.ok) {
+	      toast.error(t("toast.email.unarchiveFailed"));
+	      return;
+	    }
 
-    toast.success("Email unarchived");
+	    toast.success(t("toast.email.unarchived"));
     // Remove from list if viewing archived
     if (statusFilter === "archived") {
       setEmails((prev) => prev.filter((e) => e.id !== emailId));
@@ -660,13 +660,13 @@ export default function InboxPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "archive", ids }),
     });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      toast.error(data?.error || "Failed to archive emails");
-      return;
-    }
+	    const data = await res.json().catch(() => null);
+	    if (!res.ok) {
+	      toast.error(data?.error || t("toast.bulk.archiveFailed"));
+	      return;
+	    }
 
-    toast.success("Emails archived");
+	    toast.success(t("toast.bulk.archived"));
     setSelectedEmailIds([]);
     // Clear selected email if it was archived
     if (selectedEmailId && ids.includes(selectedEmailId)) {
@@ -709,10 +709,10 @@ export default function InboxPage() {
     });
     const data = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      toast.error(data?.error || "Failed to update tags");
-      return false;
-    }
+	    if (!res.ok) {
+	      toast.error(data?.error || t("toast.tags.updateFailed"));
+	      return false;
+	    }
 
     const nextTags = Array.isArray(data?.tags) ? data.tags : [];
     setEmails((prev) => prev.map((e) => (e.id === emailId ? { ...e, tags: nextTags } : e)));
@@ -721,7 +721,7 @@ export default function InboxPage() {
     await loadTags();
     setEmailsRefreshKey((k) => k + 1);
     return true;
-  }, [loadTags]);
+	  }, [loadTags, t]);
 
   const handleBulkMarkRead = async () => {
     const ids = selectedEmailIds;
@@ -740,13 +740,13 @@ export default function InboxPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "markRead", ids }),
     });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      toast.error(data?.error || "Failed to mark emails as read");
-      return;
-    }
+	    const data = await res.json().catch(() => null);
+	    if (!res.ok) {
+	      toast.error(data?.error || t("toast.bulk.markReadFailed"));
+	      return;
+	    }
 
-    toast.success("Marked as read");
+	    toast.success(t("toast.bulk.markedRead"));
     setSelectedEmailIds([]);
 
     // Update mailbox unread counts
@@ -782,12 +782,12 @@ export default function InboxPage() {
     const data = await res.json().catch(() => null);
     setDeleting(false);
 
-    if (!res.ok) {
-      toast.error(data?.error || "Failed to move emails to Trash");
-      return;
-    }
+	    if (!res.ok) {
+	      toast.error(data?.error || t("toast.trash.failed"));
+	      return;
+	    }
 
-    toast.success("Moved to Trash");
+	    toast.success(t("toast.trash.moved"));
     setSelectedEmailIds([]);
     setBulkDeleteOpen(false);
     // Clear selected email if it was deleted
@@ -835,11 +835,11 @@ export default function InboxPage() {
   };
 
   const handleCreateGroup = async () => {
-    const name = newGroupName.trim();
-    if (!name) {
-      toast.error("Group name is required");
-      return;
-    }
+	    const name = newGroupName.trim();
+	    if (!name) {
+	      toast.error(t("toast.groups.nameRequired"));
+	      return;
+	    }
 
     setCreatingGroup(true);
     try {
@@ -848,22 +848,22 @@ export default function InboxPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data?.error || "Failed to create group");
-        return;
-      }
+	      const data = await res.json();
+	      if (!res.ok) {
+	        toast.error(data?.error || t("toast.groups.createFailed"));
+	        return;
+	      }
 
-      setGroups((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-      toast.success("Group created");
-      setNewGroupName("");
-      setGroupDialogOpen(false);
-    } catch {
-      toast.error("Failed to create group");
-    } finally {
-      setCreatingGroup(false);
-    }
-  };
+	      setGroups((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+	      toast.success(t("toast.groups.created"));
+	      setNewGroupName("");
+	      setGroupDialogOpen(false);
+	    } catch {
+	      toast.error(t("toast.groups.createFailed"));
+	    } finally {
+	      setCreatingGroup(false);
+	    }
+	  };
 
   const generateRandomPrefix = () => {
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -875,11 +875,11 @@ export default function InboxPage() {
   };
 
   const handleCreateMailbox = async () => {
-    const prefix = newMailboxPrefix.trim();
-    if (!prefix || !newMailboxDomainId) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
+	    const prefix = newMailboxPrefix.trim();
+	    if (!prefix || !newMailboxDomainId) {
+	      toast.error(t("toast.mailboxes.requiredFields"));
+	      return;
+	    }
 
     const groupId = newMailboxGroupId || undefined;
 
@@ -896,26 +896,26 @@ export default function InboxPage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data?.error || "Failed to create mailbox");
-        return;
-      }
+	      const data = await res.json();
+	      if (!res.ok) {
+	        toast.error(data?.error || t("toast.mailboxes.createFailed"));
+	        return;
+	      }
 
-      toast.success("Mailbox created");
-      setMailboxDialogOpen(false);
-      setNewMailboxPrefix("");
-      setNewMailboxDomainId("");
+	      toast.success(t("toast.mailboxes.created"));
+	      setMailboxDialogOpen(false);
+	      setNewMailboxPrefix("");
+	      setNewMailboxDomainId("");
       setNewMailboxGroupId("");
       setNewMailboxNote("");
-      await loadMailboxes("");
-      setMailboxSearch("");
-    } catch {
-      toast.error("Failed to create mailbox");
-    } finally {
-      setCreatingMailbox(false);
-    }
-  };
+	      await loadMailboxes("");
+	      setMailboxSearch("");
+	    } catch {
+	      toast.error(t("toast.mailboxes.createFailed"));
+	    } finally {
+	      setCreatingMailbox(false);
+	    }
+	  };
 
   const openRenameGroup = (group: MailboxGroup) => {
     setRenameGroupId(group.id);
@@ -924,13 +924,13 @@ export default function InboxPage() {
   };
 
   const handleRenameGroup = async () => {
-    const groupId = renameGroupId;
-    if (!groupId) return;
-    const name = renameGroupName.trim();
-    if (!name) {
-      toast.error("Group name is required");
-      return;
-    }
+	    const groupId = renameGroupId;
+	    if (!groupId) return;
+	    const name = renameGroupName.trim();
+	    if (!name) {
+	      toast.error(t("toast.groups.nameRequired"));
+	      return;
+	    }
 
     setRenamingGroup(true);
     try {
@@ -939,26 +939,26 @@ export default function InboxPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data?.error || "Failed to rename group");
-        return;
-      }
+	      const data = await res.json();
+	      if (!res.ok) {
+	        toast.error(data?.error || t("toast.groups.renameFailed"));
+	        return;
+	      }
 
       setGroups((prev) =>
         prev.map((g) => (g.id === groupId ? { ...g, name } : g)).sort((a, b) => a.name.localeCompare(b.name))
       );
-      setMailboxes((prev) =>
-        prev.map((m) => (m.group?.id === groupId ? { ...m, group: { ...m.group, name } } : m))
-      );
-      toast.success("Group renamed");
-      setRenameDialogOpen(false);
-    } catch {
-      toast.error("Failed to rename group");
-    } finally {
-      setRenamingGroup(false);
-    }
-  };
+	      setMailboxes((prev) =>
+	        prev.map((m) => (m.group?.id === groupId ? { ...m, group: { ...m.group, name } } : m))
+	      );
+	      toast.success(t("toast.groups.renamed"));
+	      setRenameDialogOpen(false);
+	    } catch {
+	      toast.error(t("toast.groups.renameFailed"));
+	    } finally {
+	      setRenamingGroup(false);
+	    }
+	  };
 
   const handleDeleteGroup = (group: MailboxGroup) => {
     setDeleteGroup(group);
@@ -968,12 +968,12 @@ export default function InboxPage() {
     if (!deleteGroup) return;
     setDeleting(true);
     const res = await fetch(`/api/mailbox-groups/${deleteGroup.id}`, { method: "DELETE" });
-    const data = await res.json().catch(() => null);
-    setDeleting(false);
-    if (!res.ok) {
-      toast.error(data?.error || "Failed to delete group");
-      return;
-    }
+	    const data = await res.json().catch(() => null);
+	    setDeleting(false);
+	    if (!res.ok) {
+	      toast.error(data?.error || t("toast.groups.deleteFailed"));
+	      return;
+	    }
 
     setGroups((prev) => prev.filter((g) => g.id !== deleteGroup.id));
     setMailboxes((prev) => prev.map((m) => (m.group?.id === deleteGroup.id ? { ...m, group: null } : m)));
@@ -981,10 +981,10 @@ export default function InboxPage() {
       const next = { ...prev };
       delete next[deleteGroup.id];
       return next;
-    });
-    toast.success("Group deleted");
-    setDeleteGroup(null);
-  };
+	    });
+	    toast.success(t("toast.groups.deleted"));
+	    setDeleteGroup(null);
+	  };
 
   const handleMoveMailboxToGroup = async (mailboxId: string, groupId: string | null) => {
     const res = await fetch(`/api/mailboxes/${mailboxId}`, {
@@ -993,18 +993,18 @@ export default function InboxPage() {
       body: JSON.stringify({ groupId }),
     });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      toast.error(data?.error || "Failed to update mailbox");
-      return;
-    }
+	    if (!res.ok) {
+	      const data = await res.json().catch(() => null);
+	      toast.error(data?.error || t("toast.mailboxes.updateFailed"));
+	      return;
+	    }
 
     const nextGroup = groupId ? groups.find((g) => g.id === groupId) || null : null;
-    setMailboxes((prev) =>
-      prev.map((m) => (m.id === mailboxId ? { ...m, group: nextGroup } : m))
-    );
-    toast.success("Mailbox updated");
-  };
+	    setMailboxes((prev) =>
+	      prev.map((m) => (m.id === mailboxId ? { ...m, group: nextGroup } : m))
+	    );
+	    toast.success(t("toast.mailboxes.updated"));
+	  };
 
   const handleStarMailbox = async (mailboxId: string, isStarred: boolean) => {
     const res = await fetch(`/api/mailboxes/${mailboxId}`, {
@@ -1012,11 +1012,11 @@ export default function InboxPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isStarred: !isStarred }),
     });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      toast.error(data?.error || "Failed to update mailbox");
-      return;
-    }
+	    const data = await res.json().catch(() => null);
+	    if (!res.ok) {
+	      toast.error(data?.error || t("toast.mailboxes.updateFailed"));
+	      return;
+	    }
     setMailboxes((prev) =>
       prev.map((m) => (m.id === mailboxId ? { ...m, isStarred: !isStarred } : m))
     );
@@ -1030,29 +1030,29 @@ export default function InboxPage() {
     if (!deleteMailboxId) return;
     setDeleting(true);
     const res = await fetch(`/api/mailboxes/${deleteMailboxId}`, { method: "DELETE" });
-    const data = await res.json().catch(() => null);
-    setDeleting(false);
-    if (!res.ok) {
-      toast.error(data?.error || "Failed to delete mailbox");
-      return;
-    }
-    toast.success("Mailbox deleted");
-    setMailboxes((prev) => prev.filter((m) => m.id !== deleteMailboxId));
-    if (selectedMailboxId === deleteMailboxId) {
-      handleSelectMailbox(null);
+	    const data = await res.json().catch(() => null);
+	    setDeleting(false);
+	    if (!res.ok) {
+	      toast.error(data?.error || t("toast.mailboxes.deleteFailed"));
+	      return;
+	    }
+	    toast.success(t("toast.mailboxes.deleted"));
+	    setMailboxes((prev) => prev.filter((m) => m.id !== deleteMailboxId));
+	    if (selectedMailboxId === deleteMailboxId) {
+	      handleSelectMailbox(null);
     }
     setDeleteMailboxId(null);
   };
 
-  const handleCopyMailboxAddress = (address: string) => {
-    navigator.clipboard.writeText(address);
-    toast.success("Copied to clipboard");
-  };
+	  const handleCopyMailboxAddress = (address: string) => {
+	    navigator.clipboard.writeText(address);
+	    toast.success(t("toast.clipboard.copied"));
+	  };
 
-  const handleCopySenderAddress = (address: string) => {
-    navigator.clipboard.writeText(address);
-    toast.success("Sender address copied");
-  };
+	  const handleCopySenderAddress = (address: string) => {
+	    navigator.clipboard.writeText(address);
+	    toast.success(t("toast.clipboard.senderCopied"));
+	  };
 
   const handleMarkEmailRead = async (emailId: string) => {
     const email = emails.find((e) => e.id === emailId);
@@ -1093,10 +1093,10 @@ export default function InboxPage() {
         setRefreshCooldown(Math.ceil(remainingMs / 1000));
       }
 
-      if (!res.ok) {
-        toast.error(data?.error || "Failed to refresh");
-        return;
-      }
+	      if (!res.ok) {
+	        toast.error(data?.error || t("toast.refresh.failed"));
+	        return;
+	      }
 
       const imap = data?.imap;
       if (imap?.ok === false && (imap.reason === "cooldown" || imap.reason === "running")) {
