@@ -116,6 +116,7 @@
       "view": "查看",
       "delete": "删除",
       "back": "返回",
+      "manage": "管理",
       "search": "搜索",
       "clear": "清除",
       "prev": "上一页",
@@ -143,8 +144,10 @@
         "inbound": "入站",
         "mailbox": "邮箱",
         "mailboxes": "邮箱",
+        "domains": "域名",
         "level": "级别",
         "message": "消息",
+        "name": "名称",
         "received": "收取时间",
         "role": "角色",
         "source": "来源",
@@ -191,6 +194,11 @@
       "title": "系统日志",
       "subtitle": "查看系统活动",
       "empty": "暂无日志"
+    },
+    "users": {
+      "title": "用户管理",
+      "subtitle": "管理系统用户",
+      "empty": "未找到用户"
     },
     "dashboard": {
       "title": "管理员面板",

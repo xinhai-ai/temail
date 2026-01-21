@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
  import {
@@ -27,6 +28,7 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const t = useTranslations("admin");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,34 +43,34 @@ export default function AdminUsersPage() {
   }, []);
 
   if (loading) {
-    return <div className="flex justify-center p-8">Loading...</div>;
+    return <div className="flex justify-center p-8">{t("common.loading")}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">User Management</h1>
-        <p className="text-muted-foreground">Manage system users</p>
+        <h1 className="text-3xl font-bold">{t("users.title")}</h1>
+        <p className="text-muted-foreground">{t("users.subtitle")}</p>
       </div>
 
       {users.length === 0 ? (
         <Card className="p-12 text-center">
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No users found</p>
+          <p className="text-muted-foreground">{t("users.empty")}</p>
         </Card>
       ) : (
         <Card>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Mailboxes</TableHead>
-                <TableHead>Domains</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("common.table.email")}</TableHead>
+                <TableHead>{t("common.table.name")}</TableHead>
+                <TableHead>{t("common.table.role")}</TableHead>
+                <TableHead>{t("common.table.status")}</TableHead>
+                <TableHead>{t("common.table.mailboxes")}</TableHead>
+                <TableHead>{t("common.table.domains")}</TableHead>
+                <TableHead>{t("common.table.created")}</TableHead>
+                <TableHead className="text-right">{t("common.table.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -91,7 +93,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.isActive ? "default" : "secondary"}>
-                      {user.isActive ? "Active" : "Inactive"}
+                      {user.isActive ? t("common.status.active") : t("common.status.inactive")}
                     </Badge>
                   </TableCell>
                   <TableCell>{user._count.mailboxes}</TableCell>
@@ -101,7 +103,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/users/${user.id}`}>Manage</Link>
+                      <Link href={`/admin/users/${user.id}`}>{t("common.manage")}</Link>
                     </Button>
                   </TableCell>
                 </TableRow>

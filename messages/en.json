@@ -116,6 +116,7 @@
       "view": "View",
       "delete": "Delete",
       "back": "Back",
+      "manage": "Manage",
       "search": "Search",
       "clear": "Clear",
       "prev": "Prev",
@@ -143,8 +144,10 @@
         "inbound": "Inbound",
         "mailbox": "Mailbox",
         "mailboxes": "Mailboxes",
+        "domains": "Domains",
         "level": "Level",
         "message": "Message",
+        "name": "Name",
         "received": "Received",
         "role": "Role",
         "source": "Source",
@@ -191,6 +194,11 @@
       "title": "System Logs",
       "subtitle": "View system activity",
       "empty": "No logs yet"
+    },
+    "users": {
+      "title": "User Management",
+      "subtitle": "Manage system users",
+      "empty": "No users found"
     },
     "dashboard": {
       "title": "Admin Dashboard",
