@@ -1,13 +1,15 @@
 import { cookies, headers } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, type Locale, isLocale } from "@/i18n/config";
+import enMessages from "../../messages/en.json";
+import zhMessages from "../../messages/zh.json";
 
 export default getRequestConfig(async () => {
   const locale = await getLocale();
 
   return {
     locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
+    messages: locale === "zh" ? zhMessages : enMessages,
   };
 });
 
