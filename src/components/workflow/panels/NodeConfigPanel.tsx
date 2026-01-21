@@ -720,6 +720,7 @@ function KeywordConditionConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const [mode, setMode] = useState<"simple" | "advanced">(
     data.conditions ? "advanced" : "simple"
   );
@@ -806,77 +807,77 @@ function KeywordConditionConfig({
 
   const conditionCount = countConditions(data.conditions as CompositeCondition);
 
-  return (
-    <>
-      <div className="rounded-lg border bg-card p-3 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-0.5">
-            <p className="text-xs font-medium">Need multiple categories?</p>
-            <p className="text-xs text-muted-foreground">
-              Switch this node to multi-category classification.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7"
+	  return (
+	    <>
+	      <div className="rounded-lg border bg-card p-3 space-y-2">
+	        <div className="flex items-start justify-between gap-2">
+	          <div className="space-y-0.5">
+	            <p className="text-xs font-medium">{t("nodeConfigPanel.keywordCondition.switchToMulti.title")}</p>
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.keywordCondition.switchToMulti.description")}
+	            </p>
+	          </div>
+	          <Button
+	            variant="outline"
+	            size="sm"
+	            className="h-7"
             onClick={() => {
               onChange("categories", []);
               onChange("keywordSets", []);
-              onChange("defaultCategory", "default");
-            }}
-          >
-            Enable Multi
-          </Button>
-        </div>
-      </div>
-
-      <Tabs value={mode} onValueChange={(v) => handleModeChange(v as "simple" | "advanced")}>
-        <TabsList className="grid w-full grid-cols-2 h-8">
-          <TabsTrigger value="simple" className="text-xs">Simple</TabsTrigger>
-          <TabsTrigger value="advanced" className="text-xs">Advanced</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="simple" className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Keywords</Label>
-            <Textarea
-              value={((data.keywords as string[]) || []).join("\n")}
-              onChange={(e) =>
-                onChange(
+	              onChange("defaultCategory", "default");
+	            }}
+	          >
+	            {t("nodeConfigPanel.keywordCondition.switchToMulti.enable")}
+	          </Button>
+	        </div>
+	      </div>
+	
+	      <Tabs value={mode} onValueChange={(v) => handleModeChange(v as "simple" | "advanced")}>
+	        <TabsList className="grid w-full grid-cols-2 h-8">
+	          <TabsTrigger value="simple" className="text-xs">{t("nodeConfigPanel.keywordCondition.tabs.simple")}</TabsTrigger>
+	          <TabsTrigger value="advanced" className="text-xs">{t("nodeConfigPanel.keywordCondition.tabs.advanced")}</TabsTrigger>
+	        </TabsList>
+	
+	        <TabsContent value="simple" className="space-y-4 mt-4">
+	          <div className="space-y-2">
+	            <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordCondition.simple.keywords")}</Label>
+	            <Textarea
+	              value={((data.keywords as string[]) || []).join("\n")}
+	              onChange={(e) =>
+	                onChange(
                   "keywords",
-                  e.target.value.split("\n").filter((k) => k.trim())
-                )
-              }
-              placeholder="spam&#10;unsubscribe&#10;newsletter"
-              rows={4}
-              className="text-sm font-mono"
-            />
-            <p className="text-xs text-muted-foreground">One keyword per line</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Match Type</Label>
-            <Select
-              value={(data.matchType as string) || "any"}
-              onValueChange={(v) => onChange("matchType", v)}
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Match Any Keyword</SelectItem>
-                <SelectItem value="all">Match All Keywords</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Search In Fields</Label>
-            <div className="flex flex-wrap gap-1">
-              {fields.map((field) => (
-                <Badge key={field} variant="secondary" className="text-xs gap-1">
-                  {MATCH_FIELD_LABELS[field]}
+	                  e.target.value.split("\n").filter((k) => k.trim())
+	                )
+	              }
+	              placeholder={t("nodeConfigPanel.keywordCondition.simple.keywordsPlaceholder")}
+	              rows={4}
+	              className="text-sm font-mono"
+	            />
+	            <p className="text-xs text-muted-foreground">{t("nodeConfigPanel.keywordCondition.simple.keywordsHelp")}</p>
+	          </div>
+	
+	          <div className="space-y-2">
+	            <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordCondition.simple.matchType")}</Label>
+	            <Select
+	              value={(data.matchType as string) || "any"}
+	              onValueChange={(v) => onChange("matchType", v)}
+	            >
+	              <SelectTrigger className="h-8 text-sm">
+	                <SelectValue />
+	              </SelectTrigger>
+	              <SelectContent>
+	                <SelectItem value="any">{t("nodeConfigPanel.keywordCondition.simple.matchTypeOptions.any")}</SelectItem>
+	                <SelectItem value="all">{t("nodeConfigPanel.keywordCondition.simple.matchTypeOptions.all")}</SelectItem>
+	              </SelectContent>
+	            </Select>
+	          </div>
+	
+	          <div className="space-y-2">
+	            <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordCondition.simple.searchInFields")}</Label>
+	            <div className="flex flex-wrap gap-1">
+	              {fields.map((field) => (
+	                <Badge key={field} variant="secondary" className="text-xs gap-1">
+	                  {MATCH_FIELD_LABELS[field]}
                   <button
                     onClick={() => handleRemoveField(field)}
                     className="ml-1 hover:text-destructive"
@@ -888,13 +889,13 @@ function KeywordConditionConfig({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => setShowFieldSelector(!showFieldSelector)}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add Field
-              </Button>
-            </div>
+	                className="h-6 px-2 text-xs"
+	                onClick={() => setShowFieldSelector(!showFieldSelector)}
+	              >
+	                <Plus className="h-3 w-3 mr-1" />
+	                {t("nodeConfigPanel.keywordCondition.simple.addField")}
+	              </Button>
+	            </div>
             {showFieldSelector && (
               <div className="p-2 bg-muted rounded-md space-y-1">
                 {Object.entries(MATCH_FIELD_LABELS).map(([key, label]) => (
@@ -914,31 +915,31 @@ function KeywordConditionConfig({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Switch
-              id="keywordCaseSensitive"
-              checked={(data.caseSensitive as boolean) || false}
-              onCheckedChange={(v) => onChange("caseSensitive", v)}
-            />
-            <Label htmlFor="keywordCaseSensitive" className="text-xs">Case Sensitive</Label>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="advanced" className="mt-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Composite Conditions</Label>
-              {!!data.conditions && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                  onClick={handleClearAdvanced}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+	          <div className="flex items-center gap-2">
+	            <Switch
+	              id="keywordCaseSensitive"
+	              checked={(data.caseSensitive as boolean) || false}
+	              onCheckedChange={(v) => onChange("caseSensitive", v)}
+	            />
+	            <Label htmlFor="keywordCaseSensitive" className="text-xs">{t("nodeConfigPanel.keywordCondition.simple.caseSensitive")}</Label>
+	          </div>
+	        </TabsContent>
+	
+	        <TabsContent value="advanced" className="mt-4">
+	          <div className="space-y-3">
+	            <div className="flex items-center justify-between">
+	              <Label className="text-xs font-medium">{t("nodeConfigPanel.keywordCondition.advanced.compositeConditions")}</Label>
+	              {!!data.conditions && (
+	                <Button
+	                  variant="ghost"
+	                  size="sm"
+	                  className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+	                  onClick={handleClearAdvanced}
+	                >
+	                  {t("nodeConfigPanel.keywordCondition.advanced.clear")}
+	                </Button>
+	              )}
+	            </div>
 
             {/* 条件预览卡片 */}
             <div
@@ -949,52 +950,54 @@ function KeywordConditionConfig({
               )}
               onClick={handleOpenConditionModal}
             >
-              {data.conditions ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <GitBranch className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">
-                      {conditionCount} condition{conditionCount !== 1 ? "s" : ""} configured
-                    </span>
-                  </div>
-                  <ConditionPreview condition={data.conditions as CompositeCondition} />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-2 text-muted-foreground">
-                  <GitBranch className="h-6 w-6" />
-                  <span className="text-xs">Click to create conditions</span>
-                </div>
-              )}
-            </div>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleOpenConditionModal}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              {data.conditions ? "Edit Conditions" : "Create Conditions"}
-            </Button>
-
-            <p className="text-xs text-muted-foreground">
-              Use AND, OR, NOT logic to create complex matching rules
-            </p>
-          </div>
-        </TabsContent>
-      </Tabs>
+	              {data.conditions ? (
+	                <div className="space-y-2">
+	                  <div className="flex items-center gap-2">
+	                    <GitBranch className="h-4 w-4 text-primary" />
+	                    <span className="text-sm font-medium">
+	                      {t("nodeConfigPanel.keywordCondition.advanced.configuredCount", { count: conditionCount })}
+	                    </span>
+	                  </div>
+	                  <ConditionPreview condition={data.conditions as CompositeCondition} />
+	                </div>
+	              ) : (
+	                <div className="flex flex-col items-center gap-2 py-2 text-muted-foreground">
+	                  <GitBranch className="h-6 w-6" />
+	                  <span className="text-xs">{t("nodeConfigPanel.keywordCondition.advanced.clickToCreate")}</span>
+	                </div>
+	              )}
+	            </div>
+	
+	            <Button
+	              variant="outline"
+	              className="w-full"
+	              onClick={handleOpenConditionModal}
+	            >
+	              <Pencil className="h-4 w-4 mr-2" />
+	              {data.conditions
+	                ? t("nodeConfigPanel.keywordCondition.advanced.editConditions")
+	                : t("nodeConfigPanel.keywordCondition.advanced.createConditions")}
+	            </Button>
+	
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.keywordCondition.advanced.help")}
+	            </p>
+	          </div>
+	        </TabsContent>
+	      </Tabs>
 
       {/* 条件编辑模态框 */}
-      <Dialog open={showConditionModal} onOpenChange={setShowConditionModal}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <GitBranch className="h-5 w-5" />
-              Advanced Condition Builder
-            </DialogTitle>
-            <DialogDescription>
-              Build complex conditions using AND, OR, NOT operators
-            </DialogDescription>
-          </DialogHeader>
+	      <Dialog open={showConditionModal} onOpenChange={setShowConditionModal}>
+	        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+	          <DialogHeader>
+	            <DialogTitle className="flex items-center gap-2">
+	              <GitBranch className="h-5 w-5" />
+	              {t("nodeConfigPanel.keywordCondition.builderDialog.title")}
+	            </DialogTitle>
+	            <DialogDescription>
+	              {t("nodeConfigPanel.keywordCondition.builderDialog.description")}
+	            </DialogDescription>
+	          </DialogHeader>
 
           <ScrollArea className="flex-1 pr-4 -mr-4">
             <div className="py-4">
@@ -1005,22 +1008,22 @@ function KeywordConditionConfig({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setShowConditionModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSaveConditions}>
-              Save Conditions
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
+	          <DialogFooter className="gap-2 sm:gap-0">
+	            <Button
+	              variant="outline"
+	              onClick={() => setShowConditionModal(false)}
+	            >
+	              {t("nodeConfigPanel.keywordCondition.builderDialog.cancel")}
+	            </Button>
+	            <Button onClick={handleSaveConditions}>
+	              {t("nodeConfigPanel.keywordCondition.builderDialog.save")}
+	            </Button>
+	          </DialogFooter>
+	        </DialogContent>
+	      </Dialog>
+	    </>
+	  );
+	}
 
 // ==================== 关键词多元分类配置 ====================
 

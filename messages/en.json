@@ -1333,6 +1333,45 @@
         "outputVariableKeysHelp": "When set, the AI must only write these keys (comma/newline separated). If empty, keys are inferred from the instruction (e.g. variables.code).",
         "resultVariable": "Result Variable (optional)",
         "resultVariableHelp": "Stores the full JSON result into this workflow variable"
+      },
+      "keywordCondition": {
+        "switchToMulti": {
+          "title": "Need multiple categories?",
+          "description": "Switch this node to multi-category classification.",
+          "enable": "Enable Multi"
+        },
+        "tabs": {
+          "simple": "Simple",
+          "advanced": "Advanced"
+        },
+        "simple": {
+          "keywords": "Keywords",
+          "keywordsPlaceholder": "spam&#10;unsubscribe&#10;newsletter",
+          "keywordsHelp": "One keyword per line",
+          "matchType": "Match Type",
+          "matchTypeOptions": {
+            "any": "Match Any Keyword",
+            "all": "Match All Keywords"
+          },
+          "searchInFields": "Search In Fields",
+          "addField": "Add Field",
+          "caseSensitive": "Case Sensitive"
+        },
+        "advanced": {
+          "compositeConditions": "Composite Conditions",
+          "clear": "Clear",
+          "configuredCount": "{count, plural, one {# condition configured} other {# conditions configured}}",
+          "clickToCreate": "Click to create conditions",
+          "editConditions": "Edit Conditions",
+          "createConditions": "Create Conditions",
+          "help": "Use AND, OR, NOT logic to create complex matching rules"
+        },
+        "builderDialog": {
+          "title": "Advanced Condition Builder",
+          "description": "Build complex conditions using AND, OR, NOT operators",
+          "cancel": "Cancel",
+          "save": "Save Conditions"
+        }
       }
     },
     "baseNode": {

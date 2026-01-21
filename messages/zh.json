@@ -1333,6 +1333,45 @@
         "outputVariableKeysHelp": "设置后，AI 只能写入这些键（逗号/换行分隔）。留空则根据指令推断键（例如 variables.code）。",
         "resultVariable": "结果变量（可选）",
         "resultVariableHelp": "将完整的 JSON 结果存入该工作流变量"
+      },
+      "keywordCondition": {
+        "switchToMulti": {
+          "title": "需要多个分类？",
+          "description": "将该节点切换为多分类模式。",
+          "enable": "启用多分类"
+        },
+        "tabs": {
+          "simple": "简单",
+          "advanced": "高级"
+        },
+        "simple": {
+          "keywords": "关键词",
+          "keywordsPlaceholder": "垃圾邮件&#10;退订&#10;新闻通讯",
+          "keywordsHelp": "每行一个关键词",
+          "matchType": "匹配方式",
+          "matchTypeOptions": {
+            "any": "匹配任意关键词",
+            "all": "匹配所有关键词"
+          },
+          "searchInFields": "搜索字段",
+          "addField": "添加字段",
+          "caseSensitive": "区分大小写"
+        },
+        "advanced": {
+          "compositeConditions": "复合条件",
+          "clear": "清除",
+          "configuredCount": "已配置 {count} 条条件",
+          "clickToCreate": "点击创建条件",
+          "editConditions": "编辑条件",
+          "createConditions": "创建条件",
+          "help": "使用 AND、OR、NOT 逻辑创建更复杂的匹配规则"
+        },
+        "builderDialog": {
+          "title": "高级条件构建器",
+          "description": "使用 AND、OR、NOT 运算符构建复杂条件",
+          "cancel": "取消",
+          "save": "保存条件"
+        }
       }
     },
     "baseNode": {
