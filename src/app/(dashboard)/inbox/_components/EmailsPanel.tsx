@@ -27,7 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
-import { Archive, ArchiveRestore, Copy, ExternalLink, ListChecks, Mail, MailOpen, MousePointerClick, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, ExternalLink, ListChecks, Mail, MailOpen, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type { EmailListItem, Tag } from "../types";
@@ -211,26 +211,10 @@ export function EmailsPanel({
               <TooltipTrigger asChild>
                 <Button
                   type="button"
-                  variant={selectionMode ? "ghost" : "secondary"}
-                  size="icon-sm"
-                  className="h-8 w-8"
-                  onClick={() => onMultiSelectModeChange(false)}
-                  aria-label={t("emails.selectionMode.single")}
-                  aria-pressed={!selectionMode}
-                >
-                  <MousePointerClick className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("emails.selectionMode.single")}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
                   variant={selectionMode ? "secondary" : "ghost"}
                   size="icon-sm"
                   className="h-8 w-8"
-                  onClick={() => onMultiSelectModeChange(true)}
+                  onClick={() => onMultiSelectModeChange(!selectionMode)}
                   aria-label={t("emails.selectionMode.multi")}
                   aria-pressed={selectionMode}
                 >
