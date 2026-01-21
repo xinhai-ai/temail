@@ -1415,6 +1415,45 @@
           "cancel": "取消",
           "save": "保存"
         }
+      },
+      "aiClassifier": {
+        "toast": {
+          "categoryExists": "分类已存在"
+        },
+        "categories": "分类",
+        "addCategoryPlaceholder": "添加分类（例如：工作、个人、垃圾邮件）",
+        "removeCategoryAria": "移除分类 {category}",
+        "fieldsToAnalyze": "分析字段",
+        "addField": "添加字段",
+        "removeFieldAria": "移除字段 {field}",
+        "defaultCategory": "默认分类",
+        "selectDefaultCategory": "选择默认分类",
+        "defaultOption": "default（兜底）",
+        "defaultHelp": "当置信度过低或 AI 失败时使用",
+        "confidenceThreshold": "置信度阈值",
+        "confidenceHelp": "接受分类结果的最低置信度",
+        "customPrompt": {
+          "label": "自定义提示词（可选）",
+          "toggle": {
+            "show": "显示",
+            "hide": "隐藏"
+          },
+          "placeholder": "留空将使用后台设置中的全局默认提示词",
+          "templateVariablesTitle": "模板变量：",
+          "templateVariables": {
+            "categories": "分类列表",
+            "emailSubject": "邮件主题",
+            "fromAddress": "发件人邮箱",
+            "fromName": "发件人名称",
+            "textBody": "邮件正文（文本）",
+            "htmlBody": "邮件正文（HTML）",
+            "previewUrl": "公开预览链接"
+          }
+        },
+        "info": {
+          "title": "AI 分类器配置",
+          "description": "在后台设置中配置 Base URL、模型和 API Key 以启用 AI 分类。"
+        }
       }
     },
     "baseNode": {

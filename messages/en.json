@@ -1415,6 +1415,45 @@
           "cancel": "Cancel",
           "save": "Save"
         }
+      },
+      "aiClassifier": {
+        "toast": {
+          "categoryExists": "Category already exists"
+        },
+        "categories": "Categories",
+        "addCategoryPlaceholder": "Add category (e.g., work, personal, spam)",
+        "removeCategoryAria": "Remove category {category}",
+        "fieldsToAnalyze": "Fields to Analyze",
+        "addField": "Add field",
+        "removeFieldAria": "Remove field {field}",
+        "defaultCategory": "Default Category",
+        "selectDefaultCategory": "Select default category",
+        "defaultOption": "default (fallback)",
+        "defaultHelp": "Used when confidence is too low or AI fails",
+        "confidenceThreshold": "Confidence Threshold",
+        "confidenceHelp": "Minimum confidence to accept classification result",
+        "customPrompt": {
+          "label": "Custom Prompt (Optional)",
+          "toggle": {
+            "show": "Show",
+            "hide": "Hide"
+          },
+          "placeholder": "Leave empty to use global default prompt from admin settings",
+          "templateVariablesTitle": "Template variables:",
+          "templateVariables": {
+            "categories": "List of categories",
+            "emailSubject": "Email subject",
+            "fromAddress": "Sender email",
+            "fromName": "Sender name",
+            "textBody": "Email body (text)",
+            "htmlBody": "Email body (HTML)",
+            "previewUrl": "Public preview link"
+          }
+        },
+        "info": {
+          "title": "AI Classifier Configuration",
+          "description": "Configure base URL, model and API key in Admin Settings to enable AI classification."
+        }
       }
     },
     "baseNode": {

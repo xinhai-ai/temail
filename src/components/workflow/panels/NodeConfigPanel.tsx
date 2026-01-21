@@ -1417,6 +1417,7 @@ function AiClassifierConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const categories = (data.categories as string[]) || [];
   const customPrompt = (data.customPrompt as string) || "";
   const fields = (data.fields as MatchField[]) || ["subject", "textBody"];
@@ -1430,7 +1431,7 @@ function AiClassifierConfig({
     const category = newCategory.trim();
     if (!category) return;
     if (categories.includes(category)) {
-      toast.error("Category already exists");
+      toast.error(t("nodeConfigPanel.aiClassifier.toast.categoryExists"));
       return;
     }
     onChange("categories", [...categories, category]);
@@ -1462,10 +1463,10 @@ function AiClassifierConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Categories</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.aiClassifier.categories")}</Label>
         <div className="flex gap-2">
           <Input
-            placeholder="Add category (e.g., work, personal, spam)"
+            placeholder={t("nodeConfigPanel.aiClassifier.addCategoryPlaceholder")}
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addCategory()}
@@ -1484,7 +1485,7 @@ function AiClassifierConfig({
                 type="button"
                 onClick={() => removeCategory(category)}
                 className="ml-0.5 hover:text-destructive"
-                aria-label={`Remove category ${category}`}
+                aria-label={t("nodeConfigPanel.aiClassifier.removeCategoryAria", { category })}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -1496,7 +1497,7 @@ function AiClassifierConfig({
       <Separator />
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Fields to Analyze</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.aiClassifier.fieldsToAnalyze")}</Label>
         <div className="flex flex-wrap gap-1.5">
           {fields.map((field) => (
             <Badge key={field} variant="outline" className="gap-1 text-[10px]">
@@ -1505,7 +1506,7 @@ function AiClassifierConfig({
                 type="button"
                 onClick={() => removeField(field)}
                 className="ml-0.5 hover:text-destructive"
-                aria-label={`Remove field ${MATCH_FIELD_LABELS[field]}`}
+                aria-label={t("nodeConfigPanel.aiClassifier.removeFieldAria", { field: MATCH_FIELD_LABELS[field] })}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -1514,7 +1515,7 @@ function AiClassifierConfig({
         </div>
         <Select onValueChange={(v) => addField(v as MatchField)}>
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Add field" />
+            <SelectValue placeholder={t("nodeConfigPanel.aiClassifier.addField")} />
           </SelectTrigger>
           <SelectContent>
             {(Object.keys(MATCH_FIELD_LABELS) as MatchField[])
@@ -1531,16 +1532,16 @@ function AiClassifierConfig({
       <Separator />
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Default Category</Label>
+        <Label className="text-xs font-medium">{t("nodeConfigPanel.aiClassifier.defaultCategory")}</Label>
         <Select
           value={defaultCategory}
           onValueChange={(value) => onChange("defaultCategory", value)}
         >
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Select default category" />
+            <SelectValue placeholder={t("nodeConfigPanel.aiClassifier.selectDefaultCategory")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="default">default (fallback)</SelectItem>
+            <SelectItem value="default">{t("nodeConfigPanel.aiClassifier.defaultOption")}</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
@@ -1549,7 +1550,7 @@ function AiClassifierConfig({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Used when confidence is too low or AI fails
+          {t("nodeConfigPanel.aiClassifier.defaultHelp")}
         </p>
       </div>
 
@@ -1557,7 +1558,7 @@ function AiClassifierConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-medium">Confidence Threshold</Label>
+          <Label className="text-xs font-medium">{t("nodeConfigPanel.aiClassifier.confidenceThreshold")}</Label>
           <span className="text-xs text-muted-foreground">
             {confidenceThreshold.toFixed(2)}
           </span>
@@ -1581,7 +1582,7 @@ function AiClassifierConfig({
           className="h-8 text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Minimum confidence to accept classification result
+          {t("nodeConfigPanel.aiClassifier.confidenceHelp")}
         </p>
       </div>
 
@@ -1589,49 +1590,51 @@ function AiClassifierConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-medium">Custom Prompt (Optional)</Label>
+          <Label className="text-xs font-medium">{t("nodeConfigPanel.aiClassifier.customPrompt.label")}</Label>
           <Button
             variant="ghost"
             size="sm"
             className="h-7"
             onClick={() => setShowPromptEditor(!showPromptEditor)}
           >
-            {showPromptEditor ? "Hide" : "Show"}
+            {showPromptEditor
+              ? t("nodeConfigPanel.aiClassifier.customPrompt.toggle.hide")
+              : t("nodeConfigPanel.aiClassifier.customPrompt.toggle.show")}
           </Button>
         </div>
 
         {showPromptEditor && (
           <>
             <Textarea
-              placeholder="Leave empty to use global default prompt from admin settings"
+              placeholder={t("nodeConfigPanel.aiClassifier.customPrompt.placeholder")}
               value={customPrompt}
               onChange={(e) => onChange("customPrompt", e.target.value)}
               rows={6}
               className="text-sm font-mono"
             />
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>Template variables:</p>
+              <p>{t("nodeConfigPanel.aiClassifier.customPrompt.templateVariablesTitle")}</p>
               <ul className="list-disc list-inside pl-2 space-y-0.5">
                 <li>
-                  <code>{"{{categories}}"}</code> - List of categories
+                  <code>{"{{categories}}"}</code> - {t("nodeConfigPanel.aiClassifier.customPrompt.templateVariables.categories")}
                 </li>
                 <li>
-                  <code>{"{{email.subject}}"}</code> - Email subject
+                  <code>{"{{email.subject}}"}</code> - {t("nodeConfigPanel.aiClassifier.customPrompt.templateVariables.emailSubject")}
                 </li>
                 <li>
-                  <code>{"{{email.fromAddress}}"}</code> - Sender email
+                  <code>{"{{email.fromAddress}}"}</code> - {t("nodeConfigPanel.aiClassifier.customPrompt.templateVariables.fromAddress")}
                 </li>
                 <li>
-                  <code>{"{{email.fromName}}"}</code> - Sender name
+                  <code>{"{{email.fromName}}"}</code> - {t("nodeConfigPanel.aiClassifier.customPrompt.templateVariables.fromName")}
                 </li>
                 <li>
-                  <code>{"{{email.textBody}}"}</code> - Email body (text)
+                  <code>{"{{email.textBody}}"}</code> - {t("nodeConfigPanel.aiClassifier.customPrompt.templateVariables.textBody")}
                 </li>
                 <li>
-                  <code>{"{{email.htmlBody}}"}</code> - Email body (HTML)
+                  <code>{"{{email.htmlBody}}"}</code> - {t("nodeConfigPanel.aiClassifier.customPrompt.templateVariables.htmlBody")}
                 </li>
                 <li>
-                  <code>{"{{email.previewUrl}}"}</code> - Public preview link
+                  <code>{"{{email.previewUrl}}"}</code> - {t("nodeConfigPanel.aiClassifier.customPrompt.templateVariables.previewUrl")}
                 </li>
               </ul>
             </div>
@@ -1643,9 +1646,9 @@ function AiClassifierConfig({
         <div className="flex items-start gap-2">
           <Info className="w-4 h-4 text-blue-600 mt-0.5" />
           <div className="text-xs text-blue-900 space-y-1">
-            <p className="font-medium">AI Classifier Configuration</p>
+            <p className="font-medium">{t("nodeConfigPanel.aiClassifier.info.title")}</p>
             <p>
-              Configure base URL, model and API key in Admin Settings to enable AI classification.
+              {t("nodeConfigPanel.aiClassifier.info.description")}
             </p>
           </div>
         </div>
