@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,22 @@ Instruction:
 {{instruction}}`;
 
 export default function AdminSettingsPage() {
+  type AppInfoResponse = {
+    version: string;
+    commitSha: string | null;
+    commitShortSha: string | null;
+    repository: { owner: string; name: string; url: string };
+  };
+
+  type UpdateCheckResponse = {
+    ok: boolean;
+    checkedAt: string;
+    current: AppInfoResponse;
+    latest: { tag: string; version: string | null; url: string; publishedAt: string | null } | null;
+    hasUpdate: boolean | null;
+    error?: string;
+  };
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -78,6 +95,11 @@ export default function AdminSettingsPage() {
   const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const [otpEnabled, setOtpEnabled] = useState(false);
   const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow">("general");
+
+  const [appInfo, setAppInfo] = useState<AppInfoResponse | null>(null);
+  const [appInfoLoading, setAppInfoLoading] = useState(true);
+  const [updateCheck, setUpdateCheck] = useState<UpdateCheckResponse | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   const setValue = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -222,6 +244,55 @@ export default function AdminSettingsPage() {
     fetchSettings();
   }, []);
 
+  useEffect(() => {
+    const load = async () => {
+      setAppInfoLoading(true);
+      const res = await fetch("/api/app-info");
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setAppInfo(data as AppInfoResponse);
+      }
+      setAppInfoLoading(false);
+    };
+    load().catch(() => setAppInfoLoading(false));
+  }, []);
+
+  const handleCheckUpdates = async () => {
+    setCheckingUpdate(true);
+    try {
+      const res = await fetch("/api/admin/app-update");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "Failed to check updates");
+        return;
+      }
+
+      const payload = data as UpdateCheckResponse;
+      setUpdateCheck(payload);
+
+      if (!payload.ok) {
+        toast.error(payload.error || "Failed to check updates");
+        return;
+      }
+
+      if (payload.hasUpdate === true) {
+        toast.info("Update available");
+        return;
+      }
+
+      if (payload.hasUpdate === false) {
+        toast.success("Up to date");
+        return;
+      }
+
+      toast.message("Update check completed");
+    } catch {
+      toast.error("Failed to check updates");
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -305,9 +376,9 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
-          <TabsTrigger value="general">General</TabsTrigger>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
+            <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="registration">Registration</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="smtp">SMTP</TabsTrigger>
@@ -316,26 +387,110 @@ export default function AdminSettingsPage() {
         </TabsList>
 
         <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                General Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {generalItems.map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <Label>{item.label}</Label>
-                  <Input
-                    placeholder={item.placeholder}
-                    value={values[item.key] || ""}
-                    onChange={(e) => setValue(item.key, e.target.value)}
-                  />
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  General Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {generalItems.map((item) => (
+                  <div key={item.key} className="space-y-2">
+                    <Label>{item.label}</Label>
+                    <Input
+                      placeholder={item.placeholder}
+                      value={values[item.key] || ""}
+                      onChange={(e) => setValue(item.key, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Info className="h-5 w-5" />
+                  About & Updates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Version</span>
+                  <Badge variant="secondary" className="font-mono">
+                    {appInfoLoading ? "…" : appInfo?.version || "unknown"}
+                  </Badge>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Commit</span>
+                  <Badge variant="outline" className="font-mono">
+                    {appInfoLoading ? "…" : appInfo?.commitShortSha || "unknown"}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">GitHub</span>
+                  <a
+                    className="underline underline-offset-4 hover:text-foreground"
+                    href={appInfo?.repository.url || "https://github.com/xinhai-ai/temail"}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {appInfo?.repository.owner && appInfo?.repository.name
+                      ? `${appInfo.repository.owner}/${appInfo.repository.name}`
+                      : "xinhai-ai/temail"}
+                  </a>
+                </div>
+
+                <Separator />
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={handleCheckUpdates} disabled={checkingUpdate}>
+                      {checkingUpdate ? "Checking..." : "Check updates"}
+                    </Button>
+                    {updateCheck?.ok && updateCheck.hasUpdate === true && (
+                      <Badge variant="destructive">Update available</Badge>
+                    )}
+                    {updateCheck?.ok && updateCheck.hasUpdate === false && (
+                      <Badge variant="secondary">Up to date</Badge>
+                    )}
+                  </div>
+                  {updateCheck?.ok && updateCheck.latest?.url && (
+                    <a
+                      className="underline underline-offset-4 hover:text-foreground"
+                      href={updateCheck.latest.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View latest
+                    </a>
+                  )}
+                </div>
+
+                {updateCheck && (
+                  <div className="rounded-md border p-3 space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      Checked: {new Date(updateCheck.checkedAt).toLocaleString()}
+                    </p>
+                    {!updateCheck.ok ? (
+                      <p className="text-sm text-destructive">
+                        {updateCheck.error || "Failed to check updates"}
+                      </p>
+                    ) : updateCheck.latest ? (
+                      <p className="text-sm">
+                        Latest: <span className="font-mono">{updateCheck.latest.tag}</span>
+                        {updateCheck.latest.publishedAt ? ` · Published: ${new Date(updateCheck.latest.publishedAt).toLocaleString()}` : ""}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No release info found.</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="registration">

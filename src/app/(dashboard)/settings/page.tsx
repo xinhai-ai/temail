@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, Lock, Trash2 } from "lucide-react";
+import { User, Lock, Trash2, Info } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import { startRegistration } from "@simplewebauthn/browser";
@@ -47,6 +48,29 @@ export default function SettingsPage() {
   const [passkeysLoading, setPasskeysLoading] = useState(true);
   const [passkeysWorking, setPasskeysWorking] = useState(false);
   const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([]);
+
+  type AppInfoResponse = {
+    version: string;
+    commitSha: string | null;
+    commitShortSha: string | null;
+    repository: { owner: string; name: string; url: string };
+  };
+
+  const [appInfo, setAppInfo] = useState<AppInfoResponse | null>(null);
+  const [appInfoLoading, setAppInfoLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setAppInfoLoading(true);
+      const res = await fetch("/api/app-info");
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setAppInfo(data as AppInfoResponse);
+      }
+      setAppInfoLoading(false);
+    };
+    load().catch(() => setAppInfoLoading(false));
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -586,6 +610,42 @@ export default function SettingsPage() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              About
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Version</span>
+              <Badge variant="secondary" className="font-mono">
+                {appInfoLoading ? "…" : appInfo?.version || "unknown"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Commit</span>
+              <Badge variant="outline" className="font-mono">
+                {appInfoLoading ? "…" : appInfo?.commitShortSha || "unknown"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">GitHub</span>
+              <a
+                className="underline underline-offset-4 hover:text-foreground"
+                href={appInfo?.repository.url || "https://github.com/xinhai-ai/temail"}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {appInfo?.repository.owner && appInfo?.repository.name
+                  ? `${appInfo.repository.owner}/${appInfo.repository.name}`
+                  : "xinhai-ai/temail"}
+              </a>
+            </div>
           </CardContent>
         </Card>
       </div>
