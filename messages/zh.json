@@ -914,7 +914,8 @@
     },
     "status": {
       "active": "启用",
-      "inactive": "停用"
+      "inactive": "停用",
+      "draft": "草稿"
     },
     "mailboxAll": "全部",
     "lastRunNever": "从未",
@@ -1044,6 +1045,24 @@
         "fromName": "测试发件人",
         "subject": "用于工作流的测试邮件",
         "textBody": "这是用于测试工作流执行的测试邮件正文。\\n\\n你可以修改内容来测试不同条件。"
+      }
+    },
+    "toolbar": {
+      "validation": {
+        "noTrigger": "没有触发器",
+        "errors": "{count} 个错误",
+        "valid": "有效"
+      },
+      "unsavedChanges": "未保存的更改",
+      "actions": {
+        "test": "测试",
+        "clear": "清空",
+        "testTitle": {
+          "saveFirst": "请先保存工作流",
+          "addTrigger": "请添加触发器节点",
+          "fixErrors": "请修复校验错误",
+          "testWorkflow": "测试工作流"
+        }
       }
     }
   }

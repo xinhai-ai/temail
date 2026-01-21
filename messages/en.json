@@ -914,7 +914,8 @@
     },
     "status": {
       "active": "Active",
-      "inactive": "Inactive"
+      "inactive": "Inactive",
+      "draft": "Draft"
     },
     "mailboxAll": "All",
     "lastRunNever": "Never",
@@ -1044,6 +1045,24 @@
         "fromName": "Test Sender",
         "subject": "Test Email for Workflow",
         "textBody": "This is a test email body for testing the workflow execution.\\n\\nYou can modify this content to test different conditions."
+      }
+    },
+    "toolbar": {
+      "validation": {
+        "noTrigger": "No trigger",
+        "errors": "{count, plural, one {# error} other {# errors}}",
+        "valid": "Valid"
+      },
+      "unsavedChanges": "Unsaved changes",
+      "actions": {
+        "test": "Test",
+        "clear": "Clear",
+        "testTitle": {
+          "saveFirst": "Save workflow first",
+          "addTrigger": "Add a trigger node",
+          "fixErrors": "Fix validation errors",
+          "testWorkflow": "Test workflow"
+        }
       }
     }
   }
