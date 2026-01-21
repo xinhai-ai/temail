@@ -2010,6 +2010,7 @@ function ForwardDiscordConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
 
   const handlePresetSelect = (preset: string) => {
@@ -2025,16 +2026,16 @@ function ForwardDiscordConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="webhookUrl" className="text-xs font-medium">Webhook URL</Label>
+        <Label htmlFor="webhookUrl" className="text-xs font-medium">{t("nodeConfigPanel.forwardDiscord.webhookUrl")}</Label>
         <Input
           id="webhookUrl"
           value={(data.webhookUrl as string) || ""}
           onChange={(e) => onChange("webhookUrl", e.target.value)}
-          placeholder="https://discord.com/api/webhooks/..."
+          placeholder={t("nodeConfigPanel.forwardDiscord.webhookUrlPlaceholder")}
           className="h-8 text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Server Settings → Integrations → Webhooks
+          {t("nodeConfigPanel.forwardDiscord.webhookUrlHelp")}
         </p>
       </div>
 
@@ -2044,20 +2045,20 @@ function ForwardDiscordConfig({
           checked={(data.useEmbed as boolean) || false}
           onCheckedChange={(v) => onChange("useEmbed", v)}
         />
-        <Label htmlFor="useEmbed" className="text-xs">Use Rich Embed</Label>
+        <Label htmlFor="useEmbed" className="text-xs">{t("nodeConfigPanel.forwardDiscord.useRichEmbed")}</Label>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="template" className="text-xs font-medium">Message Template</Label>
+          <Label htmlFor="template" className="text-xs font-medium">{t("nodeConfigPanel.forwardDiscord.messageTemplate")}</Label>
           <Select value={selectedPreset} onValueChange={handlePresetSelect}>
             <SelectTrigger className="w-[100px] h-6 text-xs">
-              <SelectValue placeholder="Template" />
+              <SelectValue placeholder={t("nodeConfigPanel.forwardDiscord.templatePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Default</SelectItem>
-              <SelectItem value="compact">Compact</SelectItem>
-              <SelectItem value="embed">Rich Embed</SelectItem>
+              <SelectItem value="default">{t("nodeConfigPanel.forwardDiscord.presets.default")}</SelectItem>
+              <SelectItem value="compact">{t("nodeConfigPanel.forwardDiscord.presets.compact")}</SelectItem>
+              <SelectItem value="embed">{t("nodeConfigPanel.forwardDiscord.presets.embed")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2065,7 +2066,7 @@ function ForwardDiscordConfig({
           id="template"
           value={(data.template as string) || ""}
           onChange={(e) => onChange("template", e.target.value)}
-          placeholder="📧 New email notification"
+          placeholder={t("nodeConfigPanel.forwardDiscord.messagePlaceholder")}
           rows={5}
           className="text-xs font-mono"
         />
@@ -2085,6 +2086,7 @@ function ForwardSlackConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
 
   const handlePresetSelect = (preset: string) => {
@@ -2100,16 +2102,16 @@ function ForwardSlackConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="webhookUrl" className="text-xs font-medium">Webhook URL</Label>
+        <Label htmlFor="webhookUrl" className="text-xs font-medium">{t("nodeConfigPanel.forwardSlack.webhookUrl")}</Label>
         <Input
           id="webhookUrl"
           value={(data.webhookUrl as string) || ""}
           onChange={(e) => onChange("webhookUrl", e.target.value)}
-          placeholder="https://hooks.slack.com/services/..."
+          placeholder={t("nodeConfigPanel.forwardSlack.webhookUrlPlaceholder")}
           className="h-8 text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Apps → Incoming Webhooks → Add New Webhook
+          {t("nodeConfigPanel.forwardSlack.webhookUrlHelp")}
         </p>
       </div>
 
@@ -2119,20 +2121,20 @@ function ForwardSlackConfig({
           checked={(data.useBlocks as boolean) || false}
           onCheckedChange={(v) => onChange("useBlocks", v)}
         />
-        <Label htmlFor="useBlocks" className="text-xs">Use Block Kit</Label>
+        <Label htmlFor="useBlocks" className="text-xs">{t("nodeConfigPanel.forwardSlack.useBlockKit")}</Label>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="template" className="text-xs font-medium">Message Template</Label>
+          <Label htmlFor="template" className="text-xs font-medium">{t("nodeConfigPanel.forwardSlack.messageTemplate")}</Label>
           <Select value={selectedPreset} onValueChange={handlePresetSelect}>
             <SelectTrigger className="w-[100px] h-6 text-xs">
-              <SelectValue placeholder="Template" />
+              <SelectValue placeholder={t("nodeConfigPanel.forwardSlack.templatePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Default</SelectItem>
-              <SelectItem value="compact">Compact</SelectItem>
-              <SelectItem value="blocks">Block Kit</SelectItem>
+              <SelectItem value="default">{t("nodeConfigPanel.forwardSlack.presets.default")}</SelectItem>
+              <SelectItem value="compact">{t("nodeConfigPanel.forwardSlack.presets.compact")}</SelectItem>
+              <SelectItem value="blocks">{t("nodeConfigPanel.forwardSlack.presets.blocks")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2140,7 +2142,7 @@ function ForwardSlackConfig({
           id="template"
           value={(data.template as string) || ""}
           onChange={(e) => onChange("template", e.target.value)}
-          placeholder="📧 New email notification"
+          placeholder={t("nodeConfigPanel.forwardSlack.messagePlaceholder")}
           rows={5}
           className="text-xs font-mono"
         />
@@ -2160,6 +2162,7 @@ function ForwardWebhookConfig({
   data: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const t = useTranslations("workflows");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
   const [showHeaders, setShowHeaders] = useState(false);
   const headers = (data.headers as Record<string, string>) || {};
@@ -2190,19 +2193,19 @@ function ForwardWebhookConfig({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="url" className="text-xs font-medium">Webhook URL</Label>
+        <Label htmlFor="url" className="text-xs font-medium">{t("nodeConfigPanel.forwardWebhook.webhookUrl")}</Label>
         <Input
           id="url"
           value={(data.url as string) || ""}
           onChange={(e) => onChange("url", e.target.value)}
-          placeholder="https://api.example.com/webhook"
+          placeholder={t("nodeConfigPanel.forwardWebhook.urlPlaceholder")}
           className="h-8 text-sm"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-2">
-          <Label className="text-xs font-medium">Method</Label>
+          <Label className="text-xs font-medium">{t("nodeConfigPanel.forwardWebhook.method")}</Label>
           <Select
             value={(data.method as string) || "POST"}
             onValueChange={(v) => onChange("method", v)}
@@ -2221,7 +2224,7 @@ function ForwardWebhookConfig({
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-medium">Content-Type</Label>
+          <Label className="text-xs font-medium">{t("nodeConfigPanel.forwardWebhook.contentType")}</Label>
           <Select
             value={(data.contentType as string) || "application/json"}
             onValueChange={(v) => onChange("contentType", v)}
@@ -2230,9 +2233,9 @@ function ForwardWebhookConfig({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="application/json">JSON</SelectItem>
-              <SelectItem value="application/x-www-form-urlencoded">Form</SelectItem>
-              <SelectItem value="text/plain">Plain Text</SelectItem>
+              <SelectItem value="application/json">{t("nodeConfigPanel.forwardWebhook.contentTypeOptions.json")}</SelectItem>
+              <SelectItem value="application/x-www-form-urlencoded">{t("nodeConfigPanel.forwardWebhook.contentTypeOptions.form")}</SelectItem>
+              <SelectItem value="text/plain">{t("nodeConfigPanel.forwardWebhook.contentTypeOptions.plainText")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2245,7 +2248,7 @@ function ForwardWebhookConfig({
           className="flex items-center gap-1 text-xs font-medium hover:text-foreground"
         >
           {showHeaders ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          Custom Headers ({Object.keys(headers).length})
+          {t("nodeConfigPanel.forwardWebhook.customHeaders", { count: Object.keys(headers).length })}
         </button>
         {showHeaders && (
           <div className="space-y-2 p-2 bg-muted/50 rounded-md">
@@ -2259,13 +2262,13 @@ function ForwardWebhookConfig({
                     newHeaders[e.target.value] = value;
                     onChange("headers", newHeaders);
                   }}
-                  placeholder="Header name"
+                  placeholder={t("nodeConfigPanel.forwardWebhook.headerNamePlaceholder")}
                   className="h-7 text-xs flex-1"
                 />
                 <Input
                   value={value}
                   onChange={(e) => handleHeaderChange(key, e.target.value)}
-                  placeholder="Value"
+                  placeholder={t("nodeConfigPanel.forwardWebhook.headerValuePlaceholder")}
                   className="h-7 text-xs flex-1"
                 />
                 <Button
@@ -2285,7 +2288,7 @@ function ForwardWebhookConfig({
               className="w-full h-7 text-xs"
             >
               <Plus className="h-3 w-3 mr-1" />
-              Add Header
+              {t("nodeConfigPanel.forwardWebhook.addHeader")}
             </Button>
           </div>
         )}
@@ -2293,15 +2296,15 @@ function ForwardWebhookConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="bodyTemplate" className="text-xs font-medium">Body Template</Label>
+          <Label htmlFor="bodyTemplate" className="text-xs font-medium">{t("nodeConfigPanel.forwardWebhook.bodyTemplate")}</Label>
           <Select value={selectedPreset} onValueChange={handlePresetSelect}>
             <SelectTrigger className="w-[100px] h-6 text-xs">
-              <SelectValue placeholder="Template" />
+              <SelectValue placeholder={t("nodeConfigPanel.forwardWebhook.templatePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="json">Standard</SelectItem>
-              <SelectItem value="minimal">Minimal</SelectItem>
-              <SelectItem value="full">Full Data</SelectItem>
+              <SelectItem value="json">{t("nodeConfigPanel.forwardWebhook.presets.json")}</SelectItem>
+              <SelectItem value="minimal">{t("nodeConfigPanel.forwardWebhook.presets.minimal")}</SelectItem>
+              <SelectItem value="full">{t("nodeConfigPanel.forwardWebhook.presets.full")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

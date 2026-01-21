@@ -1493,6 +1493,56 @@
           "detailed": "详细"
         }
       },
+      "forwardDiscord": {
+        "webhookUrl": "Webhook URL",
+        "webhookUrlPlaceholder": "https://discord.com/api/webhooks/...",
+        "webhookUrlHelp": "服务器设置 → 集成 → Webhooks",
+        "useRichEmbed": "使用 Rich Embed",
+        "messageTemplate": "消息模板",
+        "templatePlaceholder": "模板",
+        "presets": {
+          "default": "默认",
+          "compact": "精简",
+          "embed": "Rich Embed"
+        },
+        "messagePlaceholder": "📧 新邮件通知"
+      },
+      "forwardSlack": {
+        "webhookUrl": "Webhook URL",
+        "webhookUrlPlaceholder": "https://hooks.slack.com/services/...",
+        "webhookUrlHelp": "应用 → Incoming Webhooks → 添加新 Webhook",
+        "useBlockKit": "使用 Block Kit",
+        "messageTemplate": "消息模板",
+        "templatePlaceholder": "模板",
+        "presets": {
+          "default": "默认",
+          "compact": "精简",
+          "blocks": "Block Kit"
+        },
+        "messagePlaceholder": "📧 新邮件通知"
+      },
+      "forwardWebhook": {
+        "webhookUrl": "Webhook URL",
+        "urlPlaceholder": "https://api.example.com/webhook",
+        "method": "方法",
+        "contentType": "Content-Type",
+        "contentTypeOptions": {
+          "json": "JSON",
+          "form": "表单",
+          "plainText": "纯文本"
+        },
+        "customHeaders": "自定义请求头（{count}）",
+        "headerNamePlaceholder": "请求头名称",
+        "headerValuePlaceholder": "值",
+        "addHeader": "添加请求头",
+        "bodyTemplate": "请求体模板",
+        "templatePlaceholder": "模板",
+        "presets": {
+          "json": "标准",
+          "minimal": "最小",
+          "full": "完整数据"
+        }
+      },
       "variableHelp": {
         "availableVariables": "可用变量"
       }

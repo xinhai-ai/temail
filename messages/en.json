@@ -1493,6 +1493,56 @@
           "detailed": "Detailed"
         }
       },
+      "forwardDiscord": {
+        "webhookUrl": "Webhook URL",
+        "webhookUrlPlaceholder": "https://discord.com/api/webhooks/...",
+        "webhookUrlHelp": "Server Settings → Integrations → Webhooks",
+        "useRichEmbed": "Use Rich Embed",
+        "messageTemplate": "Message Template",
+        "templatePlaceholder": "Template",
+        "presets": {
+          "default": "Default",
+          "compact": "Compact",
+          "embed": "Rich Embed"
+        },
+        "messagePlaceholder": "📧 New email notification"
+      },
+      "forwardSlack": {
+        "webhookUrl": "Webhook URL",
+        "webhookUrlPlaceholder": "https://hooks.slack.com/services/...",
+        "webhookUrlHelp": "Apps → Incoming Webhooks → Add New Webhook",
+        "useBlockKit": "Use Block Kit",
+        "messageTemplate": "Message Template",
+        "templatePlaceholder": "Template",
+        "presets": {
+          "default": "Default",
+          "compact": "Compact",
+          "blocks": "Block Kit"
+        },
+        "messagePlaceholder": "📧 New email notification"
+      },
+      "forwardWebhook": {
+        "webhookUrl": "Webhook URL",
+        "urlPlaceholder": "https://api.example.com/webhook",
+        "method": "Method",
+        "contentType": "Content-Type",
+        "contentTypeOptions": {
+          "json": "JSON",
+          "form": "Form",
+          "plainText": "Plain Text"
+        },
+        "customHeaders": "Custom Headers ({count})",
+        "headerNamePlaceholder": "Header name",
+        "headerValuePlaceholder": "Value",
+        "addHeader": "Add Header",
+        "bodyTemplate": "Body Template",
+        "templatePlaceholder": "Template",
+        "presets": {
+          "json": "Standard",
+          "minimal": "Minimal",
+          "full": "Full Data"
+        }
+      },
       "variableHelp": {
         "availableVariables": "Available Variables"
       }
