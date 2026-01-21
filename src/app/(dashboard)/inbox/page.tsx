@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { connectRealtime } from "@/lib/realtime/client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ export default function InboxPage() {
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
   const SKIP_EMAIL_DELETE_CONFIRM_KEY = "temail.inbox.skipEmailDeleteConfirm";
   const DEFAULT_EMAILS_PAGE_SIZE = 15;
+  const t = useTranslations("inbox");
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
   const [emailsPage, setEmailsPage] = useState(1);
@@ -264,7 +266,7 @@ export default function InboxPage() {
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
-      toast.error("Desktop notifications are not supported in this browser");
+      toast.error(t("notifications.unsupported"));
       return;
     }
 
@@ -275,14 +277,14 @@ export default function InboxPage() {
       } catch {
         // ignore
       }
-      toast.message("Desktop notifications disabled");
+      toast.message(t("notifications.disabled"));
       return;
     }
 
     const permission = await Notification.requestPermission();
     setNotificationPermission(permission);
     if (permission !== "granted") {
-      toast.error("Notification permission not granted");
+      toast.error(t("notifications.permissionNotGranted"));
       return;
     }
 
@@ -292,19 +294,19 @@ export default function InboxPage() {
     } catch {
       // ignore
     }
-    toast.success("Desktop notifications enabled");
+    toast.success(t("notifications.enabled"));
   };
 
   useEffect(() => {
     const disconnect = connectRealtime({
       onEvent: (event) => {
-        if (event.type === "email.created") {
-          if (notificationsEnabled && notificationPermission === "granted") {
-            try {
-              const n = new Notification(event.data.email.subject || "(No subject)", {
-                body: event.data.email.fromName || event.data.email.fromAddress,
-                tag: event.data.email.id,
-              });
+	        if (event.type === "email.created") {
+	          if (notificationsEnabled && notificationPermission === "granted") {
+	            try {
+	              const n = new Notification(event.data.email.subject || t("email.noSubject"), {
+	                body: event.data.email.fromName || event.data.email.fromAddress,
+	                tag: event.data.email.id,
+	              });
               n.onclick = () => {
                 try {
                   window.focus();
@@ -1098,18 +1100,18 @@ export default function InboxPage() {
 
       const imap = data?.imap;
       if (imap?.ok === false && (imap.reason === "cooldown" || imap.reason === "running")) {
-        toast.error(data?.message || imap.message || "Please wait before refreshing again");
+        toast.error(data?.message || imap.message || t("toast.refresh.wait"));
         return;
       }
 
       if (imap?.ok === false && imap.reason === "error") {
-        toast.error(data?.message || imap.message || "Failed to refresh");
+        toast.error(data?.message || imap.message || t("toast.refresh.failed"));
         return;
       }
 
-      toast.success(data?.message || "Refresh triggered");
+      toast.success(data?.message || t("toast.refresh.triggered"));
     } catch {
-      toast.error("Failed to refresh");
+      toast.error(t("toast.refresh.failed"));
     } finally {
       setRefreshingImap(false);
     }
@@ -1124,18 +1126,18 @@ export default function InboxPage() {
           onValueChange={(v) => setMobileTab(v as typeof mobileTab)}
           className="flex flex-col h-full lg:hidden"
         >
-          <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
-            <TabsTrigger value="mailboxes" className="gap-1.5">
-              <Inbox className="h-4 w-4" />
-              <span className="hidden sm:inline">Mailboxes</span>
-            </TabsTrigger>
-            <TabsTrigger value="emails" className="gap-1.5">
-              <Mail className="h-4 w-4" />
-              <span className="hidden sm:inline">Emails</span>
-            </TabsTrigger>
-            <TabsTrigger value="preview" className="gap-1.5 relative">
-              <Eye className="h-4 w-4" />
-              <span className="hidden sm:inline">Preview</span>
+	          <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+	            <TabsTrigger value="mailboxes" className="gap-1.5">
+	              <Inbox className="h-4 w-4" />
+	              <span className="hidden sm:inline">{t("tabs.mailboxes")}</span>
+	            </TabsTrigger>
+	            <TabsTrigger value="emails" className="gap-1.5">
+	              <Mail className="h-4 w-4" />
+	              <span className="hidden sm:inline">{t("tabs.emails")}</span>
+	            </TabsTrigger>
+	            <TabsTrigger value="preview" className="gap-1.5 relative">
+	              <Eye className="h-4 w-4" />
+	              <span className="hidden sm:inline">{t("tabs.preview")}</span>
               {selectedEmailId && (
                 <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
               )}

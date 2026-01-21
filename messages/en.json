@@ -309,6 +309,24 @@
         "unavailable": "No text content"
       },
       "attachments": "Attachments ({count})"
+    },
+    "tabs": {
+      "mailboxes": "Mailboxes",
+      "emails": "Emails",
+      "preview": "Preview"
+    },
+    "notifications": {
+      "unsupported": "Desktop notifications are not supported in this browser",
+      "disabled": "Desktop notifications disabled",
+      "permissionNotGranted": "Notification permission not granted",
+      "enabled": "Desktop notifications enabled"
+    },
+    "toast": {
+      "refresh": {
+        "wait": "Please wait before refreshing again",
+        "failed": "Failed to refresh",
+        "triggered": "Refresh triggered"
+      }
     }
   },
   "dashboard": {
