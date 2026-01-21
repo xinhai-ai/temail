@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
+import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 
 const schema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -13,6 +14,16 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ip = getClientIp(request) || "unknown";
+  const limited = rateLimit(`otp:disable:${session.user.id}:${ip}`, { limit: 10, windowMs: 10 * 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const bodyResult = await readJsonBody(request, { maxBytes: 5_000 });
@@ -25,9 +36,12 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, password: true },
+      select: { id: true, password: true, isActive: true },
     });
-    if (!user?.password) {
+    if (!user?.isActive) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!user.password) {
       return NextResponse.json({ error: "Password is not set for this account" }, { status: 400 });
     }
 
@@ -49,4 +63,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

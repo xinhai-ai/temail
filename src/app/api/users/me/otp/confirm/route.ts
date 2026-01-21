@@ -7,6 +7,7 @@ import { decryptString } from "@/lib/secret-encryption";
 import { verifyTotpCode } from "@/lib/otp";
 import { generateBackupCode, hashBackupCode } from "@/lib/backup-codes";
 import { readJsonBody } from "@/lib/request";
+import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 
 const schema = z.object({
   code: z.string().trim().min(1),
@@ -16,6 +17,16 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ip = getClientIp(request) || "unknown";
+  const limited = rateLimit(`otp:confirm:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const flags = await getAuthFeatureFlags();
@@ -33,10 +44,13 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, email: true },
+      select: { id: true, email: true, isActive: true },
     });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    if (!user.isActive) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const settings = await prisma.systemSetting.findMany({
@@ -113,4 +127,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
