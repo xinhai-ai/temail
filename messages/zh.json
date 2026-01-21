@@ -1277,6 +1277,39 @@
       "actionCloneVariable": {
         "source": "源变量",
         "target": "目标变量"
+      },
+      "actionRewriteEmail": {
+        "subjectTemplate": "主题模板",
+        "subjectHelp": "留空将保留当前主题",
+        "textBodyTemplate": "文本正文模板",
+        "htmlBodyTemplate": "HTML 正文模板",
+        "supportsVariables": "支持模板变量，例如 {emailSubject} 和 {variablesMyVar}"
+      },
+      "actionRegexReplace": {
+        "field": "字段",
+        "selectField": "选择字段",
+        "fieldOptions": {
+          "subject": "主题",
+          "textBody": "正文（文本）",
+          "htmlBody": "正文（HTML）"
+        },
+        "pattern": "匹配模式",
+        "flags": "标志位",
+        "flagsHelp": "允许：{allowed}（默认：{defaultFlag}）",
+        "replacement": "替换内容",
+        "replacementHelp": "支持捕获组（{example}）和模板变量"
+      },
+      "actionSetTags": {
+        "mode": "模式",
+        "selectMode": "选择模式",
+        "modes": {
+          "add": "添加",
+          "remove": "移除",
+          "set": "设置"
+        },
+        "modeHelp": "对当前邮件添加/移除/设置标签",
+        "tags": "标签",
+        "tagsHelp": "每行一个。支持模板变量。"
       }
     },
     "baseNode": {

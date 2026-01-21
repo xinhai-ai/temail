@@ -389,142 +389,145 @@ function renderNodeConfig(
 	        </div>
 	      );
 
-    case "action:rewriteEmail":
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="subject" className="text-xs font-medium">Subject Template</Label>
-            <Input
-              id="subject"
-              value={(data.subject as string) || ""}
-              onChange={(e) => onChange("subject", e.target.value)}
-              placeholder="Re: {{email.subject}}"
-              className="h-8 text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              Leave empty to keep the current subject
-            </p>
-          </div>
+	    case "action:rewriteEmail":
+	      return (
+	        <div className="space-y-4">
+	          <div className="space-y-2">
+	            <Label htmlFor="subject" className="text-xs font-medium">{t("nodeConfigPanel.actionRewriteEmail.subjectTemplate")}</Label>
+	            <Input
+	              id="subject"
+	              value={(data.subject as string) || ""}
+	              onChange={(e) => onChange("subject", e.target.value)}
+	              placeholder="Re: {{email.subject}}"
+	              className="h-8 text-sm"
+	            />
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.actionRewriteEmail.subjectHelp")}
+	            </p>
+	          </div>
 
           <Separator />
 
-          <div className="space-y-2">
-            <Label htmlFor="textBody" className="text-xs font-medium">Text Body Template</Label>
-            <Textarea
-              id="textBody"
-              value={(data.textBody as string) || ""}
-              onChange={(e) => onChange("textBody", e.target.value)}
-              placeholder="{{email.textBody}}"
+	          <div className="space-y-2">
+	            <Label htmlFor="textBody" className="text-xs font-medium">{t("nodeConfigPanel.actionRewriteEmail.textBodyTemplate")}</Label>
+	            <Textarea
+	              id="textBody"
+	              value={(data.textBody as string) || ""}
+	              onChange={(e) => onChange("textBody", e.target.value)}
+	              placeholder="{{email.textBody}}"
               rows={6}
               className="font-mono text-sm"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="htmlBody" className="text-xs font-medium">HTML Body Template</Label>
-            <Textarea
-              id="htmlBody"
-              value={(data.htmlBody as string) || ""}
-              onChange={(e) => onChange("htmlBody", e.target.value)}
-              placeholder="{{email.htmlBody}}"
+	          <div className="space-y-2">
+	            <Label htmlFor="htmlBody" className="text-xs font-medium">{t("nodeConfigPanel.actionRewriteEmail.htmlBodyTemplate")}</Label>
+	            <Textarea
+	              id="htmlBody"
+	              value={(data.htmlBody as string) || ""}
+	              onChange={(e) => onChange("htmlBody", e.target.value)}
+	              placeholder="{{email.htmlBody}}"
               rows={6}
               className="font-mono text-sm"
             />
           </div>
+	
+	          <p className="text-xs text-muted-foreground">
+	            {t("nodeConfigPanel.actionRewriteEmail.supportsVariables", {
+	              emailSubject: "{{email.subject}}",
+	              variablesMyVar: "{{variables.myVar}}",
+	            })}
+	          </p>
+	        </div>
+	      );
 
-          <p className="text-xs text-muted-foreground">
-            Supports template variables like {"{{email.subject}}"} and {"{{variables.myVar}}"}
-          </p>
-        </div>
-      );
-
-    case "action:regexReplace": {
-      const field = ((data.field as EmailContentField) || "textBody") as EmailContentField;
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Field</Label>
-            <Select value={field} onValueChange={(v) => onChange("field", v)}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Select field" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="subject">Subject</SelectItem>
-                <SelectItem value="textBody">Body (Text)</SelectItem>
-                <SelectItem value="htmlBody">Body (HTML)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="pattern" className="text-xs font-medium">Pattern</Label>
-            <Input
-              id="pattern"
-              value={(data.pattern as string) || ""}
-              onChange={(e) => onChange("pattern", e.target.value)}
-              placeholder="\\bfoo\\b"
-              className="h-8 text-sm font-mono"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="flags" className="text-xs font-medium">Flags</Label>
-            <Input
-              id="flags"
-              value={(data.flags as string) || "g"}
-              onChange={(e) => onChange("flags", e.target.value)}
+	    case "action:regexReplace": {
+	      const field = ((data.field as EmailContentField) || "textBody") as EmailContentField;
+	      return (
+	        <div className="space-y-4">
+	          <div className="space-y-2">
+	            <Label className="text-xs font-medium">{t("nodeConfigPanel.actionRegexReplace.field")}</Label>
+	            <Select value={field} onValueChange={(v) => onChange("field", v)}>
+	              <SelectTrigger className="h-8 text-sm">
+	                <SelectValue placeholder={t("nodeConfigPanel.actionRegexReplace.selectField")} />
+	              </SelectTrigger>
+	              <SelectContent>
+	                <SelectItem value="subject">{t("nodeConfigPanel.actionRegexReplace.fieldOptions.subject")}</SelectItem>
+	                <SelectItem value="textBody">{t("nodeConfigPanel.actionRegexReplace.fieldOptions.textBody")}</SelectItem>
+	                <SelectItem value="htmlBody">{t("nodeConfigPanel.actionRegexReplace.fieldOptions.htmlBody")}</SelectItem>
+	              </SelectContent>
+	            </Select>
+	          </div>
+	          <div className="space-y-2">
+	            <Label htmlFor="pattern" className="text-xs font-medium">{t("nodeConfigPanel.actionRegexReplace.pattern")}</Label>
+	            <Input
+	              id="pattern"
+	              value={(data.pattern as string) || ""}
+	              onChange={(e) => onChange("pattern", e.target.value)}
+	              placeholder="\\bfoo\\b"
+	              className="h-8 text-sm font-mono"
+	            />
+	          </div>
+	          <div className="space-y-2">
+	            <Label htmlFor="flags" className="text-xs font-medium">{t("nodeConfigPanel.actionRegexReplace.flags")}</Label>
+	            <Input
+	              id="flags"
+	              value={(data.flags as string) || "g"}
+	              onChange={(e) => onChange("flags", e.target.value)}
               placeholder="gim"
-              className="h-8 text-sm font-mono"
-            />
-            <p className="text-xs text-muted-foreground">
-              Allowed: g i m s u y (default: g)
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="replacement" className="text-xs font-medium">Replacement</Label>
-            <Textarea
-              id="replacement"
-              value={(data.replacement as string) || ""}
-              onChange={(e) => onChange("replacement", e.target.value)}
+	              className="h-8 text-sm font-mono"
+	            />
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.actionRegexReplace.flagsHelp", { allowed: "g i m s u y", defaultFlag: "g" })}
+	            </p>
+	          </div>
+	          <div className="space-y-2">
+	            <Label htmlFor="replacement" className="text-xs font-medium">{t("nodeConfigPanel.actionRegexReplace.replacement")}</Label>
+	            <Textarea
+	              id="replacement"
+	              value={(data.replacement as string) || ""}
+	              onChange={(e) => onChange("replacement", e.target.value)}
               placeholder=""
-              rows={4}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              Supports capture groups ($1) and template variables
-            </p>
-          </div>
-        </div>
-      );
-    }
+	              rows={4}
+	              className="font-mono text-sm"
+	            />
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.actionRegexReplace.replacementHelp", { example: "$1" })}
+	            </p>
+	          </div>
+	        </div>
+	      );
+	    }
 
-    case "action:setTags": {
+	    case "action:setTags": {
       const mode = (data.mode as string) || "add";
       const tags = (data.tags as string[]) || [];
       const tagsText = tags.join("\n");
 
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Mode</Label>
-            <Select value={mode} onValueChange={(v) => onChange("mode", v)}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Select mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="add">Add</SelectItem>
-                <SelectItem value="remove">Remove</SelectItem>
-                <SelectItem value="set">Set</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Add/remove/set tags on the current email
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tags" className="text-xs font-medium">Tags</Label>
-            <Textarea
-              id="tags"
-              value={tagsText}
+	      return (
+	        <div className="space-y-4">
+	          <div className="space-y-2">
+	            <Label className="text-xs font-medium">{t("nodeConfigPanel.actionSetTags.mode")}</Label>
+	            <Select value={mode} onValueChange={(v) => onChange("mode", v)}>
+	              <SelectTrigger className="h-8 text-sm">
+	                <SelectValue placeholder={t("nodeConfigPanel.actionSetTags.selectMode")} />
+	              </SelectTrigger>
+	              <SelectContent>
+	                <SelectItem value="add">{t("nodeConfigPanel.actionSetTags.modes.add")}</SelectItem>
+	                <SelectItem value="remove">{t("nodeConfigPanel.actionSetTags.modes.remove")}</SelectItem>
+	                <SelectItem value="set">{t("nodeConfigPanel.actionSetTags.modes.set")}</SelectItem>
+	              </SelectContent>
+	            </Select>
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.actionSetTags.modeHelp")}
+	            </p>
+	          </div>
+	
+	          <div className="space-y-2">
+	            <Label htmlFor="tags" className="text-xs font-medium">{t("nodeConfigPanel.actionSetTags.tags")}</Label>
+	            <Textarea
+	              id="tags"
+	              value={tagsText}
               onChange={(e) => {
                 const next = e.target.value
                   .split(/\n/)
@@ -532,17 +535,17 @@ function renderNodeConfig(
                   .filter(Boolean);
                 onChange("tags", next);
               }}
-              placeholder={"urgent\nbilling"}
-              rows={5}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              One per line. Supports template variables.
-            </p>
-          </div>
-        </div>
-      );
-    }
+	              placeholder={"urgent\nbilling"}
+	              rows={5}
+	              className="font-mono text-sm"
+	            />
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.actionSetTags.tagsHelp")}
+	            </p>
+	          </div>
+	        </div>
+	      );
+	    }
 
     case "action:aiRewrite":
       return <AiRewriteActionConfig key={nodeId} data={data} onChange={onChange} />;

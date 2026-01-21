@@ -1277,6 +1277,39 @@
       "actionCloneVariable": {
         "source": "Source Variable",
         "target": "Target Variable"
+      },
+      "actionRewriteEmail": {
+        "subjectTemplate": "Subject Template",
+        "subjectHelp": "Leave empty to keep the current subject",
+        "textBodyTemplate": "Text Body Template",
+        "htmlBodyTemplate": "HTML Body Template",
+        "supportsVariables": "Supports template variables like {emailSubject} and {variablesMyVar}"
+      },
+      "actionRegexReplace": {
+        "field": "Field",
+        "selectField": "Select field",
+        "fieldOptions": {
+          "subject": "Subject",
+          "textBody": "Body (Text)",
+          "htmlBody": "Body (HTML)"
+        },
+        "pattern": "Pattern",
+        "flags": "Flags",
+        "flagsHelp": "Allowed: {allowed} (default: {defaultFlag})",
+        "replacement": "Replacement",
+        "replacementHelp": "Supports capture groups ({example}) and template variables"
+      },
+      "actionSetTags": {
+        "mode": "Mode",
+        "selectMode": "Select mode",
+        "modes": {
+          "add": "Add",
+          "remove": "Remove",
+          "set": "Set"
+        },
+        "modeHelp": "Add/remove/set tags on the current email",
+        "tags": "Tags",
+        "tagsHelp": "One per line. Supports template variables."
       }
     },
     "baseNode": {
