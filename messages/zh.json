@@ -897,6 +897,10 @@
         "label": "标签",
         "allTags": "所有标签"
       },
+      "selectionMode": {
+        "single": "单选",
+        "multi": "多选"
+      },
       "selection": {
         "select": "选择",
         "selected": "已选 {count} 封"

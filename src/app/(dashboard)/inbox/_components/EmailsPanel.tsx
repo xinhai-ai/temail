@@ -48,6 +48,7 @@ type EmailsPanelProps = {
   selectedEmailIdSet: Set<string>;
   allSelectedOnPage: boolean;
   someSelectedOnPage: boolean;
+  multiSelectMode: boolean;
   statusFilter: EmailStatusFilter;
   unreadCount: number;
   onEmailSearchChange: (value: string) => void;
@@ -61,6 +62,7 @@ type EmailsPanelProps = {
   onBulkArchive: () => void;
   onOpenBulkDelete: () => void;
   onClearSelection: () => void;
+  onMultiSelectModeChange: (enabled: boolean) => void;
   onStarEmail: (emailId: string, isStarred: boolean) => void;
   onDeleteEmail: (emailId: string) => void;
   onMarkEmailRead: (emailId: string) => void;
@@ -86,6 +88,7 @@ export function EmailsPanel({
   selectedEmailIdSet,
   allSelectedOnPage,
   someSelectedOnPage,
+  multiSelectMode,
   statusFilter,
   unreadCount,
   onEmailSearchChange,
@@ -99,6 +102,7 @@ export function EmailsPanel({
   onBulkArchive,
   onOpenBulkDelete,
   onClearSelection,
+  onMultiSelectModeChange,
   onStarEmail,
   onDeleteEmail,
   onMarkEmailRead,
@@ -113,7 +117,7 @@ export function EmailsPanel({
   const t = useTranslations("inbox");
   const tCommon = useTranslations("common");
   const distanceLocale = locale === "zh" ? zhCN : enUS;
-  const selectionMode = selectedEmailIds.length > 0;
+  const selectionMode = multiSelectMode;
 
   const safePages = Math.max(1, pages);
   const [emailSearchInput, setEmailSearchInput] = useState(() => emailSearch);
@@ -202,6 +206,26 @@ export function EmailsPanel({
               className="pl-10 h-10 bg-muted/50 border-border/50 focus:bg-background transition-colors"
             />
           </div>
+          <div className="flex items-center gap-1 rounded-md border bg-muted/30 p-1 flex-shrink-0">
+            <Button
+              type="button"
+              variant={selectionMode ? "ghost" : "secondary"}
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => onMultiSelectModeChange(false)}
+            >
+              {t("emails.selectionMode.single")}
+            </Button>
+            <Button
+              type="button"
+              variant={selectionMode ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => onMultiSelectModeChange(true)}
+            >
+              {t("emails.selectionMode.multi")}
+            </Button>
+          </div>
         </div>
 
         <Tabs value={statusFilter} onValueChange={(v) => onStatusFilterChange(v as EmailStatusFilter)}>
@@ -237,7 +261,7 @@ export function EmailsPanel({
           </div>
         </div>
 
-        {emails.length > 0 && (
+        {emails.length > 0 && selectionMode && (
           <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
             <label className="flex items-center gap-2 text-sm select-none">
               <input
@@ -388,26 +412,20 @@ export function EmailsPanel({
                         )}
                       >
                         <div className="flex items-start gap-3">
-                          <div
-                            className={cn(
-                              "pt-1 transition-opacity",
-                              selectionMode
-                                ? "opacity-100"
-                                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto"
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedEmailIdSet.has(email.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) =>
-                                onToggleEmailSelection(email.id, e.target.checked)
-                              }
-                            />
-                          </div>
-                          <div className="pt-1.5 w-2 flex-shrink-0">
-                            {isUnread && <div className="w-2 h-2 rounded-full bg-primary" />}
-                          </div>
+                          {selectionMode ? (
+                            <div className="pt-1">
+                              <input
+                                type="checkbox"
+                                checked={selectedEmailIdSet.has(email.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) =>
+                                  onToggleEmailSelection(email.id, e.target.checked)
+                                }
+                              />
+                            </div>
+                          ) : null}
+
+                          <DomainIconPlaceholder fromAddress={email.fromAddress} unread={isUnread} />
 
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex items-center gap-2">
@@ -708,4 +726,47 @@ export function EmailsPanel({
       </div>
     </Card>
   );
+}
+
+function DomainIconPlaceholder({ fromAddress, unread }: { fromAddress: string; unread: boolean }) {
+  const domain = getDomainFromEmail(fromAddress);
+  const mainDomain = domain ? getMainDomain(domain) : null;
+  const initial = getMainDomainInitial(mainDomain ?? domain);
+  const title = mainDomain ?? domain ?? fromAddress;
+
+  return (
+    <div className="pt-0.5 flex-shrink-0">
+      <div className="relative">
+        <div
+          className="h-9 w-9 rounded-md border bg-muted/40 flex items-center justify-center text-xs font-semibold text-muted-foreground"
+          title={title}
+        >
+          {initial}
+        </div>
+        {unread ? (
+          <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function getDomainFromEmail(value: string): string | null {
+  const at = value.lastIndexOf("@");
+  if (at === -1) return null;
+  const domain = value.slice(at + 1).trim().toLowerCase();
+  return domain ? domain : null;
+}
+
+function getMainDomain(domain: string): string {
+  const parts = domain.split(".").filter(Boolean);
+  if (parts.length <= 2) return domain;
+  return parts.slice(-2).join(".");
+}
+
+function getMainDomainInitial(domain: string | null): string {
+  if (!domain) return "?";
+  const base = domain.split(".")[0]?.trim();
+  const initial = base?.[0];
+  return initial ? initial.toUpperCase() : "?";
 }

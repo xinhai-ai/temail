@@ -897,6 +897,10 @@
         "label": "Tag",
         "allTags": "All tags"
       },
+      "selectionMode": {
+        "single": "Single",
+        "multi": "Multi"
+      },
       "selection": {
         "select": "Select",
         "selected": "{count} selected"

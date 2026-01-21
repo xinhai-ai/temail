@@ -72,6 +72,7 @@ export default function InboxPage() {
   const [deleteGroup, setDeleteGroup] = useState<MailboxGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [refreshingImap, setRefreshingImap] = useState(false);
   const [refreshCooldown, setRefreshCooldown] = useState(0); // remaining seconds
@@ -572,6 +573,14 @@ export default function InboxPage() {
       const emailIds = new Set(emails.map((e) => e.id));
       return prev.filter((id) => !emailIds.has(id));
     });
+  };
+
+  const handleMultiSelectModeChange = (enabled: boolean) => {
+    setMultiSelectMode(enabled);
+    if (!enabled) {
+      setSelectedEmailIds([]);
+      setBulkDeleteOpen(false);
+    }
   };
 
   const selectedCountOnPage = useMemo(() => {
@@ -1217,6 +1226,7 @@ export default function InboxPage() {
               selectedEmailIdSet={selectedEmailIdSet}
               allSelectedOnPage={allSelectedOnPage}
               someSelectedOnPage={someSelectedOnPage}
+              multiSelectMode={multiSelectMode}
               statusFilter={statusFilter}
               unreadCount={unreadCount}
               onEmailSearchChange={handleEmailSearchChange}
@@ -1233,6 +1243,7 @@ export default function InboxPage() {
               onBulkArchive={handleBulkArchive}
               onOpenBulkDelete={openBulkDelete}
               onClearSelection={() => setSelectedEmailIds([])}
+              onMultiSelectModeChange={handleMultiSelectModeChange}
               onStarEmail={handleStarEmail}
               onDeleteEmail={handleDeleteEmail}
               onMarkEmailRead={handleMarkEmailRead}
@@ -1324,6 +1335,7 @@ export default function InboxPage() {
             selectedEmailIdSet={selectedEmailIdSet}
             allSelectedOnPage={allSelectedOnPage}
             someSelectedOnPage={someSelectedOnPage}
+            multiSelectMode={multiSelectMode}
             statusFilter={statusFilter}
             unreadCount={unreadCount}
             onEmailSearchChange={handleEmailSearchChange}
@@ -1337,6 +1349,7 @@ export default function InboxPage() {
             onBulkArchive={handleBulkArchive}
             onOpenBulkDelete={openBulkDelete}
             onClearSelection={() => setSelectedEmailIds([])}
+            onMultiSelectModeChange={handleMultiSelectModeChange}
             onStarEmail={handleStarEmail}
             onDeleteEmail={handleDeleteEmail}
             onMarkEmailRead={handleMarkEmailRead}
