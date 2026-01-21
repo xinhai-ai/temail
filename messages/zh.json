@@ -809,7 +809,88 @@
       "created": "域名创建成功",
       "createFailed": "创建域名失败",
       "deleted": "域名已删除",
-      "deleteFailed": "删除域名失败"
+      "deleteFailed": "删除域名失败",
+      "saveFailed": "保存失败",
+      "settingsSaved": "域名设置已保存",
+      "imapSaved": "IMAP 配置已保存",
+      "webhookGenerated": "Webhook 已生成",
+      "webhookGenerateFailed": "生成 Webhook 失败",
+      "webhookStatusUpdated": "Webhook 状态已更新",
+      "webhookStatusUpdateFailed": "更新 Webhook 状态失败",
+      "copied": "已复制到剪贴板"
+    },
+    "config": {
+      "back": "返回",
+      "subtitle": "配置域名设置",
+      "notFound": "未找到域名",
+      "general": {
+        "title": "基本设置",
+        "description": "可见性与元数据",
+        "descriptionField": {
+          "label": "描述（可选）",
+          "placeholder": "描述"
+        },
+        "inboundPolicy": {
+          "label": "收件策略",
+          "options": {
+            "catchAll": "Catch-all（接收未匹配）",
+            "knownOnly": "Known-only（拒绝未知）"
+          },
+          "help": "Catch-all 会保留未匹配的收件邮件以便检查；Known-only 会忽略/拒绝未知收件箱。"
+        },
+        "visibility": {
+          "label": "对用户可见",
+          "help": "开启后，普通用户可在该域名变为 ACTIVE 后使用。"
+        },
+        "save": {
+          "saving": "保存中...",
+          "button": "保存设置"
+        }
+      },
+      "webhook": {
+        "title": "Webhook 配置",
+        "description": "通过邮件服务商的 HTTP Webhook 接收邮件",
+        "urlLabel": "Webhook URL",
+        "secretLabel": "密钥",
+        "secretHelp": "请在 webhook payload 中以 \"secret\" 字段传递此值",
+        "active": {
+          "label": "启用",
+          "description": "开启或关闭 Webhook 收件"
+        },
+        "payloadTitle": "Payload 格式",
+        "noConfig": "未配置 Webhook",
+        "generate": "生成 Webhook"
+      },
+      "imap": {
+        "title": "IMAP 配置",
+        "description": "连接 IMAP 服务器自动拉取邮件",
+        "host": {
+          "label": "IMAP 主机",
+          "placeholder": "imap.example.com"
+        },
+        "port": {
+          "label": "端口",
+          "placeholder": "993"
+        },
+        "username": {
+          "label": "用户名",
+          "placeholder": "username@example.com"
+        },
+        "password": {
+          "label": "密码",
+          "placeholder": "••••••••",
+          "help": "留空将保留当前密码"
+        },
+        "syncInterval": {
+          "label": "同步间隔（秒）",
+          "placeholder": "60"
+        },
+        "secure": "使用 SSL/TLS",
+        "save": {
+          "saving": "保存中...",
+          "button": "保存配置"
+        }
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Globe, Server, Webhook, Copy, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 interface Domain {
   id: string;
@@ -42,6 +43,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const router = useRouter();
   const { data: session, status } = useSession();
+  const t = useTranslations("domains");
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
   const [domain, setDomain] = useState<Domain | null>(null);
@@ -76,7 +78,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
     }
   }, [status, isAdmin, router]);
 
-  const fetchDomain = async () => {
+  const fetchDomain = useCallback(async () => {
     const res = await fetch(`/api/domains/${id}`);
     if (res.ok) {
       const data = await res.json();
@@ -99,7 +101,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
       }
     }
     setLoading(false);
-  };
+  }, [id]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -107,7 +109,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
       await fetchDomain();
     };
     run();
-  }, [id, isAdmin]);
+  }, [fetchDomain, isAdmin]);
 
   const saveDomainSettings = async () => {
     setSavingDomain(true);
@@ -122,11 +124,11 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
     });
 
     if (res.ok) {
-      toast.success("Domain settings saved");
+      toast.success(t("toast.settingsSaved"));
       fetchDomain();
     } else {
       const data = await res.json().catch(() => null);
-      toast.error(data?.error || "Failed to save");
+      toast.error(data?.error || t("toast.saveFailed"));
     }
     setSavingDomain(false);
   };
@@ -148,12 +150,12 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
     });
 
     if (res.ok) {
-      toast.success("IMAP configuration saved");
+      toast.success(t("toast.imapSaved"));
       setImapPassword("");
       fetchDomain();
     } else {
       const data = await res.json();
-      toast.error(data.error || "Failed to save");
+      toast.error(data.error || t("toast.saveFailed"));
     }
     setSaving(false);
   };
@@ -164,10 +166,10 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
     });
 
     if (res.ok) {
-      toast.success("Webhook generated");
+      toast.success(t("toast.webhookGenerated"));
       fetchDomain();
     } else {
-      toast.error("Failed to generate webhook");
+      toast.error(t("toast.webhookGenerateFailed"));
     }
   };
 
@@ -188,14 +190,14 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setWebhookActive(previous);
-        toast.error(data?.error || "Failed to update webhook status");
+        toast.error(data?.error || t("toast.webhookStatusUpdateFailed"));
         return;
       }
-      toast.success("Webhook status updated");
+      toast.success(t("toast.webhookStatusUpdated"));
       fetchDomain();
     } catch {
       setWebhookActive(previous);
-      toast.error("Failed to update webhook status");
+      toast.error(t("toast.webhookStatusUpdateFailed"));
     } finally {
       setSavingWebhook(false);
     }
@@ -203,7 +205,14 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    toast.success(t("toast.copied"));
+  };
+
+  const getStatusLabel = (value: Domain["status"]) => {
+    if (value === "ACTIVE") return t("status.active");
+    if (value === "PENDING") return t("status.pending");
+    if (value === "ERROR") return t("status.error");
+    return value;
   };
 
   if (status === "loading" || loading || !isAdmin) {
@@ -215,7 +224,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   }
 
   if (!domain) {
-    return <div className="p-8 text-center">Domain not found</div>;
+    return <div className="p-8 text-center">{t("config.notFound")}</div>;
   }
 
   const webhookUrl = domain.webhookConfig
@@ -228,7 +237,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
         <Button variant="ghost" size="sm" asChild>
           <Link href="/domains">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            {t("config.back")}
           </Link>
         </Button>
       </div>
@@ -240,7 +249,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{domain.name}</h1>
-            <p className="text-muted-foreground">Configure domain settings</p>
+            <p className="text-muted-foreground">{t("config.subtitle")}</p>
           </div>
         </div>
         <Badge
@@ -252,27 +261,27 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
               : "bg-muted text-muted-foreground"
           }
         >
-          {domain.status}
+          {getStatusLabel(domain.status)}
         </Badge>
       </div>
 
       <Card className="border-border/50">
         <CardHeader>
-          <CardTitle>General</CardTitle>
-          <CardDescription>Visibility and metadata</CardDescription>
+          <CardTitle>{t("config.general.title")}</CardTitle>
+          <CardDescription>{t("config.general.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Description (Optional)</Label>
+            <Label>{t("config.general.descriptionField.label")}</Label>
             <Input
-              placeholder="Description"
+              placeholder={t("config.general.descriptionField.placeholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Inbound Policy</Label>
+            <Label>{t("config.general.inboundPolicy.label")}</Label>
             <Select
               value={inboundPolicy}
               onValueChange={(value) => setInboundPolicy(value as "CATCH_ALL" | "KNOWN_ONLY")}
@@ -281,20 +290,20 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="CATCH_ALL">Catch-all (accept unmatched)</SelectItem>
-                <SelectItem value="KNOWN_ONLY">Known-only (reject unknown)</SelectItem>
+                <SelectItem value="CATCH_ALL">{t("config.general.inboundPolicy.options.catchAll")}</SelectItem>
+                <SelectItem value="KNOWN_ONLY">{t("config.general.inboundPolicy.options.knownOnly")}</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              Catch-all will keep unmatched inbound messages for inspection. Known-only will ignore/reject unknown mailboxes.
+              {t("config.general.inboundPolicy.help")}
             </p>
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
-              <Label>Visible to users</Label>
+              <Label>{t("config.general.visibility.label")}</Label>
               <p className="text-sm text-muted-foreground">
-                When enabled, normal users can use this domain once it becomes ACTIVE.
+                {t("config.general.visibility.help")}
               </p>
             </div>
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
@@ -303,7 +312,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
           <div className="flex gap-2">
             <Button onClick={saveDomainSettings} disabled={savingDomain}>
               <Save className="h-4 w-4 mr-2" />
-              {savingDomain ? "Saving..." : "Save Settings"}
+              {savingDomain ? t("config.general.save.saving") : t("config.general.save.button")}
             </Button>
           </div>
         </CardContent>
@@ -313,27 +322,27 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
         <TabsList>
           <TabsTrigger value="webhook" className="gap-2">
             <Webhook className="h-4 w-4" />
-            Webhook
+            {t("sourceType.webhook")}
           </TabsTrigger>
           <TabsTrigger value="imap" className="gap-2">
             <Server className="h-4 w-4" />
-            IMAP
+            {t("sourceType.imap")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="webhook" className="space-y-6">
           <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Webhook Configuration</CardTitle>
+              <CardTitle>{t("config.webhook.title")}</CardTitle>
               <CardDescription>
-                Receive emails via HTTP webhook from your email provider
+                {t("config.webhook.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {domain.webhookConfig ? (
                 <>
                   <div className="space-y-2">
-                    <Label>Webhook URL</Label>
+                    <Label>{t("config.webhook.urlLabel")}</Label>
                     <div className="flex gap-2">
                       <Input value={webhookUrl || ""} readOnly className="font-mono text-sm" />
                       <Button variant="outline" onClick={() => copyToClipboard(webhookUrl || "")}>
@@ -343,7 +352,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Secret Key</Label>
+                    <Label>{t("config.webhook.secretLabel")}</Label>
                     <div className="flex gap-2">
                       <Input
                         value={domain.webhookConfig.secretKey}
@@ -359,22 +368,22 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Include this as &quot;secret&quot; in your webhook payload
+                      {t("config.webhook.secretHelp")}
                     </p>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Active</Label>
+                      <Label>{t("config.webhook.active.label")}</Label>
                       <p className="text-sm text-muted-foreground">
-                        Enable or disable webhook receiving
+                        {t("config.webhook.active.description")}
                       </p>
                     </div>
                     <Switch checked={webhookActive} onCheckedChange={handleWebhookActiveChange} disabled={savingWebhook} />
                   </div>
 
                   <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-2">Payload Format</h4>
+                    <h4 className="font-medium mb-2">{t("config.webhook.payloadTitle")}</h4>
                     <pre className="p-4 bg-muted rounded-lg text-sm overflow-x-auto">
 {`POST ${webhookUrl}
 Content-Type: application/json
@@ -393,10 +402,10 @@ Content-Type: application/json
               ) : (
                 <div className="text-center py-8">
                   <Webhook className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No webhook configured</p>
+                  <p className="text-muted-foreground mb-4">{t("config.webhook.noConfig")}</p>
                   <Button onClick={generateWebhook}>
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate Webhook
+                    {t("config.webhook.generate")}
                   </Button>
                 </div>
               )}
@@ -407,25 +416,25 @@ Content-Type: application/json
         <TabsContent value="imap" className="space-y-6">
           <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>IMAP Configuration</CardTitle>
+              <CardTitle>{t("config.imap.title")}</CardTitle>
               <CardDescription>
-                Connect to an IMAP server to fetch emails automatically
+                {t("config.imap.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>IMAP Host</Label>
+                  <Label>{t("config.imap.host.label")}</Label>
                   <Input
-                    placeholder="imap.example.com"
+                    placeholder={t("config.imap.host.placeholder")}
                     value={imapHost}
                     onChange={(e) => setImapHost(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Port</Label>
+                  <Label>{t("config.imap.port.label")}</Label>
                   <Input
-                    placeholder="993"
+                    placeholder={t("config.imap.port.placeholder")}
                     value={imapPort}
                     onChange={(e) => setImapPort(e.target.value)}
                   />
@@ -434,46 +443,46 @@ Content-Type: application/json
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Username</Label>
+                  <Label>{t("config.imap.username.label")}</Label>
                   <Input
-                    placeholder="username@example.com"
+                    placeholder={t("config.imap.username.placeholder")}
                     value={imapUsername}
                     onChange={(e) => setImapUsername(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Password</Label>
+                  <Label>{t("config.imap.password.label")}</Label>
                   <Input
                     type="password"
-                    placeholder="••••••••"
+                    placeholder={t("config.imap.password.placeholder")}
                     value={imapPassword}
                     onChange={(e) => setImapPassword(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Leave blank to keep the current password
+                    {t("config.imap.password.help")}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Sync Interval (seconds)</Label>
+                  <Label>{t("config.imap.syncInterval.label")}</Label>
                   <Input
-                    placeholder="60"
+                    placeholder={t("config.imap.syncInterval.placeholder")}
                     value={imapInterval}
                     onChange={(e) => setImapInterval(e.target.value)}
                   />
                 </div>
                 <div className="flex items-center gap-2 pt-6">
                   <Switch checked={imapSecure} onCheckedChange={setImapSecure} />
-                  <Label>Use SSL/TLS</Label>
+                  <Label>{t("config.imap.secure")}</Label>
                 </div>
               </div>
 
               <div className="flex gap-2 pt-4">
                 <Button onClick={saveImapConfig} disabled={saving}>
                   <Save className="h-4 w-4 mr-2" />
-                  {saving ? "Saving..." : "Save Configuration"}
+                  {saving ? t("config.imap.save.saving") : t("config.imap.save.button")}
                 </Button>
               </div>
             </CardContent>

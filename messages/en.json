@@ -809,7 +809,88 @@
       "created": "Domain created successfully",
       "createFailed": "Failed to create domain",
       "deleted": "Domain deleted",
-      "deleteFailed": "Failed to delete domain"
+      "deleteFailed": "Failed to delete domain",
+      "saveFailed": "Failed to save",
+      "settingsSaved": "Domain settings saved",
+      "imapSaved": "IMAP configuration saved",
+      "webhookGenerated": "Webhook generated",
+      "webhookGenerateFailed": "Failed to generate webhook",
+      "webhookStatusUpdated": "Webhook status updated",
+      "webhookStatusUpdateFailed": "Failed to update webhook status",
+      "copied": "Copied to clipboard"
+    },
+    "config": {
+      "back": "Back",
+      "subtitle": "Configure domain settings",
+      "notFound": "Domain not found",
+      "general": {
+        "title": "General",
+        "description": "Visibility and metadata",
+        "descriptionField": {
+          "label": "Description (Optional)",
+          "placeholder": "Description"
+        },
+        "inboundPolicy": {
+          "label": "Inbound Policy",
+          "options": {
+            "catchAll": "Catch-all (accept unmatched)",
+            "knownOnly": "Known-only (reject unknown)"
+          },
+          "help": "Catch-all will keep unmatched inbound messages for inspection. Known-only will ignore/reject unknown mailboxes."
+        },
+        "visibility": {
+          "label": "Visible to users",
+          "help": "When enabled, normal users can use this domain once it becomes ACTIVE."
+        },
+        "save": {
+          "saving": "Saving...",
+          "button": "Save Settings"
+        }
+      },
+      "webhook": {
+        "title": "Webhook Configuration",
+        "description": "Receive emails via HTTP webhook from your email provider",
+        "urlLabel": "Webhook URL",
+        "secretLabel": "Secret Key",
+        "secretHelp": "Include this as \"secret\" in your webhook payload",
+        "active": {
+          "label": "Active",
+          "description": "Enable or disable webhook receiving"
+        },
+        "payloadTitle": "Payload Format",
+        "noConfig": "No webhook configured",
+        "generate": "Generate Webhook"
+      },
+      "imap": {
+        "title": "IMAP Configuration",
+        "description": "Connect to an IMAP server to fetch emails automatically",
+        "host": {
+          "label": "IMAP Host",
+          "placeholder": "imap.example.com"
+        },
+        "port": {
+          "label": "Port",
+          "placeholder": "993"
+        },
+        "username": {
+          "label": "Username",
+          "placeholder": "username@example.com"
+        },
+        "password": {
+          "label": "Password",
+          "placeholder": "••••••••",
+          "help": "Leave blank to keep the current password"
+        },
+        "syncInterval": {
+          "label": "Sync Interval (seconds)",
+          "placeholder": "60"
+        },
+        "secure": "Use SSL/TLS",
+        "save": {
+          "saving": "Saving...",
+          "button": "Save Configuration"
+        }
+      }
     }
   }
 }
