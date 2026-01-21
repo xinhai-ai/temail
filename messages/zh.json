@@ -1160,6 +1160,65 @@
         "failed": "失败",
         "cancelled": "已取消"
       }
+    },
+    "executionDetail": {
+      "title": "执行详情",
+      "info": {
+        "started": "开始时间",
+        "finished": "结束时间",
+        "duration": "耗时",
+        "trigger": "触发器",
+        "running": "运行中...",
+        "inProgress": "进行中"
+      },
+      "status": {
+        "running": "运行中",
+        "success": "成功",
+        "failed": "失败",
+        "cancelled": "已取消"
+      },
+      "nodeStatus": {
+        "running": "运行中",
+        "success": "成功",
+        "failed": "失败",
+        "skipped": "已跳过"
+      },
+      "summary": {
+        "title": "执行摘要",
+        "totalNodes": "节点总数",
+        "success": "成功",
+        "failed": "失败",
+        "skipped": "跳过"
+      },
+      "triggerDetails": {
+        "title": "触发详情",
+        "dispatched": "已分发",
+        "skipped": "已跳过",
+        "subject": "主题：",
+        "from": "发件人：",
+        "to": "收件人：",
+        "skipReason": "跳过原因："
+      },
+      "errorTitle": "错误",
+      "timeline": {
+        "title": "执行时间线"
+      },
+      "log": {
+        "input": "输入",
+        "output": "输出",
+        "metadata": "元数据",
+        "step": "步骤 #{step}",
+        "started": "开始：{time}",
+        "finished": "结束：{time}"
+      },
+      "executionInput": "执行输入",
+      "executionOutput": "执行输出",
+      "loadFailed": "加载执行详情失败",
+      "triggerLabels": {
+        "email": "邮件触发",
+        "manual": "手动触发",
+        "schedule": "定时触发"
+      }
     }
   }
 }

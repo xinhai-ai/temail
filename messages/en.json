@@ -1160,6 +1160,65 @@
         "failed": "Failed",
         "cancelled": "Cancelled"
       }
+    },
+    "executionDetail": {
+      "title": "Execution Details",
+      "info": {
+        "started": "Started",
+        "finished": "Finished",
+        "duration": "Duration",
+        "trigger": "Trigger",
+        "running": "Running...",
+        "inProgress": "In progress"
+      },
+      "status": {
+        "running": "Running",
+        "success": "Success",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "nodeStatus": {
+        "running": "Running",
+        "success": "Success",
+        "failed": "Failed",
+        "skipped": "Skipped"
+      },
+      "summary": {
+        "title": "Execution Summary",
+        "totalNodes": "Total Nodes",
+        "success": "Success",
+        "failed": "Failed",
+        "skipped": "Skipped"
+      },
+      "triggerDetails": {
+        "title": "Trigger Details",
+        "dispatched": "Dispatched",
+        "skipped": "Skipped",
+        "subject": "Subject: ",
+        "from": "From: ",
+        "to": "To: ",
+        "skipReason": "Skip reason: "
+      },
+      "errorTitle": "Error",
+      "timeline": {
+        "title": "Execution Timeline"
+      },
+      "log": {
+        "input": "Input",
+        "output": "Output",
+        "metadata": "Metadata",
+        "step": "Step #{step}",
+        "started": "Started: {time}",
+        "finished": "Finished: {time}"
+      },
+      "executionInput": "Execution Input",
+      "executionOutput": "Execution Output",
+      "loadFailed": "Failed to load execution details",
+      "triggerLabels": {
+        "email": "Email trigger",
+        "manual": "Manual trigger",
+        "schedule": "Scheduled trigger"
+      }
     }
   }
 }

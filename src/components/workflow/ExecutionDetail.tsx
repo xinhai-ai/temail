@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
 import {
   CheckCircle2,
   XCircle,
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { ExecutionPathNode, ExecutionSummary } from "@/lib/workflow/logging-types";
+import { useLocale, useTranslations } from "next-intl";
 
 interface NodeLog {
   id: string;
@@ -83,6 +85,9 @@ export function ExecutionDetail({
   open,
   onClose,
 }: ExecutionDetailProps) {
+  const t = useTranslations("workflows");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "zh" ? zhCN : enUS;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
     execution: Execution;
@@ -136,14 +141,14 @@ export function ExecutionDetail({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Execution Details
+            {t("executionDetail.title")}
             {data?.execution && (
               <Badge
                 variant={
                   data.execution.status === "SUCCESS" ? "default" : "secondary"
                 }
               >
-                {data.execution.status}
+                {getExecutionStatusLabel(t, data.execution.status)}
               </Badge>
             )}
           </DialogTitle>
@@ -160,60 +165,62 @@ export function ExecutionDetail({
               {/* Execution Info */}
               <div className="grid grid-cols-2 gap-4">
                 <InfoCard
-                  label="Started"
+                  label={t("executionDetail.info.started")}
                   value={format(
                     new Date(data.execution.startedAt),
-                    "MMM d, yyyy HH:mm:ss"
+                    "MMM d, yyyy HH:mm:ss",
+                    { locale: dateFnsLocale }
                   )}
                 />
                 <InfoCard
-                  label="Finished"
+                  label={t("executionDetail.info.finished")}
                   value={
                     data.execution.finishedAt
                       ? format(
                           new Date(data.execution.finishedAt),
-                          "MMM d, yyyy HH:mm:ss"
+                          "MMM d, yyyy HH:mm:ss",
+                          { locale: dateFnsLocale }
                         )
-                      : "Running..."
+                      : t("executionDetail.info.running")
                   }
                 />
                 <InfoCard
-                  label="Duration"
+                  label={t("executionDetail.info.duration")}
                   value={
                     data.execution.finishedAt
                       ? formatDuration(
                           new Date(data.execution.finishedAt).getTime() -
                             new Date(data.execution.startedAt).getTime()
                         )
-                      : "In progress"
+                      : t("executionDetail.info.inProgress")
                   }
                 />
                 <InfoCard
-                  label="Trigger"
-                  value={parseTriggerInfo(data.execution.triggeredBy).label}
+                  label={t("executionDetail.info.trigger")}
+                  value={parseTriggerInfo(data.execution.triggeredBy, t).label}
                 />
               </div>
 
               {/* Summary Stats */}
               <div>
-                <h4 className="text-sm font-medium mb-2">Execution Summary</h4>
+                <h4 className="text-sm font-medium mb-2">{t("executionDetail.summary.title")}</h4>
                 <div className="grid grid-cols-4 gap-2">
                   <StatCard
-                    label="Total Nodes"
+                    label={t("executionDetail.summary.totalNodes")}
                     value={data.summary.totalNodes}
                   />
                   <StatCard
-                    label="Success"
+                    label={t("executionDetail.summary.success")}
                     value={data.summary.successCount}
                     color="text-green-600"
                   />
                   <StatCard
-                    label="Failed"
+                    label={t("executionDetail.summary.failed")}
                     value={data.summary.failedCount}
                     color="text-red-600"
                   />
                   <StatCard
-                    label="Skipped"
+                    label={t("executionDetail.summary.skipped")}
                     value={data.summary.skippedCount}
                     color="text-muted-foreground"
                   />
@@ -223,7 +230,7 @@ export function ExecutionDetail({
               {/* Trigger Details */}
               {data.dispatchLog && (
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Trigger Details</h4>
+                  <h4 className="text-sm font-medium mb-2">{t("executionDetail.triggerDetails.title")}</h4>
                   <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">
@@ -231,33 +238,33 @@ export function ExecutionDetail({
                       </Badge>
                       {data.dispatchLog.dispatched ? (
                         <Badge variant="default" className="bg-green-600">
-                          Dispatched
+                          {t("executionDetail.triggerDetails.dispatched")}
                         </Badge>
                       ) : (
-                        <Badge variant="secondary">Skipped</Badge>
+                        <Badge variant="secondary">{t("executionDetail.triggerDetails.skipped")}</Badge>
                       )}
                     </div>
                     {data.dispatchLog.emailSubject && (
                       <div className="text-sm">
-                        <span className="text-muted-foreground">Subject: </span>
+                        <span className="text-muted-foreground">{t("executionDetail.triggerDetails.subject")}</span>
                         {data.dispatchLog.emailSubject}
                       </div>
                     )}
                     {data.dispatchLog.emailFrom && (
                       <div className="text-sm">
-                        <span className="text-muted-foreground">From: </span>
+                        <span className="text-muted-foreground">{t("executionDetail.triggerDetails.from")}</span>
                         {data.dispatchLog.emailFrom}
                       </div>
                     )}
                     {data.dispatchLog.emailTo && (
                       <div className="text-sm">
-                        <span className="text-muted-foreground">To: </span>
+                        <span className="text-muted-foreground">{t("executionDetail.triggerDetails.to")}</span>
                         {data.dispatchLog.emailTo}
                       </div>
                     )}
                     {data.dispatchLog.skipReason && (
                       <div className="text-sm text-amber-600">
-                        <span className="font-medium">Skip reason: </span>
+                        <span className="font-medium">{t("executionDetail.triggerDetails.skipReason")}</span>
                         {data.dispatchLog.skipReason}
                       </div>
                     )}
@@ -269,7 +276,7 @@ export function ExecutionDetail({
               {data.execution.error && (
                 <div>
                   <h4 className="text-sm font-medium mb-2 text-red-600">
-                    Error
+                    {t("executionDetail.errorTitle")}
                   </h4>
                   <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-3">
                     <pre className="text-sm text-red-600 dark:text-red-400 whitespace-pre-wrap">
@@ -281,7 +288,7 @@ export function ExecutionDetail({
 
               {/* Node Execution Timeline */}
               <div>
-                <h4 className="text-sm font-medium mb-2">Execution Timeline</h4>
+                <h4 className="text-sm font-medium mb-2">{t("executionDetail.timeline.title")}</h4>
                 <div className="space-y-1">
                   {data.nodeLogs.map((log, index) => {
                     const StatusIcon = getStatusIcon(log.status);
@@ -309,7 +316,7 @@ export function ExecutionDetail({
                                   {log.nodeLabel || log.nodeType}
                                 </span>
                                 <Badge variant="outline" className="text-xs">
-                                  {log.status}
+                                  {getNodeStatusLabel(t, log.status)}
                                 </Badge>
                                 {log.duration !== undefined && (
                                   <span className="text-xs text-muted-foreground">
@@ -342,7 +349,7 @@ export function ExecutionDetail({
                             {log.input !== null && log.input !== undefined && (
                               <div>
                                 <div className="text-xs font-medium text-muted-foreground mb-1">
-                                  Input
+                                  {t("executionDetail.log.input")}
                                 </div>
                                 <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-40">
                                   {String(JSON.stringify(log.input, null, 2))}
@@ -352,7 +359,7 @@ export function ExecutionDetail({
                             {log.output !== null && log.output !== undefined && (
                               <div>
                                 <div className="text-xs font-medium text-muted-foreground mb-1">
-                                  Output
+                                  {t("executionDetail.log.output")}
                                 </div>
                                 <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-40">
                                   {String(JSON.stringify(log.output, null, 2))}
@@ -362,7 +369,7 @@ export function ExecutionDetail({
                             {log.metadata !== null && log.metadata !== undefined && (
                               <div>
                                 <div className="text-xs font-medium text-muted-foreground mb-1">
-                                  Metadata
+                                  {t("executionDetail.log.metadata")}
                                 </div>
                                 <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-40">
                                   {String(JSON.stringify(log.metadata, null, 2))}
@@ -370,16 +377,7 @@ export function ExecutionDetail({
                               </div>
                             )}
                             <div className="text-xs text-muted-foreground">
-                              Step #{log.stepOrder} | Started:{" "}
-                              {format(
-                                new Date(log.startedAt),
-                                "HH:mm:ss.SSS"
-                              )}
-                              {log.finishedAt &&
-                                ` | Finished: ${format(
-                                  new Date(log.finishedAt),
-                                  "HH:mm:ss.SSS"
-                                )}`}
+                              {formatNodeTimelineMeta(t, log)}
                             </div>
                           </div>
                         )}
@@ -392,7 +390,7 @@ export function ExecutionDetail({
               {/* Input/Output */}
               {data.execution.input !== null && data.execution.input !== undefined && (
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Execution Input</h4>
+                  <h4 className="text-sm font-medium mb-2">{t("executionDetail.executionInput")}</h4>
                   <pre className="bg-muted/50 p-3 rounded-lg text-xs overflow-auto max-h-40">
                     {String(JSON.stringify(data.execution.input, null, 2))}
                   </pre>
@@ -401,7 +399,7 @@ export function ExecutionDetail({
 
               {data.execution.output !== null && data.execution.output !== undefined && (
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Execution Output</h4>
+                  <h4 className="text-sm font-medium mb-2">{t("executionDetail.executionOutput")}</h4>
                   <pre className="bg-muted/50 p-3 rounded-lg text-xs overflow-auto max-h-40">
                     {String(JSON.stringify(data.execution.output, null, 2))}
                   </pre>
@@ -411,7 +409,7 @@ export function ExecutionDetail({
           </ScrollArea>
         ) : (
           <div className="p-4 text-center text-muted-foreground">
-            Failed to load execution details
+            {t("executionDetail.loadFailed")}
           </div>
         )}
       </DialogContent>
@@ -476,17 +474,71 @@ function getStatusColor(status: string) {
   }
 }
 
-function parseTriggerInfo(triggeredBy: string): { type: string; label: string } {
+type Translator = (key: string, values?: Record<string, unknown>) => string;
+
+function parseTriggerInfo(triggeredBy: string, t: Translator): { type: string; label: string } {
   if (triggeredBy.startsWith("email:")) {
-    return { type: "email", label: "Email trigger" };
+    return { type: "email", label: t("executionDetail.triggerLabels.email") };
   }
   if (triggeredBy === "manual") {
-    return { type: "manual", label: "Manual trigger" };
+    return { type: "manual", label: t("executionDetail.triggerLabels.manual") };
   }
   if (triggeredBy === "schedule") {
-    return { type: "schedule", label: "Scheduled trigger" };
+    return { type: "schedule", label: t("executionDetail.triggerLabels.schedule") };
   }
   return { type: "unknown", label: triggeredBy };
+}
+
+function getExecutionStatusLabel(t: Translator, status: Execution["status"]) {
+  switch (status) {
+    case "RUNNING":
+      return t("executionDetail.status.running");
+    case "SUCCESS":
+      return t("executionDetail.status.success");
+    case "FAILED":
+      return t("executionDetail.status.failed");
+    case "CANCELLED":
+      return t("executionDetail.status.cancelled");
+    default:
+      return status;
+  }
+}
+
+function getNodeStatusLabel(t: Translator, status: NodeLog["status"]) {
+  switch (status) {
+    case "RUNNING":
+      return t("executionDetail.nodeStatus.running");
+    case "SUCCESS":
+      return t("executionDetail.nodeStatus.success");
+    case "FAILED":
+      return t("executionDetail.nodeStatus.failed");
+    case "SKIPPED":
+      return t("executionDetail.nodeStatus.skipped");
+    default:
+      return status;
+  }
+}
+
+function formatNodeTimelineMeta(t: Translator, log: NodeLog) {
+  const parts: string[] = [t("executionDetail.log.step", { step: log.stepOrder })];
+
+  if (log.startedAt) {
+    parts.push(
+      t("executionDetail.log.started", {
+        time: format(new Date(log.startedAt), "HH:mm:ss.SSS"),
+      })
+    );
+  }
+
+  if (log.finishedAt) {
+    parts.push(
+      t("executionDetail.log.finished", {
+        time: format(new Date(log.finishedAt), "HH:mm:ss.SSS"),
+      })
+    );
+  }
+
+  return parts.join(" | ");
 }
 
 function formatDuration(ms: number): string {
