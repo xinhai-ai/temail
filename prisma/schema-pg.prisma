@@ -32,7 +32,6 @@ model User {
 
   domains       Domain[]
   mailboxes     Mailbox[]
-  forwardRules  ForwardRule[]
   workflows     Workflow[]
   logs          Log[]
   accounts      Account[]
@@ -327,7 +326,6 @@ model Mailbox {
 
   emails      Email[]
   inboundEmails InboundEmail[]
-  forwardRules ForwardRule[]
   workflows   Workflow[]
   telegramChatBindings TelegramChatBinding[]
   telegramBindCodes TelegramBindCode[]
@@ -375,7 +373,6 @@ model Email {
 
   attachments Attachment[]
   headers     EmailHeader[]
-  forwardLogs ForwardLog[]
   previewLink EmailPreviewLink?
   emailTags   EmailTag[]
 
@@ -486,90 +483,6 @@ model EmailTag {
   @@id([emailId, tagId])
   @@index([tagId])
   @@map("email_tags")
-}
-
-// ==================== 转发规则 ====================
-
-enum ForwardType {
-  EMAIL
-  TELEGRAM
-  DISCORD
-  SLACK
-  WEBHOOK
-}
-
-enum ForwardStatus {
-  ACTIVE
-  INACTIVE
-  ERROR
-}
-
-model ForwardRule {
-  id            String        @id @default(cuid())
-  name          String
-  type          ForwardType
-  status        ForwardStatus @default(ACTIVE)
-  config        String
-  lastTriggered DateTime?
-  errorMessage  String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  mailboxId     String?
-  mailbox       Mailbox?      @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
-
-  targets       ForwardTarget[]
-  logs          ForwardLog[]
-
-  @@index([userId])
-  @@map("forward_rules")
-}
-
-model ForwardTarget {
-  id        String      @id @default(cuid())
-  type      ForwardType
-  config    String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  ruleId    String
-  rule      ForwardRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-
-  logs      ForwardLog[]
-
-  @@index([ruleId])
-  @@index([ruleId, type])
-  @@map("forward_targets")
-}
-
-model ForwardLog {
-  id           String   @id @default(cuid())
-  success      Boolean
-  message      String?
-  responseCode Int?
-  createdAt    DateTime @default(now())
-
-  ruleId       String
-  rule         ForwardRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-
-  targetId     String?
-  target       ForwardTarget? @relation(fields: [targetId], references: [id], onDelete: SetNull)
-
-  emailId        String?
-  email          Email?    @relation(fields: [emailId], references: [id], onDelete: SetNull)
-  emailFrom      String?
-  emailTo        String?
-  emailSubject   String?
-  emailTextBrief String?
-
-  @@index([ruleId])
-  @@index([targetId])
-  @@index([emailId])
-  @@index([createdAt])
-  @@map("forward_logs")
 }
 
 // ==================== 系统日志 ====================

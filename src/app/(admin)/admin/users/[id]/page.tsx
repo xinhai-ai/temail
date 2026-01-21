@@ -13,16 +13,13 @@ import {
   Lock,
   Inbox,
   MailOpen,
-  Forward,
   Trash2,
   Save,
-  TestTube,
-  Power,
-  PowerOff,
-  Plus,
   Eye,
   Workflow,
   Pencil,
+  Power,
+  PowerOff,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +30,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,7 +61,7 @@ interface UserDetail {
   emailVerified: string | null;
   createdAt: string;
   updatedAt: string;
-  _count: { mailboxes: number; domains: number; forwardRules: number; workflows: number; emails: number };
+  _count: { mailboxes: number; domains: number; workflows: number; emails: number };
 }
 
 interface Mailbox {
@@ -96,17 +92,6 @@ interface EmailDetail extends Email {
   attachments: { id: string; filename: string; contentType: string; size: number; path: string }[];
 }
 
-interface ForwardRule {
-  id: string;
-  name: string;
-  type: "EMAIL" | "TELEGRAM" | "DISCORD" | "SLACK" | "WEBHOOK";
-  status: "ACTIVE" | "INACTIVE" | "ERROR";
-  mailboxId?: string | null;
-  mailbox?: { id: string; address: string } | null;
-  lastTriggered?: string | null;
-  createdAt: string;
-}
-
 interface WorkflowItem {
   id: string;
   name: string;
@@ -117,19 +102,10 @@ interface WorkflowItem {
   _count: { executions: number; dispatchLogs: number };
 }
 
-const forwardTypes = [
-  { value: "EMAIL", label: "Email" },
-  { value: "TELEGRAM", label: "Telegram" },
-  { value: "DISCORD", label: "Discord" },
-  { value: "SLACK", label: "Slack" },
-  { value: "WEBHOOK", label: "Webhook" },
-] as const;
-
 export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
-  const ALL_MAILBOXES_SELECT_VALUE = "__all__";
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserDetail | null>(null);
@@ -162,11 +138,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [emailDetail, setEmailDetail] = useState<EmailDetail | null>(null);
   const [emailDetailOpen, setEmailDetailOpen] = useState(false);
 
-  // Forwards
-  const [forwards, setForwards] = useState<ForwardRule[]>([]);
-  const [forwardsLoading, setForwardsLoading] = useState(false);
-  const [testingForwardId, setTestingForwardId] = useState<string | null>(null);
-
   // Workflows
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [workflowsLoading, setWorkflowsLoading] = useState(false);
@@ -174,17 +145,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [renameWorkflowId, setRenameWorkflowId] = useState<string | null>(null);
   const [renameWorkflowName, setRenameWorkflowName] = useState("");
   const [renamingWorkflow, setRenamingWorkflow] = useState(false);
-
-  // Create forward dialog
-  const [forwardOpen, setForwardOpen] = useState(false);
-  const [forwardName, setForwardName] = useState("");
-  const [forwardType, setForwardType] = useState<ForwardRule["type"]>("WEBHOOK");
-  const [forwardMailboxId, setForwardMailboxId] = useState<string>("");
-  const [emailTo, setEmailTo] = useState("");
-  const [telegramToken, setTelegramToken] = useState("");
-  const [telegramChatId, setTelegramChatId] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookHeaders, setWebhookHeaders] = useState("");
 
   const roleBadgeVariant = useMemo(() => {
     if (!user) return "secondary";
@@ -232,14 +192,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     setEmailsLoading(false);
   };
 
-  const fetchForwards = async () => {
-    setForwardsLoading(true);
-    const res = await fetch(`/api/admin/users/${id}/forwards`);
-    const data = await res.json();
-    setForwards(res.ok ? data : []);
-    setForwardsLoading(false);
-  };
-
   const fetchWorkflows = async () => {
     setWorkflowsLoading(true);
     const res = await fetch(`/api/admin/users/${id}/workflows`);
@@ -251,7 +203,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     const run = async () => {
       setLoading(true);
-      await Promise.all([fetchUser(), fetchMailboxes(), fetchEmails(), fetchForwards(), fetchWorkflows(), fetchAuth()]);
+      await Promise.all([fetchUser(), fetchMailboxes(), fetchEmails(), fetchWorkflows(), fetchAuth()]);
       setLoading(false);
     };
     run();
@@ -433,35 +385,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const handleToggleForward = async (forwardId: string, status: ForwardRule["status"]) => {
-    const newStatus = status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    const res = await fetch(`/api/admin/forwards/${forwardId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    if (res.ok) {
-      toast.success("Forward updated");
-      fetchForwards();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to update forward");
-    }
-  };
-
-  const handleDeleteForward = async (forwardId: string) => {
-    if (!confirm("Delete this forward rule?")) return;
-    const res = await fetch(`/api/admin/forwards/${forwardId}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success("Forward deleted");
-      fetchForwards();
-      fetchUser();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      toast.error(data.error || "Failed to delete forward");
-    }
-  };
-
   const openRenameWorkflow = (workflow: WorkflowItem) => {
     setRenameWorkflowId(workflow.id);
     setRenameWorkflowName(workflow.name);
@@ -527,81 +450,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const handleTestForward = async (forwardId: string) => {
-    setTestingForwardId(forwardId);
-    const res = await fetch(`/api/admin/forwards/${forwardId}/test`, { method: "POST" });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      toast.success("Test notification sent!");
-    } else {
-      toast.error(data.error || "Test failed");
-    }
-    setTestingForwardId(null);
-  };
-
-  const buildForwardConfig = () => {
-    switch (forwardType) {
-      case "EMAIL":
-        return JSON.stringify({ to: emailTo });
-      case "TELEGRAM":
-        return JSON.stringify({ token: telegramToken, chatId: telegramChatId });
-      case "DISCORD":
-      case "SLACK":
-      case "WEBHOOK":
-        return JSON.stringify({
-          url: webhookUrl,
-          headers: webhookHeaders ? JSON.parse(webhookHeaders) : {},
-        });
-      default:
-        return "{}";
-    }
-  };
-
-  const resetForwardForm = () => {
-    setForwardName("");
-    setForwardType("WEBHOOK");
-    setForwardMailboxId("");
-    setEmailTo("");
-    setTelegramToken("");
-    setTelegramChatId("");
-    setWebhookUrl("");
-    setWebhookHeaders("");
-  };
-
-  const handleCreateForward = async () => {
-    if (!forwardName) {
-      toast.error("Please enter a rule name");
-      return;
-    }
-
-    try {
-      const config = buildForwardConfig();
-      const res = await fetch(`/api/admin/users/${id}/forwards`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: forwardName,
-          type: forwardType,
-          config,
-          mailboxId: forwardMailboxId || null,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success("Forward rule created");
-        setForwardOpen(false);
-        resetForwardForm();
-        fetchForwards();
-        fetchUser();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Failed to create rule");
-      }
-    } catch {
-      toast.error("Invalid configuration format");
-    }
-  };
-
   if (loading || !user) {
     return (
       <div className="flex justify-center items-center p-12">
@@ -648,9 +496,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             <MailOpen className="h-3 w-3" /> {user._count.emails} emails
           </Badge>
           <Badge variant="secondary" className="gap-1">
-            <Forward className="h-3 w-3" /> {user._count.forwardRules} forwards
-          </Badge>
-          <Badge variant="secondary" className="gap-1">
             <Workflow className="h-3 w-3" /> {user._count.workflows} workflows
           </Badge>
           <Badge variant="secondary" className="gap-1">
@@ -676,10 +521,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           <TabsTrigger value="emails" className="gap-2">
             <Mail className="h-4 w-4" />
             Emails
-          </TabsTrigger>
-          <TabsTrigger value="forwards" className="gap-2">
-            <Forward className="h-4 w-4" />
-            Forwards
           </TabsTrigger>
           <TabsTrigger value="workflows" className="gap-2">
             <Workflow className="h-4 w-4" />
@@ -1048,220 +889,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               )}
             </DialogContent>
           </Dialog>
-        </TabsContent>
-
-        <TabsContent value="forwards" className="space-y-6">
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Forward Rules</span>
-                <Dialog open={forwardOpen} onOpenChange={setForwardOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Rule
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Create Forward Rule</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <div className="space-y-2">
-                        <Label>Rule Name</Label>
-                        <Input
-                          placeholder="My forward rule"
-                          value={forwardName}
-                          onChange={(e) => setForwardName(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Apply to Mailbox (Optional)</Label>
-                        <Select
-                          value={forwardMailboxId}
-                          onValueChange={(value) =>
-                            setForwardMailboxId(value === ALL_MAILBOXES_SELECT_VALUE ? "" : value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="All mailboxes" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={ALL_MAILBOXES_SELECT_VALUE}>All mailboxes</SelectItem>
-                            {mailboxes.map((m) => (
-                              <SelectItem key={m.id} value={m.id}>
-                                {m.address}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Forward Type</Label>
-                        <Select
-                          value={forwardType}
-                          onValueChange={(v) => setForwardType(v as ForwardRule["type"])}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {forwardTypes.map((t) => (
-                              <SelectItem key={t.value} value={t.value}>
-                                {t.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {forwardType === "EMAIL" && (
-                        <div className="space-y-2">
-                          <Label>Forward to Email Address</Label>
-                          <Input
-                            type="email"
-                            placeholder="forward@example.com"
-                            value={emailTo}
-                            onChange={(e) => setEmailTo(e.target.value)}
-                          />
-                        </div>
-                      )}
-
-                      {forwardType === "TELEGRAM" && (
-                        <>
-                          <div className="space-y-2">
-                            <Label>Bot Token</Label>
-                            <Input
-                              placeholder="123456789:ABC..."
-                              value={telegramToken}
-                              onChange={(e) => setTelegramToken(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Chat ID</Label>
-                            <Input
-                              placeholder="-1001234567890"
-                              value={telegramChatId}
-                              onChange={(e) => setTelegramChatId(e.target.value)}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {(forwardType === "DISCORD" || forwardType === "SLACK" || forwardType === "WEBHOOK") && (
-                        <>
-                          <div className="space-y-2">
-                            <Label>Webhook URL</Label>
-                            <Input
-                              placeholder="https://..."
-                              value={webhookUrl}
-                              onChange={(e) => setWebhookUrl(e.target.value)}
-                            />
-                          </div>
-                          {forwardType === "WEBHOOK" && (
-                            <div className="space-y-2">
-                              <Label>Custom Headers (JSON, optional)</Label>
-                              <Textarea
-                                placeholder='{\"Authorization\": \"Bearer xxx\"}'
-                                value={webhookHeaders}
-                                onChange={(e) => setWebhookHeaders(e.target.value)}
-                                rows={3}
-                              />
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button className="flex-1" onClick={handleCreateForward}>
-                          Create Rule
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setForwardOpen(false);
-                            resetForwardForm();
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {forwardsLoading ? (
-                <div className="flex justify-center p-8">Loading…</div>
-              ) : forwards.length === 0 ? (
-                <div className="text-center p-8 text-muted-foreground">No forward rules</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Scope</TableHead>
-                      <TableHead>Last Triggered</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {forwards.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">{r.name}</TableCell>
-                        <TableCell>{r.type}</TableCell>
-                        <TableCell>
-                          <Badge variant={r.status === "ACTIVE" ? "default" : "secondary"}>
-                            {r.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{r.mailbox?.address || "All mailboxes"}</TableCell>
-                        <TableCell>
-                          {r.lastTriggered ? format(new Date(r.lastTriggered), "PPpp") : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleForward(r.id, r.status)}
-                            >
-                              {r.status === "ACTIVE" ? (
-                                <PowerOff className="h-4 w-4" />
-                              ) : (
-                                <Power className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleTestForward(r.id)}
-                              disabled={testingForwardId === r.id}
-                            >
-                              <TestTube className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteForward(r.id)}
-                              className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="workflows" className="space-y-6">

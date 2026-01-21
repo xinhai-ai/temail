@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { executeForwards } from "@/services/forward";
 import { triggerEmailWorkflows } from "@/services/workflow/trigger";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { Prisma } from "@prisma/client";
@@ -244,8 +243,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    executeForwards(email, mailbox.id, mailbox.userId).catch(console.error);
 
     // Trigger workflow executions
     triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch(console.error);

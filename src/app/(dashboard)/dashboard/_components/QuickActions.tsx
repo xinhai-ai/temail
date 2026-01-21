@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Inbox, Plus, Forward, Settings, Mail } from "lucide-react";
+import { Inbox, Plus, Settings } from "lucide-react";
 import Link from "next/link";
 
 export function QuickActions() {
@@ -21,12 +21,6 @@ export function QuickActions() {
           <Link href="/inbox?action=new-mailbox">
             <Plus className="h-5 w-5 text-green-500" />
             <span className="text-xs">New Mailbox</span>
-          </Link>
-        </Button>
-        <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
-          <Link href="/forwards">
-            <Forward className="h-5 w-5 text-orange-500" />
-            <span className="text-xs">Forwards</span>
           </Link>
         </Button>
         <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>

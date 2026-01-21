@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Inbox, Mail, Globe, Forward, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Inbox, Mail, Globe, TrendingUp, TrendingDown } from "lucide-react";
 import { EmailActivityChart } from "./_components/EmailActivityChart";
 import { RecentEmails } from "./_components/RecentEmails";
 import { QuickActions } from "./_components/QuickActions";
@@ -10,12 +10,11 @@ import { TopMailboxes } from "./_components/TopMailboxes";
 import { RecentActivity } from "./_components/RecentActivity";
 
 async function getStats(userId: string) {
-  const [mailboxCount, emailCount, forwardCount] = await Promise.all([
+  const [mailboxCount, emailCount] = await Promise.all([
     prisma.mailbox.count({ where: { userId } }),
     prisma.email.count({
       where: { mailbox: { userId } },
     }),
-    prisma.forwardRule.count({ where: { userId } }),
   ]);
 
   const unreadCount = await prisma.email.count({
@@ -50,7 +49,6 @@ async function getStats(userId: string) {
   return {
     mailboxCount,
     emailCount,
-    forwardCount,
     unreadCount,
     starredCount,
     todayEmailCount,
@@ -143,20 +141,6 @@ async function getRecentActivity(userId: string) {
     },
   });
 
-  // Get recent forward logs
-  const recentForwardLogs = await prisma.forwardLog.findMany({
-    where: { rule: { userId } },
-    orderBy: { createdAt: "desc" },
-    take: 3,
-    select: {
-      id: true,
-      success: true,
-      emailSubject: true,
-      createdAt: true,
-      rule: { select: { name: true } },
-    },
-  });
-
   // Combine and sort by timestamp
   const activities = [
     ...recentEmails.map((email) => ({
@@ -170,14 +154,6 @@ async function getRecentActivity(userId: string) {
       type: "mailbox" as const,
       message: `Created mailbox: ${mailbox.address}`,
       timestamp: mailbox.createdAt,
-    })),
-    ...recentForwardLogs.map((log) => ({
-      id: `forward-${log.id}`,
-      type: log.success ? ("forward_success" as const) : ("forward_fail" as const),
-      message: log.success
-        ? `Forward "${log.rule.name}" succeeded`
-        : `Forward "${log.rule.name}" failed`,
-      timestamp: log.createdAt,
     })),
   ];
 
@@ -231,7 +207,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-border/50 hover:border-primary/30 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Mailboxes</CardTitle>
@@ -286,19 +262,6 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold">{availableDomains}</div>
             <p className="text-xs text-muted-foreground mt-1">Available for use</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 hover:border-primary/30 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Forwards</CardTitle>
-            <div className="p-2 rounded-lg bg-orange-500/10">
-              <Forward className="h-4 w-4 text-orange-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.forwardCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active rules</p>
           </CardContent>
         </Card>
       </div>

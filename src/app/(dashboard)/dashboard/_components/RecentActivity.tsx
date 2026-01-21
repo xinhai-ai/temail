@@ -1,19 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Mail,
-  Inbox,
-  Forward,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Activity,
-} from "lucide-react";
+import { Mail, Inbox, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ActivityItem = {
   id: string;
-  type: "email" | "mailbox" | "forward_success" | "forward_fail";
+  type: "email" | "mailbox";
   message: string;
   timestamp: Date;
   metadata?: string;
@@ -26,15 +18,11 @@ type RecentActivityProps = {
 const activityIcons = {
   email: Mail,
   mailbox: Inbox,
-  forward_success: CheckCircle,
-  forward_fail: XCircle,
 };
 
 const activityColors = {
   email: "text-blue-500 bg-blue-500/10",
   mailbox: "text-primary bg-primary/10",
-  forward_success: "text-green-500 bg-green-500/10",
-  forward_fail: "text-red-500 bg-red-500/10",
 };
 
 export function RecentActivity({ activities }: RecentActivityProps) {

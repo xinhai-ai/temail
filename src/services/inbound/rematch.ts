@@ -1,6 +1,5 @@
 import prisma from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
-import { executeForwards } from "@/services/forward";
 import { triggerEmailWorkflows } from "@/services/workflow/trigger";
 import { Prisma } from "@prisma/client";
 
@@ -120,7 +119,6 @@ export async function rematchUnmatchedInboundEmailsForUser(
       },
     });
 
-    executeForwards(email, mailbox.id, mailbox.userId).catch(console.error);
     triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch(console.error);
   }
 
@@ -131,4 +129,3 @@ export async function rematchUnmatchedInboundEmailsForUser(
     skippedDuplicates,
   };
 }
-
