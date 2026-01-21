@@ -1072,6 +1072,53 @@
         "delete": "Delete",
         "disconnect": "Disconnect"
       }
+    },
+    "forwardTest": {
+      "dialogTitle": "Test Forward",
+      "dialogDescription": "Send a test message using the sample email data below.",
+      "targetConfigurationTitle": "Target Configuration",
+      "sampleEmailTitle": "Sample Email Data",
+      "labels": {
+        "from": "From:",
+        "to": "To:",
+        "subject": "Subject:",
+        "body": "Body:"
+      },
+      "warningNotConfigured": "Please configure all required fields before testing.",
+      "footer": {
+        "close": "Close",
+        "testing": "Testing...",
+        "runTest": "Run Test"
+      },
+      "button": "Test Forward",
+      "toast": {
+        "defaultSuccessMessage": "Test successful!",
+        "success": "Test completed successfully",
+        "failed": "Test failed",
+        "runFailed": "Failed to run test"
+      },
+      "configSummary": {
+        "email": "To: {to}",
+        "telegramBound": "Target: bound Telegram group",
+        "telegram": "Chat ID: {chatId}",
+        "webhook": "Webhook: {status}",
+        "webhookUrl": "URL: {url}",
+        "unknownType": "Unknown type",
+        "configured": "Configured",
+        "notConfigured": "Not configured"
+      },
+      "template": {
+        "label": "Template",
+        "loadPlaceholder": "Load template",
+        "textareaPlaceholder": "Enter message template...",
+        "availableVariables": "Available variables:"
+      },
+      "sample": {
+        "fromName": "John Doe",
+        "subject": "Test Email Subject",
+        "textBody": "This is a test email body content.\\n\\nBest regards,\\nJohn",
+        "htmlBody": "<p>This is a test email body content.</p><p>Best regards,<br/>John</p>"
+      }
     }
   }
 }

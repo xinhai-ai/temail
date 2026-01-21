@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,20 +24,7 @@ import { Play, Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import type { NodeType, ForwardEmailData, ForwardTelegramBoundData, ForwardTelegramData, ForwardDiscordData, ForwardSlackData, ForwardWebhookData } from "@/lib/workflow/types";
 import { DEFAULT_FORWARD_TEMPLATES } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
-
-// 示例邮件数据
-const SAMPLE_EMAIL = {
-  id: "sample-email-123",
-  messageId: "<sample@example.com>",
-  fromAddress: "sender@example.com",
-  fromName: "John Doe",
-  toAddress: "you@yourdomain.com",
-  replyTo: "sender@example.com",
-  subject: "Test Email Subject",
-  textBody: "This is a test email body content.\n\nBest regards,\nJohn",
-  htmlBody: "<p>This is a test email body content.</p><p>Best regards,<br/>John</p>",
-  receivedAt: new Date().toISOString(),
-};
+import { useTranslations } from "next-intl";
 
 interface ForwardTestDialogProps {
   open: boolean;
@@ -52,12 +39,29 @@ export function ForwardTestDialog({
   nodeType,
   nodeData,
 }: ForwardTestDialogProps) {
+  const t = useTranslations("workflows");
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
     details?: string;
   } | null>(null);
+
+  const sampleEmail = useMemo(
+    () => ({
+      id: "sample-email-123",
+      messageId: "<sample@example.com>",
+      fromAddress: "sender@example.com",
+      fromName: t("forwardTest.sample.fromName"),
+      toAddress: "you@yourdomain.com",
+      replyTo: "sender@example.com",
+      subject: t("forwardTest.sample.subject"),
+      textBody: t("forwardTest.sample.textBody"),
+      htmlBody: t("forwardTest.sample.htmlBody"),
+      receivedAt: new Date().toISOString(),
+    }),
+    [t]
+  );
 
   const handleTest = async () => {
     setTesting(true);
@@ -70,7 +74,7 @@ export function ForwardTestDialog({
         body: JSON.stringify({
           type: nodeType,
           config: nodeData,
-          email: SAMPLE_EMAIL,
+          email: sampleEmail,
         }),
       });
 
@@ -79,24 +83,24 @@ export function ForwardTestDialog({
       if (response.ok) {
         setResult({
           success: true,
-          message: data.message || "Test successful!",
+          message: data.message || t("forwardTest.toast.defaultSuccessMessage"),
           details: data.details,
         });
-        toast.success("Test completed successfully");
+        toast.success(t("forwardTest.toast.success"));
       } else {
         setResult({
           success: false,
-          message: data.error || "Test failed",
+          message: data.error || t("forwardTest.toast.failed"),
           details: data.details,
         });
-        toast.error(data.error || "Test failed");
+        toast.error(data.error || t("forwardTest.toast.failed"));
       }
     } catch (error) {
       setResult({
         success: false,
-        message: error instanceof Error ? error.message : "Test failed",
+        message: error instanceof Error ? error.message : t("forwardTest.toast.failed"),
       });
-      toast.error("Failed to run test");
+      toast.error(t("forwardTest.toast.runFailed"));
     } finally {
       setTesting(false);
     }
@@ -105,19 +109,33 @@ export function ForwardTestDialog({
   const getConfigSummary = () => {
     switch (nodeType) {
       case "forward:email":
-        return `To: ${(nodeData as ForwardEmailData).to || "Not configured"}`;
+        return t("forwardTest.configSummary.email", {
+          to: (nodeData as ForwardEmailData).to || t("forwardTest.configSummary.notConfigured"),
+        });
       case "forward:telegram-bound":
-        return "Target: bound Telegram group";
+        return t("forwardTest.configSummary.telegramBound");
       case "forward:telegram":
-        return `Chat ID: ${(nodeData as ForwardTelegramData).chatId || "Not configured"}`;
+        return t("forwardTest.configSummary.telegram", {
+          chatId: (nodeData as ForwardTelegramData).chatId || t("forwardTest.configSummary.notConfigured"),
+        });
       case "forward:discord":
-        return `Webhook: ${(nodeData as ForwardDiscordData).webhookUrl ? "Configured" : "Not configured"}`;
+        return t("forwardTest.configSummary.webhook", {
+          status: (nodeData as ForwardDiscordData).webhookUrl
+            ? t("forwardTest.configSummary.configured")
+            : t("forwardTest.configSummary.notConfigured"),
+        });
       case "forward:slack":
-        return `Webhook: ${(nodeData as ForwardSlackData).webhookUrl ? "Configured" : "Not configured"}`;
+        return t("forwardTest.configSummary.webhook", {
+          status: (nodeData as ForwardSlackData).webhookUrl
+            ? t("forwardTest.configSummary.configured")
+            : t("forwardTest.configSummary.notConfigured"),
+        });
       case "forward:webhook":
-        return `URL: ${(nodeData as ForwardWebhookData).url || "Not configured"}`;
+        return t("forwardTest.configSummary.webhookUrl", {
+          url: (nodeData as ForwardWebhookData).url || t("forwardTest.configSummary.notConfigured"),
+        });
       default:
-        return "Unknown type";
+        return t("forwardTest.configSummary.unknownType");
     }
   };
 
@@ -144,25 +162,25 @@ export function ForwardTestDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Test Forward</DialogTitle>
+          <DialogTitle>{t("forwardTest.dialogTitle")}</DialogTitle>
           <DialogDescription>
-            Send a test message using the sample email data below.
+            {t("forwardTest.dialogDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="p-3 bg-muted rounded-lg space-y-1 text-sm">
-            <p className="font-medium">Target Configuration</p>
+            <p className="font-medium">{t("forwardTest.targetConfigurationTitle")}</p>
             <p className="text-muted-foreground">{getConfigSummary()}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Sample Email Data</Label>
+            <Label>{t("forwardTest.sampleEmailTitle")}</Label>
             <div className="p-3 bg-muted/50 rounded-lg text-xs space-y-1 font-mono">
-              <p><span className="text-muted-foreground">From:</span> {SAMPLE_EMAIL.fromName} &lt;{SAMPLE_EMAIL.fromAddress}&gt;</p>
-              <p><span className="text-muted-foreground">To:</span> {SAMPLE_EMAIL.toAddress}</p>
-              <p><span className="text-muted-foreground">Subject:</span> {SAMPLE_EMAIL.subject}</p>
-              <p className="text-muted-foreground pt-1 truncate">Body: {SAMPLE_EMAIL.textBody.slice(0, 50)}...</p>
+              <p><span className="text-muted-foreground">{t("forwardTest.labels.from")}</span> {sampleEmail.fromName} &lt;{sampleEmail.fromAddress}&gt;</p>
+              <p><span className="text-muted-foreground">{t("forwardTest.labels.to")}</span> {sampleEmail.toAddress}</p>
+              <p><span className="text-muted-foreground">{t("forwardTest.labels.subject")}</span> {sampleEmail.subject}</p>
+              <p className="text-muted-foreground pt-1 truncate">{t("forwardTest.labels.body")} {sampleEmail.textBody.slice(0, 50)}...</p>
             </div>
           </div>
 
@@ -191,7 +209,7 @@ export function ForwardTestDialog({
             <div className="p-3 rounded-lg bg-amber-50 text-amber-800 flex items-start gap-2">
               <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <p className="text-sm">
-                Please configure all required fields before testing.
+                {t("forwardTest.warningNotConfigured")}
               </p>
             </div>
           )}
@@ -199,7 +217,7 @@ export function ForwardTestDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {t("forwardTest.footer.close")}
           </Button>
           <Button
             onClick={handleTest}
@@ -208,12 +226,12 @@ export function ForwardTestDialog({
             {testing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Testing...
+                {t("forwardTest.footer.testing")}
               </>
             ) : (
               <>
                 <Play className="h-4 w-4 mr-2" />
-                Run Test
+                {t("forwardTest.footer.runTest")}
               </>
             )}
           </Button>
@@ -231,6 +249,7 @@ interface TemplateSelectorProps {
 }
 
 export function TemplateSelector({ type, value, onChange }: TemplateSelectorProps) {
+  const t = useTranslations("workflows");
   const templates = DEFAULT_FORWARD_TEMPLATES[type];
   const templateOptions = Object.entries(templates) as [string, string][];
 
@@ -247,10 +266,10 @@ export function TemplateSelector({ type, value, onChange }: TemplateSelectorProp
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label>Template</Label>
+        <Label>{t("forwardTest.template.label")}</Label>
         <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
           <SelectTrigger className="w-[140px] h-7 text-xs">
-            <SelectValue placeholder="Load template" />
+            <SelectValue placeholder={t("forwardTest.template.loadPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {templateOptions.map(([key]) => (
@@ -264,12 +283,12 @@ export function TemplateSelector({ type, value, onChange }: TemplateSelectorProp
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Enter message template..."
+        placeholder={t("forwardTest.template.textareaPlaceholder")}
         rows={4}
         className="text-xs font-mono"
       />
       <p className="text-xs text-muted-foreground">
-        Available variables: {"{{email.subject}}"}, {"{{email.fromAddress}}"}, {"{{email.fromName}}"}, {"{{email.toAddress}}"}, {"{{email.textBody}}"}, {"{{email.receivedAt}}"}
+        {t("forwardTest.template.availableVariables")} {"{{email.subject}}"}, {"{{email.fromAddress}}"}, {"{{email.fromName}}"}, {"{{email.toAddress}}"}, {"{{email.textBody}}"}, {"{{email.receivedAt}}"}
       </p>
     </div>
   );
@@ -282,6 +301,7 @@ interface TestButtonProps {
 }
 
 export function ForwardTestButton({ nodeType, nodeData }: TestButtonProps) {
+  const t = useTranslations("workflows");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -293,7 +313,7 @@ export function ForwardTestButton({ nodeType, nodeData }: TestButtonProps) {
         className="w-full"
       >
         <Play className="h-3.5 w-3.5 mr-2" />
-        Test Forward
+        {t("forwardTest.button")}
       </Button>
       <ForwardTestDialog
         open={dialogOpen}

@@ -1072,6 +1072,53 @@
         "delete": "删除",
         "disconnect": "断开连接"
       }
+    },
+    "forwardTest": {
+      "dialogTitle": "测试转发",
+      "dialogDescription": "使用下面的示例邮件数据发送一条测试消息。",
+      "targetConfigurationTitle": "目标配置",
+      "sampleEmailTitle": "示例邮件数据",
+      "labels": {
+        "from": "发件人：",
+        "to": "收件人：",
+        "subject": "主题：",
+        "body": "正文："
+      },
+      "warningNotConfigured": "请先配置所有必填字段再进行测试。",
+      "footer": {
+        "close": "关闭",
+        "testing": "测试中...",
+        "runTest": "运行测试"
+      },
+      "button": "测试转发",
+      "toast": {
+        "defaultSuccessMessage": "测试成功！",
+        "success": "测试成功完成",
+        "failed": "测试失败",
+        "runFailed": "运行测试失败"
+      },
+      "configSummary": {
+        "email": "收件人：{to}",
+        "telegramBound": "目标：已绑定的 Telegram 群组",
+        "telegram": "聊天 ID：{chatId}",
+        "webhook": "Webhook：{status}",
+        "webhookUrl": "URL：{url}",
+        "unknownType": "未知类型",
+        "configured": "已配置",
+        "notConfigured": "未配置"
+      },
+      "template": {
+        "label": "模板",
+        "loadPlaceholder": "加载模板",
+        "textareaPlaceholder": "请输入消息模板...",
+        "availableVariables": "可用变量："
+      },
+      "sample": {
+        "fromName": "测试发件人",
+        "subject": "测试邮件主题",
+        "textBody": "这是一段测试邮件正文内容。\\n\\n此致敬礼，\\n测试发件人",
+        "htmlBody": "<p>这是一段测试邮件正文内容。</p><p>此致敬礼，<br/>测试发件人</p>"
+      }
     }
   }
 }
