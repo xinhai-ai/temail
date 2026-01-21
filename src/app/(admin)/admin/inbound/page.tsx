@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { DomainSourceType, Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
@@ -33,7 +34,10 @@ export default async function AdminInboundEmailsPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const resolvedSearchParams = (await searchParams) || {};
+  const [t, resolvedSearchParams] = await Promise.all([
+    getTranslations("admin"),
+    searchParams ?? Promise.resolve({}),
+  ]);
 
   const getParam = (key: string) => {
     const value = resolvedSearchParams[key];
@@ -102,9 +106,9 @@ export default async function AdminInboundEmailsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Inbound Emails</h1>
+        <h1 className="text-3xl font-bold">{t("inbound.title")}</h1>
         <p className="text-muted-foreground">
-          View all incoming messages (including unmatched catch-all)
+          {t("inbound.subtitle")}
         </p>
       </div>
 
@@ -121,17 +125,17 @@ export default async function AdminInboundEmailsPage({
             <Input
               name="search"
               defaultValue={search}
-              placeholder="Search by email / subject…"
+              placeholder={t("inbound.searchPlaceholder")}
               className="pl-10"
             />
           </div>
 
           <Button type="submit" size="sm" variant="outline">
-            Search
+            {t("common.search")}
           </Button>
           {search && (
             <Button size="sm" variant="ghost" asChild>
-              <Link href={buildHref(1, null)}>Clear</Link>
+              <Link href={buildHref(1, null)}>{t("common.clear")}</Link>
             </Button>
           )}
         </form>
@@ -139,17 +143,17 @@ export default async function AdminInboundEmailsPage({
 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Page {page} / {pages} • Total {total}
+          {t("common.pagination", { page, pages, total })}
         </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" asChild disabled={page <= 1}>
             <Link href={buildHref(Math.max(1, page - 1))} aria-disabled={page <= 1}>
-              Prev
+              {t("common.prev")}
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild disabled={page >= pages}>
             <Link href={buildHref(Math.min(pages, page + 1))} aria-disabled={page >= pages}>
-              Next
+              {t("common.next")}
             </Link>
           </Button>
         </div>
@@ -158,21 +162,21 @@ export default async function AdminInboundEmailsPage({
       {inboundEmails.length === 0 ? (
         <Card className="p-12 text-center">
           <Inbox className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No inbound emails yet</p>
+          <p className="text-muted-foreground">{t("inbound.empty")}</p>
         </Card>
       ) : (
         <Card>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Received</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>To</TableHead>
-                <TableHead>Mailbox</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("common.table.received")}</TableHead>
+                <TableHead>{t("common.table.source")}</TableHead>
+                <TableHead>{t("common.table.domain")}</TableHead>
+                <TableHead>{t("common.table.to")}</TableHead>
+                <TableHead>{t("common.table.mailbox")}</TableHead>
+                <TableHead>{t("common.table.subject")}</TableHead>
+                <TableHead>{t("common.table.from")}</TableHead>
+                <TableHead className="text-right">{t("common.table.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -188,7 +192,7 @@ export default async function AdminInboundEmailsPage({
                     {email.mailbox ? (
                       <Badge>{email.mailbox.address}</Badge>
                     ) : (
-                      <Badge variant="secondary">Unmatched</Badge>
+                      <Badge variant="secondary">{t("common.unmatched")}</Badge>
                     )}
                   </TableCell>
                   <TableCell>{email.subject}</TableCell>

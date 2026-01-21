@@ -114,6 +114,12 @@
     "common": {
       "refresh": "刷新",
       "view": "查看",
+      "delete": "删除",
+      "search": "搜索",
+      "clear": "清除",
+      "prev": "上一页",
+      "next": "下一页",
+      "pagination": "第 {page} / {pages} 页 • 共 {total} 条",
       "unmatched": "未匹配",
       "unknownError": "未知错误",
       "lastUpdated": "最后更新：{date}",
@@ -130,14 +136,28 @@
         "created": "创建时间",
         "domain": "域名",
         "email": "邮箱",
+        "from": "发件人",
         "inbound": "入站",
+        "mailbox": "邮箱",
         "mailboxes": "邮箱",
+        "received": "收取时间",
         "role": "角色",
         "source": "来源",
         "status": "状态",
         "subject": "主题",
         "time": "时间",
         "to": "收件人"
+      }
+    },
+    "inbound": {
+      "title": "入站邮件",
+      "subtitle": "查看所有系统收到的邮件（包括未匹配 catch-all）",
+      "searchPlaceholder": "按邮箱/主题搜索…",
+      "empty": "暂无入站邮件",
+      "actions": {
+        "deleteConfirm": "确定永久删除这封入站邮件吗？此操作无法撤销。",
+        "deleteFailed": "删除失败",
+        "deleted": "已删除"
       }
     },
     "dashboard": {

@@ -114,6 +114,12 @@
     "common": {
       "refresh": "Refresh",
       "view": "View",
+      "delete": "Delete",
+      "search": "Search",
+      "clear": "Clear",
+      "prev": "Prev",
+      "next": "Next",
+      "pagination": "Page {page} / {pages} • Total {total}",
       "unmatched": "Unmatched",
       "unknownError": "Unknown error",
       "lastUpdated": "Last updated: {date}",
@@ -130,14 +136,28 @@
         "created": "Created",
         "domain": "Domain",
         "email": "Email",
+        "from": "From",
         "inbound": "Inbound",
+        "mailbox": "Mailbox",
         "mailboxes": "Mailboxes",
+        "received": "Received",
         "role": "Role",
         "source": "Source",
         "status": "Status",
         "subject": "Subject",
         "time": "Time",
         "to": "To"
+      }
+    },
+    "inbound": {
+      "title": "Inbound Emails",
+      "subtitle": "View all incoming messages (including unmatched catch-all)",
+      "searchPlaceholder": "Search by email / subject…",
+      "empty": "No inbound emails yet",
+      "actions": {
+        "deleteConfirm": "Delete this inbound email permanently? This cannot be undone.",
+        "deleteFailed": "Failed to delete",
+        "deleted": "Deleted"
       }
     },
     "dashboard": {
