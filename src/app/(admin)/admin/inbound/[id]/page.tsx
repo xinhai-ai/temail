@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export default function AdminInboundEmailDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const t = useTranslations("admin");
 
   const [inboundEmail, setInboundEmail] = useState<InboundEmail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,11 +73,11 @@ export default function AdminInboundEmailDetailPage() {
           const text = await res.text();
           setRawContent(text);
         } else {
-          toast.error("Failed to load raw content");
+          toast.error(t("inbound.detail.raw.loadFailed"));
         }
       } catch (error) {
         console.error("Failed to load raw content:", error);
-        toast.error("Failed to load raw content");
+        toast.error(t("inbound.detail.raw.loadFailed"));
       } finally {
         setLoadingRaw(false);
       }
@@ -84,36 +86,36 @@ export default function AdminInboundEmailDetailPage() {
 
   const handleDelete = async () => {
     if (deleting) return;
-    if (!confirm("Delete this inbound email permanently? This cannot be undone.")) return;
+    if (!confirm(t("inbound.actions.deleteConfirm"))) return;
 
     setDeleting(true);
     try {
       const res = await fetch(`/api/admin/inbound/${id}`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to delete");
+        toast.error(data?.error || t("inbound.actions.deleteFailed"));
         return;
       }
-      toast.success("Deleted");
+      toast.success(t("inbound.actions.deleted"));
       router.push("/admin/inbound");
       router.refresh();
     } catch {
-      toast.error("Failed to delete");
+      toast.error(t("inbound.actions.deleteFailed"));
     } finally {
       setDeleting(false);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center p-8">Loading...</div>;
+    return <div className="flex justify-center p-8">{t("common.loading")}</div>;
   }
 
   if (!inboundEmail) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <p>Inbound email not found</p>
+        <p>{t("inbound.detail.notFound")}</p>
         <Button className="mt-4" asChild>
-          <Link href="/admin/inbound">Back</Link>
+          <Link href="/admin/inbound">{t("common.back")}</Link>
         </Button>
       </div>
     );
@@ -125,12 +127,12 @@ export default function AdminInboundEmailDetailPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h1 className="text-3xl font-bold">Inbound Email</h1>
+          <h1 className="text-3xl font-bold">{t("inbound.detail.title")}</h1>
           <p className="text-muted-foreground break-all">{inboundEmail.id}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link href="/admin/inbound">Back</Link>
+            <Link href="/admin/inbound">{t("common.back")}</Link>
           </Button>
           <Button
             variant="outline"
@@ -139,7 +141,7 @@ export default function AdminInboundEmailDetailPage() {
             className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete
+            {t("common.delete")}
           </Button>
         </div>
       </div>
@@ -151,27 +153,27 @@ export default function AdminInboundEmailDetailPage() {
           {inboundEmail.mailbox ? (
             <Badge>{inboundEmail.mailbox.address}</Badge>
           ) : (
-            <Badge variant="secondary">Unmatched</Badge>
+            <Badge variant="secondary">{t("common.unmatched")}</Badge>
           )}
         </div>
         <div className="space-y-1 text-sm">
           <div>
-            <span className="font-medium">Received:</span>{" "}
+            <span className="font-medium">{t("inbound.detail.fields.received")}:</span>{" "}
             {format(new Date(inboundEmail.receivedAt), "PPpp")}
           </div>
           <div>
-            <span className="font-medium">From:</span>{" "}
+            <span className="font-medium">{t("inbound.detail.fields.from")}:</span>{" "}
             <span className="font-mono text-xs">{inboundEmail.fromAddress || "-"}</span>
           </div>
           <div>
-            <span className="font-medium">To:</span>{" "}
+            <span className="font-medium">{t("inbound.detail.fields.to")}:</span>{" "}
             <span className="font-mono text-xs">{inboundEmail.toAddress}</span>
           </div>
           <div>
-            <span className="font-medium">Subject:</span> {inboundEmail.subject}
+            <span className="font-medium">{t("inbound.detail.fields.subject")}:</span> {inboundEmail.subject}
           </div>
           <div>
-            <span className="font-medium">Message-Id:</span>{" "}
+            <span className="font-medium">{t("inbound.detail.fields.messageId")}:</span>{" "}
             <span className="font-mono text-xs">{inboundEmail.messageId || "-"}</span>
           </div>
         </div>
@@ -179,14 +181,14 @@ export default function AdminInboundEmailDetailPage() {
 
       {inboundEmail.textBody && (
         <Card className="p-6 space-y-2">
-          <h2 className="text-lg font-semibold">Text Body</h2>
+          <h2 className="text-lg font-semibold">{t("inbound.detail.sections.textBody")}</h2>
           <pre className="whitespace-pre-wrap break-words text-sm">{inboundEmail.textBody}</pre>
         </Card>
       )}
 
       {inboundEmail.htmlBody && (
         <Card className="p-6 space-y-2">
-          <h2 className="text-lg font-semibold">HTML Body</h2>
+          <h2 className="text-lg font-semibold">{t("inbound.detail.sections.htmlBody")}</h2>
           <pre className="whitespace-pre-wrap break-words text-sm">{inboundEmail.htmlBody}</pre>
         </Card>
       )}
@@ -194,10 +196,10 @@ export default function AdminInboundEmailDetailPage() {
       {hasRawContent && (
         <Card className="p-6 space-y-2">
           <details open={rawExpanded} onToggle={handleRawExpand}>
-            <summary className="cursor-pointer text-lg font-semibold">Raw</summary>
+            <summary className="cursor-pointer text-lg font-semibold">{t("inbound.detail.sections.raw")}</summary>
             {loadingRaw ? (
               <div className="mt-3 flex items-center justify-center h-[200px] bg-slate-950 rounded-md">
-                <div className="text-slate-400">Loading raw content...</div>
+                <div className="text-slate-400">{t("inbound.detail.raw.loading")}</div>
               </div>
             ) : rawContent ? (
               <pre className="mt-3 whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
@@ -205,7 +207,7 @@ export default function AdminInboundEmailDetailPage() {
               </pre>
             ) : (
               <div className="mt-3 flex items-center justify-center h-[200px] bg-slate-950 rounded-md">
-                <div className="text-slate-400">Click to load raw content</div>
+                <div className="text-slate-400">{t("inbound.detail.raw.clickToLoad")}</div>
               </div>
             )}
           </details>

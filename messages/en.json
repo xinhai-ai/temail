@@ -115,11 +115,13 @@
       "refresh": "Refresh",
       "view": "View",
       "delete": "Delete",
+      "back": "Back",
       "search": "Search",
       "clear": "Clear",
       "prev": "Prev",
       "next": "Next",
       "pagination": "Page {page} / {pages} • Total {total}",
+      "loading": "Loading...",
       "unmatched": "Unmatched",
       "unknownError": "Unknown error",
       "lastUpdated": "Last updated: {date}",
@@ -158,6 +160,27 @@
         "deleteConfirm": "Delete this inbound email permanently? This cannot be undone.",
         "deleteFailed": "Failed to delete",
         "deleted": "Deleted"
+      },
+      "detail": {
+        "title": "Inbound Email",
+        "notFound": "Inbound email not found",
+        "fields": {
+          "received": "Received",
+          "from": "From",
+          "to": "To",
+          "subject": "Subject",
+          "messageId": "Message-Id"
+        },
+        "sections": {
+          "textBody": "Text Body",
+          "htmlBody": "HTML Body",
+          "raw": "Raw"
+        },
+        "raw": {
+          "loadFailed": "Failed to load raw content",
+          "loading": "Loading raw content...",
+          "clickToLoad": "Click to load raw content"
+        }
       }
     },
     "dashboard": {

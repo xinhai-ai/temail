@@ -115,11 +115,13 @@
       "refresh": "刷新",
       "view": "查看",
       "delete": "删除",
+      "back": "返回",
       "search": "搜索",
       "clear": "清除",
       "prev": "上一页",
       "next": "下一页",
       "pagination": "第 {page} / {pages} 页 • 共 {total} 条",
+      "loading": "加载中...",
       "unmatched": "未匹配",
       "unknownError": "未知错误",
       "lastUpdated": "最后更新：{date}",
@@ -158,6 +160,27 @@
         "deleteConfirm": "确定永久删除这封入站邮件吗？此操作无法撤销。",
         "deleteFailed": "删除失败",
         "deleted": "已删除"
+      },
+      "detail": {
+        "title": "入站邮件",
+        "notFound": "未找到入站邮件",
+        "fields": {
+          "received": "收取时间",
+          "from": "发件人",
+          "to": "收件人",
+          "subject": "主题",
+          "messageId": "Message-Id"
+        },
+        "sections": {
+          "textBody": "文本正文",
+          "htmlBody": "HTML 正文",
+          "raw": "原始内容"
+        },
+        "raw": {
+          "loadFailed": "加载原始内容失败",
+          "loading": "正在加载原始内容...",
+          "clickToLoad": "点击加载原始内容"
+        }
       }
     },
     "dashboard": {
