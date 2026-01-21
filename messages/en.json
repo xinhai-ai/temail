@@ -1473,8 +1473,15 @@
         "topicIdHelp": "Telegram message_thread_id for Topics (forum threads).",
         "parseMode": "Parse Mode",
         "parseModeHelp": "Select \"None\" to omit \"parse_mode\" in the Telegram API request.",
+        "parseModeOptions": {
+          "none": "None",
+          "markdown": "Markdown",
+          "markdownV2": "MarkdownV2",
+          "html": "HTML"
+        },
         "messageTemplate": "Message Template",
         "templatePlaceholder": "Template",
+        "messagePlaceholder": "📧 New email from {{email.fromAddress}}",
         "presets": {
           "default": "Default",
           "compact": "Compact",
@@ -1485,8 +1492,15 @@
         "description": "Forwards to your /bind-bound Telegram forum group and routes messages into mailbox topics automatically.",
         "parseMode": "Parse Mode",
         "parseModeHelp": "Select \"None\" to omit \"parse_mode\" in the Telegram API request.",
+        "parseModeOptions": {
+          "none": "None",
+          "markdown": "Markdown",
+          "markdownV2": "MarkdownV2",
+          "html": "HTML"
+        },
         "messageTemplate": "Message Template",
         "templatePlaceholder": "Template",
+        "messagePlaceholder": "📧 New email from {{email.fromAddress}}",
         "presets": {
           "default": "Default",
           "compact": "Compact",

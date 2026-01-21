@@ -1473,8 +1473,15 @@
         "topicIdHelp": "用于 Topics（论坛主题）的 Telegram message_thread_id。",
         "parseMode": "解析模式",
         "parseModeHelp": "选择“None”将在 Telegram API 请求中省略“parse_mode”。",
+        "parseModeOptions": {
+          "none": "None",
+          "markdown": "Markdown",
+          "markdownV2": "MarkdownV2",
+          "html": "HTML"
+        },
         "messageTemplate": "消息模板",
         "templatePlaceholder": "模板",
+        "messagePlaceholder": "📧 来自 {{email.fromAddress}} 的新邮件",
         "presets": {
           "default": "默认",
           "compact": "精简",
@@ -1485,8 +1492,15 @@
         "description": "转发到你通过 /bind 绑定的 Telegram 论坛群，并自动路由到邮箱话题。",
         "parseMode": "解析模式",
         "parseModeHelp": "选择“None”将在 Telegram API 请求中省略“parse_mode”。",
+        "parseModeOptions": {
+          "none": "None",
+          "markdown": "Markdown",
+          "markdownV2": "MarkdownV2",
+          "html": "HTML"
+        },
         "messageTemplate": "消息模板",
         "templatePlaceholder": "模板",
+        "messagePlaceholder": "📧 来自 {{email.fromAddress}} 的新邮件",
         "presets": {
           "default": "默认",
           "compact": "精简",

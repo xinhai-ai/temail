@@ -1899,10 +1899,10 @@ function ForwardTelegramConfig({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="None">None</SelectItem>
-            <SelectItem value="Markdown">Markdown</SelectItem>
-            <SelectItem value="MarkdownV2">MarkdownV2</SelectItem>
-            <SelectItem value="HTML">HTML</SelectItem>
+            <SelectItem value="None">{t("nodeConfigPanel.forwardTelegram.parseModeOptions.none")}</SelectItem>
+            <SelectItem value="Markdown">{t("nodeConfigPanel.forwardTelegram.parseModeOptions.markdown")}</SelectItem>
+            <SelectItem value="MarkdownV2">{t("nodeConfigPanel.forwardTelegram.parseModeOptions.markdownV2")}</SelectItem>
+            <SelectItem value="HTML">{t("nodeConfigPanel.forwardTelegram.parseModeOptions.html")}</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
@@ -1928,7 +1928,7 @@ function ForwardTelegramConfig({
           id="template"
           value={(data.template as string) || ""}
           onChange={(e) => onChange("template", e.target.value)}
-          placeholder="📧 New email from {{email.fromAddress}}"
+          placeholder={t("nodeConfigPanel.forwardTelegram.messagePlaceholder")}
           rows={5}
           className="text-xs font-mono"
         />
@@ -1974,10 +1974,10 @@ function ForwardTelegramBoundConfig({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="None">None</SelectItem>
-            <SelectItem value="Markdown">Markdown</SelectItem>
-            <SelectItem value="MarkdownV2">MarkdownV2</SelectItem>
-            <SelectItem value="HTML">HTML</SelectItem>
+            <SelectItem value="None">{t("nodeConfigPanel.forwardTelegramBound.parseModeOptions.none")}</SelectItem>
+            <SelectItem value="Markdown">{t("nodeConfigPanel.forwardTelegramBound.parseModeOptions.markdown")}</SelectItem>
+            <SelectItem value="MarkdownV2">{t("nodeConfigPanel.forwardTelegramBound.parseModeOptions.markdownV2")}</SelectItem>
+            <SelectItem value="HTML">{t("nodeConfigPanel.forwardTelegramBound.parseModeOptions.html")}</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
@@ -2003,7 +2003,7 @@ function ForwardTelegramBoundConfig({
           id="template"
           value={(data.template as string) || ""}
           onChange={(e) => onChange("template", e.target.value)}
-          placeholder="📧 New email from {{email.fromAddress}}"
+          placeholder={t("nodeConfigPanel.forwardTelegramBound.messagePlaceholder")}
           rows={5}
           className="text-xs font-mono"
         />
