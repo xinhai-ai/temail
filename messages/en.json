@@ -927,6 +927,48 @@
       "deleteFailed": "Failed to delete workflow",
       "activated": "Workflow activated",
       "deactivated": "Workflow deactivated"
+    },
+    "editor": {
+      "noDescription": "No description",
+      "history": {
+        "title": "Execution History",
+        "button": "History",
+        "aria": "Open execution history"
+      },
+      "settings": {
+        "button": "Settings",
+        "aria": "Open workflow settings",
+        "dialogTitle": "Workflow Settings",
+        "nameLabel": "Name",
+        "namePlaceholder": "My Workflow",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Describe what this workflow does...",
+        "defaultMailboxLabel": "Default Mailbox (optional)",
+        "selectMailbox": "Select mailbox",
+        "allMailboxes": "All Mailboxes",
+        "done": "Done"
+      },
+      "status": {
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "ariaActivate": "Activate workflow",
+        "ariaDeactivate": "Deactivate workflow"
+      },
+      "save": {
+        "aria": "Save workflow",
+        "save": "Save",
+        "saving": "Saving..."
+      },
+      "toast": {
+        "loadFailed": "Failed to load workflow",
+        "cannotSave": "Cannot save: {message}",
+        "createFailed": "Failed to create workflow",
+        "created": "Workflow created",
+        "saveFailed": "Failed to save workflow",
+        "saved": "Workflow saved",
+        "updateStatusFailed": "Failed to update status",
+        "nameRequired": "Please enter a workflow name"
+      }
     }
   }
 }

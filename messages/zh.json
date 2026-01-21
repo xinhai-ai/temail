@@ -927,6 +927,48 @@
       "deleteFailed": "删除工作流失败",
       "activated": "工作流已启用",
       "deactivated": "工作流已停用"
+    },
+    "editor": {
+      "noDescription": "暂无描述",
+      "history": {
+        "title": "执行历史",
+        "button": "历史",
+        "aria": "打开执行历史"
+      },
+      "settings": {
+        "button": "设置",
+        "aria": "打开工作流设置",
+        "dialogTitle": "工作流设置",
+        "nameLabel": "名称",
+        "namePlaceholder": "我的工作流",
+        "descriptionLabel": "描述",
+        "descriptionPlaceholder": "描述这个工作流的作用...",
+        "defaultMailboxLabel": "默认邮箱（可选）",
+        "selectMailbox": "选择邮箱",
+        "allMailboxes": "所有邮箱",
+        "done": "完成"
+      },
+      "status": {
+        "activate": "启用",
+        "deactivate": "停用",
+        "ariaActivate": "启用工作流",
+        "ariaDeactivate": "停用工作流"
+      },
+      "save": {
+        "aria": "保存工作流",
+        "save": "保存",
+        "saving": "保存中..."
+      },
+      "toast": {
+        "loadFailed": "加载工作流失败",
+        "cannotSave": "无法保存：{message}",
+        "createFailed": "创建工作流失败",
+        "created": "工作流已创建",
+        "saveFailed": "保存工作流失败",
+        "saved": "工作流已保存",
+        "updateStatusFailed": "更新状态失败",
+        "nameRequired": "请输入工作流名称"
+      }
     }
   }
 }

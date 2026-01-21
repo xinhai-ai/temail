@@ -16,10 +16,12 @@ import { ExecutionLogsPanel } from "@/components/workflow/panels/ExecutionLogsPa
 import { WorkflowTestDialog } from "@/components/workflow/WorkflowTestDialog";
 import { useWorkflowStore } from "@/lib/workflow/store";
 import { validateWorkflow } from "@/lib/workflow/utils";
+import { useTranslations } from "next-intl";
 
 export default function WorkflowEditorPage() {
   const router = useRouter();
   const params = useParams();
+  const t = useTranslations("workflows");
   const isNew = params.id === "new";
   const workflowId = isNew ? null : (params.id as string);
 
@@ -63,7 +65,7 @@ export default function WorkflowEditorPage() {
         try {
           const res = await fetch(`/api/workflows/${workflowId}`);
           if (!res.ok) {
-            toast.error("Failed to load workflow");
+            toast.error(t("editor.toast.loadFailed"));
             router.push("/workflows");
             return;
           }
@@ -78,7 +80,7 @@ export default function WorkflowEditorPage() {
             config
           );
         } catch (error) {
-          toast.error("Failed to load workflow");
+          toast.error(t("editor.toast.loadFailed"));
           router.push("/workflows");
         } finally {
           setLoading(false);
@@ -86,7 +88,7 @@ export default function WorkflowEditorPage() {
       };
       fetchWorkflow();
     }
-  }, [isNew, workflowId, router, loadWorkflow]);
+  }, [isNew, workflowId, router, loadWorkflow, t]);
 
   const handleSave = useCallback(async () => {
     const config = getConfig();
@@ -94,7 +96,7 @@ export default function WorkflowEditorPage() {
     const criticalErrors = errors.filter((e) => e.type === "error");
 
     if (criticalErrors.length > 0) {
-      toast.error(`Cannot save: ${criticalErrors[0].message}`);
+      toast.error(t("editor.toast.cannotSave", { message: criticalErrors[0].message }));
       return;
     }
 
@@ -120,12 +122,12 @@ export default function WorkflowEditorPage() {
         });
 
         if (!res.ok) {
-          toast.error("Failed to create workflow");
+          toast.error(t("editor.toast.createFailed"));
           return;
         }
 
         const data = await res.json();
-        toast.success("Workflow created");
+        toast.success(t("editor.toast.created"));
         router.push(`/workflows/${data.id}`);
       } else {
         const res = await fetch(`/api/workflows/${workflowId}`, {
@@ -140,19 +142,19 @@ export default function WorkflowEditorPage() {
         });
 
         if (!res.ok) {
-          toast.error("Failed to save workflow");
+          toast.error(t("editor.toast.saveFailed"));
           return;
         }
 
-        toast.success("Workflow saved");
+        toast.success(t("editor.toast.saved"));
         markClean();
       }
     } catch (error) {
-      toast.error("Failed to save workflow");
+      toast.error(t("editor.toast.saveFailed"));
     } finally {
       setIsSaving(false);
     }
-  }, [isNew, workflowId, name, description, mailboxId, router, getConfig, setIsSaving, markClean]);
+  }, [isNew, workflowId, name, description, mailboxId, router, getConfig, setIsSaving, markClean, t]);
 
   const handleToggleStatus = useCallback(async () => {
     if (isNew) return;
@@ -167,20 +169,20 @@ export default function WorkflowEditorPage() {
       });
 
       if (!res.ok) {
-        toast.error("Failed to update status");
+        toast.error(t("editor.toast.updateStatusFailed"));
         return;
       }
 
       setWorkflowMeta({ status: newStatus });
-      toast.success(`Workflow ${newStatus.toLowerCase()}`);
+      toast.success(newStatus === "ACTIVE" ? t("toast.activated") : t("toast.deactivated"));
     } catch {
-      toast.error("Failed to update status");
+      toast.error(t("editor.toast.updateStatusFailed"));
     }
-  }, [isNew, status, workflowId, setWorkflowMeta]);
+  }, [isNew, status, workflowId, setWorkflowMeta, t]);
 
   const handleMetaSubmit = () => {
     if (!name) {
-      toast.error("Please enter a workflow name");
+      toast.error(t("editor.toast.nameRequired"));
       return;
     }
     setShowMetaDialog(false);
@@ -207,7 +209,7 @@ export default function WorkflowEditorPage() {
           <div className="min-w-0">
             <h1 className="font-semibold truncate">{name}</h1>
             <p className="text-xs text-muted-foreground truncate">
-              {description || "No description"}
+              {description || t("editor.noDescription")}
             </p>
           </div>
         </div>
@@ -217,37 +219,37 @@ export default function WorkflowEditorPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowHistoryDialog(true)}
-              aria-label="Open execution history"
+              aria-label={t("editor.history.aria")}
             >
               <History className="h-3 w-3 sm:mr-1.5" />
-              <span className="hidden sm:inline">History</span>
+              <span className="hidden sm:inline">{t("editor.history.button")}</span>
             </Button>
           )}
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowMetaDialog(true)}
-            aria-label="Open workflow settings"
+            aria-label={t("editor.settings.aria")}
           >
             <Settings className="h-3 w-3 sm:mr-1.5" />
-            <span className="hidden sm:inline">Settings</span>
+            <span className="hidden sm:inline">{t("editor.settings.button")}</span>
           </Button>
           {!isNew && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleToggleStatus}
-              aria-label={status === "ACTIVE" ? "Deactivate workflow" : "Activate workflow"}
+              aria-label={status === "ACTIVE" ? t("editor.status.ariaDeactivate") : t("editor.status.ariaActivate")}
             >
               {status === "ACTIVE" ? (
                 <>
                   <PowerOff className="h-3 w-3 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Deactivate</span>
+                  <span className="hidden sm:inline">{t("editor.status.deactivate")}</span>
                 </>
               ) : (
                 <>
                   <Power className="h-3 w-3 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Activate</span>
+                  <span className="hidden sm:inline">{t("editor.status.activate")}</span>
                 </>
               )}
             </Button>
@@ -256,11 +258,11 @@ export default function WorkflowEditorPage() {
             onClick={handleSave}
             disabled={isSaving || (!isNew && !isDirty)}
             size="sm"
-            aria-label="Save workflow"
-            title={isSaving ? "Saving..." : "Save"}
+            aria-label={t("editor.save.aria")}
+            title={isSaving ? t("editor.save.saving") : t("editor.save.save")}
           >
             <Save className="h-3 w-3 sm:mr-1.5" />
-            <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
+            <span className="hidden sm:inline">{isSaving ? t("editor.save.saving") : t("editor.save.save")}</span>
           </Button>
         </div>
       </div>
@@ -278,30 +280,30 @@ export default function WorkflowEditorPage() {
       <Dialog open={showMetaDialog} onOpenChange={setShowMetaDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Workflow Settings</DialogTitle>
+            <DialogTitle>{t("editor.settings.dialogTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t("editor.settings.nameLabel")}</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setWorkflowMeta({ name: e.target.value })}
-                placeholder="My Workflow"
+                placeholder={t("editor.settings.namePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t("editor.settings.descriptionLabel")}</Label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setWorkflowMeta({ description: e.target.value })}
-                placeholder="Describe what this workflow does..."
+                placeholder={t("editor.settings.descriptionPlaceholder")}
                 rows={3}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="mailbox">Default Mailbox (optional)</Label>
+              <Label htmlFor="mailbox">{t("editor.settings.defaultMailboxLabel")}</Label>
               <Select
                 value={mailboxId || "all"}
                 onValueChange={(v) =>
@@ -309,10 +311,10 @@ export default function WorkflowEditorPage() {
                 }
               >
                 <SelectTrigger id="mailbox">
-                  <SelectValue placeholder="Select mailbox" />
+                  <SelectValue placeholder={t("editor.settings.selectMailbox")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Mailboxes</SelectItem>
+                  <SelectItem value="all">{t("editor.settings.allMailboxes")}</SelectItem>
                   {mailboxes.map((mb) => (
                     <SelectItem key={mb.id} value={mb.id}>
                       {mb.address}
@@ -323,7 +325,7 @@ export default function WorkflowEditorPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleMetaSubmit}>Done</Button>
+            <Button onClick={handleMetaSubmit}>{t("editor.settings.done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -332,7 +334,7 @@ export default function WorkflowEditorPage() {
       <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
         <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0">
           <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-            <DialogTitle>Execution History</DialogTitle>
+            <DialogTitle>{t("editor.history.title")}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-auto">
             {workflowId && <ExecutionLogsPanel workflowId={workflowId} />}
