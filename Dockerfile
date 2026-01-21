@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 
+ARG GIT_SHA=unknown
+
 FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -38,8 +40,10 @@ RUN npm run build
 
 # Web production image
 FROM base AS web
+ARG GIT_SHA
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV TEMAIL_GIT_SHA=$GIT_SHA
 COPY --from=deps-prod /app/node_modules ./node_modules
 COPY package.json ./
 COPY prisma ./prisma
@@ -56,7 +60,9 @@ CMD ["npm", "run", "start"]
 
 # Worker image (IMAP sync + background jobs)
 FROM base AS worker
+ARG GIT_SHA
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV TEMAIL_GIT_SHA=$GIT_SHA
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY prisma ./prisma
