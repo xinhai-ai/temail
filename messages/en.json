@@ -1310,6 +1310,29 @@
         "modeHelp": "Add/remove/set tags on the current email",
         "tags": "Tags",
         "tagsHelp": "One per line. Supports template variables."
+      },
+      "noAdditionalConfig": "No additional configuration needed",
+      "aiRewrite": {
+        "writeTarget": "Write Target",
+        "selectTarget": "Select target",
+        "targets": {
+          "variables": "Variables",
+          "email": "Email",
+          "both": "Both"
+        },
+        "promptFields": "Prompt Fields",
+        "fieldOptions": {
+          "subject": "Subject",
+          "textBody": "Body (Text)",
+          "htmlBody": "Body (HTML)"
+        },
+        "fieldsHelp": "Select which email fields are sent to the AI (large bodies are truncated)",
+        "instruction": "Instruction",
+        "instructionPlaceholder": "Extract key points into variables, then rewrite subject and body.",
+        "outputVariableKeys": "Output Variable Keys (optional)",
+        "outputVariableKeysHelp": "When set, the AI must only write these keys (comma/newline separated). If empty, keys are inferred from the instruction (e.g. variables.code).",
+        "resultVariable": "Result Variable (optional)",
+        "resultVariableHelp": "Stores the full JSON result into this workflow variable"
       }
     },
     "baseNode": {

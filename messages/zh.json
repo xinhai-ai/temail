@@ -1310,6 +1310,29 @@
         "modeHelp": "对当前邮件添加/移除/设置标签",
         "tags": "标签",
         "tagsHelp": "每行一个。支持模板变量。"
+      },
+      "noAdditionalConfig": "无需额外配置",
+      "aiRewrite": {
+        "writeTarget": "写入目标",
+        "selectTarget": "选择目标",
+        "targets": {
+          "variables": "变量",
+          "email": "邮件",
+          "both": "两者"
+        },
+        "promptFields": "提示字段",
+        "fieldOptions": {
+          "subject": "主题",
+          "textBody": "正文（文本）",
+          "htmlBody": "正文（HTML）"
+        },
+        "fieldsHelp": "选择发送给 AI 的邮件字段（正文较长时会被截断）",
+        "instruction": "指令",
+        "instructionPlaceholder": "提取关键信息写入变量，然后重写主题和正文。",
+        "outputVariableKeys": "输出变量键（可选）",
+        "outputVariableKeysHelp": "设置后，AI 只能写入这些键（逗号/换行分隔）。留空则根据指令推断键（例如 variables.code）。",
+        "resultVariable": "结果变量（可选）",
+        "resultVariableHelp": "将完整的 JSON 结果存入该工作流变量"
       }
     },
     "baseNode": {
