@@ -1666,6 +1666,8 @@ function AiClassifierConfig({
 
 // 条件预览组件
 function ConditionPreview({ condition, depth = 0 }: { condition: CompositeCondition; depth?: number }) {
+  const t = useTranslations("workflows");
+
   if (depth > 2) {
     return <span className="text-xs text-muted-foreground">...</span>;
   }
@@ -1674,17 +1676,21 @@ function ConditionPreview({ condition, depth = 0 }: { condition: CompositeCondit
     case "and":
     case "or":
       if (condition.conditions.length === 0) {
-        return <span className="text-xs text-muted-foreground italic">Empty group</span>;
+        return <span className="text-xs text-muted-foreground italic">{t("conditionBuilder.preview.emptyGroup")}</span>;
       }
       return (
         <div className="text-xs space-y-1">
-          <span className="font-semibold text-primary uppercase">{condition.kind}</span>
+          <span className="font-semibold text-primary uppercase">
+            {t(`conditionBuilder.kinds.${condition.kind}`)}
+          </span>
           <div className="pl-2 border-l-2 border-primary/30 space-y-1">
             {condition.conditions.slice(0, 3).map((c, i) => (
               <ConditionPreview key={i} condition={c} depth={depth + 1} />
             ))}
             {condition.conditions.length > 3 && (
-              <span className="text-muted-foreground">+{condition.conditions.length - 3} more</span>
+              <span className="text-muted-foreground">
+                {t("conditionBuilder.preview.more", { count: condition.conditions.length - 3 })}
+              </span>
             )}
           </div>
         </div>
@@ -1692,7 +1698,7 @@ function ConditionPreview({ condition, depth = 0 }: { condition: CompositeCondit
     case "not":
       return (
         <div className="text-xs">
-          <span className="font-semibold text-red-500">NOT</span>{" "}
+          <span className="font-semibold text-red-500">{t("conditionBuilder.kinds.not")}</span>{" "}
           <ConditionPreview condition={condition.condition} depth={depth + 1} />
         </div>
       );
@@ -1700,10 +1706,10 @@ function ConditionPreview({ condition, depth = 0 }: { condition: CompositeCondit
       return (
         <div className="text-xs flex items-center gap-1 flex-wrap">
           <Badge variant="outline" className="text-[10px] px-1 py-0">
-            {MATCH_FIELD_LABELS[condition.field]}
+            {t(`conditionBuilder.fields.${condition.field}`)}
           </Badge>
           <span className="text-muted-foreground">
-            {MATCH_OPERATOR_LABELS[condition.operator]?.toLowerCase()}
+            {t(`conditionBuilder.operators.${condition.operator}`)}
           </span>
           <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
             &quot;{condition.value}&quot;

@@ -1568,8 +1568,17 @@
         "orGroup": "OR 组",
         "not": "NOT"
       },
+      "kinds": {
+        "and": "AND",
+        "or": "OR",
+        "not": "NOT"
+      },
       "notHelp": "对下面的条件取反",
       "groupCount": "{count} 条条件",
+      "preview": {
+        "emptyGroup": "空条件组",
+        "more": "+{count} 更多"
+      },
       "fields": {
         "subject": "主题",
         "fromAddress": "发件人邮箱",

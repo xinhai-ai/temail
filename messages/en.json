@@ -1568,8 +1568,17 @@
         "orGroup": "OR Group",
         "not": "NOT"
       },
+      "kinds": {
+        "and": "AND",
+        "or": "OR",
+        "not": "NOT"
+      },
       "notHelp": "Negate the following condition",
       "groupCount": "{count, plural, one {# condition} other {# conditions}}",
+      "preview": {
+        "emptyGroup": "Empty group",
+        "more": "+{count} more"
+      },
       "fields": {
         "subject": "Subject",
         "fromAddress": "From Address",
