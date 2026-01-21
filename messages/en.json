@@ -134,6 +134,7 @@
         "error": "Error"
       },
       "table": {
+        "action": "Action",
         "actions": "Actions",
         "created": "Created",
         "domain": "Domain",
@@ -142,13 +143,16 @@
         "inbound": "Inbound",
         "mailbox": "Mailbox",
         "mailboxes": "Mailboxes",
+        "level": "Level",
+        "message": "Message",
         "received": "Received",
         "role": "Role",
         "source": "Source",
         "status": "Status",
         "subject": "Subject",
         "time": "Time",
-        "to": "To"
+        "to": "To",
+        "user": "User"
       }
     },
     "inbound": {
@@ -182,6 +186,11 @@
           "clickToLoad": "Click to load raw content"
         }
       }
+    },
+    "logs": {
+      "title": "System Logs",
+      "subtitle": "View system activity",
+      "empty": "No logs yet"
     },
     "dashboard": {
       "title": "Admin Dashboard",

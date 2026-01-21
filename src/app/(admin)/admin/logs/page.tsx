@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import prisma from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,10 @@ export default async function AdminLogsPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const resolvedSearchParams = (await searchParams) || {};
+  const [t, resolvedSearchParams] = await Promise.all([
+    getTranslations("admin"),
+    searchParams ?? Promise.resolve({}),
+  ]);
 
   const getParam = (key: string) => {
     const value = resolvedSearchParams[key];
@@ -58,23 +62,23 @@ export default async function AdminLogsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">System Logs</h1>
-        <p className="text-muted-foreground">View system activity</p>
+        <h1 className="text-3xl font-bold">{t("logs.title")}</h1>
+        <p className="text-muted-foreground">{t("logs.subtitle")}</p>
       </div>
 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Page {page} / {pages} • Total {total}
+          {t("common.pagination", { page, pages, total })}
         </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" asChild disabled={page <= 1}>
             <Link href={prevHref} aria-disabled={page <= 1}>
-              Prev
+              {t("common.prev")}
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild disabled={page >= pages}>
             <Link href={nextHref} aria-disabled={page >= pages}>
-              Next
+              {t("common.next")}
             </Link>
           </Button>
         </div>
@@ -83,18 +87,18 @@ export default async function AdminLogsPage({
       {logs.length === 0 ? (
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No logs yet</p>
+          <p className="text-muted-foreground">{t("logs.empty")}</p>
         </Card>
       ) : (
         <Card>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>User</TableHead>
+                <TableHead>{t("common.table.time")}</TableHead>
+                <TableHead>{t("common.table.level")}</TableHead>
+                <TableHead>{t("common.table.action")}</TableHead>
+                <TableHead>{t("common.table.message")}</TableHead>
+                <TableHead>{t("common.table.user")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

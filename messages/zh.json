@@ -134,6 +134,7 @@
         "error": "错误"
       },
       "table": {
+        "action": "操作",
         "actions": "操作",
         "created": "创建时间",
         "domain": "域名",
@@ -142,13 +143,16 @@
         "inbound": "入站",
         "mailbox": "邮箱",
         "mailboxes": "邮箱",
+        "level": "级别",
+        "message": "消息",
         "received": "收取时间",
         "role": "角色",
         "source": "来源",
         "status": "状态",
         "subject": "主题",
         "time": "时间",
-        "to": "收件人"
+        "to": "收件人",
+        "user": "用户"
       }
     },
     "inbound": {
@@ -182,6 +186,11 @@
           "clickToLoad": "点击加载原始内容"
         }
       }
+    },
+    "logs": {
+      "title": "系统日志",
+      "subtitle": "查看系统活动",
+      "empty": "暂无日志"
     },
     "dashboard": {
       "title": "管理员面板",
