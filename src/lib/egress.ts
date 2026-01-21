@@ -38,11 +38,38 @@ function isPrivateIpv4(ip: string) {
 function isPrivateIpv6(ip: string) {
   const normalized = ip.toLowerCase();
   if (normalized === "::" || normalized === "::1") return true; // unspecified / loopback
+  const mappedIpv4 = extractMappedIpv4(normalized);
+  if (mappedIpv4) return isPrivateIpv4(mappedIpv4);
   if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true; // fc00::/7 unique local
   if (normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb")) {
     return true; // fe80::/10 link-local
   }
   return false;
+}
+
+function extractMappedIpv4(ipv6: string): string | null {
+  // Support IPv4-mapped IPv6 addresses like ::ffff:127.0.0.1 or ::ffff:7f00:1
+  const dottedMatch = ipv6.match(/(?:^|:)ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (dottedMatch) {
+    const candidate = dottedMatch[1] || "";
+    const parts = candidate.split(".").map((part) => Number(part));
+    if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return null;
+    return parts.join(".");
+  }
+
+  const hexMatch = ipv6.match(/(?:^|:)ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (hexMatch) {
+    const hi = Number.parseInt(hexMatch[1] || "", 16);
+    const lo = Number.parseInt(hexMatch[2] || "", 16);
+    if (!Number.isFinite(hi) || !Number.isFinite(lo)) return null;
+    const a = (hi >> 8) & 0xff;
+    const b = hi & 0xff;
+    const c = (lo >> 8) & 0xff;
+    const d = lo & 0xff;
+    return `${a}.${b}.${c}.${d}`;
+  }
+
+  return null;
 }
 
 function isPrivateIpAddress(ip: string) {
@@ -123,4 +150,3 @@ export async function validateEgressUrl(input: unknown): Promise<EgressUrlValida
 }
 
 export const DEFAULT_EGRESS_TIMEOUT_MS = 10_000;
-
