@@ -3,6 +3,7 @@
 import { DragEvent, useState } from "react";
 import { cn } from "@/lib/utils";
 import { NODE_DEFINITIONS, NodeType } from "@/lib/workflow/types";
+import { useTranslations } from "next-intl";
 import {
   Mail,
   Clock,
@@ -56,23 +57,17 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 // 节点分类
-const categories = [
+const categoryTypes = [
   {
     id: "trigger",
-    label: "Triggers",
-    description: "Start your workflow",
     types: ["trigger:email", "trigger:schedule", "trigger:manual"] as NodeType[],
   },
   {
     id: "condition",
-    label: "Conditions",
-    description: "Add logic branches",
     types: ["condition:match", "condition:keyword", "condition:ai-classifier", "condition:custom"] as NodeType[],
   },
   {
     id: "action",
-    label: "Actions",
-    description: "Perform operations",
     types: [
       "action:archive",
       "action:markRead",
@@ -91,23 +86,20 @@ const categories = [
   },
   {
     id: "forward",
-    label: "Forwards",
-    description: "Send notifications",
     types: ["forward:email", "forward:telegram-bound", "forward:telegram", "forward:discord", "forward:slack", "forward:webhook"] as NodeType[],
   },
   {
     id: "control",
-    label: "Control Flow",
-    description: "Control execution",
     types: ["control:branch", "control:delay", "control:end"] as NodeType[],
   },
-];
+] as const;
 
 interface NodePaletteProps {
   collapsed?: boolean;
 }
 
 export function NodePalette({ collapsed = false }: NodePaletteProps) {
+  const t = useTranslations("workflows");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     trigger: true,
     condition: true,
@@ -127,6 +119,11 @@ export function NodePalette({ collapsed = false }: NodePaletteProps) {
     event.dataTransfer.setData("application/reactflow", nodeType);
     event.dataTransfer.effectAllowed = "move";
   };
+
+  const categories = categoryTypes.map((c) => ({
+    ...c,
+    label: t(`nodePalette.categories.${c.id}`),
+  }));
 
   if (collapsed) {
     return (
@@ -158,8 +155,8 @@ export function NodePalette({ collapsed = false }: NodePaletteProps) {
   return (
     <div className="w-56 border-r bg-muted/30 flex flex-col h-full overflow-hidden">
       <div className="p-3 border-b flex-shrink-0">
-        <h3 className="font-semibold text-sm">Nodes</h3>
-        <p className="text-xs text-muted-foreground">Drag nodes to canvas</p>
+        <h3 className="font-semibold text-sm">{t("nodePalette.title")}</h3>
+        <p className="text-xs text-muted-foreground">{t("nodePalette.subtitle")}</p>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="p-2 space-y-2">

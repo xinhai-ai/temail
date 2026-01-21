@@ -1219,6 +1219,17 @@
         "manual": "Manual trigger",
         "schedule": "Scheduled trigger"
       }
+    },
+    "nodePalette": {
+      "title": "Nodes",
+      "subtitle": "Drag nodes to canvas",
+      "categories": {
+        "trigger": "Triggers",
+        "condition": "Conditions",
+        "action": "Actions",
+        "forward": "Forwards",
+        "control": "Control Flow"
+      }
     }
   }
 }
