@@ -1544,6 +1544,35 @@
     "noSubject": "(No subject)",
     "noContent": "No content"
   },
+  "emailDetail": {
+    "actions": {
+      "back": "Back",
+      "backToInbox": "Back to Inbox"
+    },
+    "confirm": {
+      "moveToTrash": "Move this email to Trash?"
+    },
+    "toasts": {
+      "movedToTrash": "Moved to Trash"
+    },
+    "metadata": {
+      "title": "Metadata",
+      "fields": {
+        "messageId": "Message-Id",
+        "mailbox": "Mailbox",
+        "from": "From",
+        "to": "To",
+        "headers": "Headers",
+        "attachments": "Attachments"
+      },
+      "headersSummary": "Headers ({count})",
+      "table": {
+        "name": "Name",
+        "value": "Value"
+      },
+      "rawSummary": "Raw content"
+    }
+  },
   "workflows": {
     "title": "Workflows",
     "subtitle": "Automate your email processing with visual workflows",

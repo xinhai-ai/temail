@@ -1544,6 +1544,35 @@
     "noSubject": "（无主题）",
     "noContent": "无内容"
   },
+  "emailDetail": {
+    "actions": {
+      "back": "返回",
+      "backToInbox": "返回收件箱"
+    },
+    "confirm": {
+      "moveToTrash": "将这封邮件移到回收站吗？"
+    },
+    "toasts": {
+      "movedToTrash": "已移到回收站"
+    },
+    "metadata": {
+      "title": "元数据",
+      "fields": {
+        "messageId": "Message-Id",
+        "mailbox": "邮箱",
+        "from": "发件人",
+        "to": "收件人",
+        "headers": "邮件头",
+        "attachments": "附件"
+      },
+      "headersSummary": "邮件头（{count}）",
+      "table": {
+        "name": "名称",
+        "value": "值"
+      },
+      "rawSummary": "原始内容"
+    }
+  },
   "workflows": {
     "title": "工作流",
     "subtitle": "用可视化工作流自动处理邮件",
