@@ -34,6 +34,7 @@ COPY next.config.ts tsconfig.json ./
 COPY postcss.config.mjs components.json ./
 # Copy source code last (most frequently changed)
 COPY public ./public
+COPY messages ./messages
 COPY src ./src
 COPY scripts ./scripts
 RUN npm run build
