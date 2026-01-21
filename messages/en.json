@@ -1264,6 +1264,19 @@
         "delayDuration": "Delay Duration",
         "unitSeconds": "seconds",
         "maxHelp": "Max: {maxSeconds} seconds ({maxHours} hours)"
+      },
+      "actionSetVariable": {
+        "name": "Variable Name",
+        "value": "Value",
+        "help": "Use {example} to reference email data"
+      },
+      "actionUnsetVariable": {
+        "name": "Variable Name",
+        "help": "Deletes the variable from the workflow context"
+      },
+      "actionCloneVariable": {
+        "source": "Source Variable",
+        "target": "Target Variable"
       }
     },
     "baseNode": {

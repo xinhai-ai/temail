@@ -315,79 +315,79 @@ function renderNodeConfig(
 	        </div>
 	      );
 
-    case "action:setVariable":
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-xs font-medium">Variable Name</Label>
-            <Input
-              id="name"
-              value={(data.name as string) || ""}
-              onChange={(e) => onChange("name", e.target.value)}
-              placeholder="myVariable"
-              className="h-8 text-sm font-mono"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="value" className="text-xs font-medium">Value</Label>
-            <Input
-              id="value"
-              value={(data.value as string) || ""}
-              onChange={(e) => onChange("value", e.target.value)}
-              placeholder="{{email.subject}}"
-              className="h-8 text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              Use {"{{email.field}}"} to reference email data
-            </p>
-          </div>
-        </div>
-      );
+	    case "action:setVariable":
+	      return (
+	        <div className="space-y-4">
+	          <div className="space-y-2">
+	            <Label htmlFor="name" className="text-xs font-medium">{t("nodeConfigPanel.actionSetVariable.name")}</Label>
+	            <Input
+	              id="name"
+	              value={(data.name as string) || ""}
+	              onChange={(e) => onChange("name", e.target.value)}
+	              placeholder="myVariable"
+	              className="h-8 text-sm font-mono"
+	            />
+	          </div>
+	          <div className="space-y-2">
+	            <Label htmlFor="value" className="text-xs font-medium">{t("nodeConfigPanel.actionSetVariable.value")}</Label>
+	            <Input
+	              id="value"
+	              value={(data.value as string) || ""}
+	              onChange={(e) => onChange("value", e.target.value)}
+	              placeholder="{{email.subject}}"
+	              className="h-8 text-sm"
+	            />
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.actionSetVariable.help", { example: "{{email.field}}" })}
+	            </p>
+	          </div>
+	        </div>
+	      );
 
-    case "action:unsetVariable":
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-xs font-medium">Variable Name</Label>
-            <Input
-              id="name"
-              value={(data.name as string) || ""}
-              onChange={(e) => onChange("name", e.target.value)}
-              placeholder="myVariable"
-              className="h-8 text-sm font-mono"
-            />
-            <p className="text-xs text-muted-foreground">
-              Deletes the variable from the workflow context
-            </p>
-          </div>
-        </div>
-      );
+	    case "action:unsetVariable":
+	      return (
+	        <div className="space-y-4">
+	          <div className="space-y-2">
+	            <Label htmlFor="name" className="text-xs font-medium">{t("nodeConfigPanel.actionUnsetVariable.name")}</Label>
+	            <Input
+	              id="name"
+	              value={(data.name as string) || ""}
+	              onChange={(e) => onChange("name", e.target.value)}
+	              placeholder="myVariable"
+	              className="h-8 text-sm font-mono"
+	            />
+	            <p className="text-xs text-muted-foreground">
+	              {t("nodeConfigPanel.actionUnsetVariable.help")}
+	            </p>
+	          </div>
+	        </div>
+	      );
 
-    case "action:cloneVariable":
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="source" className="text-xs font-medium">Source Variable</Label>
-            <Input
-              id="source"
-              value={(data.source as string) || ""}
-              onChange={(e) => onChange("source", e.target.value)}
-              placeholder="sourceVar"
-              className="h-8 text-sm font-mono"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="target" className="text-xs font-medium">Target Variable</Label>
-            <Input
-              id="target"
-              value={(data.target as string) || ""}
-              onChange={(e) => onChange("target", e.target.value)}
-              placeholder="targetVar"
-              className="h-8 text-sm font-mono"
-            />
-          </div>
-        </div>
-      );
+	    case "action:cloneVariable":
+	      return (
+	        <div className="space-y-4">
+	          <div className="space-y-2">
+	            <Label htmlFor="source" className="text-xs font-medium">{t("nodeConfigPanel.actionCloneVariable.source")}</Label>
+	            <Input
+	              id="source"
+	              value={(data.source as string) || ""}
+	              onChange={(e) => onChange("source", e.target.value)}
+	              placeholder="sourceVar"
+	              className="h-8 text-sm font-mono"
+	            />
+	          </div>
+	          <div className="space-y-2">
+	            <Label htmlFor="target" className="text-xs font-medium">{t("nodeConfigPanel.actionCloneVariable.target")}</Label>
+	            <Input
+	              id="target"
+	              value={(data.target as string) || ""}
+	              onChange={(e) => onChange("target", e.target.value)}
+	              placeholder="targetVar"
+	              className="h-8 text-sm font-mono"
+	            />
+	          </div>
+	        </div>
+	      );
 
     case "action:rewriteEmail":
       return (

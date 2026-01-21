@@ -1264,6 +1264,19 @@
         "delayDuration": "延迟时长",
         "unitSeconds": "秒",
         "maxHelp": "最大：{maxSeconds} 秒（{maxHours} 小时）"
+      },
+      "actionSetVariable": {
+        "name": "变量名",
+        "value": "值",
+        "help": "使用 {example} 引用邮件数据"
+      },
+      "actionUnsetVariable": {
+        "name": "变量名",
+        "help": "从工作流上下文中删除该变量"
+      },
+      "actionCloneVariable": {
+        "source": "源变量",
+        "target": "目标变量"
       }
     },
     "baseNode": {
