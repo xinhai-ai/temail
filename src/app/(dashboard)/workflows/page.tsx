@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
+import { useLocale, useTranslations } from "next-intl";
 
 interface WorkflowItem {
   id: string;
@@ -25,8 +27,18 @@ interface WorkflowItem {
 }
 
 export default function WorkflowsPage() {
+  const locale = useLocale();
+  const t = useTranslations("workflows");
+  const distanceLocale = locale === "zh" ? zhCN : enUS;
+
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const getWorkflowStatusLabel = (value: WorkflowItem["status"]) => {
+    if (value === "ACTIVE") return t("status.active");
+    if (value === "INACTIVE") return t("status.inactive");
+    return value;
+  };
 
   const fetchWorkflows = async () => {
     try {
@@ -53,28 +65,28 @@ export default function WorkflowsPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        toast.success(`Workflow ${newStatus.toLowerCase()}`);
+        toast.success(newStatus === "ACTIVE" ? t("toast.activated") : t("toast.deactivated"));
         fetchWorkflows();
       } else {
-        toast.error("Failed to update workflow");
+        toast.error(t("toast.updateFailed"));
       }
     } catch {
-      toast.error("Failed to update workflow");
+      toast.error(t("toast.updateFailed"));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this workflow?")) return;
+    if (!confirm(t("confirm.delete"))) return;
     try {
       const res = await fetch(`/api/workflows/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Workflow deleted");
+        toast.success(t("toast.deleted"));
         fetchWorkflows();
       } else {
-        toast.error("Failed to delete workflow");
+        toast.error(t("toast.deleteFailed"));
       }
     } catch {
-      toast.error("Failed to delete workflow");
+      toast.error(t("toast.deleteFailed"));
     }
   };
 
@@ -90,14 +102,14 @@ export default function WorkflowsPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Automate your email processing with visual workflows
+            {t("subtitle")}
           </p>
         </div>
         <Button asChild>
           <Link href="/workflows/new">
-            <Plus className="mr-2 h-4 w-4" /> New Workflow
+            <Plus className="mr-2 h-4 w-4" /> {t("actions.newWorkflow")}
           </Link>
         </Button>
       </div>
@@ -108,13 +120,13 @@ export default function WorkflowsPage() {
             <div className="p-4 rounded-full bg-muted mb-4">
               <Workflow className="h-8 w-8 text-muted-foreground" />
             </div>
-            <p className="text-muted-foreground font-medium">No workflows yet</p>
+            <p className="text-muted-foreground font-medium">{t("empty.title")}</p>
             <p className="text-sm text-muted-foreground/60 mt-1">
-              Create your first workflow to automate email processing
+              {t("empty.description")}
             </p>
             <Button asChild className="mt-4">
               <Link href="/workflows/new">
-                <Plus className="mr-2 h-4 w-4" /> Create Workflow
+                <Plus className="mr-2 h-4 w-4" /> {t("actions.createWorkflow")}
               </Link>
             </Button>
           </CardContent>
@@ -124,12 +136,12 @@ export default function WorkflowsPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Mailbox</TableHead>
-                <TableHead>Last Run</TableHead>
-                <TableHead>Executions</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("table.name")}</TableHead>
+                <TableHead>{t("table.status")}</TableHead>
+                <TableHead>{t("table.mailbox")}</TableHead>
+                <TableHead>{t("table.lastRun")}</TableHead>
+                <TableHead>{t("table.executions")}</TableHead>
+                <TableHead className="text-right">{t("table.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -155,11 +167,11 @@ export default function WorkflowsPage() {
                           : "bg-blue-500/10 text-blue-600"
                       }
                     >
-                      {workflow.status}
+                      {getWorkflowStatusLabel(workflow.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {workflow.mailbox?.address || "All"}
+                    {workflow.mailbox?.address || t("mailboxAll")}
                   </TableCell>
                   <TableCell>
                     {workflow.lastExecution ? (
@@ -174,11 +186,12 @@ export default function WorkflowsPage() {
                         <span className="text-sm text-muted-foreground">
                           {formatDistanceToNow(new Date(workflow.lastExecution.startedAt), {
                             addSuffix: true,
+                            locale: distanceLocale,
                           })}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Never</span>
+                      <span className="text-sm text-muted-foreground">{t("lastRunNever")}</span>
                     )}
                   </TableCell>
                   <TableCell>

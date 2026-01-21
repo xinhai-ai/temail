@@ -892,5 +892,41 @@
         }
       }
     }
+  },
+  "workflows": {
+    "title": "Workflows",
+    "subtitle": "Automate your email processing with visual workflows",
+    "actions": {
+      "newWorkflow": "New Workflow",
+      "createWorkflow": "Create Workflow"
+    },
+    "empty": {
+      "title": "No workflows yet",
+      "description": "Create your first workflow to automate email processing"
+    },
+    "table": {
+      "name": "Name",
+      "status": "Status",
+      "mailbox": "Mailbox",
+      "lastRun": "Last Run",
+      "executions": "Executions",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "mailboxAll": "All",
+    "lastRunNever": "Never",
+    "confirm": {
+      "delete": "Delete this workflow?"
+    },
+    "toast": {
+      "updateFailed": "Failed to update workflow",
+      "deleted": "Workflow deleted",
+      "deleteFailed": "Failed to delete workflow",
+      "activated": "Workflow activated",
+      "deactivated": "Workflow deactivated"
+    }
   }
 }
