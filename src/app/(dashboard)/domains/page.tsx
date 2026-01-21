@@ -26,6 +26,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Plus, Globe, Trash2, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface Domain {
   id: string;
@@ -40,6 +41,7 @@ interface Domain {
 export default function DomainsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const t = useTranslations("domains");
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -79,7 +81,7 @@ export default function DomainsPage() {
 
   const handleCreate = async () => {
     if (!isAdmin) {
-      toast.error("Only admins can create domains");
+      toast.error(t("toast.adminOnlyCreate"));
       return;
     }
 
@@ -90,7 +92,7 @@ export default function DomainsPage() {
     });
 
     if (res.ok) {
-      toast.success("Domain created successfully");
+      toast.success(t("toast.created"));
       setOpen(false);
       setName("");
       setDescription("");
@@ -98,21 +100,33 @@ export default function DomainsPage() {
       fetchDomains();
     } else {
       const data = await res.json();
-      toast.error(data.error || "Failed to create domain");
+      toast.error(data.error || t("toast.createFailed"));
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!isAdmin) return;
-    if (!confirm("Are you sure you want to delete this domain?")) return;
+    if (!confirm(t("confirm.delete"))) return;
 
     const res = await fetch(`/api/domains/${id}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Domain deleted");
+      toast.success(t("toast.deleted"));
       fetchDomains();
     } else {
-      toast.error("Failed to delete domain");
+      toast.error(t("toast.deleteFailed"));
     }
+  };
+
+  const getSourceTypeLabel = (value: Domain["sourceType"]) => {
+    if (value === "IMAP") return t("sourceType.imap");
+    return t("sourceType.webhook");
+  };
+
+  const getStatusLabel = (value: Domain["status"]) => {
+    if (value === "ACTIVE") return t("status.active");
+    if (value === "PENDING") return t("status.pending");
+    if (value === "ERROR") return t("status.error");
+    return value;
   };
 
   if (status === "loading" || loading || !isAdmin) {
@@ -127,62 +141,62 @@ export default function DomainsPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Domains</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            {isAdmin ? "Manage inbound domains" : "Available inbound domains"}
+            {isAdmin ? t("subtitle.admin") : t("subtitle.user")}
           </p>
         </div>
         {isAdmin && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Add Domain
+                <Plus className="mr-2 h-4 w-4" /> {t("actions.addDomain")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Domain</DialogTitle>
+                <DialogTitle>{t("dialog.addTitle")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Domain Name</Label>
+                  <Label>{t("dialog.domainName.label")}</Label>
                   <Input
-                    placeholder="example.com"
+                    placeholder={t("dialog.domainName.placeholder")}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Source Type</Label>
+                  <Label>{t("dialog.sourceType.label")}</Label>
                   <Select value={sourceType} onValueChange={(v) => setSourceType(v as "IMAP" | "WEBHOOK")}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="WEBHOOK">Webhook</SelectItem>
-                      <SelectItem value="IMAP">IMAP</SelectItem>
+                      <SelectItem value="WEBHOOK">{t("sourceType.webhook")}</SelectItem>
+                      <SelectItem value="IMAP">{t("sourceType.imap")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Description (Optional)</Label>
+                  <Label>{t("dialog.description.label")}</Label>
                   <Input
-                    placeholder="Description"
+                    placeholder={t("dialog.description.placeholder")}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <Label>Visible to users</Label>
+                    <Label>{t("dialog.visibility.label")}</Label>
                     <p className="text-xs text-muted-foreground">
-                      When enabled, normal users can use this domain once it becomes ACTIVE.
+                      {t("dialog.visibility.help")}
                     </p>
                   </div>
                   <Switch checked={isPublic} onCheckedChange={setIsPublic} />
                 </div>
                 <Button onClick={handleCreate} className="w-full">
-                  Create Domain
+                  {t("actions.createDomain")}
                 </Button>
               </div>
             </DialogContent>
@@ -197,16 +211,16 @@ export default function DomainsPage() {
               <Globe className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground font-medium">
-              {isAdmin ? "No domains configured yet" : "No domains available"}
+              {isAdmin ? t("empty.adminTitle") : t("empty.userTitle")}
             </p>
             <p className="text-sm text-muted-foreground/60 mt-1">
               {isAdmin
-                ? "Add a domain to start receiving emails"
-                : "Ask an administrator to enable a domain"}
+                ? t("empty.adminDescription")
+                : t("empty.userDescription")}
             </p>
             {isAdmin && (
               <Button className="mt-6" onClick={() => setOpen(true)}>
-                Add Your First Domain
+                {t("actions.addFirstDomain")}
               </Button>
             )}
           </CardContent>
@@ -220,7 +234,7 @@ export default function DomainsPage() {
                 <div className="flex items-center gap-2">
                   {isAdmin && (
                     <Badge variant={domain.isPublic ? "default" : "secondary"}>
-                      {domain.isPublic ? "Public" : "Private"}
+                      {domain.isPublic ? t("visibility.public") : t("visibility.private")}
                     </Badge>
                   )}
                   <Badge
@@ -234,17 +248,17 @@ export default function DomainsPage() {
                         : "bg-muted text-muted-foreground"
                     }
                   >
-                    {domain.status}
+                    {getStatusLabel(domain.status)}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Source: {domain.sourceType}
+                    {t("labels.source", { source: getSourceTypeLabel(domain.sourceType) })}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Mailboxes: {domain._count.mailboxes}
+                    {t("labels.mailboxes", { count: domain._count.mailboxes })}
                   </p>
                   {domain.description && (
                     <p className="text-sm">{domain.description}</p>
@@ -254,7 +268,7 @@ export default function DomainsPage() {
                       <>
                         <Button variant="outline" size="sm" className="flex-1" asChild>
                           <Link href={`/domains/${domain.id}`}>
-                            <Settings className="h-4 w-4 mr-1" /> Configure
+                            <Settings className="h-4 w-4 mr-1" /> {t("actions.configure")}
                           </Link>
                         </Button>
                         <Button

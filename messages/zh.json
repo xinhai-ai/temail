@@ -747,5 +747,69 @@
       "purgeFailed": "永久删除失败",
       "purged": "已永久删除"
     }
+  },
+  "domains": {
+    "title": "域名",
+    "subtitle": {
+      "admin": "管理收件域名",
+      "user": "可用的收件域名"
+    },
+    "actions": {
+      "addDomain": "添加域名",
+      "addFirstDomain": "添加第一个域名",
+      "configure": "配置",
+      "createDomain": "创建域名"
+    },
+    "dialog": {
+      "addTitle": "添加新域名",
+      "domainName": {
+        "label": "域名",
+        "placeholder": "example.com"
+      },
+      "sourceType": {
+        "label": "来源类型"
+      },
+      "description": {
+        "label": "描述（可选）",
+        "placeholder": "描述"
+      },
+      "visibility": {
+        "label": "对用户可见",
+        "help": "开启后，普通用户可在该域名变为 ACTIVE 后使用。"
+      }
+    },
+    "empty": {
+      "adminTitle": "尚未配置域名",
+      "userTitle": "暂无可用域名",
+      "adminDescription": "添加一个域名开始接收邮件",
+      "userDescription": "请联系管理员启用域名"
+    },
+    "labels": {
+      "source": "来源：{source}",
+      "mailboxes": "邮箱：{count}"
+    },
+    "sourceType": {
+      "webhook": "Webhook",
+      "imap": "IMAP"
+    },
+    "visibility": {
+      "public": "公开",
+      "private": "私有"
+    },
+    "status": {
+      "active": "可用",
+      "pending": "待处理",
+      "error": "错误"
+    },
+    "confirm": {
+      "delete": "确定要删除该域名吗？"
+    },
+    "toast": {
+      "adminOnlyCreate": "只有管理员可以创建域名",
+      "created": "域名创建成功",
+      "createFailed": "创建域名失败",
+      "deleted": "域名已删除",
+      "deleteFailed": "删除域名失败"
+    }
   }
 }

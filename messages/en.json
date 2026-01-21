@@ -747,5 +747,69 @@
       "purgeFailed": "Failed to delete permanently",
       "purged": "Deleted permanently"
     }
+  },
+  "domains": {
+    "title": "Domains",
+    "subtitle": {
+      "admin": "Manage inbound domains",
+      "user": "Available inbound domains"
+    },
+    "actions": {
+      "addDomain": "Add Domain",
+      "addFirstDomain": "Add Your First Domain",
+      "configure": "Configure",
+      "createDomain": "Create Domain"
+    },
+    "dialog": {
+      "addTitle": "Add New Domain",
+      "domainName": {
+        "label": "Domain Name",
+        "placeholder": "example.com"
+      },
+      "sourceType": {
+        "label": "Source Type"
+      },
+      "description": {
+        "label": "Description (Optional)",
+        "placeholder": "Description"
+      },
+      "visibility": {
+        "label": "Visible to users",
+        "help": "When enabled, normal users can use this domain once it becomes ACTIVE."
+      }
+    },
+    "empty": {
+      "adminTitle": "No domains configured yet",
+      "userTitle": "No domains available",
+      "adminDescription": "Add a domain to start receiving emails",
+      "userDescription": "Ask an administrator to enable a domain"
+    },
+    "labels": {
+      "source": "Source: {source}",
+      "mailboxes": "Mailboxes: {count}"
+    },
+    "sourceType": {
+      "webhook": "Webhook",
+      "imap": "IMAP"
+    },
+    "visibility": {
+      "public": "Public",
+      "private": "Private"
+    },
+    "status": {
+      "active": "Active",
+      "pending": "Pending",
+      "error": "Error"
+    },
+    "confirm": {
+      "delete": "Are you sure you want to delete this domain?"
+    },
+    "toast": {
+      "adminOnlyCreate": "Only admins can create domains",
+      "created": "Domain created successfully",
+      "createFailed": "Failed to create domain",
+      "deleted": "Domain deleted",
+      "deleteFailed": "Failed to delete domain"
+    }
   }
 }
