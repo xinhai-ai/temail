@@ -893,6 +893,18 @@
       }
     }
   },
+  "emailPreview": {
+    "title": "邮件预览",
+    "goToInbox": "前往收件箱",
+    "fields": {
+      "from": "发件人：",
+      "to": "收件人：",
+      "received": "接收时间："
+    },
+    "remoteImagesBlocked": "为保护隐私，默认阻止加载远程图片。",
+    "noSubject": "（无主题）",
+    "noContent": "无内容"
+  },
   "workflows": {
     "title": "工作流",
     "subtitle": "用可视化工作流自动处理邮件",

@@ -893,6 +893,18 @@
       }
     }
   },
+  "emailPreview": {
+    "title": "Email Preview",
+    "goToInbox": "Go to Inbox",
+    "fields": {
+      "from": "From:",
+      "to": "To:",
+      "received": "Received:"
+    },
+    "remoteImagesBlocked": "Remote images are blocked by default for privacy.",
+    "noSubject": "(No subject)",
+    "noContent": "No content"
+  },
   "workflows": {
     "title": "Workflows",
     "subtitle": "Automate your email processing with visual workflows",
