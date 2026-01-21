@@ -347,8 +347,8 @@ const workflowEdgeSchema = z.object({
 
 export const workflowConfigSchema = z.object({
   version: z.literal(1),
-  nodes: z.array(workflowNodeSchema),
-  edges: z.array(workflowEdgeSchema),
+  nodes: z.array(workflowNodeSchema).max(200),
+  edges: z.array(workflowEdgeSchema).max(400),
   viewport: z.object({
     x: z.number(),
     y: z.number(),

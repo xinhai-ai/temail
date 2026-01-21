@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { updateWorkflowSchema } from "@/lib/workflow/schema";
+import { updateWorkflowSchema, validateWorkflowConfig } from "@/lib/workflow/schema";
+import { validateWorkflow } from "@/lib/workflow/utils";
 import { readJsonBody } from "@/lib/request";
 
 export async function GET(
@@ -94,6 +95,28 @@ export async function PATCH(
     }
 
     const { name, description, status, mailboxId, config } = parsed.data;
+
+    const nextStatus = status ?? workflow.status;
+    if (nextStatus === "ACTIVE") {
+      const configCandidate = config ?? (() => {
+        try {
+          return JSON.parse(workflow.config) as unknown;
+        } catch {
+          return null;
+        }
+      })();
+
+      const cfgParse = validateWorkflowConfig(configCandidate);
+      if (!cfgParse.success) {
+        return NextResponse.json({ error: "Invalid workflow config" }, { status: 400 });
+      }
+
+      const checks = validateWorkflow(cfgParse.data);
+      const errors = checks.filter((e) => e.type === "error");
+      if (errors.length > 0) {
+        return NextResponse.json({ error: "Workflow config is not executable", details: errors }, { status: 400 });
+      }
+    }
 
     // Validate mailbox ownership if provided
     if (mailboxId !== undefined && mailboxId !== null) {

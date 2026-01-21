@@ -5,6 +5,8 @@ import { WorkflowEngine } from "@/services/workflow/engine";
 import { logWorkflowDispatch, updateDispatchLogExecution, getExecutionSummary } from "@/services/workflow/logging";
 import type { WorkflowConfig, EmailContext } from "@/lib/workflow/types";
 import { readJsonBody } from "@/lib/request";
+import { validateWorkflowConfig } from "@/lib/workflow/schema";
+import { validateWorkflow } from "@/lib/workflow/utils";
 
 function getOptionalString(data: Record<string, unknown>, key: string) {
   const value = data[key];
@@ -65,8 +67,25 @@ export async function POST(
     const configValue = body["config"];
     const config =
       configValue && typeof configValue === "object"
-        ? (configValue as WorkflowConfig)
-        : (JSON.parse(workflow.config) as WorkflowConfig);
+        ? (configValue as unknown)
+        : (() => {
+            try {
+              return JSON.parse(workflow.config) as unknown;
+            } catch {
+              return null;
+            }
+          })();
+
+    const cfgParse = validateWorkflowConfig(config);
+    if (!cfgParse.success) {
+      return NextResponse.json({ error: "Invalid workflow config" }, { status: 400 });
+    }
+
+    const checks = validateWorkflow(cfgParse.data);
+    const errors = checks.filter((e) => e.type === "error");
+    if (errors.length > 0) {
+      return NextResponse.json({ error: "Workflow config is not executable", details: errors }, { status: 400 });
+    }
 
     // Create execution record
     const execution = await prisma.workflowExecution.create({
@@ -93,7 +112,7 @@ export async function POST(
     await updateDispatchLogExecution(dispatchLogId, execution.id);
 
     // Execute workflow synchronously (wait for completion)
-    const engine = new WorkflowEngine(id, execution.id, config, true);
+    const engine = new WorkflowEngine(id, execution.id, cfgParse.data as WorkflowConfig, true);
 
     try {
       await engine.execute(emailContext);
