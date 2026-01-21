@@ -1119,6 +1119,47 @@
         "textBody": "This is a test email body content.\\n\\nBest regards,\\nJohn",
         "htmlBody": "<p>This is a test email body content.</p><p>Best regards,<br/>John</p>"
       }
+    },
+    "executionLogs": {
+      "empty": {
+        "title": "No executions yet",
+        "description": "Workflow executions will appear here"
+      },
+      "refresh": "Refresh",
+      "nodesCount": "{count, plural, one {# node} other {# nodes}}",
+      "details": {
+        "loadFailed": "Failed to load details"
+      },
+      "summary": {
+        "total": "Total",
+        "success": "Success",
+        "failed": "Failed",
+        "skipped": "Skipped"
+      },
+      "trigger": {
+        "title": "Trigger",
+        "from": "From: {from}"
+      },
+      "errorTitle": "Error",
+      "timeline": {
+        "title": "Execution Timeline"
+      },
+      "io": {
+        "input": "Input",
+        "output": "Output",
+        "metadata": "Metadata"
+      },
+      "triggerLabels": {
+        "email": "Email trigger",
+        "manual": "Manual trigger",
+        "schedule": "Scheduled trigger"
+      },
+      "status": {
+        "running": "Running",
+        "success": "Success",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
     }
   }
 }

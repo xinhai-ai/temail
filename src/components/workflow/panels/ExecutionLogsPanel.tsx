@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
 import {
   CheckCircle2,
   XCircle,
@@ -20,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { ExecutionPathNode, ExecutionSummary } from "@/lib/workflow/logging-types";
+import { useLocale, useTranslations } from "next-intl";
 
 interface NodeLog {
   id: string;
@@ -68,6 +70,7 @@ interface ExecutionLogsPanelProps {
 }
 
 export function ExecutionLogsPanel({ workflowId }: ExecutionLogsPanelProps) {
+  const t = useTranslations("workflows");
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
@@ -105,8 +108,8 @@ export function ExecutionLogsPanel({ workflowId }: ExecutionLogsPanelProps) {
     return (
       <div className="p-4 text-center text-muted-foreground">
         <Play className="h-8 w-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">No executions yet</p>
-        <p className="text-xs mt-1">Workflow executions will appear here</p>
+        <p className="text-sm">{t("executionLogs.empty.title")}</p>
+        <p className="text-xs mt-1">{t("executionLogs.empty.description")}</p>
       </div>
     );
   }
@@ -118,7 +121,7 @@ export function ExecutionLogsPanel({ workflowId }: ExecutionLogsPanelProps) {
           variant="ghost"
           size="icon-sm"
           onClick={fetchExecutions}
-          title="Refresh"
+          title={t("executionLogs.refresh")}
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
@@ -157,6 +160,9 @@ function ExecutionItem({
   isSelected,
   onSelect,
 }: ExecutionItemProps) {
+  const t = useTranslations("workflows");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "zh" ? zhCN : enUS;
   const [details, setDetails] = useState<{
     nodeLogs: NodeLog[];
     summary: ExecutionSummary;
@@ -192,7 +198,8 @@ function ExecutionItem({
 
   const StatusIcon = getStatusIcon(execution.status);
   const statusColor = getStatusColor(execution.status);
-  const triggerInfo = parseTriggerInfo(execution.triggeredBy);
+  const triggerInfo = parseTriggerInfo(execution.triggeredBy, t);
+  const statusLabel = getExecutionStatusLabel(t, execution.status);
 
   return (
     <div
@@ -215,10 +222,10 @@ function ExecutionItem({
                 variant={execution.status === "SUCCESS" ? "default" : "secondary"}
                 className="text-xs"
               >
-                {execution.status}
+                {statusLabel}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {execution.nodesExecuted} nodes
+                {t("executionLogs.nodesCount", { count: execution.nodesExecuted })}
               </span>
             </div>
             <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
@@ -230,7 +237,7 @@ function ExecutionItem({
               <span className="truncate">{triggerInfo.label}</span>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              {format(new Date(execution.startedAt), "MMM d, HH:mm:ss")}
+              {format(new Date(execution.startedAt), "MMM d, HH:mm:ss", { locale: dateFnsLocale })}
               {execution.finishedAt && (
                 <span className="ml-2">
                   <Timer className="h-3 w-3 inline mr-0.5" />
@@ -267,7 +274,7 @@ function ExecutionItem({
             />
           ) : (
             <p className="text-xs text-muted-foreground text-center py-4">
-              Failed to load details
+              {t("executionLogs.details.loadFailed")}
             </p>
           )}
         </div>
@@ -289,6 +296,7 @@ function ExecutionDetails({
   summary,
   dispatchLog,
 }: ExecutionDetailsProps) {
+  const t = useTranslations("workflows");
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   const toggleNode = (nodeId: string) => {
@@ -307,32 +315,32 @@ function ExecutionDetails({
       <div className="grid grid-cols-4 gap-2 text-center">
         <div className="bg-background rounded p-2">
           <div className="text-lg font-semibold">{summary.totalNodes}</div>
-          <div className="text-xs text-muted-foreground">Total</div>
+          <div className="text-xs text-muted-foreground">{t("executionLogs.summary.total")}</div>
         </div>
         <div className="bg-background rounded p-2">
           <div className="text-lg font-semibold text-green-600">
             {summary.successCount}
           </div>
-          <div className="text-xs text-muted-foreground">Success</div>
+          <div className="text-xs text-muted-foreground">{t("executionLogs.summary.success")}</div>
         </div>
         <div className="bg-background rounded p-2">
           <div className="text-lg font-semibold text-red-600">
             {summary.failedCount}
           </div>
-          <div className="text-xs text-muted-foreground">Failed</div>
+          <div className="text-xs text-muted-foreground">{t("executionLogs.summary.failed")}</div>
         </div>
         <div className="bg-background rounded p-2">
           <div className="text-lg font-semibold text-muted-foreground">
             {summary.skippedCount}
           </div>
-          <div className="text-xs text-muted-foreground">Skipped</div>
+          <div className="text-xs text-muted-foreground">{t("executionLogs.summary.skipped")}</div>
         </div>
       </div>
 
       {/* Dispatch Info */}
       {dispatchLog && (
         <div className="bg-background rounded p-2">
-          <div className="text-xs font-medium mb-1">Trigger</div>
+          <div className="text-xs font-medium mb-1">{t("executionLogs.trigger.title")}</div>
           <div className="text-xs text-muted-foreground">
             {dispatchLog.triggerType === "email" && dispatchLog.emailSubject && (
               <div className="truncate">
@@ -341,7 +349,7 @@ function ExecutionDetails({
               </div>
             )}
             {dispatchLog.emailFrom && (
-              <div className="truncate mt-0.5">From: {dispatchLog.emailFrom}</div>
+              <div className="truncate mt-0.5">{t("executionLogs.trigger.from", { from: dispatchLog.emailFrom })}</div>
             )}
           </div>
         </div>
@@ -351,7 +359,7 @@ function ExecutionDetails({
       {execution.error && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded p-2">
           <div className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">
-            Error
+            {t("executionLogs.errorTitle")}
           </div>
           <div className="text-xs text-red-600 dark:text-red-400">
             {execution.error}
@@ -361,7 +369,7 @@ function ExecutionDetails({
 
       {/* Node Execution Timeline */}
       <div>
-        <div className="text-xs font-medium mb-2">Execution Timeline</div>
+        <div className="text-xs font-medium mb-2">{t("executionLogs.timeline.title")}</div>
         <div className="space-y-1">
           {nodeLogs.map((log, index) => {
             const StatusIcon = getStatusIcon(log.status);
@@ -413,7 +421,7 @@ function ExecutionDetails({
                     {log.input !== null && log.input !== undefined && (
                       <div>
                         <div className="font-medium text-muted-foreground mb-1">
-                          Input
+                          {t("executionLogs.io.input")}
                         </div>
                         <pre className="bg-muted p-2 rounded overflow-auto max-h-32 text-[10px]">
                           {String(JSON.stringify(log.input, null, 2))}
@@ -423,7 +431,7 @@ function ExecutionDetails({
                     {log.output !== null && log.output !== undefined && (
                       <div>
                         <div className="font-medium text-muted-foreground mb-1">
-                          Output
+                          {t("executionLogs.io.output")}
                         </div>
                         <pre className="bg-muted p-2 rounded overflow-auto max-h-32 text-[10px]">
                           {String(JSON.stringify(log.output, null, 2))}
@@ -432,7 +440,7 @@ function ExecutionDetails({
                     )}
                     {log.error && (
                       <div>
-                        <div className="font-medium text-red-600 mb-1">Error</div>
+                        <div className="font-medium text-red-600 mb-1">{t("executionLogs.errorTitle")}</div>
                         <pre className="bg-red-50 dark:bg-red-950/20 p-2 rounded overflow-auto max-h-32 text-[10px] text-red-600">
                           {log.error}
                         </pre>
@@ -441,7 +449,7 @@ function ExecutionDetails({
                     {log.metadata !== null && log.metadata !== undefined && (
                       <div>
                         <div className="font-medium text-muted-foreground mb-1">
-                          Metadata
+                          {t("executionLogs.io.metadata")}
                         </div>
                         <pre className="bg-muted p-2 rounded overflow-auto max-h-32 text-[10px]">
                           {String(JSON.stringify(log.metadata, null, 2))}
@@ -460,6 +468,23 @@ function ExecutionDetails({
 }
 
 // Helper functions
+type Translator = (key: string, values?: Record<string, unknown>) => string;
+
+function getExecutionStatusLabel(t: Translator, status: Execution["status"]) {
+  switch (status) {
+    case "RUNNING":
+      return t("executionLogs.status.running");
+    case "SUCCESS":
+      return t("executionLogs.status.success");
+    case "FAILED":
+      return t("executionLogs.status.failed");
+    case "CANCELLED":
+      return t("executionLogs.status.cancelled");
+    default:
+      return status;
+  }
+}
+
 function getStatusIcon(status: string) {
   switch (status) {
     case "SUCCESS":
@@ -490,15 +515,15 @@ function getStatusColor(status: string) {
   }
 }
 
-function parseTriggerInfo(triggeredBy: string): { type: string; label: string } {
+function parseTriggerInfo(triggeredBy: string, t: Translator): { type: string; label: string } {
   if (triggeredBy.startsWith("email:")) {
-    return { type: "email", label: "Email trigger" };
+    return { type: "email", label: t("executionLogs.triggerLabels.email") };
   }
   if (triggeredBy === "manual") {
-    return { type: "manual", label: "Manual trigger" };
+    return { type: "manual", label: t("executionLogs.triggerLabels.manual") };
   }
   if (triggeredBy === "schedule") {
-    return { type: "schedule", label: "Scheduled trigger" };
+    return { type: "schedule", label: t("executionLogs.triggerLabels.schedule") };
   }
   return { type: "unknown", label: triggeredBy };
 }
