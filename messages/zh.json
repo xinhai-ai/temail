@@ -1248,6 +1248,50 @@
         "examples": "示例：\"0 * * * *\"（每小时），\"0 9 * * *\"（每天 9 点）",
         "timezone": "时区"
       }
+    },
+    "baseNode": {
+      "unknown": "未知：{type}",
+      "triggerBadge": "触发器",
+      "preview": {
+        "trigger": {
+          "email": {
+            "specificMailbox": "指定邮箱",
+            "allIncoming": "所有来信"
+          },
+          "schedule": {
+            "none": "未设置计划"
+          },
+          "manual": "仅手动执行"
+        },
+        "keyword": {
+          "categoriesCount": "{count} 个分类",
+          "advancedConditions": "高级条件",
+          "more": "+{count} 更多"
+        },
+        "ai": {
+          "classification": "AI 分类"
+        },
+        "forward": {
+          "usesBoundGroup": "使用已绑定群组",
+          "chat": "聊天：{chatId}",
+          "webhookConfigured": "Webhook 已配置"
+        },
+        "action": {
+          "unset": "unset",
+          "noFieldsSet": "未设置字段",
+          "fieldFallback": "字段",
+          "archiveEmail": "归档邮件",
+          "markAsRead": "标记为已读",
+          "markAsUnread": "标记为未读",
+          "addStar": "添加星标",
+          "removeStar": "移除星标",
+          "deleteEmail": "删除邮件"
+        },
+        "control": {
+          "if": "如果 ",
+          "stopWorkflow": "停止工作流"
+        }
+      }
     }
   }
 }

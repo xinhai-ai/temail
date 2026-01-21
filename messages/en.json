@@ -1248,6 +1248,50 @@
         "examples": "Examples: \"0 * * * *\" (hourly), \"0 9 * * *\" (daily at 9am)",
         "timezone": "Timezone"
       }
+    },
+    "baseNode": {
+      "unknown": "Unknown: {type}",
+      "triggerBadge": "TRIGGER",
+      "preview": {
+        "trigger": {
+          "email": {
+            "specificMailbox": "Specific mailbox",
+            "allIncoming": "All incoming emails"
+          },
+          "schedule": {
+            "none": "No schedule set"
+          },
+          "manual": "Manual execution only"
+        },
+        "keyword": {
+          "categoriesCount": "{count, plural, one {# category} other {# categories}}",
+          "advancedConditions": "Advanced conditions",
+          "more": "+{count} more"
+        },
+        "ai": {
+          "classification": "AI Classification"
+        },
+        "forward": {
+          "usesBoundGroup": "Uses bound group",
+          "chat": "Chat: {chatId}",
+          "webhookConfigured": "Webhook configured"
+        },
+        "action": {
+          "unset": "unset",
+          "noFieldsSet": "No fields set",
+          "fieldFallback": "field",
+          "archiveEmail": "Archive email",
+          "markAsRead": "Mark as read",
+          "markAsUnread": "Mark as unread",
+          "addStar": "Add star",
+          "removeStar": "Remove star",
+          "deleteEmail": "Delete email"
+        },
+        "control": {
+          "if": "if ",
+          "stopWorkflow": "Stop workflow"
+        }
+      }
     }
   }
 }

@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { cn } from "@/lib/utils";
 import type { NodeType, NodeData } from "@/lib/workflow/types";
+import { useTranslations } from "next-intl";
 import {
   NODE_DEFINITIONS,
   isConditionalNode,
@@ -66,13 +67,16 @@ interface BaseNodeProps extends NodeProps<NodeData> {
   type: NodeType;
 }
 
+type Translator = (key: string, values?: Record<string, unknown>) => string;
+
 function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
+  const t = useTranslations("workflows");
   const definition = NODE_DEFINITIONS[type];
   if (!definition) {
     return (
       <div className="p-4 bg-red-100 rounded-lg border-2 border-red-300">
         <AlertCircle className="w-4 h-4 text-red-500" />
-        Unknown: {type}
+        {t("baseNode.unknown", { type })}
       </div>
     );
   }
@@ -86,7 +90,7 @@ function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
       typeof (data as unknown as { defaultCategory?: unknown }).defaultCategory === "string");
   const isTrigger = type.startsWith("trigger:");
   const label = data.label || definition.label;
-  const preview = getNodePreview(type, data);
+  const preview = getNodePreview(type, data, t);
   const isConfigured = getIsConfigured(type, data);
 
   // 计算多路输出节点的动态宽度
@@ -129,7 +133,7 @@ function BaseNodeComponent({ id, type, data, selected }: BaseNodeProps) {
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-semibold rounded-full shadow-md">
             <Zap className="w-2.5 h-2.5" />
-            TRIGGER
+            {t("baseNode.triggerBadge")}
           </div>
         </div>
       )}
@@ -454,20 +458,20 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
 }
 
 // 获取节点预览文本
-function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
+function getNodePreview(type: NodeType, data: NodeData, t: Translator): React.ReactNode {
   const d = data as Record<string, unknown>;
 
   switch (type) {
     case "trigger:email":
       return d.mailboxId ? (
-        <span className="text-blue-600 font-medium">Specific mailbox</span>
+        <span className="text-blue-600 font-medium">{t("baseNode.preview.trigger.email.specificMailbox")}</span>
       ) : (
-        "All incoming emails"
+        t("baseNode.preview.trigger.email.allIncoming")
       );
 
     case "trigger:schedule":
       const cron = d.cron as string;
-      if (!cron) return "No schedule set";
+      if (!cron) return t("baseNode.preview.trigger.schedule.none");
       return (
         <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px]">
           {cron}
@@ -475,7 +479,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       );
 
     case "trigger:manual":
-      return "Manual execution only";
+      return t("baseNode.preview.trigger.manual");
 
     case "condition:match":
       const field = d.field as string;
@@ -504,7 +508,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
         return (
           <div className="space-y-1">
             <div className="text-[11px] text-muted-foreground">
-              {kwCategories.length} categories
+              {t("baseNode.preview.keyword.categoriesCount", { count: kwCategories.length })}
             </div>
             <div className="flex flex-wrap gap-1">
               {kwCategories.slice(0, 3).map((cat, i) => (
@@ -528,7 +532,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       const keywords = d.keywords as string[];
       const conditions = d.conditions;
       if (conditions) {
-        return <span className="text-amber-600 font-medium">Advanced conditions</span>;
+        return <span className="text-amber-600 font-medium">{t("baseNode.preview.keyword.advancedConditions")}</span>;
       }
       if (!keywords?.length) return null;
       return (
@@ -543,7 +547,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
           ))}
           {keywords.length > 3 && (
             <span className="text-muted-foreground text-[10px]">
-              +{keywords.length - 3} more
+              {t("baseNode.preview.keyword.more", { count: keywords.length - 3 })}
             </span>
           )}
         </div>
@@ -556,7 +560,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       return (
         <div className="space-y-1">
           <div className="text-[11px] text-muted-foreground">
-            AI Classification
+            {t("baseNode.preview.ai.classification")}
           </div>
           <div className="flex flex-wrap gap-1">
             {aiCategories.slice(0, 3).map((cat, i) => (
@@ -583,12 +587,12 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       ) : null;
 
     case "forward:telegram-bound":
-      return <span className="text-muted-foreground text-[11px]">Uses bound group</span>;
+      return <span className="text-muted-foreground text-[11px]">{t("baseNode.preview.forward.usesBoundGroup")}</span>;
 
     case "forward:telegram":
       const chatId = d.chatId as string;
       return chatId ? (
-        <span className="font-mono text-[11px]">Chat: {chatId}</span>
+        <span className="font-mono text-[11px]">{t("baseNode.preview.forward.chat", { chatId })}</span>
       ) : null;
 
     case "forward:discord":
@@ -597,7 +601,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       return webhookUrl ? (
         <span className="text-green-600 font-medium flex items-center gap-1">
           <CheckCircle className="w-3 h-3" />
-          Webhook configured
+          {t("baseNode.preview.forward.webhookConfigured")}
         </span>
       ) : null;
 
@@ -643,7 +647,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       if (!unsetName) return null;
       return (
         <div className="font-mono text-[11px]">
-          <span className="text-red-600">unset</span>
+          <span className="text-red-600">{t("baseNode.preview.action.unset")}</span>
           <span className="text-muted-foreground"> </span>
           <span className="text-green-600">{unsetName}</span>
         </div>
@@ -666,7 +670,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       if ((d.subject as string)?.trim()) fields.push("subject");
       if ((d.textBody as string)?.trim()) fields.push("text");
       if ((d.htmlBody as string)?.trim()) fields.push("html");
-      if (fields.length === 0) return <span className="text-muted-foreground text-[11px]">No fields set</span>;
+      if (fields.length === 0) return <span className="text-muted-foreground text-[11px]">{t("baseNode.preview.action.noFieldsSet")}</span>;
       return (
         <span className="text-muted-foreground text-[11px]">
           {fields.join(", ")}
@@ -680,7 +684,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       if (!pattern) return null;
       return (
         <div className="space-y-0.5">
-          <div className="text-[11px] text-muted-foreground">{field || "field"}</div>
+          <div className="text-[11px] text-muted-foreground">{field || t("baseNode.preview.action.fieldFallback")}</div>
           <div className="font-mono bg-muted px-1 py-0.5 rounded text-[10px] truncate max-w-[120px]">
             /{pattern}/
           </div>
@@ -734,7 +738,7 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       if (!condition?.value) return null;
       return (
         <div className="text-[11px]">
-          <span className="text-muted-foreground">if </span>
+          <span className="text-muted-foreground">{t("baseNode.preview.control.if")}</span>
           <span className="font-medium">
             {MATCH_FIELD_LABELS[condition.field as keyof typeof MATCH_FIELD_LABELS] || condition.field}
           </span>
@@ -746,19 +750,19 @@ function getNodePreview(type: NodeType, data: NodeData): React.ReactNode {
       );
 
     case "action:archive":
-      return <span className="text-orange-600">Archive email</span>;
+      return <span className="text-orange-600">{t("baseNode.preview.action.archiveEmail")}</span>;
     case "action:markRead":
-      return <span className="text-green-600">Mark as read</span>;
+      return <span className="text-green-600">{t("baseNode.preview.action.markAsRead")}</span>;
     case "action:markUnread":
-      return <span className="text-blue-600">Mark as unread</span>;
+      return <span className="text-blue-600">{t("baseNode.preview.action.markAsUnread")}</span>;
     case "action:star":
-      return <span className="text-yellow-600">Add star</span>;
+      return <span className="text-yellow-600">{t("baseNode.preview.action.addStar")}</span>;
     case "action:unstar":
-      return <span className="text-slate-600">Remove star</span>;
+      return <span className="text-slate-600">{t("baseNode.preview.action.removeStar")}</span>;
     case "action:delete":
-      return <span className="text-red-600">Delete email</span>;
+      return <span className="text-red-600">{t("baseNode.preview.action.deleteEmail")}</span>;
     case "control:end":
-      return <span className="text-slate-500">Stop workflow</span>;
+      return <span className="text-slate-500">{t("baseNode.preview.control.stopWorkflow")}</span>;
 
     default:
       return NODE_DEFINITIONS[type]?.description || "";
