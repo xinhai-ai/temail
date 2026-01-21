@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -10,7 +11,12 @@ export const metadata: Metadata = {
 
 const LAST_UPDATED = "January 19, 2026";
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const [tCommon, tLegal] = await Promise.all([
+    getTranslations("common"),
+    getTranslations("legal"),
+  ]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -20,10 +26,10 @@ export default function PrivacyPage() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-border/60">
                 <Mail className="h-5 w-5 text-primary" />
               </span>
-              <span className="text-base font-semibold tracking-tight">TEmail</span>
+              <span className="text-base font-semibold tracking-tight">{tCommon("appName")}</span>
             </Link>
             <Button variant="outline" asChild>
-              <Link href="/">Back to home</Link>
+              <Link href="/">{tLegal("backToHome")}</Link>
             </Button>
           </div>
         </div>
@@ -33,9 +39,11 @@ export default function PrivacyPage() {
         <div className="space-y-10">
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Privacy Policy
+              {tLegal("privacy.title")}
             </h1>
-            <p className="text-sm text-muted-foreground">Last updated: {LAST_UPDATED}</p>
+            <p className="text-sm text-muted-foreground">
+              {tLegal("lastUpdated", { date: LAST_UPDATED })}
+            </p>
             <p className="text-muted-foreground leading-relaxed">
               This Privacy Policy explains how the Operator of this TEmail instance
               collects, uses, and protects information when you use the Service.
@@ -152,4 +160,3 @@ export default function PrivacyPage() {
     </div>
   );
 }
-

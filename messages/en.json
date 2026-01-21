@@ -110,6 +110,146 @@
     "admin": { "description": "System administration" },
     "adminTelegram": { "description": "Manage the site-owned bot and webhooks" }
   },
+  "legal": {
+    "backToHome": "Back to home",
+    "lastUpdated": "Last updated: {date}",
+    "privacy": { "title": "Privacy Policy" },
+    "tos": { "title": "Terms of Service" }
+  },
+  "home": {
+    "skipToContent": "Skip to content",
+    "nav": {
+      "features": "Features",
+      "howItWorks": "How it works",
+      "faq": "FAQ",
+      "openMenu": "Open menu"
+    },
+    "cta": {
+      "openDashboard": "Open dashboard",
+      "getStarted": "Get started",
+      "goToInbox": "Go to inbox",
+      "exploreFeatures": "Explore features",
+      "openApp": "Open app",
+      "accountSettings": "Account settings"
+    },
+    "status": {
+      "inviteOnly": "Invite-only",
+      "signInOnly": "Sign-in only"
+    },
+    "badges": {
+      "selfHosted": "Self-hosted",
+      "stack": "Webhook • IMAP • Workflows"
+    },
+    "hero": {
+      "title": "Temporary inboxes, forwarding, and automation — in one platform.",
+      "description": "Build an inbound email pipeline you can trust. Create multi-domain inboxes, ingest mail via Webhook or IMAP, forward to SMTP/Webhook targets, and run workflows on every message.",
+      "bullets": {
+        "privacy": { "label": "Privacy-first", "text": "previews with remote images blocked." },
+        "operational": { "label": "Operational", "text": "logs for inbound events and automation." },
+        "flexible": { "label": "Flexible", "text": "inbound sources: Webhook or IMAP worker." },
+        "fast": { "label": "Fast", "text": "Docker Compose setup with SQLite persistence." }
+      }
+    },
+    "preview": {
+      "inboxTitle": "Inbox",
+      "live": "Live",
+      "subjects": {
+        "loginCode": "Your login code",
+        "invoiceReady": "Invoice ready",
+        "welcome": "Welcome to TEmail",
+        "webhookDelivery": "Webhook delivery"
+      },
+      "selectedEmail": "Selected email",
+      "from": "From",
+      "to": "To",
+      "code": "Code",
+      "remoteImagesBlocked": "Remote images are blocked by default.",
+      "forward": "Forward",
+      "workflow": "Workflow",
+      "notify": "Notify",
+      "step": "Step",
+      "lightweight": "A lightweight preview of the real app UI."
+    },
+    "featuresSection": {
+      "title": "Everything you need for inbound email.",
+      "description": "From disposable inboxes to production pipelines — TEmail keeps it simple."
+    },
+    "features": {
+      "multiDomain": {
+        "title": "Multi-domain inboxes",
+        "description": "Create inboxes across domains — organize with groups, tags, and search."
+      },
+      "ingestion": {
+        "title": "Webhook & IMAP ingestion",
+        "description": "Receive inbound mail via Webhook, or sync from IMAP with the worker service."
+      },
+      "forwarding": {
+        "title": "Powerful forwarding",
+        "description": "Forward via SMTP/Webhook with templates and safe defaults for production."
+      },
+      "automation": {
+        "title": "Workflow automation",
+        "description": "Trigger workflows on inbound messages to parse, notify, enrich, or route."
+      },
+      "observability": {
+        "title": "Observable by design",
+        "description": "Audit inbound events and rule execution with logs you can actually use."
+      },
+      "privacyDefaults": {
+        "title": "Privacy-first defaults",
+        "description": "Keep sensitive content private — remote images are blocked by default."
+      }
+    },
+    "howSection": {
+      "title": "How it works",
+      "description": "Get value quickly, then scale up as your inbound traffic grows.",
+      "steps": {
+        "connect": {
+          "title": "Connect inbound",
+          "description": "Add a domain and choose Webhook or IMAP as the source."
+        },
+        "inboxes": {
+          "title": "Create inboxes",
+          "description": "Spin up mailboxes for signups, integrations, or catch-alls."
+        },
+        "route": {
+          "title": "Route & automate",
+          "description": "Forward messages and trigger workflows to process everything."
+        }
+      }
+    },
+    "faqSection": {
+      "title": "FAQ",
+      "description": "Quick answers to common questions about deployment and privacy.",
+      "items": {
+        "selfHosted": {
+          "q": "Is TEmail self-hosted?",
+          "a": "Yes. TEmail is designed to run on your own infrastructure. Docker Compose is the recommended way to deploy."
+        },
+        "imap": {
+          "q": "How does IMAP syncing work?",
+          "a": "IMAP syncing runs in a separate worker process that periodically pulls mailboxes and writes them into TEmail."
+        },
+        "registration": {
+          "q": "Can I disable registration?",
+          "a": "Yes. The server supports closed or invite-only registration modes, so you can control access."
+        },
+        "tracking": {
+          "q": "Do you block tracking pixels?",
+          "a": "Remote images are blocked by default in the email preview to reduce tracking and protect privacy."
+        }
+      }
+    },
+    "bottomCta": {
+      "title": "Ready to own your inbound email?",
+      "description": "Deploy TEmail and start routing messages in minutes — without giving up privacy or control."
+    },
+    "footer": {
+      "copyright": "© {year} TEmail. Self-hosted inbound email platform.",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    }
+  },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome back",

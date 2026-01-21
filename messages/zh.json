@@ -110,6 +110,146 @@
     "admin": { "description": "系统管理" },
     "adminTelegram": { "description": "管理站点机器人与 Webhook" }
   },
+  "legal": {
+    "backToHome": "返回首页",
+    "lastUpdated": "最后更新：{date}",
+    "privacy": { "title": "隐私政策" },
+    "tos": { "title": "服务条款" }
+  },
+  "home": {
+    "skipToContent": "跳到主要内容",
+    "nav": {
+      "features": "功能",
+      "howItWorks": "工作原理",
+      "faq": "常见问题",
+      "openMenu": "打开菜单"
+    },
+    "cta": {
+      "openDashboard": "打开仪表盘",
+      "getStarted": "立即开始",
+      "goToInbox": "前往收件箱",
+      "exploreFeatures": "探索功能",
+      "openApp": "打开应用",
+      "accountSettings": "账户设置"
+    },
+    "status": {
+      "inviteOnly": "仅限邀请",
+      "signInOnly": "仅限登录"
+    },
+    "badges": {
+      "selfHosted": "自托管",
+      "stack": "Webhook • IMAP • 工作流"
+    },
+    "hero": {
+      "title": "临时收件箱、转发与自动化——一站式平台。",
+      "description": "构建你可信赖的收件邮件管道：多域名收件箱，Webhook/IMAP 接入，转发到 SMTP/Webhook 目标，并对每封邮件运行工作流。",
+      "bullets": {
+        "privacy": { "label": "隐私优先", "text": "默认屏蔽远程图片预览。" },
+        "operational": { "label": "可观测", "text": "记录收件事件与自动化日志。" },
+        "flexible": { "label": "灵活接入", "text": "支持 Webhook 或 IMAP Worker。" },
+        "fast": { "label": "快速部署", "text": "Docker Compose + SQLite 持久化。" }
+      }
+    },
+    "preview": {
+      "inboxTitle": "收件箱",
+      "live": "实时",
+      "subjects": {
+        "loginCode": "你的登录验证码",
+        "invoiceReady": "发票已就绪",
+        "welcome": "欢迎使用 TEmail",
+        "webhookDelivery": "Webhook 投递"
+      },
+      "selectedEmail": "选中的邮件",
+      "from": "发件人",
+      "to": "收件人",
+      "code": "验证码",
+      "remoteImagesBlocked": "默认屏蔽远程图片。",
+      "forward": "转发",
+      "workflow": "工作流",
+      "notify": "通知",
+      "step": "步骤",
+      "lightweight": "真实应用界面的轻量预览。"
+    },
+    "featuresSection": {
+      "title": "处理收件邮件所需的一切。",
+      "description": "从一次性邮箱到生产级管道——TEmail 保持简单。"
+    },
+    "features": {
+      "multiDomain": {
+        "title": "多域名收件箱",
+        "description": "跨域名创建收件箱——用分组、标签与搜索来组织。"
+      },
+      "ingestion": {
+        "title": "Webhook 与 IMAP 接入",
+        "description": "通过 Webhook 接收邮件，或使用 Worker 从 IMAP 同步。"
+      },
+      "forwarding": {
+        "title": "强大的转发能力",
+        "description": "转发到 SMTP/Webhook，支持模板与安全默认配置。"
+      },
+      "automation": {
+        "title": "工作流自动化",
+        "description": "对每封收件触发工作流：解析、通知、丰富或路由。"
+      },
+      "observability": {
+        "title": "可观测性优先",
+        "description": "收件事件与规则执行都有审计日志，便于排障。"
+      },
+      "privacyDefaults": {
+        "title": "隐私优先默认值",
+        "description": "默认保护敏感内容——邮件预览会屏蔽远程图片。"
+      }
+    },
+    "howSection": {
+      "title": "工作原理",
+      "description": "先快速上线，再随着收件量增长逐步扩展。",
+      "steps": {
+        "connect": {
+          "title": "接入收件源",
+          "description": "添加域名，并选择 Webhook 或 IMAP 作为来源。"
+        },
+        "inboxes": {
+          "title": "创建收件箱",
+          "description": "为注册、集成或通配收件快速创建邮箱。"
+        },
+        "route": {
+          "title": "转发与自动化",
+          "description": "转发邮件并触发工作流，自动处理一切。"
+        }
+      }
+    },
+    "faqSection": {
+      "title": "常见问题",
+      "description": "关于部署与隐私的常见问题快速解答。",
+      "items": {
+        "selfHosted": {
+          "q": "TEmail 是自托管的吗？",
+          "a": "是的。TEmail 设计为运行在你自己的基础设施上，推荐使用 Docker Compose 部署。"
+        },
+        "imap": {
+          "q": "IMAP 同步是怎么工作的？",
+          "a": "IMAP 同步在独立 Worker 进程中运行，定期拉取邮箱并写入 TEmail。"
+        },
+        "registration": {
+          "q": "我可以关闭注册吗？",
+          "a": "可以。服务端支持关闭注册或仅限邀请模式，便于你控制访问。"
+        },
+        "tracking": {
+          "q": "你们会屏蔽追踪像素吗？",
+          "a": "会。邮件预览默认屏蔽远程图片，以减少追踪并保护隐私。"
+        }
+      }
+    },
+    "bottomCta": {
+      "title": "准备好掌控你的收件邮件了吗？",
+      "description": "部署 TEmail，几分钟内开始路由邮件——不牺牲隐私与控制权。"
+    },
+    "footer": {
+      "copyright": "© {year} TEmail。自托管收件邮件平台。",
+      "terms": "条款",
+      "privacy": "隐私"
+    }
+  },
   "dashboard": {
     "title": "仪表盘",
     "welcome": "欢迎回来",
