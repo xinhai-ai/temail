@@ -1492,6 +1492,9 @@
           "compact": "精简",
           "detailed": "详细"
         }
+      },
+      "variableHelp": {
+        "availableVariables": "可用变量"
       }
     },
     "baseNode": {

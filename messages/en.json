@@ -1492,6 +1492,9 @@
           "compact": "Compact",
           "detailed": "Detailed"
         }
+      },
+      "variableHelp": {
+        "availableVariables": "Available Variables"
       }
     },
     "baseNode": {

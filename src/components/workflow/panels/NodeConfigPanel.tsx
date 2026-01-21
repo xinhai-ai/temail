@@ -2323,6 +2323,7 @@ function ForwardWebhookConfig({
 // ==================== 变量帮助文本 ====================
 
 function VariableHelpText() {
+  const t = useTranslations("workflows");
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -2332,7 +2333,7 @@ function VariableHelpText() {
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
       >
         {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        Available Variables
+        {t("nodeConfigPanel.variableHelp.availableVariables")}
       </button>
       {expanded && (
         <div className="mt-2 p-2 bg-muted/50 rounded text-xs space-y-1 font-mono">
