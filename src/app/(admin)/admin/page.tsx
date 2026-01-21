@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import prisma from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -169,22 +170,25 @@ async function getAdminDashboardData() {
 }
 
 export default async function AdminPage() {
-  const data = await getAdminDashboardData();
+  const [t, data] = await Promise.all([
+    getTranslations("admin"),
+    getAdminDashboardData(),
+  ]);
   const { counts } = data;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">System overview</p>
+          <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
+          <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <AdminRefreshButton />
           <Button asChild variant="outline" size="sm">
             <Link href="/admin/settings">
               <Settings className="h-4 w-4" />
-              System settings
+              {t("dashboard.buttons.systemSettings")}
             </Link>
           </Button>
         </div>
@@ -194,7 +198,7 @@ export default async function AdminPage() {
         <Link href="/admin/users" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.totalUsers")}</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -206,7 +210,7 @@ export default async function AdminPage() {
         <Link href="/domains" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Domains</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.domains")}</CardTitle>
               <Globe className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -218,7 +222,7 @@ export default async function AdminPage() {
         <Link href="/mailboxes" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Mailboxes</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.mailboxes")}</CardTitle>
               <Inbox className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -230,7 +234,7 @@ export default async function AdminPage() {
         <Link href="/inbox" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Emails</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.emails")}</CardTitle>
               <Mail className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -244,12 +248,12 @@ export default async function AdminPage() {
         <Link href="/admin/inbound" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Inbound emails</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.inboundEmails")}</CardTitle>
               <Inbox className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{counts.inboundTotalCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">All sources</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("dashboard.cards.inboundAllSources")}</p>
             </CardContent>
           </Card>
         </Link>
@@ -257,12 +261,12 @@ export default async function AdminPage() {
         <Link href="/admin/inbound?matched=false" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Unmatched inbound</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.unmatchedInbound")}</CardTitle>
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{counts.inboundUnmatchedCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Needs mailbox mapping</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("dashboard.cards.needsMailboxMapping")}</p>
             </CardContent>
           </Card>
         </Link>
@@ -270,12 +274,12 @@ export default async function AdminPage() {
         <Link href="/admin/logs" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Logs (24h)</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.logs24h")}</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{counts.logs24hCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">System activity</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("dashboard.cards.systemActivity")}</p>
             </CardContent>
           </Card>
         </Link>
@@ -283,12 +287,12 @@ export default async function AdminPage() {
         <Link href="/admin/logs" className="block">
           <Card className="hover:bg-accent/40 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Errors (24h)</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("dashboard.cards.errors24h")}</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{counts.errorLogs24hCount}</div>
-              <p className="text-xs text-muted-foreground mt-1">Log level ERROR</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("dashboard.cards.logLevelError")}</p>
             </CardContent>
           </Card>
         </Link>
@@ -297,21 +301,21 @@ export default async function AdminPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recent inbound</CardTitle>
-            <CardDescription>Latest messages received by the system</CardDescription>
+            <CardTitle className="text-base">{t("dashboard.sections.recentInbound.title")}</CardTitle>
+            <CardDescription>{t("dashboard.sections.recentInbound.description")}</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             {data.recentInbound.length === 0 ? (
-              <div className="px-6 py-8 text-sm text-muted-foreground">No inbound emails yet</div>
+              <div className="px-6 py-8 text-sm text-muted-foreground">{t("dashboard.sections.recentInbound.empty")}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>To</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("common.table.time")}</TableHead>
+                    <TableHead>{t("common.table.to")}</TableHead>
+                    <TableHead>{t("common.table.subject")}</TableHead>
+                    <TableHead>{t("common.table.status")}</TableHead>
+                    <TableHead className="text-right">{t("common.table.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -326,7 +330,7 @@ export default async function AdminPage() {
                         {item.mailbox ? (
                           <Badge>{item.mailbox.address}</Badge>
                         ) : (
-                          <Badge variant="secondary">Unmatched</Badge>
+                          <Badge variant="secondary">{t("common.unmatched")}</Badge>
                         )}
                         <Badge variant="outline" className="ml-2">
                           {item.sourceType}
@@ -334,7 +338,7 @@ export default async function AdminPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <Button asChild size="sm" variant="outline">
-                          <Link href={`/admin/inbound/${item.id}`}>View</Link>
+                          <Link href={`/admin/inbound/${item.id}`}>{t("common.view")}</Link>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -347,22 +351,22 @@ export default async function AdminPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Quick actions</CardTitle>
-            <CardDescription>Common admin shortcuts</CardDescription>
+            <CardTitle className="text-base">{t("dashboard.sections.quickActions.title")}</CardTitle>
+            <CardDescription>{t("dashboard.sections.quickActions.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="grid gap-2">
               <Button asChild variant="default" size="sm">
-                <Link href="/admin/users">Manage users</Link>
+                <Link href="/admin/users">{t("dashboard.sections.quickActions.manageUsers")}</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href="/admin/inbound?matched=false">Review unmatched inbound</Link>
+                <Link href="/admin/inbound?matched=false">{t("dashboard.sections.quickActions.reviewUnmatched")}</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href="/admin/logs">View logs</Link>
+                <Link href="/admin/logs">{t("dashboard.sections.quickActions.viewLogs")}</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href="/domains">Manage domains</Link>
+                <Link href="/domains">{t("dashboard.sections.quickActions.manageDomains")}</Link>
               </Button>
             </div>
           </CardContent>
@@ -372,20 +376,20 @@ export default async function AdminPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Unmatched inbound (latest)</CardTitle>
-            <CardDescription>Catch-all messages that need mailbox mapping</CardDescription>
+            <CardTitle className="text-base">{t("dashboard.sections.unmatchedInbound.title")}</CardTitle>
+            <CardDescription>{t("dashboard.sections.unmatchedInbound.description")}</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             {data.recentUnmatchedInbound.length === 0 ? (
-              <div className="px-6 py-8 text-sm text-muted-foreground">No unmatched inbound</div>
+              <div className="px-6 py-8 text-sm text-muted-foreground">{t("dashboard.sections.unmatchedInbound.empty")}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Domain</TableHead>
-                    <TableHead>To</TableHead>
-                    <TableHead>Subject</TableHead>
+                    <TableHead>{t("common.table.time")}</TableHead>
+                    <TableHead>{t("common.table.domain")}</TableHead>
+                    <TableHead>{t("common.table.to")}</TableHead>
+                    <TableHead>{t("common.table.subject")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -411,21 +415,21 @@ export default async function AdminPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Domains overview</CardTitle>
-            <CardDescription>Top domains by mailbox count</CardDescription>
+            <CardTitle className="text-base">{t("dashboard.sections.domainsOverview.title")}</CardTitle>
+            <CardDescription>{t("dashboard.sections.domainsOverview.description")}</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             {data.topDomains.length === 0 ? (
-              <div className="px-6 py-8 text-sm text-muted-foreground">No domains yet</div>
+              <div className="px-6 py-8 text-sm text-muted-foreground">{t("dashboard.sections.domainsOverview.empty")}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Domain</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead className="text-right">Mailboxes</TableHead>
-                    <TableHead className="text-right">Inbound</TableHead>
+                    <TableHead>{t("common.table.domain")}</TableHead>
+                    <TableHead>{t("common.table.status")}</TableHead>
+                    <TableHead>{t("common.table.source")}</TableHead>
+                    <TableHead className="text-right">{t("common.table.mailboxes")}</TableHead>
+                    <TableHead className="text-right">{t("common.table.inbound")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -466,20 +470,20 @@ export default async function AdminPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recent users</CardTitle>
-            <CardDescription>Newest accounts created</CardDescription>
+            <CardTitle className="text-base">{t("dashboard.sections.recentUsers.title")}</CardTitle>
+            <CardDescription>{t("dashboard.sections.recentUsers.description")}</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             {data.recentUsers.length === 0 ? (
-              <div className="px-6 py-8 text-sm text-muted-foreground">No users yet</div>
+              <div className="px-6 py-8 text-sm text-muted-foreground">{t("dashboard.sections.recentUsers.empty")}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Created</TableHead>
+                    <TableHead>{t("common.table.email")}</TableHead>
+                    <TableHead>{t("common.table.role")}</TableHead>
+                    <TableHead>{t("common.table.status")}</TableHead>
+                    <TableHead className="text-right">{t("common.table.created")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -495,7 +499,7 @@ export default async function AdminPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={user.isActive ? "default" : "secondary"}>
-                          {user.isActive ? "Active" : "Inactive"}
+                          {user.isActive ? t("common.status.active") : t("common.status.inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">
@@ -511,51 +515,53 @@ export default async function AdminPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">System health</CardTitle>
-            <CardDescription>Runtime status and signals</CardDescription>
+            <CardTitle className="text-base">{t("dashboard.sections.systemHealth.title")}</CardTitle>
+            <CardDescription>{t("dashboard.sections.systemHealth.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="text-sm">IMAP service mode</div>
+              <div className="text-sm">{t("dashboard.sections.systemHealth.imapServiceMode")}</div>
               <Badge variant={data.imap.enabled ? "default" : "secondary"}>
-                {data.imap.enabled ? "Enabled" : "Disabled"}
+                {data.imap.enabled ? t("common.status.enabled") : t("common.status.disabled")}
               </Badge>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="text-sm">IMAP configs</div>
+              <div className="text-sm">{t("dashboard.sections.systemHealth.imapConfigs")}</div>
               <div className="text-sm tabular-nums">{data.imap.configCount}</div>
             </div>
 
             {data.imap.enabled && (
               <>
                 <div className="flex items-center justify-between">
-                  <div className="text-sm">Service health</div>
+                  <div className="text-sm">{t("dashboard.sections.systemHealth.serviceHealth")}</div>
                   <Badge variant={data.imap.health?.status === "ok" ? "default" : "destructive"}>
-                    {data.imap.health?.status === "ok" ? "OK" : "Error"}
+                    {data.imap.health?.status === "ok"
+                      ? t("common.status.ok")
+                      : t("common.status.error")}
                   </Badge>
                 </div>
 
                 {data.imap.health?.status !== "ok" && (
                   <div className="text-xs text-muted-foreground break-words">
-                    {data.imap.health?.error || data.imap.serviceError || "Unknown error"}
+                    {data.imap.health?.error || data.imap.serviceError || t("common.unknownError")}
                   </div>
                 )}
 
                 <div className="flex items-center justify-between">
-                  <div className="text-sm">Workers</div>
+                  <div className="text-sm">{t("dashboard.sections.systemHealth.workers")}</div>
                   <div className="text-sm tabular-nums">{data.imap.serviceStatus?.workersCount || 0}</div>
                 </div>
               </>
             )}
 
             <div className="pt-2">
-              <CardTitle className="text-base">Top actions (24h)</CardTitle>
-              <CardDescription>Most frequent log actions</CardDescription>
+              <CardTitle className="text-base">{t("dashboard.sections.systemHealth.topActions24h")}</CardTitle>
+              <CardDescription>{t("dashboard.sections.systemHealth.topActionsDescription")}</CardDescription>
             </div>
 
             {data.topLogActions24h.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No logs in the last 24 hours</div>
+              <div className="text-sm text-muted-foreground">{t("dashboard.sections.systemHealth.noLogs24h")}</div>
             ) : (
               <div className="space-y-2">
                 {data.topLogActions24h.map((item) => (
@@ -571,7 +577,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="pt-2 text-xs text-muted-foreground">
-        Last updated: {format(new Date(), "PPpp")}
+        {t("common.lastUpdated", { date: format(new Date(), "PPpp") })}
       </div>
     </div>
   );

@@ -110,6 +110,99 @@
     "admin": { "description": "系统管理" },
     "adminTelegram": { "description": "管理站点机器人与 Webhook" }
   },
+  "admin": {
+    "common": {
+      "refresh": "刷新",
+      "view": "查看",
+      "unmatched": "未匹配",
+      "unknownError": "未知错误",
+      "lastUpdated": "最后更新：{date}",
+      "status": {
+        "active": "启用",
+        "inactive": "停用",
+        "enabled": "启用",
+        "disabled": "禁用",
+        "ok": "OK",
+        "error": "错误"
+      },
+      "table": {
+        "actions": "操作",
+        "created": "创建时间",
+        "domain": "域名",
+        "email": "邮箱",
+        "inbound": "入站",
+        "mailboxes": "邮箱",
+        "role": "角色",
+        "source": "来源",
+        "status": "状态",
+        "subject": "主题",
+        "time": "时间",
+        "to": "收件人"
+      }
+    },
+    "dashboard": {
+      "title": "管理员面板",
+      "subtitle": "系统概览",
+      "buttons": {
+        "systemSettings": "系统设置"
+      },
+      "cards": {
+        "totalUsers": "用户总数",
+        "domains": "域名",
+        "mailboxes": "邮箱",
+        "emails": "邮件",
+        "inboundEmails": "入站邮件",
+        "inboundAllSources": "所有来源",
+        "unmatchedInbound": "未匹配入站",
+        "needsMailboxMapping": "需要映射到邮箱",
+        "logs24h": "日志（24小时）",
+        "systemActivity": "系统活动",
+        "errors24h": "错误（24小时）",
+        "logLevelError": "日志级别 ERROR"
+      },
+      "sections": {
+        "recentInbound": {
+          "title": "最近入站",
+          "description": "系统最新收到的邮件",
+          "empty": "暂无入站邮件"
+        },
+        "quickActions": {
+          "title": "快捷操作",
+          "description": "常用管理员入口",
+          "manageUsers": "管理用户",
+          "reviewUnmatched": "查看未匹配入站",
+          "viewLogs": "查看日志",
+          "manageDomains": "管理域名"
+        },
+        "unmatchedInbound": {
+          "title": "未匹配入站（最新）",
+          "description": "需要映射到邮箱的 catch-all 邮件",
+          "empty": "暂无未匹配入站"
+        },
+        "domainsOverview": {
+          "title": "域名概览",
+          "description": "按邮箱数量排序的域名",
+          "empty": "暂无域名"
+        },
+        "recentUsers": {
+          "title": "最近用户",
+          "description": "最新创建的账号",
+          "empty": "暂无用户"
+        },
+        "systemHealth": {
+          "title": "系统健康",
+          "description": "运行状态与信号",
+          "imapServiceMode": "IMAP 服务模式",
+          "imapConfigs": "IMAP 配置",
+          "serviceHealth": "服务健康",
+          "workers": "工作线程",
+          "topActions24h": "最常见操作（24小时）",
+          "topActionsDescription": "最频繁的日志动作",
+          "noLogs24h": "过去 24 小时没有日志"
+        }
+      }
+    }
+  },
   "legal": {
     "backToHome": "返回首页",
     "lastUpdated": "最后更新：{date}",

@@ -110,6 +110,99 @@
     "admin": { "description": "System administration" },
     "adminTelegram": { "description": "Manage the site-owned bot and webhooks" }
   },
+  "admin": {
+    "common": {
+      "refresh": "Refresh",
+      "view": "View",
+      "unmatched": "Unmatched",
+      "unknownError": "Unknown error",
+      "lastUpdated": "Last updated: {date}",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "ok": "OK",
+        "error": "Error"
+      },
+      "table": {
+        "actions": "Actions",
+        "created": "Created",
+        "domain": "Domain",
+        "email": "Email",
+        "inbound": "Inbound",
+        "mailboxes": "Mailboxes",
+        "role": "Role",
+        "source": "Source",
+        "status": "Status",
+        "subject": "Subject",
+        "time": "Time",
+        "to": "To"
+      }
+    },
+    "dashboard": {
+      "title": "Admin Dashboard",
+      "subtitle": "System overview",
+      "buttons": {
+        "systemSettings": "System settings"
+      },
+      "cards": {
+        "totalUsers": "Total Users",
+        "domains": "Domains",
+        "mailboxes": "Mailboxes",
+        "emails": "Emails",
+        "inboundEmails": "Inbound emails",
+        "inboundAllSources": "All sources",
+        "unmatchedInbound": "Unmatched inbound",
+        "needsMailboxMapping": "Needs mailbox mapping",
+        "logs24h": "Logs (24h)",
+        "systemActivity": "System activity",
+        "errors24h": "Errors (24h)",
+        "logLevelError": "Log level ERROR"
+      },
+      "sections": {
+        "recentInbound": {
+          "title": "Recent inbound",
+          "description": "Latest messages received by the system",
+          "empty": "No inbound emails yet"
+        },
+        "quickActions": {
+          "title": "Quick actions",
+          "description": "Common admin shortcuts",
+          "manageUsers": "Manage users",
+          "reviewUnmatched": "Review unmatched inbound",
+          "viewLogs": "View logs",
+          "manageDomains": "Manage domains"
+        },
+        "unmatchedInbound": {
+          "title": "Unmatched inbound (latest)",
+          "description": "Catch-all messages that need mailbox mapping",
+          "empty": "No unmatched inbound"
+        },
+        "domainsOverview": {
+          "title": "Domains overview",
+          "description": "Top domains by mailbox count",
+          "empty": "No domains yet"
+        },
+        "recentUsers": {
+          "title": "Recent users",
+          "description": "Newest accounts created",
+          "empty": "No users yet"
+        },
+        "systemHealth": {
+          "title": "System health",
+          "description": "Runtime status and signals",
+          "imapServiceMode": "IMAP service mode",
+          "imapConfigs": "IMAP configs",
+          "serviceHealth": "Service health",
+          "workers": "Workers",
+          "topActions24h": "Top actions (24h)",
+          "topActionsDescription": "Most frequent log actions",
+          "noLogs24h": "No logs in the last 24 hours"
+        }
+      }
+    }
+  },
   "legal": {
     "backToHome": "Back to home",
     "lastUpdated": "Last updated: {date}",
