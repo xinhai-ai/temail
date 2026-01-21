@@ -2,7 +2,7 @@
 
 import { signOut, useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -42,6 +42,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
@@ -91,7 +92,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
         )}
       >
         <item.icon className="h-5 w-5" />
-        {item.title}
+        {t(item.titleKey)}
       </Link>
     );
   };
@@ -105,7 +106,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
+                <span className="sr-only">{t("layout.toggleMenu")}</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-0 flex flex-col overflow-hidden">
@@ -114,7 +115,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
                   <div className="p-2 rounded-lg bg-primary/10">
                     <Mail className="h-5 w-5 text-primary" />
                   </div>
-                  <span className="text-xl font-bold">TEmail</span>
+                  <span className="text-xl font-bold">{t("common.appName")}</span>
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
@@ -124,7 +125,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
                   <>
                     <div className="pt-4 pb-2">
                       <p className="px-3 text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
-                        Administration
+                        {t("layout.administration")}
                       </p>
                     </div>
                     {ADMIN_NAV_ITEMS.map(renderNavItem)}
@@ -135,11 +136,11 @@ export function Header({ isAdmin = false }: HeaderProps) {
           </Sheet>
 
           <div className="md:hidden">
-            <span className="text-xl font-bold">TEmail</span>
+            <span className="text-xl font-bold">{t("common.appName")}</span>
           </div>
           {pageInfo && (
             <div className="hidden md:block">
-              <h1 className="text-lg font-semibold">{pageInfo.title}</h1>
+              <h1 className="text-lg font-semibold">{t(pageInfo.titleKey)}</h1>
             </div>
           )}
         </div>
@@ -157,7 +158,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
           <DropdownMenuContent className="w-56" align="end">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{session?.user?.name || "User"}</p>
+                <p className="text-sm font-medium">{session?.user?.name || t("layout.user")}</p>
                 <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
               </div>
             </DropdownMenuLabel>
@@ -165,22 +166,22 @@ export function Header({ isAdmin = false }: HeaderProps) {
             <DropdownMenuItem asChild>
               <Link href="/settings" className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
-                Profile
+                {t("layout.profile")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/settings" className="cursor-pointer">
                 <Settings className="mr-2 h-4 w-4" />
-                Settings
+                {t("nav.settings")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Language</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("layout.language")}</DropdownMenuLabel>
             <DropdownMenuItem onSelect={() => setLocale("en")}>
-              English{locale === "en" ? " ✓" : ""}
+              {t("locales.en")}{locale === "en" ? " ✓" : ""}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setLocale("zh")}>
-              中文{locale === "zh" ? " ✓" : ""}
+              {t("locales.zh")}{locale === "zh" ? " ✓" : ""}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -188,7 +189,7 @@ export function Header({ isAdmin = false }: HeaderProps) {
               onClick={() => signOut({ callbackUrl: "/login" })}
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Sign out
+              {t("auth.logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

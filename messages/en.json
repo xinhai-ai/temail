@@ -22,12 +22,44 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "inbox": "Inbox",
+    "trash": "Trash",
     "mailboxes": "Mailboxes",
     "emails": "Emails",
     "domains": "Domains",
+    "workflows": "Workflows",
+    "telegram": "Telegram",
     "forwards": "Forwards",
     "settings": "Settings",
-    "admin": "Admin"
+    "admin": "Admin",
+    "users": "Users",
+    "inbound": "Inbound",
+    "logs": "Logs",
+    "system": "System"
+  },
+  "layout": {
+    "toggleMenu": "Toggle menu",
+    "administration": "Administration",
+    "profile": "Profile",
+    "user": "User",
+    "language": "Language",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
+  },
+  "locales": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "pages": {
+    "dashboard": { "description": "Overview of your email activity" },
+    "inbox": { "description": "Mailboxes, grouped — with instant email preview" },
+    "trash": { "description": "Deleted emails (recover or purge)" },
+    "domains": { "description": "Manage inbound email domains" },
+    "workflows": { "description": "Automate your email processing" },
+    "telegram": { "description": "Link Telegram and bind topics" },
+    "settings": { "description": "Manage your account settings" },
+    "admin": { "description": "System administration" },
+    "adminTelegram": { "description": "Manage the site-owned bot and webhooks" }
   },
   "dashboard": {
     "title": "Dashboard",

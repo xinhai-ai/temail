@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
   const pathname = usePathname();
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const collapsed = collapsedProp ?? uncontrolledCollapsed;
+  const t = useTranslations();
 
   const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
   const activeHref = getActiveNavHref(pathname, [...userNavItems, ...(isAdmin ? ADMIN_NAV_ITEMS : [])]);
@@ -36,6 +38,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
 
   const renderNavItem = (item: NavItem) => {
     const isActive = item.href === activeHref;
+    const title = t(item.titleKey);
 
     const link = (
       <Link
@@ -47,7 +50,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )}
-        aria-label={collapsed ? item.title : undefined}
+        aria-label={collapsed ? title : undefined}
       >
         <item.icon
           className={cn(
@@ -56,7 +59,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
             isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
           )}
         />
-        {!collapsed && item.title}
+        {!collapsed && title}
       </Link>
     );
 
@@ -71,7 +74,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
     return (
       <Tooltip key={item.href}>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right">{item.title}</TooltipContent>
+        <TooltipContent side="right">{title}</TooltipContent>
       </Tooltip>
     );
   };
@@ -89,7 +92,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
             <div className="p-2 rounded-lg bg-primary/10">
               <Mail className="h-6 w-6 text-primary" />
             </div>
-            {!collapsed && <span className="text-xl font-bold text-foreground">TEmail</span>}
+            {!collapsed && <span className="text-xl font-bold text-foreground">{t("common.appName")}</span>}
           </Link>
         </div>
         <TooltipProvider delayDuration={200}>
@@ -101,7 +104,7 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
                 <div className={cn("pt-6 pb-2", collapsed && "px-2")}>
                   {!collapsed ? (
                     <p className="px-3 text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
-                      Administration
+                      {t("layout.administration")}
                     </p>
                   ) : (
                     <div className="h-px bg-sidebar-border/70" />
@@ -119,14 +122,14 @@ export function Sidebar({ isAdmin = false, collapsed: collapsedProp, onCollapsed
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-label={collapsed ? t("layout.expandSidebar") : t("layout.collapseSidebar")}
                   onClick={() => setCollapsed(!collapsed)}
                 >
                   {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                {collapsed ? t("layout.expandSidebar") : t("layout.collapseSidebar")}
               </TooltipContent>
             </Tooltip>
           </div>

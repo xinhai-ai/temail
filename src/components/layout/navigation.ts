@@ -14,41 +14,41 @@ import {
 } from "lucide-react";
 
 export interface NavItem {
-  title: string;
+  titleKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
 }
 
 export const APP_NAV_ITEMS: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Inbox", href: "/inbox", icon: Inbox },
-  { title: "Trash", href: "/trash", icon: Trash2 },
-  { title: "Domains", href: "/domains", icon: Globe, adminOnly: true },
-  { title: "Workflows", href: "/workflows", icon: Workflow },
-  { title: "Telegram", href: "/telegram", icon: MessageCircle },
-  { title: "Settings", href: "/settings", icon: Settings },
+  { titleKey: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { titleKey: "nav.inbox", href: "/inbox", icon: Inbox },
+  { titleKey: "nav.trash", href: "/trash", icon: Trash2 },
+  { titleKey: "nav.domains", href: "/domains", icon: Globe, adminOnly: true },
+  { titleKey: "nav.workflows", href: "/workflows", icon: Workflow },
+  { titleKey: "nav.telegram", href: "/telegram", icon: MessageCircle },
+  { titleKey: "nav.settings", href: "/settings", icon: Settings },
 ];
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
-  { title: "Admin", href: "/admin", icon: Shield },
-  { title: "Users", href: "/admin/users", icon: Users },
-  { title: "Inbound", href: "/admin/inbound", icon: Inbox },
-  { title: "Logs", href: "/admin/logs", icon: FileText },
-  { title: "Telegram", href: "/admin/telegram", icon: MessageCircle },
-  { title: "System", href: "/admin/settings", icon: Cog },
+  { titleKey: "nav.admin", href: "/admin", icon: Shield },
+  { titleKey: "nav.users", href: "/admin/users", icon: Users },
+  { titleKey: "nav.inbound", href: "/admin/inbound", icon: Inbox },
+  { titleKey: "nav.logs", href: "/admin/logs", icon: FileText },
+  { titleKey: "nav.telegram", href: "/admin/telegram", icon: MessageCircle },
+  { titleKey: "nav.system", href: "/admin/settings", icon: Cog },
 ];
 
-export const PAGE_TITLES: Record<string, { title: string; description?: string }> = {
-  "/dashboard": { title: "Dashboard", description: "Overview of your email activity" },
-  "/inbox": { title: "Inbox", description: "Mailboxes, grouped — with instant email preview" },
-  "/trash": { title: "Trash", description: "Deleted emails (recover or purge)" },
-  "/domains": { title: "Domains", description: "Manage inbound email domains" },
-  "/workflows": { title: "Workflows", description: "Automate your email processing" },
-  "/telegram": { title: "Telegram", description: "Link Telegram and bind topics" },
-  "/settings": { title: "Settings", description: "Manage your account settings" },
-  "/admin": { title: "Admin", description: "System administration" },
-  "/admin/telegram": { title: "Telegram", description: "Manage the site-owned bot and webhooks" },
+export const PAGE_TITLES: Record<string, { titleKey: string; descriptionKey?: string }> = {
+  "/dashboard": { titleKey: "nav.dashboard", descriptionKey: "pages.dashboard.description" },
+  "/inbox": { titleKey: "nav.inbox", descriptionKey: "pages.inbox.description" },
+  "/trash": { titleKey: "nav.trash", descriptionKey: "pages.trash.description" },
+  "/domains": { titleKey: "nav.domains", descriptionKey: "pages.domains.description" },
+  "/workflows": { titleKey: "nav.workflows", descriptionKey: "pages.workflows.description" },
+  "/telegram": { titleKey: "nav.telegram", descriptionKey: "pages.telegram.description" },
+  "/settings": { titleKey: "nav.settings", descriptionKey: "pages.settings.description" },
+  "/admin": { titleKey: "nav.admin", descriptionKey: "pages.admin.description" },
+  "/admin/telegram": { titleKey: "nav.telegram", descriptionKey: "pages.adminTelegram.description" },
 };
 
 function matchesPathname(pathname: string, href: string) {

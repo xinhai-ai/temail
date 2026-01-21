@@ -22,12 +22,44 @@
   },
   "nav": {
     "dashboard": "仪表盘",
+    "inbox": "收件箱",
+    "trash": "回收站",
     "mailboxes": "邮箱",
     "emails": "邮件",
     "domains": "域名",
+    "workflows": "工作流",
+    "telegram": "Telegram",
     "forwards": "转发",
     "settings": "设置",
-    "admin": "管理"
+    "admin": "管理",
+    "users": "用户",
+    "inbound": "收件",
+    "logs": "日志",
+    "system": "系统"
+  },
+  "layout": {
+    "toggleMenu": "切换菜单",
+    "administration": "管理",
+    "profile": "个人资料",
+    "user": "用户",
+    "language": "语言",
+    "expandSidebar": "展开侧边栏",
+    "collapseSidebar": "收起侧边栏"
+  },
+  "locales": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "pages": {
+    "dashboard": { "description": "邮件活动总览" },
+    "inbox": { "description": "分组邮箱 + 即时邮件预览" },
+    "trash": { "description": "已删除邮件（恢复或清空）" },
+    "domains": { "description": "管理收件域名" },
+    "workflows": { "description": "自动化邮件处理" },
+    "telegram": { "description": "关联 Telegram 并绑定话题" },
+    "settings": { "description": "管理账户设置" },
+    "admin": { "description": "系统管理" },
+    "adminTelegram": { "description": "管理站点机器人与 Webhook" }
   },
   "dashboard": {
     "title": "仪表盘",
