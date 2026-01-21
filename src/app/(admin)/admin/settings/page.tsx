@@ -425,8 +425,8 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Commit</span>
-                  <Badge variant="outline" className="font-mono">
-                    {appInfoLoading ? "…" : appInfo?.commitShortSha || "unknown"}
+                  <Badge variant="outline" className="font-mono" title={appInfo?.commitSha || ""}>
+                    {appInfoLoading ? "…" : appInfo?.commitShortSha || appInfo?.commitSha || "unknown"}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-4">
