@@ -547,5 +547,168 @@
         "emptyDescription": "Activity will appear here"
       }
     }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your account, security, and data.",
+    "unknown": "unknown",
+    "badges": {
+      "otp": {
+        "loading": "OTP: …",
+        "unavailable": "OTP: Unavailable",
+        "enabled": "OTP: Enabled",
+        "disabled": "OTP: Disabled"
+      },
+      "passkeys": {
+        "loading": "Passkeys: …",
+        "disabled": "Passkeys: Disabled",
+        "count": "Passkeys: {count}"
+      }
+    },
+    "tabs": {
+      "account": "Account",
+      "security": "Security",
+      "data": "Data",
+      "about": "About"
+    },
+    "profile": {
+      "title": "Profile",
+      "description": "Update your display name.",
+      "unsaved": "Unsaved",
+      "email": {
+        "label": "Email",
+        "help": "Email is used for login and can't be changed here."
+      },
+      "name": {
+        "label": "Name",
+        "placeholder": "Your name (optional)",
+        "help": "Optional. Shown in the UI and activity logs."
+      },
+      "actions": {
+        "saving": "Saving...",
+        "save": "Save profile",
+        "reset": "Reset"
+      }
+    },
+    "password": {
+      "title": "Password",
+      "description": "Change the password used for login.",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "actions": {
+        "changing": "Changing...",
+        "change": "Change password"
+      }
+    },
+    "otp": {
+      "title": "Two-Factor Authentication (OTP)",
+      "description": "Use one-time codes from an authenticator app.",
+      "status": {
+        "loading": "Loading",
+        "disabledByAdmin": "Disabled by admin",
+        "enabled": "Enabled",
+        "notEnabled": "Not enabled"
+      },
+      "content": {
+        "disabledByAdmin": "OTP is disabled by the administrator.",
+        "enabled": "OTP is enabled for your account.",
+        "disableLabel": "Disable OTP",
+        "disablePlaceholder": "Enter your current password",
+        "disabling": "Disabling...",
+        "disable": "Disable OTP",
+        "setupHelp": "Scan the QR code with an authenticator app, or enter the secret manually, then confirm with a code.",
+        "qrAlt": "OTP QR Code",
+        "qrFailed": "QR code generation failed. Use the secret below.",
+        "secret": "Secret",
+        "confirmCode": "Confirm code",
+        "codePlaceholder": "123456",
+        "enabling": "Enabling...",
+        "enable": "Enable OTP",
+        "setupDescription": "Add an extra layer of security to your account with one-time codes.",
+        "settingUp": "Setting up...",
+        "setup": "Set up OTP"
+      },
+      "backupCodes": {
+        "title": "Backup codes",
+        "help": "Save these codes in a safe place. They will only be shown once."
+      }
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "Use passkeys for faster, phishing-resistant sign-in.",
+      "status": {
+        "loading": "Loading",
+        "disabled": "Disabled"
+      },
+      "disabledByAdmin": "Passkeys are disabled by the administrator.",
+      "actions": {
+        "working": "Working...",
+        "add": "Add passkey",
+        "remove": "Remove"
+      },
+      "empty": "No passkeys added yet.",
+      "device": "Device: {deviceType}",
+      "passkey": "Passkey",
+      "synced": "Synced",
+      "meta": {
+        "added": "Added: {date}",
+        "lastUsed": "Last used: {date}"
+      }
+    },
+    "trash": {
+      "title": "Trash",
+      "description": "Automatically purge trash after a set number of days.",
+      "retentionLabel": "Trash retention (days)",
+      "retentionHelp": "Set to 0 to never automatically delete.",
+      "presets": {
+        "never": "Never",
+        "days30": "30 days",
+        "days90": "90 days"
+      },
+      "actions": {
+        "saving": "Saving...",
+        "save": "Save trash settings"
+      }
+    },
+    "about": {
+      "title": "About",
+      "description": "Version information and project links.",
+      "labels": {
+        "version": "Version",
+        "commit": "Commit",
+        "github": "GitHub"
+      },
+      "links": {
+        "releases": "Releases",
+        "issues": "Issues"
+      }
+    },
+    "toast": {
+      "nameTooLong": "Name is too long",
+      "profileSaveFailed": "Failed to save profile",
+      "profileSaved": "Profile saved",
+      "fillAllFields": "Please fill in all fields",
+      "passwordChangeFailed": "Failed to change password",
+      "passwordChanged": "Password changed",
+      "trashRetentionInvalid": "Trash retention days must be 0 or a positive number",
+      "trashRetentionTooLarge": "Trash retention days is too large",
+      "saveFailed": "Failed to save",
+      "trashSaved": "Trash settings saved",
+      "otpSetupFailed": "Failed to set up OTP",
+      "otpSetupCreated": "OTP setup created. Please confirm with a code.",
+      "otpCodeRequired": "Please enter a code",
+      "otpEnableFailed": "Failed to enable OTP",
+      "otpEnabled": "OTP enabled",
+      "otpPasswordRequired": "Please enter your current password",
+      "otpDisableFailed": "Failed to disable OTP",
+      "otpDisabled": "OTP disabled",
+      "passkeyBeginFailed": "Failed to start passkey registration",
+      "passkeyRegisterFailed": "Failed to register passkey",
+      "passkeyAdded": "Passkey added",
+      "passkeyRemoveFailed": "Failed to remove passkey",
+      "passkeyRemoved": "Passkey removed"
+    }
   }
+}
 }

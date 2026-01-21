@@ -547,5 +547,168 @@
         "emptyDescription": "活动将显示在这里"
       }
     }
+  },
+  "settings": {
+    "title": "设置",
+    "description": "管理你的账户、安全与数据。",
+    "unknown": "未知",
+    "badges": {
+      "otp": {
+        "loading": "OTP：…",
+        "unavailable": "OTP：不可用",
+        "enabled": "OTP：已启用",
+        "disabled": "OTP：未启用"
+      },
+      "passkeys": {
+        "loading": "Passkeys：…",
+        "disabled": "Passkeys：已禁用",
+        "count": "Passkeys：{count}"
+      }
+    },
+    "tabs": {
+      "account": "账户",
+      "security": "安全",
+      "data": "数据",
+      "about": "关于"
+    },
+    "profile": {
+      "title": "个人资料",
+      "description": "更新你的显示名称。",
+      "unsaved": "未保存",
+      "email": {
+        "label": "邮箱",
+        "help": "邮箱用于登录，无法在此处修改。"
+      },
+      "name": {
+        "label": "名称",
+        "placeholder": "你的名称（可选）",
+        "help": "可选。在界面与活动日志中显示。"
+      },
+      "actions": {
+        "saving": "保存中...",
+        "save": "保存资料",
+        "reset": "重置"
+      }
+    },
+    "password": {
+      "title": "密码",
+      "description": "更改用于登录的密码。",
+      "current": "当前密码",
+      "new": "新密码",
+      "confirm": "确认新密码",
+      "actions": {
+        "changing": "修改中...",
+        "change": "修改密码"
+      }
+    },
+    "otp": {
+      "title": "双重验证（OTP）",
+      "description": "使用身份验证器应用中的一次性验证码。",
+      "status": {
+        "loading": "加载中",
+        "disabledByAdmin": "管理员已禁用",
+        "enabled": "已启用",
+        "notEnabled": "未启用"
+      },
+      "content": {
+        "disabledByAdmin": "OTP 已被管理员禁用。",
+        "enabled": "你的账户已启用 OTP。",
+        "disableLabel": "关闭 OTP",
+        "disablePlaceholder": "请输入当前密码",
+        "disabling": "关闭中...",
+        "disable": "关闭 OTP",
+        "setupHelp": "使用身份验证器应用扫描二维码，或手动输入密钥，然后输入验证码确认。",
+        "qrAlt": "OTP 二维码",
+        "qrFailed": "二维码生成失败。请使用下方密钥。",
+        "secret": "密钥",
+        "confirmCode": "确认验证码",
+        "codePlaceholder": "123456",
+        "enabling": "启用中...",
+        "enable": "启用 OTP",
+        "setupDescription": "为账户增加一层安全保护，使用一次性验证码。",
+        "settingUp": "设置中...",
+        "setup": "设置 OTP"
+      },
+      "backupCodes": {
+        "title": "备用码",
+        "help": "请将这些备用码保存在安全的地方。它们只会显示一次。"
+      }
+    },
+    "passkeys": {
+      "title": "Passkeys（通行密钥）",
+      "description": "使用 Passkeys 更快、更抗钓鱼地登录。",
+      "status": {
+        "loading": "加载中",
+        "disabled": "已禁用"
+      },
+      "disabledByAdmin": "Passkeys 已被管理员禁用。",
+      "actions": {
+        "working": "处理中...",
+        "add": "添加 Passkey",
+        "remove": "移除"
+      },
+      "empty": "暂无 Passkey。",
+      "device": "设备：{deviceType}",
+      "passkey": "Passkey",
+      "synced": "已同步",
+      "meta": {
+        "added": "添加时间：{date}",
+        "lastUsed": "上次使用：{date}"
+      }
+    },
+    "trash": {
+      "title": "回收站",
+      "description": "在指定天数后自动清理回收站。",
+      "retentionLabel": "回收站保留（天）",
+      "retentionHelp": "设置为 0 表示永不自动删除。",
+      "presets": {
+        "never": "永不",
+        "days30": "30 天",
+        "days90": "90 天"
+      },
+      "actions": {
+        "saving": "保存中...",
+        "save": "保存回收站设置"
+      }
+    },
+    "about": {
+      "title": "关于",
+      "description": "版本信息与项目链接。",
+      "labels": {
+        "version": "版本",
+        "commit": "提交",
+        "github": "GitHub"
+      },
+      "links": {
+        "releases": "版本发布",
+        "issues": "问题"
+      }
+    },
+    "toast": {
+      "nameTooLong": "名称过长",
+      "profileSaveFailed": "保存资料失败",
+      "profileSaved": "资料已保存",
+      "fillAllFields": "请填写所有字段",
+      "passwordChangeFailed": "修改密码失败",
+      "passwordChanged": "密码已修改",
+      "trashRetentionInvalid": "回收站保留天数必须为 0 或正数",
+      "trashRetentionTooLarge": "回收站保留天数过大",
+      "saveFailed": "保存失败",
+      "trashSaved": "回收站设置已保存",
+      "otpSetupFailed": "设置 OTP 失败",
+      "otpSetupCreated": "OTP 设置已创建，请输入验证码确认。",
+      "otpCodeRequired": "请输入验证码",
+      "otpEnableFailed": "启用 OTP 失败",
+      "otpEnabled": "OTP 已启用",
+      "otpPasswordRequired": "请输入当前密码",
+      "otpDisableFailed": "关闭 OTP 失败",
+      "otpDisabled": "OTP 已关闭",
+      "passkeyBeginFailed": "启动 Passkey 注册失败",
+      "passkeyRegisterFailed": "注册 Passkey 失败",
+      "passkeyAdded": "Passkey 已添加",
+      "passkeyRemoveFailed": "移除 Passkey 失败",
+      "passkeyRemoved": "Passkey 已移除"
+    }
   }
+}
 }

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import QRCode from "qrcode";
 import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/types";
+import { useTranslations } from "next-intl";
 
 export default function SettingsPage() {
   type PasskeyInfo = {
@@ -25,6 +26,9 @@ export default function SettingsPage() {
   };
 
   const { data: session } = useSession();
+  const t = useTranslations("settings");
+  const tCommon = useTranslations("common");
+  const tAuthErrors = useTranslations("auth.errors");
   const [name, setName] = useState(session?.user?.name || "");
   const [profileEmail, setProfileEmail] = useState(session?.user?.email || "");
   const [profileOriginalName, setProfileOriginalName] = useState(session?.user?.name || "");
@@ -148,7 +152,7 @@ export default function SettingsPage() {
   const handleUpdateProfile = async () => {
     const nextName = name.trim();
     if (nextName.length > 80) {
-      toast.error("Name is too long");
+      toast.error(t("toast.nameTooLong"));
       return;
     }
 
@@ -161,16 +165,16 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to save profile");
+        toast.error(data?.error || t("toast.profileSaveFailed"));
         return;
       }
 
       const savedName = typeof data?.name === "string" ? data.name : "";
       setName(savedName);
       setProfileOriginalName(savedName);
-      toast.success("Profile saved");
+      toast.success(t("toast.profileSaved"));
     } catch {
-      toast.error("Failed to save profile");
+      toast.error(t("toast.profileSaveFailed"));
     } finally {
       setProfileSaving(false);
     }
@@ -182,15 +186,15 @@ export default function SettingsPage() {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("Please fill in all fields");
+      toast.error(t("toast.fillAllFields"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error(tAuthErrors("passwordsDoNotMatch"));
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(tAuthErrors("passwordTooShort"));
       return;
     }
 
@@ -204,16 +208,16 @@ export default function SettingsPage() {
 
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to change password");
+        toast.error(data?.error || t("toast.passwordChangeFailed"));
         return;
       }
 
-      toast.success("Password changed");
+      toast.success(t("toast.passwordChanged"));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch {
-      toast.error("Failed to change password");
+      toast.error(t("toast.passwordChangeFailed"));
     } finally {
       setChangingPassword(false);
     }
@@ -222,11 +226,11 @@ export default function SettingsPage() {
   const handleSaveTrash = async () => {
     const parsed = Number.parseInt(trashRetentionDays, 10);
     if (!Number.isFinite(parsed) || parsed < 0) {
-      toast.error("Trash retention days must be 0 or a positive number");
+      toast.error(t("toast.trashRetentionInvalid"));
       return;
     }
     if (parsed > 3650) {
-      toast.error("Trash retention days is too large");
+      toast.error(t("toast.trashRetentionTooLarge"));
       return;
     }
 
@@ -239,15 +243,15 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to save");
+        toast.error(data?.error || t("toast.saveFailed"));
         return;
       }
-      toast.success("Trash settings saved");
+      toast.success(t("toast.trashSaved"));
       const value = String(data?.trashRetentionDays ?? parsed);
       setTrashRetentionDays(value);
       setTrashOriginalDays(value);
     } catch {
-      toast.error("Failed to save");
+      toast.error(t("toast.saveFailed"));
     } finally {
       setSavingTrash(false);
     }
@@ -260,14 +264,14 @@ export default function SettingsPage() {
       const res = await fetch("/api/users/me/otp/setup", { method: "POST" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to set up OTP");
+        toast.error(data?.error || t("toast.otpSetupFailed"));
         return;
       }
 
       const secret = String(data?.secret || "");
       const otpauthUrl = String(data?.otpauthUrl || "");
       if (!secret || !otpauthUrl) {
-        toast.error("Failed to set up OTP");
+        toast.error(t("toast.otpSetupFailed"));
         return;
       }
 
@@ -280,9 +284,9 @@ export default function SettingsPage() {
 
       setOtpSetup({ secret, otpauthUrl, qrDataUrl });
       setOtpConfirmCode("");
-      toast.success("OTP setup created. Please confirm with a code.");
+      toast.success(t("toast.otpSetupCreated"));
     } catch {
-      toast.error("Failed to set up OTP");
+      toast.error(t("toast.otpSetupFailed"));
     } finally {
       setOtpWorking(false);
     }
@@ -290,7 +294,7 @@ export default function SettingsPage() {
 
   const handleOtpConfirm = async () => {
     if (!otpConfirmCode.trim()) {
-      toast.error("Please enter a code");
+      toast.error(t("toast.otpCodeRequired"));
       return;
     }
 
@@ -303,7 +307,7 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to enable OTP");
+        toast.error(data?.error || t("toast.otpEnableFailed"));
         return;
       }
 
@@ -312,9 +316,9 @@ export default function SettingsPage() {
       setOtpEnabled(true);
       setOtpSetup(null);
       setOtpConfirmCode("");
-      toast.success("OTP enabled");
+      toast.success(t("toast.otpEnabled"));
     } catch {
-      toast.error("Failed to enable OTP");
+      toast.error(t("toast.otpEnableFailed"));
     } finally {
       setOtpWorking(false);
     }
@@ -322,7 +326,7 @@ export default function SettingsPage() {
 
   const handleOtpDisable = async () => {
     if (!otpDisablePassword.trim()) {
-      toast.error("Please enter your current password");
+      toast.error(t("toast.otpPasswordRequired"));
       return;
     }
 
@@ -335,7 +339,7 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to disable OTP");
+        toast.error(data?.error || t("toast.otpDisableFailed"));
         return;
       }
 
@@ -343,9 +347,9 @@ export default function SettingsPage() {
       setOtpSetup(null);
       setOtpBackupCodes(null);
       setOtpDisablePassword("");
-      toast.success("OTP disabled");
+      toast.success(t("toast.otpDisabled"));
     } catch {
-      toast.error("Failed to disable OTP");
+      toast.error(t("toast.otpDisableFailed"));
     } finally {
       setOtpWorking(false);
     }
@@ -353,11 +357,11 @@ export default function SettingsPage() {
 
   const handleAddPasskey = async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
-      toast.error("Passkeys are not supported in this browser.");
+      toast.error(tAuthErrors("passkeyNotSupported"));
       return;
     }
     if (!passkeysAvailable) {
-      toast.error("Passkeys are disabled by the administrator.");
+      toast.error(t("passkeys.disabledByAdmin"));
       return;
     }
 
@@ -368,14 +372,14 @@ export default function SettingsPage() {
         | { options?: unknown; challengeId?: string; error?: string }
         | null;
       if (!beginRes.ok) {
-        toast.error(beginData?.error || "Failed to start passkey registration");
+        toast.error(beginData?.error || t("toast.passkeyBeginFailed"));
         return;
       }
 
       const options = beginData?.options;
       const challengeId = beginData?.challengeId;
       if (!options || !challengeId) {
-        toast.error("Failed to start passkey registration");
+        toast.error(t("toast.passkeyBeginFailed"));
         return;
       }
 
@@ -388,18 +392,18 @@ export default function SettingsPage() {
       });
       const finishData = (await finishRes.json().catch(() => null)) as { error?: string } | null;
       if (!finishRes.ok) {
-        toast.error(finishData?.error || "Failed to register passkey");
+        toast.error(finishData?.error || t("toast.passkeyRegisterFailed"));
         return;
       }
 
-      toast.success("Passkey added");
+      toast.success(t("toast.passkeyAdded"));
       await fetchPasskeys();
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message.toLowerCase().includes("abort") || message.toLowerCase().includes("cancel")) {
         return;
       }
-      toast.error("Failed to register passkey");
+      toast.error(t("toast.passkeyRegisterFailed"));
     } finally {
       setPasskeysWorking(false);
     }
@@ -411,13 +415,13 @@ export default function SettingsPage() {
       const res = await fetch(`/api/users/me/passkeys/${id}`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || "Failed to remove passkey");
+        toast.error(data?.error || t("toast.passkeyRemoveFailed"));
         return;
       }
-      toast.success("Passkey removed");
+      toast.success(t("toast.passkeyRemoved"));
       await fetchPasskeys();
     } catch {
-      toast.error("Failed to remove passkey");
+      toast.error(t("toast.passkeyRemoveFailed"));
     } finally {
       setPasskeysWorking(false);
     }
@@ -434,38 +438,38 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">Manage your account, security, and data.</p>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("description")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="font-mono">
-            {appInfoLoading ? "v…" : `v${appInfo?.version || "unknown"}`}
+            {appInfoLoading ? "v…" : `v${appInfo?.version || t("unknown")}`}
           </Badge>
           {otpLoading ? (
-            <Badge variant="outline">OTP: …</Badge>
+            <Badge variant="outline">{t("badges.otp.loading")}</Badge>
           ) : !otpAvailable ? (
-            <Badge variant="secondary">OTP: Unavailable</Badge>
+            <Badge variant="secondary">{t("badges.otp.unavailable")}</Badge>
           ) : otpEnabled ? (
-            <Badge>OTP: Enabled</Badge>
+            <Badge>{t("badges.otp.enabled")}</Badge>
           ) : (
-            <Badge variant="outline">OTP: Disabled</Badge>
+            <Badge variant="outline">{t("badges.otp.disabled")}</Badge>
           )}
           {passkeysLoading ? (
-            <Badge variant="outline">Passkeys: …</Badge>
+            <Badge variant="outline">{t("badges.passkeys.loading")}</Badge>
           ) : !passkeysAvailable ? (
-            <Badge variant="secondary">Passkeys: Disabled</Badge>
+            <Badge variant="secondary">{t("badges.passkeys.disabled")}</Badge>
           ) : (
-            <Badge variant="outline">{`Passkeys: ${passkeys.length}`}</Badge>
+            <Badge variant="outline">{t("badges.passkeys.count", { count: passkeys.length })}</Badge>
           )}
         </div>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="data">Data</TabsTrigger>
-          <TabsTrigger value="about">About</TabsTrigger>
+          <TabsTrigger value="account">{t("tabs.account")}</TabsTrigger>
+          <TabsTrigger value="security">{t("tabs.security")}</TabsTrigger>
+          <TabsTrigger value="data">{t("tabs.data")}</TabsTrigger>
+          <TabsTrigger value="about">{t("tabs.about")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="account">
@@ -474,38 +478,38 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
-                  Profile
+                  {t("profile.title")}
                 </CardTitle>
-                <CardDescription>Update your display name.</CardDescription>
+                <CardDescription>{t("profile.description")}</CardDescription>
                 {profileDirty && (
                   <CardAction>
-                    <Badge variant="outline">Unsaved</Badge>
+                    <Badge variant="outline">{t("profile.unsaved")}</Badge>
                   </CardAction>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>{t("profile.email.label")}</Label>
                   <Input value={profileEmail || session?.user?.email || ""} disabled />
                   <p className="text-xs text-muted-foreground">
-                    Email is used for login and can&apos;t be changed here.
+                    {t("profile.email.help")}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Name</Label>
+                  <Label>{t("profile.name.label")}</Label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name (optional)"
+                    placeholder={t("profile.name.placeholder")}
                     disabled={profileLoading || profileSaving}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional. Shown in the UI and activity logs.
+                    {t("profile.name.help")}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleUpdateProfile} disabled={!profileDirty || profileLoading || profileSaving}>
-                    {profileSaving ? "Saving..." : "Save profile"}
+                    {profileSaving ? t("profile.actions.saving") : t("profile.actions.save")}
                   </Button>
                   <Button
                     type="button"
@@ -513,7 +517,7 @@ export default function SettingsPage() {
                     onClick={handleResetProfile}
                     disabled={!profileDirty || profileLoading || profileSaving}
                   >
-                    Reset
+                    {t("profile.actions.reset")}
                   </Button>
                 </div>
               </CardContent>
@@ -527,13 +531,13 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
-                  Password
+                  {t("password.title")}
                 </CardTitle>
-                <CardDescription>Change the password used for login.</CardDescription>
+                <CardDescription>{t("password.description")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Current password</Label>
+                  <Label>{t("password.current")}</Label>
                   <Input
                     type="password"
                     value={currentPassword}
@@ -543,7 +547,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>New password</Label>
+                    <Label>{t("password.new")}</Label>
                     <Input
                       type="password"
                       value={newPassword}
@@ -551,11 +555,11 @@ export default function SettingsPage() {
                       disabled={changingPassword}
                     />
                     {passwordTooShort && (
-                      <p className="text-xs text-destructive">Password must be at least 6 characters.</p>
+                      <p className="text-xs text-destructive">{tAuthErrors("passwordTooShort")}</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Confirm new password</Label>
+                    <Label>{t("password.confirm")}</Label>
                     <Input
                       type="password"
                       value={confirmPassword}
@@ -563,12 +567,12 @@ export default function SettingsPage() {
                       disabled={changingPassword}
                     />
                     {passwordMismatch && (
-                      <p className="text-xs text-destructive">Passwords do not match.</p>
+                      <p className="text-xs text-destructive">{tAuthErrors("passwordsDoNotMatch")}</p>
                     )}
                   </div>
                 </div>
                 <Button onClick={handleChangePassword} disabled={!canChangePassword}>
-                  {changingPassword ? "Changing..." : "Change password"}
+                  {changingPassword ? t("password.actions.changing") : t("password.actions.change")}
                 </Button>
               </CardContent>
             </Card>
@@ -577,78 +581,78 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
-                  Two-Factor Authentication (OTP)
+                  {t("otp.title")}
                 </CardTitle>
-                <CardDescription>Use one-time codes from an authenticator app.</CardDescription>
+                <CardDescription>{t("otp.description")}</CardDescription>
                 {otpLoading ? (
                   <CardAction>
-                    <Badge variant="outline">Loading</Badge>
+                    <Badge variant="outline">{t("otp.status.loading")}</Badge>
                   </CardAction>
                 ) : !otpAvailable ? (
                   <CardAction>
-                    <Badge variant="secondary">Disabled by admin</Badge>
+                    <Badge variant="secondary">{t("otp.status.disabledByAdmin")}</Badge>
                   </CardAction>
                 ) : otpEnabled ? (
                   <CardAction>
-                    <Badge>Enabled</Badge>
+                    <Badge>{t("otp.status.enabled")}</Badge>
                   </CardAction>
                 ) : (
                   <CardAction>
-                    <Badge variant="outline">Not enabled</Badge>
+                    <Badge variant="outline">{t("otp.status.notEnabled")}</Badge>
                   </CardAction>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {otpLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading...</p>
+                  <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>
                 ) : !otpAvailable ? (
-                  <p className="text-sm text-muted-foreground">OTP is disabled by the administrator.</p>
+                  <p className="text-sm text-muted-foreground">{t("otp.content.disabledByAdmin")}</p>
                 ) : otpEnabled ? (
                   <>
-                    <p className="text-sm text-muted-foreground">OTP is enabled for your account.</p>
+                    <p className="text-sm text-muted-foreground">{t("otp.content.enabled")}</p>
                     <div className="space-y-2">
-                      <Label>Disable OTP</Label>
+                      <Label>{t("otp.content.disableLabel")}</Label>
                       <Input
                         type="password"
-                        placeholder="Enter your current password"
+                        placeholder={t("otp.content.disablePlaceholder")}
                         value={otpDisablePassword}
                         onChange={(e) => setOtpDisablePassword(e.target.value)}
                         disabled={otpWorking}
                       />
                       <Button variant="destructive" onClick={handleOtpDisable} disabled={otpWorking}>
-                        {otpWorking ? "Disabling..." : "Disable OTP"}
+                        {otpWorking ? t("otp.content.disabling") : t("otp.content.disable")}
                       </Button>
                     </div>
                   </>
                 ) : otpSetup ? (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Scan the QR code with an authenticator app, or enter the secret manually, then confirm with a code.
+                      {t("otp.content.setupHelp")}
                     </p>
                     {otpSetup.qrDataUrl ? (
                       <div className="flex justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={otpSetup.qrDataUrl} alt="OTP QR Code" className="rounded-md border" />
+                        <img src={otpSetup.qrDataUrl} alt={t("otp.content.qrAlt")} className="rounded-md border" />
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">QR code generation failed. Use the secret below.</p>
+                      <p className="text-xs text-muted-foreground">{t("otp.content.qrFailed")}</p>
                     )}
                     <div className="space-y-2">
-                      <Label>Secret</Label>
+                      <Label>{t("otp.content.secret")}</Label>
                       <Input value={otpSetup.secret} readOnly className="font-mono" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Confirm code</Label>
+                      <Label>{t("otp.content.confirmCode")}</Label>
                       <Input
                         inputMode="numeric"
-                        placeholder="123456"
+                        placeholder={t("otp.content.codePlaceholder")}
                         value={otpConfirmCode}
                         onChange={(e) => setOtpConfirmCode(e.target.value)}
                         disabled={otpWorking}
                       />
                       <div className="flex flex-wrap gap-2">
                         <Button onClick={handleOtpConfirm} disabled={otpWorking}>
-                          {otpWorking ? "Enabling..." : "Enable OTP"}
+                          {otpWorking ? t("otp.content.enabling") : t("otp.content.enable")}
                         </Button>
                         <Button
                           type="button"
@@ -659,7 +663,7 @@ export default function SettingsPage() {
                           }}
                           disabled={otpWorking}
                         >
-                          Cancel
+                          {tCommon("cancel")}
                         </Button>
                       </div>
                     </div>
@@ -667,10 +671,10 @@ export default function SettingsPage() {
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Add an extra layer of security to your account with one-time codes.
+                      {t("otp.content.setupDescription")}
                     </p>
                     <Button onClick={handleOtpSetup} disabled={otpWorking}>
-                      {otpWorking ? "Setting up..." : "Set up OTP"}
+                      {otpWorking ? t("otp.content.settingUp") : t("otp.content.setup")}
                     </Button>
                   </>
                 )}
@@ -679,9 +683,9 @@ export default function SettingsPage() {
                   <>
                     <Separator />
                     <div className="rounded-lg border p-3 space-y-2">
-                      <p className="text-sm font-medium">Backup codes</p>
+                      <p className="text-sm font-medium">{t("otp.backupCodes.title")}</p>
                       <p className="text-xs text-muted-foreground">
-                        Save these codes in a safe place. They will only be shown once.
+                        {t("otp.backupCodes.help")}
                       </p>
                       <pre className="text-xs bg-muted/50 p-2 rounded font-mono whitespace-pre-wrap">
                         {otpBackupCodes.join("\n")}
@@ -696,16 +700,16 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
-                  Passkeys
+                  {t("passkeys.title")}
                 </CardTitle>
-                <CardDescription>Use passkeys for faster, phishing-resistant sign-in.</CardDescription>
+                <CardDescription>{t("passkeys.description")}</CardDescription>
                 {passkeysLoading ? (
                   <CardAction>
-                    <Badge variant="outline">Loading</Badge>
+                    <Badge variant="outline">{t("passkeys.status.loading")}</Badge>
                   </CardAction>
                 ) : !passkeysAvailable ? (
                   <CardAction>
-                    <Badge variant="secondary">Disabled</Badge>
+                    <Badge variant="secondary">{t("passkeys.status.disabled")}</Badge>
                   </CardAction>
                 ) : (
                   <CardAction>
@@ -715,29 +719,33 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {passkeysLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading...</p>
+                  <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>
                 ) : (
                   <>
                     {!passkeysAvailable && (
-                      <p className="text-sm text-muted-foreground">Passkeys are disabled by the administrator.</p>
+                      <p className="text-sm text-muted-foreground">{t("passkeys.disabledByAdmin")}</p>
                     )}
                     <Button onClick={handleAddPasskey} disabled={passkeysWorking || !passkeysAvailable}>
-                      {passkeysWorking ? "Working..." : "Add passkey"}
+                      {passkeysWorking ? t("passkeys.actions.working") : t("passkeys.actions.add")}
                     </Button>
                     {passkeys.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No passkeys added yet.</p>
+                      <p className="text-sm text-muted-foreground">{t("passkeys.empty")}</p>
                     ) : (
                       <div className="space-y-2">
                         {passkeys.map((p) => (
                           <div key={p.id} className="flex items-center justify-between gap-4 rounded-md border p-3">
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">
-                                {p.deviceType ? `Device: ${p.deviceType}` : "Passkey"}
-                                {p.backedUp ? " · Synced" : ""}
+                                {p.deviceType
+                                  ? t("passkeys.device", { deviceType: p.deviceType })
+                                  : t("passkeys.passkey")}
+                                {p.backedUp ? ` · ${t("passkeys.synced")}` : ""}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                Added: {new Date(p.createdAt).toLocaleString()}
-                                {p.lastUsedAt ? ` · Last used: ${new Date(p.lastUsedAt).toLocaleString()}` : ""}
+                                {t("passkeys.meta.added", { date: new Date(p.createdAt).toLocaleString() })}
+                                {p.lastUsedAt
+                                  ? ` · ${t("passkeys.meta.lastUsed", { date: new Date(p.lastUsedAt).toLocaleString() })}`
+                                  : ""}
                               </p>
                             </div>
                             <Button
@@ -745,7 +753,7 @@ export default function SettingsPage() {
                               onClick={() => handleRemovePasskey(p.id)}
                               disabled={passkeysWorking}
                             >
-                              Remove
+                              {t("passkeys.actions.remove")}
                             </Button>
                           </div>
                         ))}
@@ -764,9 +772,9 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trash2 className="h-5 w-5" />
-                  Trash
+                  {t("trash.title")}
                 </CardTitle>
-                <CardDescription>Automatically purge trash after a set number of days.</CardDescription>
+                <CardDescription>{t("trash.description")}</CardDescription>
                 <CardAction>
                   <Badge variant="outline" className="font-mono">
                     {loadingTrash ? "…" : `${trashRetentionDays || "0"}d`}
@@ -775,7 +783,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Trash retention (days)</Label>
+                  <Label>{t("trash.retentionLabel")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -784,7 +792,7 @@ export default function SettingsPage() {
                     onChange={(e) => setTrashRetentionDays(e.target.value)}
                     disabled={loadingTrash || savingTrash}
                   />
-                  <p className="text-xs text-muted-foreground">Set to 0 to never automatically delete.</p>
+                  <p className="text-xs text-muted-foreground">{t("trash.retentionHelp")}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -794,7 +802,7 @@ export default function SettingsPage() {
                     onClick={() => setTrashRetentionDays("0")}
                     disabled={loadingTrash || savingTrash}
                   >
-                    Never
+                    {t("trash.presets.never")}
                   </Button>
                   <Button
                     type="button"
@@ -803,7 +811,7 @@ export default function SettingsPage() {
                     onClick={() => setTrashRetentionDays("30")}
                     disabled={loadingTrash || savingTrash}
                   >
-                    30 days
+                    {t("trash.presets.days30")}
                   </Button>
                   <Button
                     type="button"
@@ -812,11 +820,11 @@ export default function SettingsPage() {
                     onClick={() => setTrashRetentionDays("90")}
                     disabled={loadingTrash || savingTrash}
                   >
-                    90 days
+                    {t("trash.presets.days90")}
                   </Button>
                 </div>
                 <Button onClick={handleSaveTrash} disabled={loadingTrash || savingTrash || !trashDirty}>
-                  {savingTrash ? "Saving..." : "Save trash settings"}
+                  {savingTrash ? t("trash.actions.saving") : t("trash.actions.save")}
                 </Button>
               </CardContent>
             </Card>
@@ -829,25 +837,25 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Info className="h-5 w-5" />
-                  About
+                  {t("about.title")}
                 </CardTitle>
-                <CardDescription>Version information and project links.</CardDescription>
+                <CardDescription>{t("about.description")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Version</span>
+                  <span className="text-muted-foreground">{t("about.labels.version")}</span>
                   <Badge variant="secondary" className="font-mono">
-                    {appInfoLoading ? "…" : appInfo?.version || "unknown"}
+                    {appInfoLoading ? "…" : appInfo?.version || t("unknown")}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Commit</span>
+                  <span className="text-muted-foreground">{t("about.labels.commit")}</span>
                   <Badge variant="outline" className="font-mono" title={appInfo?.commitSha || ""}>
-                    {appInfoLoading ? "…" : appInfo?.commitShortSha || appInfo?.commitSha || "unknown"}
+                    {appInfoLoading ? "…" : appInfo?.commitShortSha || appInfo?.commitSha || t("unknown")}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">GitHub</span>
+                  <span className="text-muted-foreground">{t("about.labels.github")}</span>
                   <a
                     className="underline underline-offset-4 hover:text-foreground"
                     href={appInfo?.repository.url || "https://github.com/xinhai-ai/temail"}
@@ -867,7 +875,7 @@ export default function SettingsPage() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Releases
+                    {t("about.links.releases")}
                   </a>
                   <a
                     className="underline underline-offset-4 hover:text-foreground"
@@ -875,7 +883,7 @@ export default function SettingsPage() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Issues
+                    {t("about.links.issues")}
                   </a>
                 </div>
               </CardContent>
