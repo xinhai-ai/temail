@@ -368,8 +368,35 @@ function parseSearchQueryFromMessageText(text: string | null | undefined): strin
   return q ? q : null;
 }
 
+function randomStringFromAlphabet(params: { alphabet: string; length: number }): string {
+  const { alphabet, length } = params;
+  if (length <= 0) return "";
+
+  const result: string[] = [];
+  const alphabetLength = alphabet.length;
+  if (alphabetLength <= 0) {
+    throw new Error("Alphabet must not be empty");
+  }
+
+  // Avoid modulo bias via rejection sampling.
+  const max = 256 - (256 % alphabetLength);
+
+  while (result.length < length) {
+    const bytes = crypto.randomBytes(length);
+    for (const byte of bytes) {
+      if (result.length >= length) break;
+      if (byte >= max) continue;
+      result.push(alphabet[byte % alphabetLength] as string);
+    }
+  }
+
+  return result.join("");
+}
+
 function generateTelegramMailboxPrefix() {
-  return `tg${crypto.randomBytes(4).toString("hex")}`;
+  const first = randomStringFromAlphabet({ alphabet: "abcdefghijklmnopqrstuvwxyz", length: 1 });
+  const rest = randomStringFromAlphabet({ alphabet: "abcdefghijklmnopqrstuvwxyz0123456789", length: 11 });
+  return `${first}${rest}`;
 }
 
 async function getIsAdminUser(userId: string) {
