@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     const search = parsed.search?.trim() || "";
     const groupId = parsed.groupId;
 
-    const where: Parameters<typeof prisma.mailbox.count>[0]["where"] = {
+    const where: Prisma.MailboxWhereInput = {
       userId: session.user.id,
       ...(search && {
         OR: [
