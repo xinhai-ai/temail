@@ -854,6 +854,16 @@
       "newMailbox": "New Mailbox",
       "newGroup": "New Group",
       "summary": "{mailboxCount} mailboxes • {groupCount} groups",
+      "pagination": {
+        "loadMore": "Load more",
+        "loading": "Loading...",
+        "retry": "Retry",
+        "noResults": "No mailboxes found",
+        "searchResults": "{count} results",
+        "page": "Page {page} / {pages}",
+        "prev": "Prev",
+        "next": "Next"
+      },
       "actions": {
         "creating": "Creating...",
         "saving": "Saving..."
@@ -1065,6 +1075,7 @@
       },
       "mailboxes": {
         "requiredFields": "Please fill in all required fields",
+        "loadFailed": "Failed to load mailboxes",
         "createFailed": "Failed to create mailbox",
         "created": "Mailbox created",
         "updateFailed": "Failed to update mailbox",

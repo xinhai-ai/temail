@@ -70,13 +70,20 @@ type MailboxesPanelProps = {
   ungroupedSelectValue: string;
   domains: Domain[];
   groups: MailboxGroup[];
-  mailboxes: Mailbox[];
   groupedMailboxes: GroupedMailboxesItem[];
   collapsedGroups: Record<string, boolean>;
+  mailboxCount: number;
+  mailboxPaginationByGroupKey: Record<string, { page: number; pages: number; total: number; limit: number }>;
+  loadingMailboxesByGroupKey: Record<string, boolean>;
+  mailboxErrorsByGroupKey: Record<string, string | null>;
   loadingDomains: boolean;
   loadingGroups: boolean;
-  loadingMailboxes: boolean;
   mailboxSearch: string;
+  mailboxSearchResults: Mailbox[];
+  mailboxSearchPage: number;
+  mailboxSearchPages: number;
+  mailboxSearchTotal: number;
+  loadingMailboxSearch: boolean;
   selectedMailboxId: string | null;
   notificationsEnabled: boolean;
   mailboxDialogOpen: boolean;
@@ -93,6 +100,10 @@ type MailboxesPanelProps = {
   renamingGroup: boolean;
   onToggleNotifications: () => void;
   onMailboxSearchChange: (value: string) => void;
+  onPrevMailboxSearchPage: () => void;
+  onNextMailboxSearchPage: () => void;
+  onLoadMoreGroupMailboxes: (key: string) => void;
+  onRetryGroupMailboxes: (key: string) => void;
   onSelectMailbox: (id: string | null) => void;
   onMailboxDialogOpenChange: (open: boolean) => void;
   onGroupDialogOpenChange: (open: boolean) => void;
@@ -123,13 +134,20 @@ export function MailboxesPanel({
   ungroupedSelectValue,
   domains,
   groups,
-  mailboxes,
   groupedMailboxes,
   collapsedGroups,
+  mailboxCount,
+  mailboxPaginationByGroupKey,
+  loadingMailboxesByGroupKey,
+  mailboxErrorsByGroupKey,
   loadingDomains,
   loadingGroups,
-  loadingMailboxes,
   mailboxSearch,
+  mailboxSearchResults,
+  mailboxSearchPage,
+  mailboxSearchPages,
+  mailboxSearchTotal,
+  loadingMailboxSearch,
   selectedMailboxId,
   notificationsEnabled,
   mailboxDialogOpen,
@@ -146,6 +164,10 @@ export function MailboxesPanel({
   renamingGroup,
   onToggleNotifications,
   onMailboxSearchChange,
+  onPrevMailboxSearchPage,
+  onNextMailboxSearchPage,
+  onLoadMoreGroupMailboxes,
+  onRetryGroupMailboxes,
   onSelectMailbox,
   onMailboxDialogOpenChange,
   onGroupDialogOpenChange,
@@ -174,6 +196,160 @@ export function MailboxesPanel({
   const t = useTranslations("inbox");
   const tNav = useTranslations("nav");
   const tCommon = useTranslations("common");
+  const mailboxSearchQuery = mailboxSearch.trim();
+  const isSearchMode = mailboxSearchQuery.length > 0;
+
+  const groupNameById = new Map<string, string>();
+  for (const group of groups) {
+    groupNameById.set(group.id, group.name);
+  }
+
+  const getMailboxGroupLabel = (mailbox: Mailbox) => {
+    const groupId = mailbox.group?.id;
+    if (!groupId) return t("mailboxes.dialog.ungrouped");
+    return groupNameById.get(groupId) || mailbox.group?.name || t("mailboxes.context.group");
+  };
+
+  const renderMailboxSkeletonList = (count: number) => (
+    <div className="space-y-1">
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index} className="flex items-center gap-3 px-2 py-2">
+          <div className="flex-1 space-y-1">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+          <Skeleton className="h-5 w-8 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderMailboxItem = (mailbox: Mailbox, options?: { showGroupLabel?: boolean }) => {
+    const active = selectedMailboxId === mailbox.id;
+    const showGroupLabel = options?.showGroupLabel === true;
+    const groupLabel = showGroupLabel ? getMailboxGroupLabel(mailbox) : "";
+    const meta = showGroupLabel
+      ? [groupLabel, mailbox.note].filter(Boolean).join(" · ")
+      : mailbox.note || "";
+
+    return (
+      <ContextMenu key={mailbox.id}>
+        <ContextMenuTrigger asChild>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-pressed={active}
+            onClick={() => onSelectMailbox(mailbox.id)}
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelectMailbox(mailbox.id);
+              }
+            }}
+            className={cn(
+              "w-full flex items-center justify-between rounded-md px-2 py-2 text-sm transition-colors",
+              "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+              active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+            )}
+          >
+            <div className="text-left min-w-0">
+              <div className="truncate font-medium">{mailbox.address}</div>
+              {meta ? (
+                <div
+                  className={cn(
+                    "truncate text-xs",
+                    active ? "text-primary-foreground/80" : "text-muted-foreground"
+                  )}
+                >
+                  {meta}
+                </div>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {mailbox.isStarred && (
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              )}
+              {mailbox._count.emails > 0 && (
+                <Badge
+                  variant="secondary"
+                  className={cn(active ? "bg-white/15 text-white" : "")}
+                >
+                  {mailbox._count.emails}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-48">
+          <ContextMenuLabel>{t("mailboxes.context.mailbox")}</ContextMenuLabel>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onClick={() => onCopyMailboxAddress(mailbox.address)}
+          >
+            <Copy />
+            {t("mailboxes.context.copyAddress")}
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}
+          >
+            {mailbox.isStarred ? (
+              <>
+                <StarOff />
+                {t("mailboxes.context.unstar")}
+              </>
+            ) : (
+              <>
+                <Star />
+                {t("mailboxes.context.star")}
+              </>
+            )}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <FolderInput />
+              {t("mailboxes.context.moveToGroup")}
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-40">
+              <ContextMenuItem
+                onClick={() => onMoveMailboxToGroup(mailbox.id, null)}
+                disabled={!mailbox.group}
+              >
+                <FolderMinus />
+                {t("mailboxes.dialog.ungrouped")}
+              </ContextMenuItem>
+              {groups.length === 0 ? (
+                <ContextMenuItem disabled>
+                  <FolderInput />
+                  {t("mailboxes.context.noGroups")}
+                </ContextMenuItem>
+              ) : (
+                groups.map((group) => (
+                  <ContextMenuItem
+                    key={group.id}
+                    onClick={() => onMoveMailboxToGroup(mailbox.id, group.id)}
+                    disabled={mailbox.group?.id === group.id}
+                  >
+                    <FolderInput />
+                    {group.name}
+                  </ContextMenuItem>
+                ))
+              )}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            variant="destructive"
+            onClick={() => onRequestDeleteMailbox(mailbox.id)}
+          >
+            <Trash2 />
+            {tCommon("delete")}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
 
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
@@ -399,38 +575,81 @@ export function MailboxesPanel({
         </Dialog>
 
         <span className="text-xs text-muted-foreground">
-          {loadingGroups || loadingMailboxes
+          {loadingGroups
             ? tCommon("loading")
-            : t("mailboxes.summary", { mailboxCount: mailboxes.length, groupCount: groups.length })}
+            : t("mailboxes.summary", { mailboxCount, groupCount: groups.length })}
         </span>
 
+        {isSearchMode ? (
           <div className="space-y-2">
-            {loadingMailboxes ? (
-              <div className="space-y-3">
-              {[1, 2].map((group) => (
-                <div key={group} className="space-y-2">
-                  <Skeleton className="h-4 w-20" />
-                  {[1, 2, 3].map((item) => (
-                    <div key={item} className="flex items-center gap-3 px-2 py-2">
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                      <Skeleton className="h-5 w-8 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              ))}
+            {loadingMailboxSearch && mailboxSearchResults.length === 0 ? (
+              renderMailboxSkeletonList(6)
+            ) : mailboxSearchResults.length === 0 ? (
+              <div className="px-2 py-2 text-xs text-muted-foreground">
+                {t("mailboxes.pagination.noResults")}
               </div>
             ) : (
-              groupedMailboxes.map((groupItem) => {
-                const label =
-                  groupItem.key === "__ungrouped__"
-                    ? t("mailboxes.dialog.ungrouped")
-                    : groupItem.group?.name || t("mailboxes.context.group");
-                const collapsed = Boolean(collapsedGroups[groupItem.key]);
-                return (
-                  <div key={groupItem.key} className="space-y-1">
+              <div className="space-y-1">
+                {mailboxSearchResults.map((mailbox) =>
+                  renderMailboxItem(mailbox, { showGroupLabel: true })
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t">
+              <div className="text-xs text-muted-foreground">
+                {t("mailboxes.pagination.searchResults", { count: mailboxSearchTotal })}
+                <span className="text-muted-foreground/50"> · </span>
+                {t("mailboxes.pagination.page", { page: mailboxSearchPage, pages: mailboxSearchPages })}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onPrevMailboxSearchPage}
+                  disabled={loadingMailboxSearch || mailboxSearchPage <= 1}
+                >
+                  {t("mailboxes.pagination.prev")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onNextMailboxSearchPage}
+                  disabled={loadingMailboxSearch || mailboxSearchPage >= mailboxSearchPages}
+                >
+                  {t("mailboxes.pagination.next")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {groupedMailboxes.map((groupItem) => {
+              const label =
+                groupItem.key === ungroupedSelectValue
+                  ? t("mailboxes.dialog.ungrouped")
+                  : groupItem.group?.name || t("mailboxes.context.group");
+              const collapsed = Boolean(collapsedGroups[groupItem.key]);
+              const loading = Boolean(loadingMailboxesByGroupKey[groupItem.key]);
+              const error = mailboxErrorsByGroupKey[groupItem.key];
+              const pagination = mailboxPaginationByGroupKey[groupItem.key];
+              const loadedCount = groupItem.mailboxes.length;
+              const totalFromGroupCount = groupItem.key === ungroupedSelectValue ? undefined : groupItem.group?._count?.mailboxes;
+              const total =
+                typeof pagination?.total === "number"
+                  ? pagination.total
+                  : typeof totalFromGroupCount === "number"
+                    ? totalFromGroupCount
+                    : loadedCount;
+
+              const countLabel =
+                total > 0 && loadedCount < total ? `${loadedCount}/${total}` : String(total);
+              const canLoadMore = loadedCount < total;
+
+              return (
+                <div key={groupItem.key} className="space-y-1">
                   <div className="flex items-center justify-between px-1 py-1">
                     <button
                       type="button"
@@ -445,166 +664,77 @@ export function MailboxesPanel({
                       {label}
                     </button>
                     <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground">
-                        {groupItem.mailboxes.length}
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                        {countLabel}
                       </span>
-                        {groupItem.group && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
-                                <Pencil />
-                                {t("mailboxes.context.rename")}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
-                              >
-                                <Trash2 />
-                                {tCommon("delete")}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
+                      {groupItem.group && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
+                              <Pencil />
+                              {t("mailboxes.context.rename")}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
+                            >
+                              <Trash2 />
+                              {tCommon("delete")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
+                  </div>
 
-                  {!collapsed && (
+                  {!collapsed ? (
                     <div className="space-y-1">
-                      {groupItem.mailboxes.map((mailbox) => {
-                        const active = selectedMailboxId === mailbox.id;
-                        return (
-                          <ContextMenu key={mailbox.id}>
-                            <ContextMenuTrigger asChild>
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                aria-pressed={active}
-                                onClick={() => onSelectMailbox(mailbox.id)}
-                                onKeyDown={(e) => {
-                                  if (e.target !== e.currentTarget) return;
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    onSelectMailbox(mailbox.id);
-                                  }
-                                }}
-                                className={cn(
-                                  "w-full flex items-center justify-between rounded-md px-2 py-2 text-sm transition-colors",
-                                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                                  active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-                                )}
-                              >
-                                <div className="text-left min-w-0">
-                                  <div className="truncate font-medium">{mailbox.address}</div>
-                                  {mailbox.note && (
-                                    <div
-                                      className={cn(
-                                        "truncate text-xs",
-                                        active
-                                          ? "text-primary-foreground/80"
-                                          : "text-muted-foreground"
-                                      )}
-                                    >
-                                      {mailbox.note}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {mailbox.isStarred && (
-                                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                  )}
-                                  {mailbox._count.emails > 0 && (
-                                    <Badge
-                                      variant="secondary"
-                                      className={cn(active ? "bg-white/15 text-white" : "")}
-                                    >
-                                      {mailbox._count.emails}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              </ContextMenuTrigger>
-                              <ContextMenuContent className="w-48">
-                                <ContextMenuLabel>{t("mailboxes.context.mailbox")}</ContextMenuLabel>
-                                <ContextMenuSeparator />
-                                <ContextMenuItem
-                                  onClick={() => onCopyMailboxAddress(mailbox.address)}
-                                >
-                                  <Copy />
-                                  {t("mailboxes.context.copyAddress")}
-                                </ContextMenuItem>
-                                <ContextMenuItem
-                                  onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}
-                                >
-                                  {mailbox.isStarred ? (
-                                    <>
-                                      <StarOff />
-                                      {t("mailboxes.context.unstar")}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Star />
-                                      {t("mailboxes.context.star")}
-                                    </>
-                                  )}
-                                </ContextMenuItem>
-                                <ContextMenuSeparator />
-                                <ContextMenuSub>
-                                  <ContextMenuSubTrigger>
-                                    <FolderInput />
-                                    {t("mailboxes.context.moveToGroup")}
-                                  </ContextMenuSubTrigger>
-                                  <ContextMenuSubContent className="w-40">
-                                    <ContextMenuItem
-                                      onClick={() => onMoveMailboxToGroup(mailbox.id, null)}
-                                      disabled={!mailbox.group}
-                                    >
-                                      <FolderMinus />
-                                      {t("mailboxes.dialog.ungrouped")}
-                                    </ContextMenuItem>
-                                    {groups.length === 0 ? (
-                                      <ContextMenuItem disabled>
-                                        <FolderInput />
-                                        {t("mailboxes.context.noGroups")}
-                                      </ContextMenuItem>
-                                    ) : (
-                                      groups.map((group) => (
-                                      <ContextMenuItem
-                                        key={group.id}
-                                        onClick={() => onMoveMailboxToGroup(mailbox.id, group.id)}
-                                        disabled={mailbox.group?.id === group.id}
-                                      >
-                                        <FolderInput />
-                                        {group.name}
-                                      </ContextMenuItem>
-                                    ))
-                                  )}
-                                </ContextMenuSubContent>
-                              </ContextMenuSub>
-                              <ContextMenuSeparator />
-                                <ContextMenuItem
-                                  variant="destructive"
-                                  onClick={() => onRequestDeleteMailbox(mailbox.id)}
-                                >
-                                  <Trash2 />
-                                  {tCommon("delete")}
-                                </ContextMenuItem>
-                              </ContextMenuContent>
-                            </ContextMenu>
-                          );
-                        })}
+                      {error ? (
+                        <div className="rounded-md border bg-muted/20 px-2 py-2 space-y-2">
+                          <div className="text-xs text-muted-foreground break-words">{error}</div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onRetryGroupMailboxes(groupItem.key)}
+                            disabled={loading}
+                          >
+                            {t("mailboxes.pagination.retry")}
+                          </Button>
+                        </div>
+                      ) : loading && loadedCount === 0 ? (
+                        renderMailboxSkeletonList(3)
+                      ) : (
+                        <div className="space-y-1">
+                          {groupItem.mailboxes.map((mailbox) => renderMailboxItem(mailbox))}
+                        </div>
+                      )}
+
+                      {!error && canLoadMore ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => onLoadMoreGroupMailboxes(groupItem.key)}
+                          disabled={loading}
+                        >
+                          {loading ? t("mailboxes.pagination.loading") : t("mailboxes.pagination.loadMore")}
+                        </Button>
+                      ) : null}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

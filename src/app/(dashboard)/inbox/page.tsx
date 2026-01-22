@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connectRealtime } from "@/lib/realtime/client";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -20,9 +20,12 @@ export default function InboxPage() {
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
   const SKIP_EMAIL_DELETE_CONFIRM_KEY = "temail.inbox.skipEmailDeleteConfirm";
   const DEFAULT_EMAILS_PAGE_SIZE = 15;
+  const DEFAULT_MAILBOXES_PAGE_SIZE = 20;
   const t = useTranslations("inbox");
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
+  const mailboxSearchQuery = mailboxSearch.trim();
+  const isMailboxSearchMode = mailboxSearchQuery.length > 0;
   const [emailsPage, setEmailsPage] = useState(1);
   const [emailsTotalPages, setEmailsTotalPages] = useState(1);
   const [emailsPageSize, setEmailsPageSize] = useState(DEFAULT_EMAILS_PAGE_SIZE);
@@ -30,7 +33,17 @@ export default function InboxPage() {
 
   const [domains, setDomains] = useState<Domain[]>([]);
   const [groups, setGroups] = useState<MailboxGroup[]>([]);
-  const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
+  const [mailboxesByGroupKey, setMailboxesByGroupKey] = useState<Record<string, Mailbox[]>>({});
+  const [mailboxPaginationByGroupKey, setMailboxPaginationByGroupKey] = useState<
+    Record<string, { page: number; pages: number; total: number; limit: number }>
+  >({});
+  const [loadingMailboxesByGroupKey, setLoadingMailboxesByGroupKey] = useState<Record<string, boolean>>({});
+  const [mailboxErrorsByGroupKey, setMailboxErrorsByGroupKey] = useState<Record<string, string | null>>({});
+  const [mailboxSearchPage, setMailboxSearchPage] = useState(1);
+  const [mailboxSearchPages, setMailboxSearchPages] = useState(1);
+  const [mailboxSearchTotal, setMailboxSearchTotal] = useState(0);
+  const [mailboxSearchResults, setMailboxSearchResults] = useState<Mailbox[]>([]);
+  const [loadingMailboxSearch, setLoadingMailboxSearch] = useState(false);
   const [emails, setEmails] = useState<EmailListItem[]>([]);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
@@ -40,7 +53,6 @@ export default function InboxPage() {
 
   const [loadingDomains, setLoadingDomains] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(true);
-  const [loadingMailboxes, setLoadingMailboxes] = useState(true);
   const [loadingEmails, setLoadingEmails] = useState(true);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
@@ -86,35 +98,54 @@ export default function InboxPage() {
     const grouped: Record<string, { group: MailboxGroup | null; mailboxes: Mailbox[] }> = {};
 
     for (const group of groups) {
-      grouped[group.id] = { group, mailboxes: [] };
+      grouped[group.id] = { group, mailboxes: mailboxesByGroupKey[group.id] || [] };
     }
 
-    for (const mailbox of mailboxes) {
-      const key = mailbox.group?.id || "__ungrouped__";
-      if (!grouped[key]) {
-        grouped[key] = { group: mailbox.group || null, mailboxes: [] };
-      }
-      grouped[key].mailboxes.push(mailbox);
-    }
+    grouped[UNGROUPED_SELECT_VALUE] = {
+      group: null,
+      mailboxes: mailboxesByGroupKey[UNGROUPED_SELECT_VALUE] || [],
+    };
 
-    if (!grouped["__ungrouped__"]) {
-      grouped["__ungrouped__"] = { group: null, mailboxes: [] };
+    for (const [key, value] of Object.entries(mailboxesByGroupKey)) {
+      if (key === UNGROUPED_SELECT_VALUE) continue;
+      if (grouped[key]) continue;
+      grouped[key] = { group: null, mailboxes: value };
     }
 
     const items = Object.entries(grouped).map(([key, value]) => ({
       key,
       group: value.group,
-      mailboxes: value.mailboxes.sort((a, b) => a.address.localeCompare(b.address)),
+      mailboxes: value.mailboxes,
     }));
 
     items.sort((a, b) => {
-      if (a.key === "__ungrouped__") return 1;
-      if (b.key === "__ungrouped__") return -1;
+      if (a.key === UNGROUPED_SELECT_VALUE) return 1;
+      if (b.key === UNGROUPED_SELECT_VALUE) return -1;
       return (a.group?.name || "").localeCompare(b.group?.name || "");
     });
 
     return items;
-  }, [groups, mailboxes]);
+  }, [groups, mailboxesByGroupKey, UNGROUPED_SELECT_VALUE]);
+
+  const mailboxes = useMemo(() => {
+    const byId = new Map<string, Mailbox>();
+    for (const list of Object.values(mailboxesByGroupKey)) {
+      for (const mailbox of list) {
+        byId.set(mailbox.id, mailbox);
+      }
+    }
+    for (const mailbox of mailboxSearchResults) {
+      byId.set(mailbox.id, mailbox);
+    }
+    return Array.from(byId.values());
+  }, [mailboxesByGroupKey, mailboxSearchResults]);
+
+  const mailboxCount = useMemo(() => {
+    const groupedCount = groups.reduce((sum, group) => sum + (group._count?.mailboxes ?? 0), 0);
+    const ungroupedTotal = mailboxPaginationByGroupKey[UNGROUPED_SELECT_VALUE]?.total;
+    const ungroupedFallback = mailboxesByGroupKey[UNGROUPED_SELECT_VALUE]?.length ?? 0;
+    return groupedCount + (typeof ungroupedTotal === "number" ? ungroupedTotal : ungroupedFallback);
+  }, [groups, mailboxPaginationByGroupKey, mailboxesByGroupKey, UNGROUPED_SELECT_VALUE]);
 
   const loadDomains = useCallback(async () => {
     setLoadingDomains(true);
@@ -132,14 +163,6 @@ export default function InboxPage() {
     setLoadingGroups(false);
   }, []);
 
-  const loadMailboxes = useCallback(async (search: string) => {
-    setLoadingMailboxes(true);
-    const res = await fetch(`/api/mailboxes?search=${encodeURIComponent(search)}`);
-    const data = await res.json();
-    setMailboxes(Array.isArray(data) ? data : []);
-    setLoadingMailboxes(false);
-  }, []);
-
   const loadTags = useCallback(async () => {
     const res = await fetch("/api/tags");
     const data = await res.json().catch(() => null);
@@ -155,12 +178,210 @@ export default function InboxPage() {
   }, [loadGroups]);
 
   useEffect(() => {
-    loadMailboxes(mailboxSearch);
-  }, [mailboxSearch, loadMailboxes]);
-
-  useEffect(() => {
     loadTags();
   }, [loadTags]);
+
+  const mailboxSearchLastQueryRef = useRef<string>("");
+  const mailboxPrefetchScheduledRef = useRef<Set<string>>(new Set());
+
+  const updateMailboxById = useCallback((mailboxId: string, updater: (mailbox: Mailbox) => Mailbox) => {
+    setMailboxesByGroupKey((prev) => {
+      let changed = false;
+      const next: Record<string, Mailbox[]> = {};
+      for (const [key, list] of Object.entries(prev)) {
+        const index = list.findIndex((m) => m.id === mailboxId);
+        if (index === -1) {
+          next[key] = list;
+          continue;
+        }
+        changed = true;
+        const updated = [...list];
+        updated[index] = updater(updated[index]);
+        next[key] = updated;
+      }
+      return changed ? next : prev;
+    });
+
+    setMailboxSearchResults((prev) => {
+      const index = prev.findIndex((m) => m.id === mailboxId);
+      if (index === -1) return prev;
+      const updated = [...prev];
+      updated[index] = updater(updated[index]);
+      return updated;
+    });
+  }, []);
+
+  const loadMailboxGroupPage = useCallback(
+    async (groupKey: string, page: number, options?: { replace?: boolean }) => {
+      if (page < 1) return;
+
+      setLoadingMailboxesByGroupKey((prev) => ({ ...prev, [groupKey]: true }));
+      setMailboxErrorsByGroupKey((prev) => ({ ...prev, [groupKey]: null }));
+
+      try {
+        const params = new URLSearchParams();
+        params.set("groupId", groupKey);
+        params.set("page", String(page));
+        params.set("limit", String(DEFAULT_MAILBOXES_PAGE_SIZE));
+
+        const res = await fetch(`/api/mailboxes/paginated?${params.toString()}`);
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(data?.error || t("toast.mailboxes.loadFailed"));
+        }
+
+        const items = Array.isArray(data?.mailboxes) ? data.mailboxes : [];
+        const pages = Math.max(1, Number(data?.pagination?.pages || 1));
+        const nextPage = Math.max(1, Number(data?.pagination?.page || page));
+        const total = Math.max(0, Number(data?.pagination?.total || 0));
+        const limit = Math.min(100, Math.max(1, Number(data?.pagination?.limit || DEFAULT_MAILBOXES_PAGE_SIZE)));
+
+        setMailboxPaginationByGroupKey((prev) => ({
+          ...prev,
+          [groupKey]: { page: nextPage, pages, total, limit },
+        }));
+
+        setMailboxesByGroupKey((prev) => {
+          const existing = prev[groupKey] || [];
+          if (options?.replace || nextPage === 1) {
+            return { ...prev, [groupKey]: items };
+          }
+
+          if (items.length === 0) return prev;
+          const seen = new Set(existing.map((m) => m.id));
+          const merged = [...existing];
+          for (const item of items) {
+            if (!seen.has(item.id)) merged.push(item);
+          }
+
+          return { ...prev, [groupKey]: merged };
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t("toast.mailboxes.loadFailed");
+        setMailboxErrorsByGroupKey((prev) => ({ ...prev, [groupKey]: message }));
+      } finally {
+        setLoadingMailboxesByGroupKey((prev) => ({ ...prev, [groupKey]: false }));
+      }
+    },
+    [DEFAULT_MAILBOXES_PAGE_SIZE, t]
+  );
+
+  const loadMailboxSearchPage = useCallback(
+    async (search: string, page: number) => {
+      if (!search.trim()) return;
+
+      setLoadingMailboxSearch(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("search", search);
+        params.set("page", String(page));
+        params.set("limit", String(DEFAULT_MAILBOXES_PAGE_SIZE));
+
+        const res = await fetch(`/api/mailboxes/paginated?${params.toString()}`);
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(data?.error || t("toast.mailboxes.loadFailed"));
+        }
+
+        const items = Array.isArray(data?.mailboxes) ? data.mailboxes : [];
+        const pages = Math.max(1, Number(data?.pagination?.pages || 1));
+        const total = Math.max(0, Number(data?.pagination?.total || 0));
+
+        setMailboxSearchResults(items);
+        setMailboxSearchTotal(total);
+        setMailboxSearchPages(pages);
+
+        if (page > pages) {
+          setMailboxSearchPage(pages);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t("toast.mailboxes.loadFailed");
+        toast.error(message);
+        setMailboxSearchResults([]);
+        setMailboxSearchTotal(0);
+        setMailboxSearchPages(1);
+      } finally {
+        setLoadingMailboxSearch(false);
+      }
+    },
+    [DEFAULT_MAILBOXES_PAGE_SIZE, t]
+  );
+
+  useEffect(() => {
+    if (!mailboxSearchQuery) {
+      mailboxSearchLastQueryRef.current = "";
+      setMailboxSearchResults([]);
+      setMailboxSearchTotal(0);
+      setMailboxSearchPages(1);
+      setLoadingMailboxSearch(false);
+      return;
+    }
+
+    const isQueryChanged = mailboxSearchLastQueryRef.current !== mailboxSearchQuery;
+    mailboxSearchLastQueryRef.current = mailboxSearchQuery;
+    const delayMs = isQueryChanged ? 250 : 0;
+
+    const timer = setTimeout(() => {
+      void loadMailboxSearchPage(mailboxSearchQuery, mailboxSearchPage);
+    }, delayMs);
+
+    return () => clearTimeout(timer);
+  }, [mailboxSearchQuery, mailboxSearchPage, loadMailboxSearchPage]);
+
+  useEffect(() => {
+    if (loadingGroups) return;
+    if (isMailboxSearchMode) return;
+
+    const candidateKeys: string[] = [UNGROUPED_SELECT_VALUE];
+    for (const group of groups) {
+      const count = group._count?.mailboxes;
+      if (typeof count === "number" && count <= 0) continue;
+      candidateKeys.push(group.id);
+    }
+
+    const toPrefetch: string[] = [];
+    for (const key of candidateKeys) {
+      if (mailboxPrefetchScheduledRef.current.has(key)) continue;
+      if (loadingMailboxesByGroupKey[key]) continue;
+      if (mailboxPaginationByGroupKey[key]?.page) continue;
+      mailboxPrefetchScheduledRef.current.add(key);
+      toPrefetch.push(key);
+    }
+
+    if (toPrefetch.length === 0) return;
+
+    let cancelled = false;
+    const queue = [...toPrefetch];
+    const concurrency = 3;
+
+    const worker = async () => {
+      while (!cancelled) {
+        const key = queue.shift();
+        if (!key) return;
+        await loadMailboxGroupPage(key, 1, { replace: true });
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(concurrency, queue.length) },
+      () => worker()
+    );
+
+    void Promise.all(workers);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    groups,
+    isMailboxSearchMode,
+    loadingGroups,
+    loadingMailboxesByGroupKey,
+    mailboxPaginationByGroupKey,
+    loadMailboxGroupPage,
+    UNGROUPED_SELECT_VALUE,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -346,13 +567,10 @@ export default function InboxPage() {
 
           // Increment unread count for the mailbox (new emails are UNREAD)
           if (event.data.email.status === "UNREAD") {
-            setMailboxes((prev) =>
-              prev.map((m) =>
-                m.id === event.data.email.mailboxId
-                  ? { ...m, _count: { emails: m._count.emails + 1 } }
-                  : m
-              )
-            );
+            updateMailboxById(event.data.email.mailboxId, (mailbox) => ({
+              ...mailbox,
+              _count: { emails: mailbox._count.emails + 1 },
+            }));
           }
           return;
         }
@@ -422,7 +640,7 @@ export default function InboxPage() {
 	    });
 
 	    return disconnect;
-	  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize, t]);
+	  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize, t, updateMailboxById]);
 
   useEffect(() => {
     setSelectedEmailIds([]);
@@ -460,6 +678,14 @@ export default function InboxPage() {
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+    const nextCollapsed = !collapsedGroups[key];
+    if (!nextCollapsed) {
+      const alreadyLoaded = Boolean(mailboxPaginationByGroupKey[key]?.page);
+      const loading = Boolean(loadingMailboxesByGroupKey[key]);
+      if (!alreadyLoaded && !loading) {
+        void loadMailboxGroupPage(key, 1, { replace: true });
+      }
+    }
   };
 
   const handleStarEmail = async (id: string, isStarred: boolean) => {
@@ -490,16 +716,13 @@ export default function InboxPage() {
 	      return false;
 	    }
 
-	    toast.success(t("toast.trash.moved"));
+    toast.success(t("toast.trash.moved"));
 
     if (shouldDecrementUnread) {
-      setMailboxes((prev) =>
-        prev.map((m) =>
-          m.id === emailForCount.mailboxId
-            ? { ...m, _count: { emails: Math.max(0, m._count.emails - 1) } }
-            : m
-        )
-      );
+      updateMailboxById(emailForCount.mailboxId, (mailbox) => ({
+        ...mailbox,
+        _count: { emails: Math.max(0, mailbox._count.emails - 1) },
+      }));
     }
 
     setSelectedEmailIds((prev) => prev.filter((x) => x !== id));
@@ -535,13 +758,10 @@ export default function InboxPage() {
     setSelectedEmail((prev) => (prev?.id === email.id ? { ...prev, status: "READ" } : prev));
 
     // Decrement unread count for the mailbox
-    setMailboxes((prev) =>
-      prev.map((m) =>
-        m.id === email.mailboxId
-          ? { ...m, _count: { emails: Math.max(0, m._count.emails - 1) } }
-          : m
-      )
-    );
+    updateMailboxById(email.mailboxId, (mailbox) => ({
+      ...mailbox,
+      _count: { emails: Math.max(0, mailbox._count.emails - 1) },
+    }));
 
     // Persist immediately (also triggers realtime update for other tabs)
     fetch(`/api/emails/${email.id}`, {
@@ -755,19 +975,17 @@ export default function InboxPage() {
 	      return;
 	    }
 
-	    toast.success(t("toast.bulk.markedRead"));
+    toast.success(t("toast.bulk.markedRead"));
     setSelectedEmailIds([]);
 
     // Update mailbox unread counts
-    setMailboxes((prev) =>
-      prev.map((m) => {
-        const decrement = unreadCountByMailbox.get(m.id) || 0;
-        if (decrement > 0) {
-          return { ...m, _count: { emails: Math.max(0, m._count.emails - decrement) } };
-        }
-        return m;
-      })
-    );
+    for (const [mailboxId, decrement] of unreadCountByMailbox.entries()) {
+      if (decrement <= 0) continue;
+      updateMailboxById(mailboxId, (mailbox) => ({
+        ...mailbox,
+        _count: { emails: Math.max(0, mailbox._count.emails - decrement) },
+      }));
+    }
 
     // Refresh list when viewing unread filter (marked emails should disappear)
     if (statusFilter === "unread") {
@@ -814,6 +1032,33 @@ export default function InboxPage() {
       return;
     }
     setBulkDeleteOpen(true);
+  };
+
+  const handleMailboxSearchChange = (value: string) => {
+    setMailboxSearch(value);
+    setMailboxSearchPage(1);
+  };
+
+  const goPrevMailboxSearchPage = () => {
+    setMailboxSearchPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const goNextMailboxSearchPage = () => {
+    setMailboxSearchPage((prev) => Math.min(mailboxSearchPages, prev + 1));
+  };
+
+  const loadMoreGroupMailboxes = (key: string) => {
+    const pagination = mailboxPaginationByGroupKey[key];
+    if (!pagination) {
+      void loadMailboxGroupPage(key, 1, { replace: true });
+      return;
+    }
+    if (pagination.page >= pagination.pages) return;
+    void loadMailboxGroupPage(key, pagination.page + 1);
+  };
+
+  const retryGroupMailboxes = (key: string) => {
+    void loadMailboxGroupPage(key, 1, { replace: true });
   };
 
   const handleEmailSearchChange = (value: string) => {
@@ -911,19 +1156,22 @@ export default function InboxPage() {
 	        return;
 	      }
 
-	      toast.success(t("toast.mailboxes.created"));
-	      setMailboxDialogOpen(false);
-	      setNewMailboxPrefix("");
-	      setNewMailboxDomainId("");
+      toast.success(t("toast.mailboxes.created"));
+      setMailboxDialogOpen(false);
+      setNewMailboxPrefix("");
+      setNewMailboxDomainId("");
       setNewMailboxGroupId("");
       setNewMailboxNote("");
-	      await loadMailboxes("");
-	      setMailboxSearch("");
-	    } catch {
-	      toast.error(t("toast.mailboxes.createFailed"));
-	    } finally {
-	      setCreatingMailbox(false);
-	    }
+      const groupKey = groupId || UNGROUPED_SELECT_VALUE;
+      setMailboxSearchPage(1);
+      setMailboxSearch("");
+      await loadGroups();
+      await loadMailboxGroupPage(groupKey, 1, { replace: true });
+    } catch {
+      toast.error(t("toast.mailboxes.createFailed"));
+    } finally {
+      setCreatingMailbox(false);
+    }
 	  };
 
   const openRenameGroup = (group: MailboxGroup) => {
@@ -957,11 +1205,8 @@ export default function InboxPage() {
       setGroups((prev) =>
         prev.map((g) => (g.id === groupId ? { ...g, name } : g)).sort((a, b) => a.name.localeCompare(b.name))
       );
-	      setMailboxes((prev) =>
-	        prev.map((m) => (m.group?.id === groupId ? { ...m, group: { ...m.group, name } } : m))
-	      );
-	      toast.success(t("toast.groups.renamed"));
-	      setRenameDialogOpen(false);
+      toast.success(t("toast.groups.renamed"));
+      setRenameDialogOpen(false);
 	    } catch {
 	      toast.error(t("toast.groups.renameFailed"));
 	    } finally {
@@ -985,7 +1230,27 @@ export default function InboxPage() {
 	    }
 
     setGroups((prev) => prev.filter((g) => g.id !== deleteGroup.id));
-    setMailboxes((prev) => prev.map((m) => (m.group?.id === deleteGroup.id ? { ...m, group: null } : m)));
+    setMailboxesByGroupKey((prev) => {
+      const next = { ...prev };
+      delete next[deleteGroup.id];
+      return next;
+    });
+    setMailboxPaginationByGroupKey((prev) => {
+      const next = { ...prev };
+      delete next[deleteGroup.id];
+      return next;
+    });
+    setLoadingMailboxesByGroupKey((prev) => {
+      const next = { ...prev };
+      delete next[deleteGroup.id];
+      return next;
+    });
+    setMailboxErrorsByGroupKey((prev) => {
+      const next = { ...prev };
+      delete next[deleteGroup.id];
+      return next;
+    });
+    mailboxPrefetchScheduledRef.current.delete(deleteGroup.id);
     setCollapsedGroups((prev) => {
       const next = { ...prev };
       delete next[deleteGroup.id];
@@ -993,9 +1258,26 @@ export default function InboxPage() {
 	    });
 	    toast.success(t("toast.groups.deleted"));
 	    setDeleteGroup(null);
+      await loadGroups();
+      await loadMailboxGroupPage(UNGROUPED_SELECT_VALUE, 1, { replace: true });
 	  };
 
   const handleMoveMailboxToGroup = async (mailboxId: string, groupId: string | null) => {
+    const mailboxInSearch = mailboxSearchResults.find((m) => m.id === mailboxId) || null;
+    let mailboxInGroups = mailboxInSearch;
+    if (!mailboxInGroups) {
+      for (const list of Object.values(mailboxesByGroupKey)) {
+        const found = list.find((m) => m.id === mailboxId) || null;
+        if (found) {
+          mailboxInGroups = found;
+          break;
+        }
+      }
+    }
+
+    const prevGroupKey = mailboxInGroups?.group?.id || UNGROUPED_SELECT_VALUE;
+    const nextGroupKey = groupId || UNGROUPED_SELECT_VALUE;
+
     const res = await fetch(`/api/mailboxes/${mailboxId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -1008,11 +1290,15 @@ export default function InboxPage() {
 	      return;
 	    }
 
-    const nextGroup = groupId ? groups.find((g) => g.id === groupId) || null : null;
-	    setMailboxes((prev) =>
-	      prev.map((m) => (m.id === mailboxId ? { ...m, group: nextGroup } : m))
-	    );
 	    toast.success(t("toast.mailboxes.updated"));
+      await loadGroups();
+
+      const keysToReload = Array.from(new Set([prevGroupKey, nextGroupKey]));
+      await Promise.all(keysToReload.map((key) => loadMailboxGroupPage(key, 1, { replace: true })));
+
+      if (isMailboxSearchMode) {
+        await loadMailboxSearchPage(mailboxSearchQuery, mailboxSearchPage);
+      }
 	  };
 
   const handleStarMailbox = async (mailboxId: string, isStarred: boolean) => {
@@ -1026,9 +1312,7 @@ export default function InboxPage() {
 	      toast.error(data?.error || t("toast.mailboxes.updateFailed"));
 	      return;
 	    }
-    setMailboxes((prev) =>
-      prev.map((m) => (m.id === mailboxId ? { ...m, isStarred: !isStarred } : m))
-    );
+    updateMailboxById(mailboxId, (mailbox) => ({ ...mailbox, isStarred: !isStarred }));
   };
 
   const handleDeleteMailbox = (mailboxId: string) => {
@@ -1037,6 +1321,19 @@ export default function InboxPage() {
 
   const confirmDeleteMailbox = async () => {
     if (!deleteMailboxId) return;
+    const mailboxInSearch = mailboxSearchResults.find((m) => m.id === deleteMailboxId) || null;
+    let mailboxInGroups = mailboxInSearch;
+    if (!mailboxInGroups) {
+      for (const list of Object.values(mailboxesByGroupKey)) {
+        const found = list.find((m) => m.id === deleteMailboxId) || null;
+        if (found) {
+          mailboxInGroups = found;
+          break;
+        }
+      }
+    }
+    const groupKey = mailboxInGroups?.group?.id || UNGROUPED_SELECT_VALUE;
+
     setDeleting(true);
     const res = await fetch(`/api/mailboxes/${deleteMailboxId}`, { method: "DELETE" });
 	    const data = await res.json().catch(() => null);
@@ -1046,11 +1343,15 @@ export default function InboxPage() {
 	      return;
 	    }
 	    toast.success(t("toast.mailboxes.deleted"));
-	    setMailboxes((prev) => prev.filter((m) => m.id !== deleteMailboxId));
 	    if (selectedMailboxId === deleteMailboxId) {
 	      handleSelectMailbox(null);
     }
     setDeleteMailboxId(null);
+    await loadGroups();
+    await loadMailboxGroupPage(groupKey, 1, { replace: true });
+    if (isMailboxSearchMode) {
+      await loadMailboxSearchPage(mailboxSearchQuery, mailboxSearchPage);
+    }
   };
 
 	  const handleCopyMailboxAddress = (address: string) => {
@@ -1072,13 +1373,10 @@ export default function InboxPage() {
     setSelectedEmail((prev) => (prev?.id === emailId ? { ...prev, status: "READ" } : prev));
 
     // Decrement unread count for the mailbox
-    setMailboxes((prev) =>
-      prev.map((m) =>
-        m.id === email.mailboxId
-          ? { ...m, _count: { emails: Math.max(0, m._count.emails - 1) } }
-          : m
-      )
-    );
+    updateMailboxById(email.mailboxId, (mailbox) => ({
+      ...mailbox,
+      _count: { emails: Math.max(0, mailbox._count.emails - 1) },
+    }));
 
     // Persist
     fetch(`/api/emails/${emailId}`, {
@@ -1158,13 +1456,20 @@ export default function InboxPage() {
               ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
               domains={domains}
               groups={groups}
-              mailboxes={mailboxes}
               groupedMailboxes={groupedMailboxes}
               collapsedGroups={collapsedGroups}
+              mailboxCount={mailboxCount}
+              mailboxPaginationByGroupKey={mailboxPaginationByGroupKey}
+              loadingMailboxesByGroupKey={loadingMailboxesByGroupKey}
+              mailboxErrorsByGroupKey={mailboxErrorsByGroupKey}
               loadingDomains={loadingDomains}
               loadingGroups={loadingGroups}
-              loadingMailboxes={loadingMailboxes}
               mailboxSearch={mailboxSearch}
+              mailboxSearchResults={mailboxSearchResults}
+              mailboxSearchPage={mailboxSearchPage}
+              mailboxSearchPages={mailboxSearchPages}
+              mailboxSearchTotal={mailboxSearchTotal}
+              loadingMailboxSearch={loadingMailboxSearch}
               selectedMailboxId={selectedMailboxId}
               notificationsEnabled={notificationsEnabled}
               mailboxDialogOpen={mailboxDialogOpen}
@@ -1180,7 +1485,11 @@ export default function InboxPage() {
               renameGroupName={renameGroupName}
               renamingGroup={renamingGroup}
               onToggleNotifications={toggleNotifications}
-              onMailboxSearchChange={setMailboxSearch}
+              onMailboxSearchChange={handleMailboxSearchChange}
+              onPrevMailboxSearchPage={goPrevMailboxSearchPage}
+              onNextMailboxSearchPage={goNextMailboxSearchPage}
+              onLoadMoreGroupMailboxes={loadMoreGroupMailboxes}
+              onRetryGroupMailboxes={retryGroupMailboxes}
               onSelectMailbox={(id) => {
                 handleSelectMailbox(id);
                 setMobileTab("emails");
@@ -1272,13 +1581,20 @@ export default function InboxPage() {
             ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
             domains={domains}
             groups={groups}
-            mailboxes={mailboxes}
             groupedMailboxes={groupedMailboxes}
             collapsedGroups={collapsedGroups}
+            mailboxCount={mailboxCount}
+            mailboxPaginationByGroupKey={mailboxPaginationByGroupKey}
+            loadingMailboxesByGroupKey={loadingMailboxesByGroupKey}
+            mailboxErrorsByGroupKey={mailboxErrorsByGroupKey}
             loadingDomains={loadingDomains}
             loadingGroups={loadingGroups}
-            loadingMailboxes={loadingMailboxes}
             mailboxSearch={mailboxSearch}
+            mailboxSearchResults={mailboxSearchResults}
+            mailboxSearchPage={mailboxSearchPage}
+            mailboxSearchPages={mailboxSearchPages}
+            mailboxSearchTotal={mailboxSearchTotal}
+            loadingMailboxSearch={loadingMailboxSearch}
             selectedMailboxId={selectedMailboxId}
             notificationsEnabled={notificationsEnabled}
             mailboxDialogOpen={mailboxDialogOpen}
@@ -1294,7 +1610,11 @@ export default function InboxPage() {
             renameGroupName={renameGroupName}
             renamingGroup={renamingGroup}
             onToggleNotifications={toggleNotifications}
-            onMailboxSearchChange={setMailboxSearch}
+            onMailboxSearchChange={handleMailboxSearchChange}
+            onPrevMailboxSearchPage={goPrevMailboxSearchPage}
+            onNextMailboxSearchPage={goNextMailboxSearchPage}
+            onLoadMoreGroupMailboxes={loadMoreGroupMailboxes}
+            onRetryGroupMailboxes={retryGroupMailboxes}
             onSelectMailbox={handleSelectMailbox}
             onMailboxDialogOpenChange={setMailboxDialogOpen}
             onGroupDialogOpenChange={setGroupDialogOpen}

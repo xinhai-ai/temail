@@ -854,6 +854,16 @@
       "newMailbox": "新建邮箱",
       "newGroup": "新建分组",
       "summary": "{mailboxCount} 个邮箱 • {groupCount} 个分组",
+      "pagination": {
+        "loadMore": "加载更多",
+        "loading": "加载中...",
+        "retry": "重试",
+        "noResults": "未找到邮箱",
+        "searchResults": "{count} 条结果",
+        "page": "第 {page} / {pages} 页",
+        "prev": "上一页",
+        "next": "下一页"
+      },
       "actions": {
         "creating": "创建中...",
         "saving": "保存中..."
@@ -1065,6 +1075,7 @@
       },
       "mailboxes": {
         "requiredFields": "请填写所有必填项",
+        "loadFailed": "加载邮箱失败",
         "createFailed": "创建邮箱失败",
         "created": "邮箱已创建",
         "updateFailed": "更新邮箱失败",
