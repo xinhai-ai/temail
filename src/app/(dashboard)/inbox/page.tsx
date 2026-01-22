@@ -20,7 +20,7 @@ export default function InboxPage() {
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
   const SKIP_EMAIL_DELETE_CONFIRM_KEY = "temail.inbox.skipEmailDeleteConfirm";
   const DEFAULT_EMAILS_PAGE_SIZE = 15;
-  const DEFAULT_MAILBOXES_PAGE_SIZE = 10;
+  const DEFAULT_MAILBOXES_PAGE_SIZE = 5;
   const t = useTranslations("inbox");
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
