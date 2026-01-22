@@ -242,21 +242,7 @@ export default function InboxPage() {
           [groupKey]: { page: nextPage, pages, total, limit },
         }));
 
-        setMailboxesByGroupKey((prev) => {
-          const existing = prev[groupKey] || [];
-          if (options?.replace || nextPage === 1) {
-            return { ...prev, [groupKey]: items };
-          }
-
-          if (items.length === 0) return prev;
-          const seen = new Set(existing.map((m) => m.id));
-          const merged = [...existing];
-          for (const item of items) {
-            if (!seen.has(item.id)) merged.push(item);
-          }
-
-          return { ...prev, [groupKey]: merged };
-        });
+        setMailboxesByGroupKey((prev) => ({ ...prev, [groupKey]: items }));
       } catch (error) {
         const message = error instanceof Error ? error.message : t("toast.mailboxes.loadFailed");
         setMailboxErrorsByGroupKey((prev) => ({ ...prev, [groupKey]: message }));
@@ -1047,14 +1033,19 @@ export default function InboxPage() {
     setMailboxSearchPage((prev) => Math.min(mailboxSearchPages, prev + 1));
   };
 
-  const loadMoreGroupMailboxes = (key: string) => {
+  const goPrevGroupMailboxesPage = (key: string) => {
     const pagination = mailboxPaginationByGroupKey[key];
-    if (!pagination) {
-      void loadMailboxGroupPage(key, 1, { replace: true });
-      return;
-    }
-    if (pagination.page >= pagination.pages) return;
-    void loadMailboxGroupPage(key, pagination.page + 1);
+    const page = pagination?.page ?? 1;
+    if (page <= 1) return;
+    void loadMailboxGroupPage(key, page - 1, { replace: true });
+  };
+
+  const goNextGroupMailboxesPage = (key: string) => {
+    const pagination = mailboxPaginationByGroupKey[key];
+    const page = pagination?.page ?? 1;
+    const pages = pagination?.pages ?? 1;
+    if (page >= pages) return;
+    void loadMailboxGroupPage(key, page + 1, { replace: true });
   };
 
   const retryGroupMailboxes = (key: string) => {
@@ -1488,7 +1479,8 @@ export default function InboxPage() {
               onMailboxSearchChange={handleMailboxSearchChange}
               onPrevMailboxSearchPage={goPrevMailboxSearchPage}
               onNextMailboxSearchPage={goNextMailboxSearchPage}
-              onLoadMoreGroupMailboxes={loadMoreGroupMailboxes}
+              onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
+              onNextGroupMailboxesPage={goNextGroupMailboxesPage}
               onRetryGroupMailboxes={retryGroupMailboxes}
               onSelectMailbox={(id) => {
                 handleSelectMailbox(id);
@@ -1613,7 +1605,8 @@ export default function InboxPage() {
             onMailboxSearchChange={handleMailboxSearchChange}
             onPrevMailboxSearchPage={goPrevMailboxSearchPage}
             onNextMailboxSearchPage={goNextMailboxSearchPage}
-            onLoadMoreGroupMailboxes={loadMoreGroupMailboxes}
+            onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
+            onNextGroupMailboxesPage={goNextGroupMailboxesPage}
             onRetryGroupMailboxes={retryGroupMailboxes}
             onSelectMailbox={handleSelectMailbox}
             onMailboxDialogOpenChange={setMailboxDialogOpen}

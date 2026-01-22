@@ -102,7 +102,8 @@ type MailboxesPanelProps = {
   onMailboxSearchChange: (value: string) => void;
   onPrevMailboxSearchPage: () => void;
   onNextMailboxSearchPage: () => void;
-  onLoadMoreGroupMailboxes: (key: string) => void;
+  onPrevGroupMailboxesPage: (key: string) => void;
+  onNextGroupMailboxesPage: (key: string) => void;
   onRetryGroupMailboxes: (key: string) => void;
   onSelectMailbox: (id: string | null) => void;
   onMailboxDialogOpenChange: (open: boolean) => void;
@@ -166,7 +167,8 @@ export function MailboxesPanel({
   onMailboxSearchChange,
   onPrevMailboxSearchPage,
   onNextMailboxSearchPage,
-  onLoadMoreGroupMailboxes,
+  onPrevGroupMailboxesPage,
+  onNextGroupMailboxesPage,
   onRetryGroupMailboxes,
   onSelectMailbox,
   onMailboxDialogOpenChange,
@@ -635,6 +637,8 @@ export function MailboxesPanel({
               const loading = Boolean(loadingMailboxesByGroupKey[groupItem.key]);
               const error = mailboxErrorsByGroupKey[groupItem.key];
               const pagination = mailboxPaginationByGroupKey[groupItem.key];
+              const page = pagination?.page || 1;
+              const pages = pagination?.pages || 1;
               const loadedCount = groupItem.mailboxes.length;
               const totalFromGroupCount = groupItem.key === ungroupedSelectValue ? undefined : groupItem.group?._count?.mailboxes;
               const total =
@@ -644,9 +648,8 @@ export function MailboxesPanel({
                     ? totalFromGroupCount
                     : loadedCount;
 
-              const countLabel =
-                total > 0 && loadedCount < total ? `${loadedCount}/${total}` : String(total);
-              const canLoadMore = loadedCount < total;
+              const countLabel = String(total);
+              const showPager = pages > 1;
 
               return (
                 <div key={groupItem.key} className="space-y-1">
@@ -716,17 +719,33 @@ export function MailboxesPanel({
                         </div>
                       )}
 
-                      {!error && canLoadMore ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => onLoadMoreGroupMailboxes(groupItem.key)}
-                          disabled={loading}
-                        >
-                          {loading ? t("mailboxes.pagination.loading") : t("mailboxes.pagination.loadMore")}
-                        </Button>
+                      {!error && showPager ? (
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <div className="text-xs text-muted-foreground">
+                            {t("mailboxes.pagination.page", { page, pages })}
+                            {loading ? <span className="text-muted-foreground/50"> · {t("mailboxes.pagination.loading")}</span> : null}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onPrevGroupMailboxesPage(groupItem.key)}
+                              disabled={loading || page <= 1}
+                            >
+                              {t("mailboxes.pagination.prev")}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onNextGroupMailboxesPage(groupItem.key)}
+                              disabled={loading || page >= pages}
+                            >
+                              {t("mailboxes.pagination.next")}
+                            </Button>
+                          </div>
+                        </div>
                       ) : null}
                     </div>
                   ) : null}
