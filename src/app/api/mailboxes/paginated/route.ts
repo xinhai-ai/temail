@@ -7,7 +7,7 @@ const querySchema = z.object({
   search: z.string().trim().max(200).optional(),
   groupId: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(10).default(10),
 });
 
 export async function GET(request: NextRequest) {
@@ -80,4 +80,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

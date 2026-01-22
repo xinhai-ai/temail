@@ -20,7 +20,7 @@ export default function InboxPage() {
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
   const SKIP_EMAIL_DELETE_CONFIRM_KEY = "temail.inbox.skipEmailDeleteConfirm";
   const DEFAULT_EMAILS_PAGE_SIZE = 15;
-  const DEFAULT_MAILBOXES_PAGE_SIZE = 20;
+  const DEFAULT_MAILBOXES_PAGE_SIZE = 10;
   const t = useTranslations("inbox");
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
@@ -235,7 +235,7 @@ export default function InboxPage() {
         const pages = Math.max(1, Number(data?.pagination?.pages || 1));
         const nextPage = Math.max(1, Number(data?.pagination?.page || page));
         const total = Math.max(0, Number(data?.pagination?.total || 0));
-        const limit = Math.min(100, Math.max(1, Number(data?.pagination?.limit || DEFAULT_MAILBOXES_PAGE_SIZE)));
+        const limit = Math.min(DEFAULT_MAILBOXES_PAGE_SIZE, Math.max(1, Number(data?.pagination?.limit || DEFAULT_MAILBOXES_PAGE_SIZE)));
 
         setMailboxPaginationByGroupKey((prev) => ({
           ...prev,
