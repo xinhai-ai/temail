@@ -439,10 +439,17 @@ export async function syncByUidRange(
   options: SyncOptions = {}
 ): Promise<SyncResult> {
   const now = new Date();
-  const config = domain.imapConfig;
+  // NOTE: `domain.imapConfig` is a snapshot from when the worker was created.
+  // Sync state (lastSyncedUid/lastUidValidity) must be read fresh from DB or we'll
+  // repeatedly re-fetch the same UID ranges on periodic sync (e.g. daily full sync).
+  const state = await prisma.imapConfig.findUnique({
+    where: { domainId: domain.id },
+    select: { lastSyncedUid: true, lastUidValidity: true },
+  });
+  const lastSyncedUid = state?.lastSyncedUid ?? 0;
 
   const currentUidValidity = mailbox.uidValidity ? BigInt(mailbox.uidValidity) : null;
-  const storedUidValidity = config.lastUidValidity;
+  const storedUidValidity = state?.lastUidValidity ?? null;
 
   // Check if UIDVALIDITY changed (mailbox was rebuilt)
   const uidValidityChanged =
@@ -465,8 +472,22 @@ export async function syncByUidRange(
   }
 
   // Calculate UID range to fetch
-  const startUid = uidValidityChanged ? 1 : (config.lastSyncedUid || 0) + 1;
+  const startUid = uidValidityChanged ? 1 : lastSyncedUid + 1;
   const endUid = mailbox.uidNext ? Number(mailbox.uidNext) - 1 : "*";
+
+  if (options.debug) {
+    console.log(
+      "[imap-sync] uid-range state",
+      JSON.stringify({
+        domain: domain.name,
+        lastSyncedUid,
+        startUid,
+        endUid,
+        uidValidity: currentUidValidity?.toString() ?? null,
+        storedUidValidity: storedUidValidity?.toString() ?? null,
+      }),
+    );
+  }
 
   if (typeof endUid === "number" && startUid > endUid) {
     // No new messages
@@ -491,7 +512,7 @@ export async function syncByUidRange(
   const batches = chunkArray(uids, 200);
   let processedCount = 0;
   let errorCount = 0;
-  let highestUid = config.lastSyncedUid || 0;
+  let highestUid = uidValidityChanged ? 0 : lastSyncedUid;
 
   for (const batch of batches) {
     if (batch.length === 0) continue;
