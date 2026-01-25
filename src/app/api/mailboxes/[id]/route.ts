@@ -5,7 +5,7 @@ import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 
 const updateSchema = z.object({
-  note: z.string().optional(),
+  note: z.string().nullable().optional(),
   isStarred: z.boolean().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "DELETED"]).optional(),
   groupId: z.string().trim().min(1).nullable().optional(),

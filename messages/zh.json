@@ -882,13 +882,15 @@
         "createGroup": "创建分组",
         "name": "名称",
         "groupNamePlaceholder": "如：购物、工作",
-        "renameGroup": "重命名分组"
+        "renameGroup": "重命名分组",
+        "editNote": "编辑备注"
       },
       "context": {
         "group": "分组",
         "rename": "重命名",
         "mailbox": "邮箱",
         "copyAddress": "复制地址",
+        "editNote": "编辑备注",
         "star": "收藏",
         "unstar": "取消收藏",
         "moveToGroup": "移动到分组",

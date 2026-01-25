@@ -123,6 +123,7 @@ type MailboxesPanelProps = {
   onOpenRenameGroup: (group: MailboxGroup) => void;
   onRequestDeleteGroup: (group: MailboxGroup) => void;
   onStarMailbox: (mailboxId: string, isStarred: boolean) => void;
+  onRequestEditMailboxNote: (mailbox: Mailbox) => void;
   onMoveMailboxToGroup: (mailboxId: string, groupId: string | null) => void;
   onRequestDeleteMailbox: (mailboxId: string) => void;
   onCopyMailboxAddress: (address: string) => void;
@@ -188,6 +189,7 @@ export function MailboxesPanel({
   onOpenRenameGroup,
   onRequestDeleteGroup,
   onStarMailbox,
+  onRequestEditMailboxNote,
   onMoveMailboxToGroup,
   onRequestDeleteMailbox,
   onCopyMailboxAddress,
@@ -291,6 +293,10 @@ export function MailboxesPanel({
           >
             <Copy />
             {t("mailboxes.context.copyAddress")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onRequestEditMailboxNote(mailbox)}>
+            <Pencil />
+            {t("mailboxes.context.editNote")}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => onStarMailbox(mailbox.id, mailbox.isStarred)}

@@ -882,13 +882,15 @@
         "createGroup": "Create Group",
         "name": "Name",
         "groupNamePlaceholder": "e.g. Shopping, Work",
-        "renameGroup": "Rename Group"
+        "renameGroup": "Rename Group",
+        "editNote": "Edit Note"
       },
       "context": {
         "group": "Group",
         "rename": "Rename",
         "mailbox": "Mailbox",
         "copyAddress": "Copy Address",
+        "editNote": "Edit Note",
         "star": "Star",
         "unstar": "Unstar",
         "moveToGroup": "Move to Group",

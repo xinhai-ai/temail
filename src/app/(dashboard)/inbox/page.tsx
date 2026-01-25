@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Inbox, Mail, Eye } from "lucide-react";
 import { ConfirmDialogs } from "./_components/ConfirmDialogs";
+import { EditMailboxNoteDialog } from "./_components/EditMailboxNoteDialog";
 import { EmailsPanel, type EmailStatusFilter } from "./_components/EmailsPanel";
 import { MailboxesPanel } from "./_components/MailboxesPanel";
 import { PreviewPanel } from "./_components/PreviewPanel";
@@ -76,6 +77,12 @@ export default function InboxPage() {
   const [renamingGroup, setRenamingGroup] = useState(false);
   const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
   const [renameGroupName, setRenameGroupName] = useState("");
+
+  const [editMailboxNoteDialogOpen, setEditMailboxNoteDialogOpen] = useState(false);
+  const [editMailboxNoteMailboxId, setEditMailboxNoteMailboxId] = useState<string | null>(null);
+  const [editMailboxNoteMailboxAddress, setEditMailboxNoteMailboxAddress] = useState<string | null>(null);
+  const [editMailboxNoteValue, setEditMailboxNoteValue] = useState("");
+  const [savingMailboxNote, setSavingMailboxNote] = useState(false);
 
   // Delete confirmation dialog states
   const [deleteEmailId, setDeleteEmailId] = useState<string | null>(null);
@@ -210,6 +217,59 @@ export default function InboxPage() {
       return updated;
     });
   }, []);
+
+  const closeEditMailboxNoteDialog = () => {
+    setEditMailboxNoteDialogOpen(false);
+    setEditMailboxNoteMailboxId(null);
+    setEditMailboxNoteMailboxAddress(null);
+    setEditMailboxNoteValue("");
+  };
+
+  const handleEditMailboxNoteDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setEditMailboxNoteDialogOpen(true);
+      return;
+    }
+    if (savingMailboxNote) return;
+    closeEditMailboxNoteDialog();
+  };
+
+  const handleOpenEditMailboxNote = (mailbox: Mailbox) => {
+    setEditMailboxNoteMailboxId(mailbox.id);
+    setEditMailboxNoteMailboxAddress(mailbox.address);
+    setEditMailboxNoteValue(mailbox.note || "");
+    setEditMailboxNoteDialogOpen(true);
+  };
+
+  const handleSaveMailboxNote = async () => {
+    if (!editMailboxNoteMailboxId) return;
+    if (savingMailboxNote) return;
+
+    setSavingMailboxNote(true);
+    try {
+      const trimmed = editMailboxNoteValue.trim();
+      const note = trimmed ? trimmed : null;
+
+      const res = await fetch(`/api/mailboxes/${editMailboxNoteMailboxId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.mailboxes.updateFailed"));
+        return;
+      }
+
+      updateMailboxById(editMailboxNoteMailboxId, (mailbox) => ({ ...mailbox, note }));
+      toast.success(t("toast.mailboxes.updated"));
+      closeEditMailboxNoteDialog();
+    } catch {
+      toast.error(t("toast.mailboxes.updateFailed"));
+    } finally {
+      setSavingMailboxNote(false);
+    }
+  };
 
   const loadMailboxGroupPage = useCallback(
     async (groupKey: string, page: number, options?: { replace?: boolean }) => {
@@ -1503,6 +1563,7 @@ export default function InboxPage() {
               onOpenRenameGroup={openRenameGroup}
               onRequestDeleteGroup={handleDeleteGroup}
               onStarMailbox={handleStarMailbox}
+              onRequestEditMailboxNote={handleOpenEditMailboxNote}
               onMoveMailboxToGroup={handleMoveMailboxToGroup}
               onRequestDeleteMailbox={handleDeleteMailbox}
               onCopyMailboxAddress={handleCopyMailboxAddress}
@@ -1626,6 +1687,7 @@ export default function InboxPage() {
             onOpenRenameGroup={openRenameGroup}
             onRequestDeleteGroup={handleDeleteGroup}
             onStarMailbox={handleStarMailbox}
+            onRequestEditMailboxNote={handleOpenEditMailboxNote}
             onMoveMailboxToGroup={handleMoveMailboxToGroup}
             onRequestDeleteMailbox={handleDeleteMailbox}
             onCopyMailboxAddress={handleCopyMailboxAddress}
@@ -1700,6 +1762,16 @@ export default function InboxPage() {
           onConfirmBulkDelete={confirmBulkDelete}
           onConfirmDeleteMailbox={confirmDeleteMailbox}
           onConfirmDeleteGroup={confirmDeleteGroup}
+        />
+
+        <EditMailboxNoteDialog
+          open={editMailboxNoteDialogOpen}
+          mailboxAddress={editMailboxNoteMailboxAddress}
+          note={editMailboxNoteValue}
+          saving={savingMailboxNote}
+          onOpenChange={handleEditMailboxNoteDialogOpenChange}
+          onNoteChange={setEditMailboxNoteValue}
+          onSave={handleSaveMailboxNote}
         />
       </div>
     </TooltipProvider>
