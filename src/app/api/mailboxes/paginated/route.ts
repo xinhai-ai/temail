@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: { address: "asc" },
+      orderBy: [{ createdAt: "desc" }, { address: "asc" }],
       skip: offset,
       take: parsed.limit,
     });
