@@ -928,6 +928,10 @@
           "aria": "Archive selected",
           "tooltip": "Archive"
         },
+        "unarchive": {
+          "aria": "Unarchive selected",
+          "tooltip": "Unarchive"
+        },
         "delete": {
           "aria": "Delete selected",
           "tooltip": "Delete"
@@ -1065,6 +1069,8 @@
       "bulk": {
         "archiveFailed": "Failed to archive emails",
         "archived": "Emails archived",
+        "unarchiveFailed": "Failed to unarchive emails",
+        "unarchived": "Emails unarchived",
         "markReadFailed": "Failed to mark emails as read",
         "markedRead": "Marked as read"
       },

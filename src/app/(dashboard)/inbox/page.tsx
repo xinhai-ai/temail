@@ -961,6 +961,39 @@ export default function InboxPage() {
     }
   };
 
+  const handleBulkUnarchive = async () => {
+    const ids = selectedEmailIds;
+    if (ids.length === 0) return;
+
+    const res = await fetch("/api/emails/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "unarchive", ids }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(data?.error || t("toast.bulk.unarchiveFailed"));
+      return;
+    }
+
+    toast.success(t("toast.bulk.unarchived"));
+    setSelectedEmailIds([]);
+
+    if (statusFilter === "archived") {
+      setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
+      if (selectedEmailId && ids.includes(selectedEmailId)) {
+        setSelectedEmailId(null);
+        setSelectedEmail(null);
+      }
+      return;
+    }
+
+    setEmails((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, status: "READ" } : e)));
+    setSelectedEmail((prev) =>
+      prev && ids.includes(prev.id) ? { ...prev, status: "READ" } : prev
+    );
+  };
+
   const handleStatusFilterChange = (filter: EmailStatusFilter) => {
     setStatusFilter(filter);
     setEmailsPage(1);
@@ -1632,6 +1665,7 @@ export default function InboxPage() {
               onToggleEmailSelection={toggleEmailSelection}
               onBulkMarkRead={handleBulkMarkRead}
               onBulkArchive={handleBulkArchive}
+              onBulkUnarchive={handleBulkUnarchive}
               onOpenBulkDelete={openBulkDelete}
               onClearSelection={() => setSelectedEmailIds([])}
               onMultiSelectModeChange={handleMultiSelectModeChange}
@@ -1754,6 +1788,7 @@ export default function InboxPage() {
             onToggleEmailSelection={toggleEmailSelection}
             onBulkMarkRead={handleBulkMarkRead}
             onBulkArchive={handleBulkArchive}
+            onBulkUnarchive={handleBulkUnarchive}
             onOpenBulkDelete={openBulkDelete}
             onClearSelection={() => setSelectedEmailIds([])}
             onMultiSelectModeChange={handleMultiSelectModeChange}

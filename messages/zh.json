@@ -928,6 +928,10 @@
           "aria": "归档选中",
           "tooltip": "归档"
         },
+        "unarchive": {
+          "aria": "取消归档选中",
+          "tooltip": "取消归档"
+        },
         "delete": {
           "aria": "删除选中",
           "tooltip": "删除"
@@ -1065,6 +1069,8 @@
       "bulk": {
         "archiveFailed": "归档邮件失败",
         "archived": "邮件已归档",
+        "unarchiveFailed": "取消归档失败",
+        "unarchived": "已取消归档",
         "markReadFailed": "标记已读失败",
         "markedRead": "已标记为已读"
       },

@@ -60,6 +60,7 @@ type EmailsPanelProps = {
   onToggleEmailSelection: (emailId: string, checked: boolean) => void;
   onBulkMarkRead: () => void;
   onBulkArchive: () => void;
+  onBulkUnarchive: () => void;
   onOpenBulkDelete: () => void;
   onClearSelection: () => void;
   onMultiSelectModeChange: (enabled: boolean) => void;
@@ -103,6 +104,7 @@ export function EmailsPanel({
   onToggleEmailSelection,
   onBulkMarkRead,
   onBulkArchive,
+  onBulkUnarchive,
   onOpenBulkDelete,
   onClearSelection,
   onMultiSelectModeChange,
@@ -300,7 +302,22 @@ export function EmailsPanel({
                   </TooltipTrigger>
                   <TooltipContent>{t("emails.bulk.markRead.tooltip")}</TooltipContent>
                 </Tooltip>
-                {statusFilter !== "archived" ? (
+                {statusFilter === "archived" ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        onClick={onBulkUnarchive}
+                        aria-label={t("emails.bulk.unarchive.aria")}
+                      >
+                        <ArchiveRestore className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("emails.bulk.unarchive.tooltip")}</TooltipContent>
+                  </Tooltip>
+                ) : (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -315,7 +332,7 @@ export function EmailsPanel({
                     </TooltipTrigger>
                     <TooltipContent>{t("emails.bulk.archive.tooltip")}</TooltipContent>
                   </Tooltip>
-                ) : null}
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -396,10 +413,21 @@ export function EmailsPanel({
                 const active = selected || contextOpen;
                 const isUnread = email.status === "UNREAD";
                 const emailTagIds = new Set((email.tags || []).map((t) => t.id));
+                const bulkMenu = selectionMode && selectedEmailIds.length > 1 && selectedEmailIdSet.has(email.id);
                 return (
                   <ContextMenu
                     key={email.id}
-                    onOpenChange={(open) => setOpenContextMenuEmailId(open ? email.id : null)}
+                    onOpenChange={(open) => {
+                      if (open) {
+                        setOpenContextMenuEmailId(email.id);
+                        if (selectionMode && selectedEmailIds.length > 0 && !selectedEmailIdSet.has(email.id)) {
+                          onClearSelection();
+                          onToggleEmailSelection(email.id, true);
+                        }
+                        return;
+                      }
+                      setOpenContextMenuEmailId((current) => (current === email.id ? null : current));
+                    }}
                   >
                     <ContextMenuTrigger asChild>
                       <div
@@ -490,124 +518,159 @@ export function EmailsPanel({
                       </div>
                     </ContextMenuTrigger>
                     <ContextMenuContent className="w-48">
-                      <ContextMenuLabel>{t("emails.context.email")}</ContextMenuLabel>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem asChild>
-                        <Link href={`/emails/${email.id}`}>
-                          <ExternalLink />
-                          {t("emails.context.open")}
-                        </Link>
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={() => onCopySenderAddress(email.fromAddress)}
-                      >
-                        <Copy />
-                        {t("emails.context.copySender")}
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={() => onCopyEmailSubject(email.subject || t("email.noSubject"))}
-                      >
-                        <Copy />
-                        {t("emails.context.copySubject")}
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={() => onCopyMailboxAddress(email.mailbox.address)}
-                      >
-                        <Copy />
-                        {t("emails.context.copyMailbox")}
-                      </ContextMenuItem>
-                      <ContextMenuSub>
-                        <ContextMenuSubTrigger>
-                          <TagIcon />
-                          {t("emails.context.tags")}
-                        </ContextMenuSubTrigger>
-                        <ContextMenuSubContent className="w-56">
-                          {tags.length === 0 ? (
-                            <ContextMenuItem disabled>
-                              {t("emails.context.noTagsYet")}
+                      {bulkMenu ? (
+                        <>
+                          <ContextMenuLabel>
+                            {t("emails.selection.selected", { count: selectedEmailIds.length })}
+                          </ContextMenuLabel>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem onClick={onBulkMarkRead}>
+                            <MailOpen />
+                            {t("emails.bulk.markRead.tooltip")}
+                          </ContextMenuItem>
+                          {statusFilter === "archived" ? (
+                            <ContextMenuItem onClick={onBulkUnarchive}>
+                              <ArchiveRestore />
+                              {t("emails.bulk.unarchive.tooltip")}
                             </ContextMenuItem>
                           ) : (
-                            tags.map((tag) => {
-                              const checked = emailTagIds.has(tag.id);
-                              return (
-                                <ContextMenuCheckboxItem
-                                  key={tag.id}
-                                  checked={checked}
-                                  onSelect={(e) => e.preventDefault()}
-                                  onCheckedChange={(next) => {
-                                    const enabled = Boolean(next);
-                                    if (enabled) {
-                                      void onUpdateEmailTags(email.id, { add: [tag.name] });
-                                    } else {
-                                      void onUpdateEmailTags(email.id, { remove: [tag.id] });
-                                    }
-                                  }}
-                                >
-                                  {tag.name}
-                                </ContextMenuCheckboxItem>
-                              );
-                            })
+                            <ContextMenuItem onClick={onBulkArchive}>
+                              <Archive />
+                              {t("emails.bulk.archive.tooltip")}
+                            </ContextMenuItem>
                           )}
                           <ContextMenuSeparator />
-                          <ContextMenuItem onClick={() => openAddTagDialog(email.id)}>
-                            <Plus />
-                            {t("emails.context.addNew")}
+                          <ContextMenuItem variant="destructive" onClick={onOpenBulkDelete}>
+                            <Trash2 />
+                            {tCommon("delete")}
                           </ContextMenuItem>
-                        </ContextMenuSubContent>
-                      </ContextMenuSub>
-                      {isUnread ? (
-                        <ContextMenuItem
-                          onClick={() => onMarkEmailRead(email.id)}
-                        >
-                          <MailOpen />
-                          {t("emails.context.markAsRead")}
-                        </ContextMenuItem>
-                      ) : email.status === "READ" ? (
-                        <ContextMenuItem
-                          onClick={() => onMarkEmailUnread(email.id)}
-                        >
-                          <Mail />
-                          {t("emails.context.markAsUnread")}
-                        </ContextMenuItem>
-                      ) : null}
-                      <ContextMenuItem
-                        onClick={() => onStarEmail(email.id, email.isStarred)}
-                      >
-                        {email.isStarred ? (
-                          <>
-                            <StarOff />
-                            {t("emails.context.unstar")}
-                          </>
-                        ) : (
-                          <>
-                            <Star />
-                            {t("emails.context.star")}
-                          </>
-                        )}
-                      </ContextMenuItem>
-                      {email.status === "ARCHIVED" ? (
-                        <ContextMenuItem
-                          onClick={() => onUnarchiveEmail(email.id)}
-                        >
-                          <ArchiveRestore />
-                          {t("emails.context.unarchive")}
-                        </ContextMenuItem>
+                          <ContextMenuItem onClick={onClearSelection}>
+                            <X />
+                            {t("emails.bulk.clear.tooltip")}
+                          </ContextMenuItem>
+                        </>
                       ) : (
-                        <ContextMenuItem
-                          onClick={() => onArchiveEmail(email.id)}
-                        >
-                          <Archive />
-                          {t("emails.context.archive")}
-                        </ContextMenuItem>
+                        <>
+                          <ContextMenuLabel>{t("emails.context.email")}</ContextMenuLabel>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem asChild>
+                            <Link href={`/emails/${email.id}`}>
+                              <ExternalLink />
+                              {t("emails.context.open")}
+                            </Link>
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onClick={() => onCopySenderAddress(email.fromAddress)}
+                          >
+                            <Copy />
+                            {t("emails.context.copySender")}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onClick={() => onCopyEmailSubject(email.subject || t("email.noSubject"))}
+                          >
+                            <Copy />
+                            {t("emails.context.copySubject")}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onClick={() => onCopyMailboxAddress(email.mailbox.address)}
+                          >
+                            <Copy />
+                            {t("emails.context.copyMailbox")}
+                          </ContextMenuItem>
+                          <ContextMenuSub>
+                            <ContextMenuSubTrigger>
+                              <TagIcon />
+                              {t("emails.context.tags")}
+                            </ContextMenuSubTrigger>
+                            <ContextMenuSubContent className="w-56">
+                              {tags.length === 0 ? (
+                                <ContextMenuItem disabled>
+                                  {t("emails.context.noTagsYet")}
+                                </ContextMenuItem>
+                              ) : (
+                                tags.map((tag) => {
+                                  const checked = emailTagIds.has(tag.id);
+                                  return (
+                                    <ContextMenuCheckboxItem
+                                      key={tag.id}
+                                      checked={checked}
+                                      onSelect={(e) => e.preventDefault()}
+                                      onCheckedChange={(next) => {
+                                        const enabled = Boolean(next);
+                                        if (enabled) {
+                                          void onUpdateEmailTags(email.id, { add: [tag.name] });
+                                        } else {
+                                          void onUpdateEmailTags(email.id, { remove: [tag.id] });
+                                        }
+                                      }}
+                                    >
+                                      {tag.name}
+                                    </ContextMenuCheckboxItem>
+                                  );
+                                })
+                              )}
+                              <ContextMenuSeparator />
+                              <ContextMenuItem onClick={() => openAddTagDialog(email.id)}>
+                                <Plus />
+                                {t("emails.context.addNew")}
+                              </ContextMenuItem>
+                            </ContextMenuSubContent>
+                          </ContextMenuSub>
+                          {isUnread ? (
+                            <ContextMenuItem
+                              onClick={() => onMarkEmailRead(email.id)}
+                            >
+                              <MailOpen />
+                              {t("emails.context.markAsRead")}
+                            </ContextMenuItem>
+                          ) : email.status === "READ" ? (
+                            <ContextMenuItem
+                              onClick={() => onMarkEmailUnread(email.id)}
+                            >
+                              <Mail />
+                              {t("emails.context.markAsUnread")}
+                            </ContextMenuItem>
+                          ) : null}
+                          <ContextMenuItem
+                            onClick={() => onStarEmail(email.id, email.isStarred)}
+                          >
+                            {email.isStarred ? (
+                              <>
+                                <StarOff />
+                                {t("emails.context.unstar")}
+                              </>
+                            ) : (
+                              <>
+                                <Star />
+                                {t("emails.context.star")}
+                              </>
+                            )}
+                          </ContextMenuItem>
+                          {email.status === "ARCHIVED" ? (
+                            <ContextMenuItem
+                              onClick={() => onUnarchiveEmail(email.id)}
+                            >
+                              <ArchiveRestore />
+                              {t("emails.context.unarchive")}
+                            </ContextMenuItem>
+                          ) : (
+                            <ContextMenuItem
+                              onClick={() => onArchiveEmail(email.id)}
+                            >
+                              <Archive />
+                              {t("emails.context.archive")}
+                            </ContextMenuItem>
+                          )}
+                          <ContextMenuSeparator />
+                          <ContextMenuItem
+                            variant="destructive"
+                            onClick={() => onDeleteEmail(email.id)}
+                          >
+                            <Trash2 />
+                            {tCommon("delete")}
+                          </ContextMenuItem>
+                        </>
                       )}
-                      <ContextMenuSeparator />
-                      <ContextMenuItem
-                        variant="destructive"
-                        onClick={() => onDeleteEmail(email.id)}
-                      >
-                        <Trash2 />
-                        {tCommon("delete")}
-                      </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
                 );
