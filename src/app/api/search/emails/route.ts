@@ -25,7 +25,7 @@ type EmailListItem = {
   fromName: string | null;
   status: string;
   isStarred: boolean;
-  receivedAt: string | Date;
+  receivedAt: string;
   mailboxId: string;
   mailbox: { address: string };
   tags?: Array<{ id: string; name: string; color: string | null }>;
@@ -360,7 +360,11 @@ export async function GET(request: NextRequest) {
       ]);
 
       const emails = await attachSnippets(
-        items.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) }))
+        items.map(({ emailTags, ...rest }) => ({
+          ...rest,
+          receivedAt: rest.receivedAt.toISOString(),
+          tags: emailTags.map((et) => et.tag),
+        }))
       );
 
       return NextResponse.json({
@@ -533,7 +537,11 @@ export async function GET(request: NextRequest) {
     const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1].id : null;
 
     const emails = await attachSnippets(
-      slice.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) }))
+      slice.map(({ emailTags, ...rest }) => ({
+        ...rest,
+        receivedAt: rest.receivedAt.toISOString(),
+        tags: emailTags.map((et) => et.tag),
+      }))
     );
 
     return NextResponse.json({
