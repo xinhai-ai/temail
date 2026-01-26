@@ -25,7 +25,7 @@ type EmailListItem = {
   fromName: string | null;
   status: string;
   isStarred: boolean;
-  receivedAt: string;
+  receivedAt: string | Date;
   mailboxId: string;
   mailbox: { address: string };
   tags?: Array<{ id: string; name: string; color: string | null }>;
