@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ContextMenu,
   ContextMenuCheckboxItem,
@@ -271,14 +272,10 @@ export function EmailsPanel({
         {emails.length > 0 && selectionMode && (
           <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
             <label className="flex items-center gap-2 text-sm select-none">
-              <input
-                type="checkbox"
-                checked={allSelectedOnPage}
-                ref={(el) => {
-                  if (!el) return;
-                  el.indeterminate = someSelectedOnPage;
-                }}
-                onChange={(e) => onToggleSelectAllOnPage(e.target.checked)}
+              <Checkbox
+                checked={allSelectedOnPage ? true : someSelectedOnPage ? "indeterminate" : false}
+                onCheckedChange={(checked) => onToggleSelectAllOnPage(checked === true)}
+                aria-label={t("emails.selection.select")}
               />
               <span className="text-muted-foreground">
                 {selectedEmailIds.length > 0
@@ -453,13 +450,13 @@ export function EmailsPanel({
                         <div className="flex items-start gap-3">
                           {selectionMode ? (
                             <div className="pt-1">
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={selectedEmailIdSet.has(email.id)}
                                 onClick={(e) => e.stopPropagation()}
-                                onChange={(e) =>
-                                  onToggleEmailSelection(email.id, e.target.checked)
+                                onCheckedChange={(checked) =>
+                                  onToggleEmailSelection(email.id, checked === true)
                                 }
+                                aria-label={t("emails.selection.select")}
                               />
                             </div>
                           ) : null}
