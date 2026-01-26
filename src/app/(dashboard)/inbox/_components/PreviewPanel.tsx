@@ -96,6 +96,12 @@ function getDomainFromAddress(value: string): string | null {
   return domain ? domain : null;
 }
 
+function getMainDomain(domain: string): string {
+  const parts = domain.split(".").filter(Boolean);
+  if (parts.length <= 2) return domain;
+  return parts.slice(-2).join(".");
+}
+
 export function PreviewPanel({
   selectedEmailId,
   selectedEmail,
@@ -235,6 +241,8 @@ export function PreviewPanel({
   const allowedRemoteSendersSet = new Set(allowedRemoteSenders);
   const senderKey = selectedEmail?.fromAddress?.trim().toLowerCase() || "";
   const senderDomain = getDomainFromAddress(senderKey);
+  const senderMainDomain = senderDomain ? getMainDomain(senderDomain) : null;
+  const senderFaviconDomain = senderMainDomain ?? senderDomain;
   const senderInitial = (selectedEmail?.fromName || selectedEmail?.fromAddress || "?")[0]?.toUpperCase() || "?";
   const senderAllowed = Boolean(senderKey && allowedRemoteSendersSet.has(senderKey));
   const allowAllRemoteImages = allowRemoteForMessage || senderAllowed;
@@ -362,7 +370,7 @@ export function PreviewPanel({
               <>
                 <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-muted/30 flex-shrink-0">
                   <FaviconImage
-                    domain={senderDomain}
+                    domain={senderFaviconDomain}
                     size={32}
                     className="h-8 w-8 rounded-full bg-primary/10 border border-primary/10 flex-shrink-0"
                     imgClassName="p-1"
@@ -371,7 +379,7 @@ export function PreviewPanel({
                         {senderInitial}
                       </div>
                     }
-                    title={senderDomain || selectedEmail.fromAddress}
+                    title={senderFaviconDomain || selectedEmail.fromAddress}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
