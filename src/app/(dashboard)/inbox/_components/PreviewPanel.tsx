@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useMemo, useState, useEffect } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
+import { FaviconImage } from "@/components/email/FaviconImage";
 import { ChevronDown, Copy, Download, Globe, Image as ImageIcon, ImageOff as ImageOffIcon, Mail, Paperclip } from "lucide-react";
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
@@ -86,6 +87,13 @@ function extractRemoteImageHosts(html: string): string[] {
   }
 
   return Array.from(hosts).sort((a, b) => a.localeCompare(b));
+}
+
+function getDomainFromAddress(value: string): string | null {
+  const at = value.lastIndexOf("@");
+  if (at === -1) return null;
+  const domain = value.slice(at + 1).trim().toLowerCase();
+  return domain ? domain : null;
 }
 
 export function PreviewPanel({
@@ -226,6 +234,8 @@ export function PreviewPanel({
   const allowedRemoteHostsSet = new Set(allowedRemoteHosts);
   const allowedRemoteSendersSet = new Set(allowedRemoteSenders);
   const senderKey = selectedEmail?.fromAddress?.trim().toLowerCase() || "";
+  const senderDomain = getDomainFromAddress(senderKey);
+  const senderInitial = (selectedEmail?.fromName || selectedEmail?.fromAddress || "?")[0]?.toUpperCase() || "?";
   const senderAllowed = Boolean(senderKey && allowedRemoteSendersSet.has(senderKey));
   const allowAllRemoteImages = allowRemoteForMessage || senderAllowed;
   const allowedRemoteHostsForMessage = allowAllRemoteImages
@@ -347,9 +357,18 @@ export function PreviewPanel({
             ) : (
               <>
                 <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-muted/30 flex-shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs flex-shrink-0">
-                    {(selectedEmail.fromName || selectedEmail.fromAddress || "?")[0].toUpperCase()}
-                  </div>
+                  <FaviconImage
+                    domain={senderDomain}
+                    size={32}
+                    className="h-8 w-8 rounded-full bg-primary/10 border border-primary/10 flex-shrink-0"
+                    imgClassName="p-1"
+                    fallback={
+                      <div className="flex h-full w-full items-center justify-center text-primary font-semibold text-xs">
+                        {senderInitial}
+                      </div>
+                    }
+                    title={senderDomain || selectedEmail.fromAddress}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                       <p className="text-sm font-medium truncate">

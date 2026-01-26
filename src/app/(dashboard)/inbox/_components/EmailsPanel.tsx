@@ -31,6 +31,7 @@ import { enUS, zhCN } from "date-fns/locale";
 import { Archive, ArchiveRestore, Copy, ExternalLink, ListChecks, Mail, MailOpen, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { FaviconImage } from "@/components/email/FaviconImage";
 import type { EmailListItem, Tag } from "../types";
 
 export type EmailStatusFilter = "all" | "unread" | "archived";
@@ -826,16 +827,23 @@ function DomainIconPlaceholder({ fromAddress, unread }: { fromAddress: string; u
   const mainDomain = domain ? getMainDomain(domain) : null;
   const initial = getMainDomainInitial(mainDomain ?? domain);
   const title = mainDomain ?? domain ?? fromAddress;
+  const faviconDomain = mainDomain ?? domain;
 
   return (
     <div className="pt-0.5 flex-shrink-0">
       <div className="relative">
-        <div
-          className="h-8 w-8 rounded-md border bg-muted/40 flex items-center justify-center text-[11px] font-semibold text-muted-foreground"
+        <FaviconImage
+          domain={faviconDomain}
+          size={32}
+          className="h-8 w-8 rounded-md border bg-muted/40 text-muted-foreground"
+          imgClassName="p-0.5"
           title={title}
-        >
-          {initial}
-        </div>
+          fallback={
+            <div className="flex h-full w-full items-center justify-center text-[11px] font-semibold">
+              {initial}
+            </div>
+          }
+        />
         {unread ? (
           <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />
         ) : null}
