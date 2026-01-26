@@ -9,6 +9,7 @@ type Provider = "auto" | "google" | "im";
 type FaviconImageProps = {
   domain: string | null;
   size?: number;
+  requestSize?: number;
   provider?: Provider;
   className?: string;
   imgClassName?: string;
@@ -19,6 +20,7 @@ type FaviconImageProps = {
 export function FaviconImage({
   domain,
   size = 32,
+  requestSize,
   provider = "auto",
   className,
   imgClassName,
@@ -30,14 +32,15 @@ export function FaviconImage({
 
   const url = useMemo(() => {
     if (!domain) return null;
+    const fetchSize = Math.min(256, Math.max(16, Math.round(requestSize ?? size * 2)));
     const params = new URLSearchParams();
     params.set("domain", domain);
-    params.set("size", String(size));
+    params.set("size", String(fetchSize));
     if (provider !== "auto") {
       params.set("provider", provider);
     }
     return `/api/favicons?${params.toString()}`;
-  }, [domain, provider, size]);
+  }, [domain, provider, requestSize, size]);
 
   return (
     <div className={cn("relative overflow-hidden", className)} title={title}>
