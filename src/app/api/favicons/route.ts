@@ -201,7 +201,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return new NextResponse(entry.buffer, {
+  const body = new Uint8Array(entry.buffer);
+  return new NextResponse(body, {
     status: 200,
     headers: {
       "Content-Type": entry.contentType,
@@ -210,4 +211,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-
