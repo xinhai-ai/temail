@@ -1029,6 +1029,17 @@
         "enable": "Enable remote images",
         "disable": "Disable remote images"
       },
+      "remoteContent": {
+        "blocked": "To protect your privacy, TEmail has blocked remote content in this message.",
+        "menuTitle": "Remote content",
+        "noDomains": "No remote domains detected",
+        "actions": {
+          "show": "Load",
+          "showOnce": "Load remote content for this email",
+          "allowDomain": "Allow content from domain",
+          "allowSender": "Always allow this sender"
+        }
+      },
       "raw": {
         "loadFailed": "Failed to load raw content",
         "loading": "Loading raw content...",

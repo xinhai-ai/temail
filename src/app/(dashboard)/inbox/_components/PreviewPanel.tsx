@@ -3,13 +3,25 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
-import { Copy, Download, Image as ImageIcon, ImageOff as ImageOffIcon, Mail, Paperclip } from "lucide-react";
+import { ChevronDown, Copy, Download, Globe, Image as ImageIcon, ImageOff as ImageOffIcon, Mail, Paperclip } from "lucide-react";
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
@@ -28,6 +40,54 @@ function formatFileSize(bytes: number): string {
   return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
 
+function extractRemoteImageHosts(html: string): string[] {
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") return [];
+
+  const hosts = new Set<string>();
+  const addUrlHost = (urlValue: string) => {
+    const trimmed = urlValue.trim();
+    if (!trimmed) return;
+    if (trimmed.startsWith("data:") || trimmed.startsWith("cid:") || trimmed.startsWith("blob:")) return;
+    const absolute = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+    if (!absolute.startsWith("http://") && !absolute.startsWith("https://")) return;
+
+    try {
+      const parsed = new URL(absolute);
+      if (parsed.hostname) hosts.add(parsed.hostname.toLowerCase());
+    } catch {
+      // ignore
+    }
+  };
+
+  const addSrcsetHosts = (value: string | null) => {
+    if (!value) return;
+    for (const part of value.split(",")) {
+      const url = part.trim().split(/\s+/)[0] || "";
+      addUrlHost(url);
+    }
+  };
+
+  const addSrcHosts = (value: string | null) => {
+    if (!value) return;
+    addUrlHost(value);
+  };
+
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("img").forEach((img) => {
+      addSrcHosts(img.getAttribute("src"));
+      addSrcsetHosts(img.getAttribute("srcset"));
+    });
+    doc.querySelectorAll("source").forEach((source) => {
+      addSrcsetHosts(source.getAttribute("srcset"));
+    });
+  } catch {
+    return [];
+  }
+
+  return Array.from(hosts).sort((a, b) => a.localeCompare(b));
+}
+
 export function PreviewPanel({
   selectedEmailId,
   selectedEmail,
@@ -36,16 +96,32 @@ export function PreviewPanel({
   const locale = useLocale();
   const t = useTranslations("inbox");
 
-  const REMOTE_RESOURCES_KEY = "temail.preview.allowRemoteResources";
   const REMOTE_RESOURCES_WARNED_KEY = "temail.preview.remoteResourcesWarned";
+  const REMOTE_RESOURCES_ALLOWED_SENDERS_KEY = "temail.preview.allowedRemoteSenders";
+  const REMOTE_RESOURCES_ALLOWED_HOSTS_KEY = "temail.preview.allowedRemoteHosts";
 
   const [manualPreviewMode, setManualPreviewMode] = useState<"text" | "html" | "raw" | null>(null);
-  const [allowRemoteResources, setAllowRemoteResources] = useState(() => {
-    if (typeof window === "undefined") return false;
+  const [allowRemoteForMessage, setAllowRemoteForMessage] = useState(false);
+  const [allowedRemoteSenders, setAllowedRemoteSenders] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
     try {
-      return localStorage.getItem(REMOTE_RESOURCES_KEY) === "1";
+      const raw = localStorage.getItem(REMOTE_RESOURCES_ALLOWED_SENDERS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((value) => typeof value === "string").map((value) => value.trim().toLowerCase()).filter(Boolean);
     } catch {
-      return false;
+      return [];
+    }
+  });
+  const [allowedRemoteHosts, setAllowedRemoteHosts] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(REMOTE_RESOURCES_ALLOWED_HOSTS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((value) => typeof value === "string").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    } catch {
+      return [];
     }
   });
 
@@ -57,6 +133,7 @@ export function PreviewPanel({
   useEffect(() => {
     setRawContent(null);
     setManualPreviewMode(null);
+    setAllowRemoteForMessage(false);
   }, [selectedEmailId]);
 
   const previewMode: "text" | "html" | "raw" = manualPreviewMode ?? (selectedEmail?.htmlBody ? "html" : "text");
@@ -65,16 +142,7 @@ export function PreviewPanel({
   // rawContent can be: string (inline), true (available via API), or rawContentPath (file storage)
   const hasRawContent = selectedEmail?.rawContent || selectedEmail?.rawContentPath;
 
-  const handleAllowRemoteResourcesChange = (checked: boolean) => {
-    setAllowRemoteResources(checked);
-    try {
-      localStorage.setItem(REMOTE_RESOURCES_KEY, checked ? "1" : "0");
-    } catch {
-      // ignore
-    }
-
-    if (!checked) return;
-
+  const warnAboutRemoteResources = () => {
     try {
       const warned = localStorage.getItem(REMOTE_RESOURCES_WARNED_KEY) === "1";
       if (!warned) {
@@ -82,9 +150,25 @@ export function PreviewPanel({
         localStorage.setItem(REMOTE_RESOURCES_WARNED_KEY, "1");
       }
     } catch {
-      // ignore
+      toast.warning(t("preview.remoteImages.warning"));
     }
   };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REMOTE_RESOURCES_ALLOWED_SENDERS_KEY, JSON.stringify(allowedRemoteSenders));
+    } catch {
+      // ignore
+    }
+  }, [allowedRemoteSenders, REMOTE_RESOURCES_ALLOWED_SENDERS_KEY]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REMOTE_RESOURCES_ALLOWED_HOSTS_KEY, JSON.stringify(allowedRemoteHosts));
+    } catch {
+      // ignore
+    }
+  }, [allowedRemoteHosts, REMOTE_RESOURCES_ALLOWED_HOSTS_KEY]);
 
   const handleRawClick = async () => {
     setManualPreviewMode("raw");
@@ -134,6 +218,25 @@ export function PreviewPanel({
 
   // Get the raw content to display (only use selectedEmail.rawContent if it's a string)
   const displayRawContent = rawContent || (typeof selectedEmail?.rawContent === "string" ? selectedEmail.rawContent : null);
+
+  const remoteImageHosts = useMemo(() => {
+    if (!selectedEmail?.htmlBody) return [];
+    return extractRemoteImageHosts(selectedEmail.htmlBody);
+  }, [selectedEmail?.htmlBody]);
+  const allowedRemoteHostsSet = new Set(allowedRemoteHosts);
+  const allowedRemoteSendersSet = new Set(allowedRemoteSenders);
+  const senderKey = selectedEmail?.fromAddress?.trim().toLowerCase() || "";
+  const senderAllowed = Boolean(senderKey && allowedRemoteSendersSet.has(senderKey));
+  const allowAllRemoteImages = allowRemoteForMessage || senderAllowed;
+  const allowedRemoteHostsForMessage = allowAllRemoteImages
+    ? []
+    : remoteImageHosts.filter((host) => allowedRemoteHostsSet.has(host));
+  const remoteContentBlocked =
+    previewMode === "html" &&
+    Boolean(selectedEmail?.htmlBody) &&
+    remoteImageHosts.length > 0 &&
+    !allowAllRemoteImages &&
+    allowedRemoteHostsForMessage.length < remoteImageHosts.length;
 
   const copyRawContent = async () => {
     if (!displayRawContent) return;
@@ -304,28 +407,96 @@ export function PreviewPanel({
 	                  >
 	                    {t("preview.mode.raw")}
 	                  </Button>
-	                  {selectedEmail.htmlBody ? (
-	                    <Button
-	                      size="icon-sm"
-	                      variant="outline"
-	                      className={cn(
-	                        allowRemoteResources && "bg-primary/10 border-primary/20 text-primary"
-	                      )}
-	                      title={allowRemoteResources ? t("preview.remoteImages.enabled") : t("preview.remoteImages.disabled")}
-	                      aria-label={allowRemoteResources ? t("preview.remoteImages.disable") : t("preview.remoteImages.enable")}
-	                      onClick={() => handleAllowRemoteResourcesChange(!allowRemoteResources)}
-	                    >
-                      {allowRemoteResources ? (
-                        <ImageIcon className="h-4 w-4" />
-                      ) : (
-                        <ImageOffIcon className="h-4 w-4" />
-                      )}
-                    </Button>
+	                </div>
+
+                  {remoteContentBlocked ? (
+                    <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <ImageOffIcon className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                        <p className="text-sm text-muted-foreground leading-snug">
+                          {t("preview.remoteContent.blocked")}
+                        </p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" size="sm" variant="outline" className="flex-shrink-0">
+                            {t("preview.remoteContent.actions.show")}
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                          <DropdownMenuLabel>{t("preview.remoteContent.menuTitle")}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              warnAboutRemoteResources();
+                              setAllowRemoteForMessage(true);
+                            }}
+                          >
+                            <ImageIcon />
+                            {t("preview.remoteContent.actions.showOnce")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!senderKey) return;
+                              warnAboutRemoteResources();
+                              setAllowedRemoteSenders((prev) => {
+                                const next = new Set(prev);
+                                next.add(senderKey);
+                                return Array.from(next).sort((a, b) => a.localeCompare(b));
+                              });
+                            }}
+                            disabled={!senderKey}
+                          >
+                            <Mail />
+                            {t("preview.remoteContent.actions.allowSender")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger disabled={remoteImageHosts.length === 0}>
+                              <Globe />
+                              {t("preview.remoteContent.actions.allowDomain")}
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="w-56">
+                              {remoteImageHosts.length === 0 ? (
+                                <DropdownMenuItem disabled>
+                                  {t("preview.remoteContent.noDomains")}
+                                </DropdownMenuItem>
+                              ) : (
+                                remoteImageHosts.map((host) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={host}
+                                    checked={allowedRemoteHostsSet.has(host)}
+                                    onSelect={(e) => e.preventDefault()}
+                                    onCheckedChange={(checked) => {
+                                      warnAboutRemoteResources();
+                                      setAllowedRemoteHosts((prev) => {
+                                        const next = new Set(prev);
+                                        if (checked) {
+                                          next.add(host);
+                                        } else {
+                                          next.delete(host);
+                                        }
+                                        return Array.from(next).sort((a, b) => a.localeCompare(b));
+                                      });
+                                    }}
+                                  >
+                                    {host}
+                                  </DropdownMenuCheckboxItem>
+                                ))
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   ) : null}
-                </div>
 
 	                {previewMode === "html" && selectedEmail.htmlBody ? (
-	                  <EmailHtmlPreview html={selectedEmail.htmlBody} allowRemoteResources={allowRemoteResources} />
+	                  <EmailHtmlPreview
+                      html={selectedEmail.htmlBody}
+                      allowRemoteResources={allowAllRemoteImages}
+                      allowedRemoteImageHosts={allowAllRemoteImages ? undefined : allowedRemoteHostsForMessage}
+                    />
 		                ) : previewMode === "raw" ? (
                       <div className="rounded-md border bg-muted/30 overflow-hidden">
                         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background/50">

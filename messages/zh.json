@@ -1029,6 +1029,17 @@
         "enable": "启用远程图片",
         "disable": "禁用远程图片"
       },
+      "remoteContent": {
+        "blocked": "为了保护您的隐私，TEmail已屏蔽此消息中的远程内容。",
+        "menuTitle": "远程内容",
+        "noDomains": "未检测到远程域名",
+        "actions": {
+          "show": "显示选项",
+          "showOnce": "仅此邮件显示远程内容",
+          "allowDomain": "允许来自域名的内容",
+          "allowSender": "始终允许来自该发件人的远程内容"
+        }
+      },
       "raw": {
         "loadFailed": "原始内容加载失败",
         "loading": "正在加载原始内容...",
