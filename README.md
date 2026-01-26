@@ -101,6 +101,8 @@ Build powerful email processing pipelines with 20+ node types:
 - **Actions**: Archive, Star, Tag, Delete, AI rewrite
 - **Forwarding**: Email, Telegram, Slack, Discord, Webhook
 
+> **📖 See [Workflow Guide](docs/WORKFLOW.md) for detailed documentation and examples.**
+
 ### Security
 
 | Feature | Description |
@@ -119,6 +121,82 @@ Build powerful email processing pipelines with 20+ node types:
 - Inbound email monitoring and rematch
 - Audit logs for compliance
 - Telegram bot management
+
+---
+
+## User Interface
+
+TEmail features a modern, polished inbox experience designed for productivity and ease of use.
+
+### Inbox Layout
+
+**Three-Panel Design** (Desktop):
+- **Left**: Mailbox list with groups, search, and unread counts
+- **Center**: Email list with filters, multi-select, and batch actions
+- **Right**: Email preview with HTML/text toggle and attachments
+
+**Mobile Optimized**: Tab-based navigation for touch-friendly access
+
+### Dashboard Overview
+
+| Feature | Description |
+|---------|-------------|
+| **Statistics Cards** | Total mailboxes, emails, unread count, and domains at a glance |
+| **Activity Chart** | 7-day email trend visualization |
+| **Quick Actions** | One-click mailbox and group creation |
+| **Recent Emails** | Latest 5 emails preview |
+| **Top Mailboxes** | Most active mailboxes ranking |
+
+### Email Management
+
+| Feature | Description |
+|---------|-------------|
+| **Smart Filters** | Filter by status (All/Unread/Archived) and tags |
+| **Multi-Select Mode** | Batch mark as read, archive, or delete |
+| **Right-Click Menus** | Context menus for quick actions on emails and mailboxes |
+| **Keyboard Shortcuts** | Efficient navigation and actions |
+| **Real-time Updates** | SSE-based live notifications (polling in Vercel mode) |
+
+### Email Preview & Details
+
+| Feature | Description |
+|---------|-------------|
+| **View Modes** | Toggle between HTML, plain text, and raw RFC 822 |
+| **DKIM Status** | Visual indicator for email authentication |
+| **Remote Content Control** | Block/allow remote images per sender or domain |
+| **Attachments** | Download individual files with size info |
+| **Sender Favicon** | Auto-fetch sender domain icons |
+
+### Organization Tools
+
+| Feature | Description |
+|---------|-------------|
+| **Mailbox Groups** | Organize mailboxes into collapsible folders |
+| **Star System** | Star important mailboxes and emails |
+| **Custom Tags** | Create and assign colored labels |
+| **Notes** | Add notes to mailboxes for reference |
+| **Search** | Full-text search across mailboxes and emails |
+
+### Trash Management
+
+- Soft delete with configurable retention (30/90 days or never)
+- Restore or permanently delete emails
+- Batch operations support
+
+### Notifications
+
+| Feature | Description |
+|---------|-------------|
+| **Desktop Notifications** | Browser push notifications for new emails |
+| **Toast Messages** | Instant feedback for all actions |
+| **Unread Badges** | Real-time unread counts on mailboxes |
+
+### Accessibility & i18n
+
+- **Dark/Light Theme**: System preference detection
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Keyboard Navigation**: Full keyboard accessibility
+- **Multi-language**: English and Chinese (中文) support
 
 ---
 
