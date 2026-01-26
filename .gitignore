@@ -56,3 +56,6 @@ next-env.d.ts
 AGENTS.md
 plan/
 data/
+
+# local webhook test helper (intentionally untracked)
+scripts/test-webhook.tsx
