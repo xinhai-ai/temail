@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 type DkimUiStatus = "correct" | "error" | "unknown";
 
@@ -32,6 +33,7 @@ const DKIM_CLIENT_CACHE_TTL_MS = 5 * 60_000;
 const DKIM_CLIENT_CACHE_MAX_ENTRIES = 500;
 const dkimClientCache = new Map<string, { expiresAt: number; value: DkimUiResult }>();
 const dkimClientInFlight = new Map<string, Promise<DkimUiResult>>();
+const DKIM_DISABLED = isVercelDeployment();
 
 function peekCachedClientResult(emailId: string): DkimUiResult | null {
   const cached = dkimClientCache.get(emailId);
@@ -122,7 +124,7 @@ export function DkimStatusIndicator({
   const [result, setResult] = useState<{ emailId: string; data: DkimUiResult } | null>(null);
 
   useEffect(() => {
-    if (!emailId || !enabled) return;
+    if (DKIM_DISABLED || !emailId || !enabled) return;
 
     const cached = getCachedClientResult(emailId);
     if (cached) return;
@@ -158,7 +160,7 @@ export function DkimStatusIndicator({
     };
   }, [deferMs, emailId, enabled]);
 
-  if (!emailId) return null;
+  if (DKIM_DISABLED || !emailId) return null;
 
   const cachedDisplay = peekCachedClientResult(emailId);
   const display = result?.emailId === emailId ? result.data : cachedDisplay ?? DEFAULT_LOADING;

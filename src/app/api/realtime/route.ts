@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { subscribeRealtimeEvents } from "@/lib/realtime/server";
 import type { RealtimeEnvelope } from "@/lib/realtime/types";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 function serializeSse(envelope: RealtimeEnvelope) {
   const payload = JSON.stringify(envelope.event.data);
@@ -9,6 +10,10 @@ function serializeSse(envelope: RealtimeEnvelope) {
 }
 
 export async function GET(request: Request) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -6,9 +6,14 @@ import {
   getSyncStatus,
   formatRemainingTime,
 } from "@/lib/rate-limit";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 // GET: Check sync status (cooldown, running state)
 export async function GET(request: NextRequest) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,6 +31,10 @@ export async function GET(request: NextRequest) {
 
 // POST: Trigger IMAP sync for all domains
 export async function POST(request: NextRequest) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

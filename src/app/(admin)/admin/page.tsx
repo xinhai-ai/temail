@@ -37,8 +37,10 @@ import {
   type ImapServiceStatus,
 } from "@/lib/imap-client";
 import { AdminRefreshButton } from "@/app/(admin)/admin/_components/AdminRefreshButton";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 async function getAdminDashboardData() {
+  const vercelMode = isVercelDeployment();
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const [
@@ -121,7 +123,7 @@ async function getAdminDashboardData() {
       orderBy: { _count: { action: "desc" } },
       take: 6,
     }),
-    prisma.imapConfig.count(),
+    vercelMode ? Promise.resolve(0) : prisma.imapConfig.count(),
   ]);
 
   const imapEnabled = isImapServiceEnabled();
@@ -174,6 +176,7 @@ export default async function AdminPage() {
     getTranslations("admin"),
     getAdminDashboardData(),
   ]);
+  const vercelMode = isVercelDeployment();
   const { counts } = data;
 
   return (
@@ -519,41 +522,45 @@ export default async function AdminPage() {
             <CardDescription>{t("dashboard.sections.systemHealth.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm">{t("dashboard.sections.systemHealth.imapServiceMode")}</div>
-              <Badge variant={data.imap.enabled ? "default" : "secondary"}>
-                {data.imap.enabled ? t("common.status.enabled") : t("common.status.disabled")}
-              </Badge>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="text-sm">{t("dashboard.sections.systemHealth.imapConfigs")}</div>
-              <div className="text-sm tabular-nums">{data.imap.configCount}</div>
-            </div>
-
-            {data.imap.enabled && (
+            {!vercelMode ? (
               <>
                 <div className="flex items-center justify-between">
-                  <div className="text-sm">{t("dashboard.sections.systemHealth.serviceHealth")}</div>
-                  <Badge variant={data.imap.health?.status === "ok" ? "default" : "destructive"}>
-                    {data.imap.health?.status === "ok"
-                      ? t("common.status.ok")
-                      : t("common.status.error")}
+                  <div className="text-sm">{t("dashboard.sections.systemHealth.imapServiceMode")}</div>
+                  <Badge variant={data.imap.enabled ? "default" : "secondary"}>
+                    {data.imap.enabled ? t("common.status.enabled") : t("common.status.disabled")}
                   </Badge>
                 </div>
 
-                {data.imap.health?.status !== "ok" && (
-                  <div className="text-xs text-muted-foreground break-words">
-                    {data.imap.health?.error || data.imap.serviceError || t("common.unknownError")}
-                  </div>
-                )}
-
                 <div className="flex items-center justify-between">
-                  <div className="text-sm">{t("dashboard.sections.systemHealth.workers")}</div>
-                  <div className="text-sm tabular-nums">{data.imap.serviceStatus?.workersCount || 0}</div>
+                  <div className="text-sm">{t("dashboard.sections.systemHealth.imapConfigs")}</div>
+                  <div className="text-sm tabular-nums">{data.imap.configCount}</div>
                 </div>
+
+                {data.imap.enabled && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm">{t("dashboard.sections.systemHealth.serviceHealth")}</div>
+                      <Badge variant={data.imap.health?.status === "ok" ? "default" : "destructive"}>
+                        {data.imap.health?.status === "ok"
+                          ? t("common.status.ok")
+                          : t("common.status.error")}
+                      </Badge>
+                    </div>
+
+                    {data.imap.health?.status !== "ok" && (
+                      <div className="text-xs text-muted-foreground break-words">
+                        {data.imap.health?.error || data.imap.serviceError || t("common.unknownError")}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm">{t("dashboard.sections.systemHealth.workers")}</div>
+                      <div className="text-sm tabular-nums">{data.imap.serviceStatus?.workersCount || 0}</div>
+                    </div>
+                  </>
+                )}
               </>
-            )}
+            ) : null}
 
             <div className="pt-2">
               <CardTitle className="text-base">{t("dashboard.sections.systemHealth.topActions24h")}</CardTitle>

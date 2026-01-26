@@ -15,6 +15,7 @@ import { ArrowLeft, Globe, Server, Webhook, Copy, RefreshCw, Save } from "lucide
 import { toast } from "sonner";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 interface Domain {
   id: string;
@@ -44,6 +45,7 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
   const router = useRouter();
   const { data: session, status } = useSession();
   const t = useTranslations("domains");
+  const vercelMode = isVercelDeployment();
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
   const [domain, setDomain] = useState<Domain | null>(null);
@@ -318,16 +320,18 @@ export default function DomainConfigPage({ params }: { params: Promise<{ id: str
         </CardContent>
       </Card>
 
-      <Tabs defaultValue={domain.sourceType.toLowerCase()} className="space-y-6">
+      <Tabs defaultValue={vercelMode ? "webhook" : domain.sourceType.toLowerCase()} className="space-y-6">
         <TabsList>
           <TabsTrigger value="webhook" className="gap-2">
             <Webhook className="h-4 w-4" />
             {t("sourceType.webhook")}
           </TabsTrigger>
-          <TabsTrigger value="imap" className="gap-2">
-            <Server className="h-4 w-4" />
-            {t("sourceType.imap")}
-          </TabsTrigger>
+          {!vercelMode ? (
+            <TabsTrigger value="imap" className="gap-2">
+              <Server className="h-4 w-4" />
+              {t("sourceType.imap")}
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
         <TabsContent value="webhook" className="space-y-6">
@@ -413,81 +417,83 @@ Content-Type: application/json
           </Card>
         </TabsContent>
 
-        <TabsContent value="imap" className="space-y-6">
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle>{t("config.imap.title")}</CardTitle>
-              <CardDescription>
-                {t("config.imap.description")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("config.imap.host.label")}</Label>
-                  <Input
-                    placeholder={t("config.imap.host.placeholder")}
-                    value={imapHost}
-                    onChange={(e) => setImapHost(e.target.value)}
-                  />
+        {!vercelMode ? (
+          <TabsContent value="imap" className="space-y-6">
+            <Card className="border-border/50">
+              <CardHeader>
+                <CardTitle>{t("config.imap.title")}</CardTitle>
+                <CardDescription>
+                  {t("config.imap.description")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t("config.imap.host.label")}</Label>
+                    <Input
+                      placeholder={t("config.imap.host.placeholder")}
+                      value={imapHost}
+                      onChange={(e) => setImapHost(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("config.imap.port.label")}</Label>
+                    <Input
+                      placeholder={t("config.imap.port.placeholder")}
+                      value={imapPort}
+                      onChange={(e) => setImapPort(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>{t("config.imap.port.label")}</Label>
-                  <Input
-                    placeholder={t("config.imap.port.placeholder")}
-                    value={imapPort}
-                    onChange={(e) => setImapPort(e.target.value)}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("config.imap.username.label")}</Label>
-                  <Input
-                    placeholder={t("config.imap.username.placeholder")}
-                    value={imapUsername}
-                    onChange={(e) => setImapUsername(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t("config.imap.username.label")}</Label>
+                    <Input
+                      placeholder={t("config.imap.username.placeholder")}
+                      value={imapUsername}
+                      onChange={(e) => setImapUsername(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("config.imap.password.label")}</Label>
+                    <Input
+                      type="password"
+                      placeholder={t("config.imap.password.placeholder")}
+                      value={imapPassword}
+                      onChange={(e) => setImapPassword(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("config.imap.password.help")}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>{t("config.imap.password.label")}</Label>
-                  <Input
-                    type="password"
-                    placeholder={t("config.imap.password.placeholder")}
-                    value={imapPassword}
-                    onChange={(e) => setImapPassword(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("config.imap.password.help")}
-                  </p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("config.imap.syncInterval.label")}</Label>
-                  <Input
-                    placeholder={t("config.imap.syncInterval.placeholder")}
-                    value={imapInterval}
-                    onChange={(e) => setImapInterval(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t("config.imap.syncInterval.label")}</Label>
+                    <Input
+                      placeholder={t("config.imap.syncInterval.placeholder")}
+                      value={imapInterval}
+                      onChange={(e) => setImapInterval(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-6">
+                    <Switch checked={imapSecure} onCheckedChange={setImapSecure} />
+                    <Label>{t("config.imap.secure")}</Label>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 pt-6">
-                  <Switch checked={imapSecure} onCheckedChange={setImapSecure} />
-                  <Label>{t("config.imap.secure")}</Label>
-                </div>
-              </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button onClick={saveImapConfig} disabled={saving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? t("config.imap.save.saving") : t("config.imap.save.button")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <div className="flex gap-2 pt-4">
+                  <Button onClick={saveImapConfig} disabled={saving}>
+                    <Save className="h-4 w-4 mr-2" />
+                    {saving ? t("config.imap.save.saving") : t("config.imap.save.button")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );

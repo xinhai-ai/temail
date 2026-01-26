@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 // Maximum raw content size to return (1MB)
 const MAX_RAW_CONTENT_SIZE = 1 * 1024 * 1024;
@@ -10,6 +11,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

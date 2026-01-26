@@ -3,11 +3,16 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/rbac";
 import { syncImapDomain, isImapServiceEnabled } from "@/lib/imap-client";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

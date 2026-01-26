@@ -1,3 +1,5 @@
+import { isVercelDeployment } from "@/lib/deployment/server";
+
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 function getImapServiceUrl(): string {
@@ -133,6 +135,7 @@ export async function syncAllImapDomains(): Promise<ImapSyncResult> {
 }
 
 export function isImapServiceEnabled(): boolean {
+  if (isVercelDeployment()) return false;
   // Check if the IMAP service should be used instead of embedded service
   return process.env.IMAP_SERVICE_ENABLED === "1";
 }

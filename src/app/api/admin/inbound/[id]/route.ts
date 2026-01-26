@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 export async function GET(
   request: NextRequest,
@@ -26,12 +27,15 @@ export async function GET(
     return NextResponse.json({ error: "Inbound email not found" }, { status: 404 });
   }
 
+  const vercelMode = isVercelDeployment();
+
   // Exclude rawContent from response, but indicate if it's available
-  const { rawContent, ...emailWithoutRawContent } = inboundEmail;
+  const { rawContent, rawContentPath, ...emailWithoutRawContent } = inboundEmail;
   const response = {
     ...emailWithoutRawContent,
     // Set rawContent to true if available (either in DB or file)
-    rawContent: rawContent || inboundEmail.rawContentPath ? true : undefined,
+    ...(vercelMode ? {} : { rawContentPath }),
+    rawContent: vercelMode ? undefined : rawContent || rawContentPath ? true : undefined,
   };
 
   return NextResponse.json(response);

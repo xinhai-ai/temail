@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Info, Settings, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 const DEFAULT_AI_CLASSIFIER_PROMPT = `You are an email classification assistant. Analyze the email content and classify it into one of the following categories:
 
@@ -102,6 +103,7 @@ export default function AdminSettingsPage() {
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckResponse | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const t = useTranslations("admin");
+  const vercelMode = isVercelDeployment();
 
   const setValue = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -383,7 +385,7 @@ export default function AdminSettingsPage() {
             <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="registration">{t("settings.tabs.registration")}</TabsTrigger>
           <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
-          <TabsTrigger value="smtp">{t("settings.tabs.smtp")}</TabsTrigger>
+          {!vercelMode && <TabsTrigger value="smtp">{t("settings.tabs.smtp")}</TabsTrigger>}
           <TabsTrigger value="ai">{t("settings.tabs.ai")}</TabsTrigger>
           <TabsTrigger value="workflow">{t("settings.tabs.workflow")}</TabsTrigger>
         </TabsList>
@@ -663,39 +665,41 @@ export default function AdminSettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="smtp">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                {t("settings.smtp.cardTitle")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>{t("settings.smtp.secure.label")}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t("settings.smtp.secure.help")}
-                  </p>
+        {!vercelMode && (
+          <TabsContent value="smtp">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  {t("settings.smtp.cardTitle")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>{t("settings.smtp.secure.label")}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {t("settings.smtp.secure.help")}
+                    </p>
+                  </div>
+                  <Switch checked={smtpSecure} onCheckedChange={setSmtpSecure} />
                 </div>
-                <Switch checked={smtpSecure} onCheckedChange={setSmtpSecure} />
-              </div>
 
-              {smtpItems.map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <Label>{t(item.labelKey)}</Label>
-                  <Input
-                    placeholder={item.placeholder}
-                    value={values[item.key] || ""}
-                    type={item.secret ? "password" : "text"}
-                    onChange={(e) => setValue(item.key, e.target.value)}
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                {smtpItems.map((item) => (
+                  <div key={item.key} className="space-y-2">
+                    <Label>{t(item.labelKey)}</Label>
+                    <Input
+                      placeholder={item.placeholder}
+                      value={values[item.key] || ""}
+                      type={item.secret ? "password" : "text"}
+                      onChange={(e) => setValue(item.key, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="ai">
           <div className="space-y-6">

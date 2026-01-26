@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connectRealtime } from "@/lib/realtime/client";
+import { isVercelDeployment } from "@/lib/deployment/public";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +17,7 @@ import { PreviewPanel } from "./_components/PreviewPanel";
 import type { Domain, EmailDetail, EmailListItem, Mailbox, MailboxGroup, Tag } from "./types";
 
 export default function InboxPage() {
+  const vercelMode = isVercelDeployment();
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
   const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
@@ -566,6 +568,8 @@ export default function InboxPage() {
   };
 
 	  useEffect(() => {
+	    if (vercelMode) return;
+
 	    const disconnect = connectRealtime({
 	      onEvent: (event) => {
 	        if (event.type === "email.created") {
@@ -700,7 +704,19 @@ export default function InboxPage() {
 	    });
 
 	    return disconnect;
-	  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize, t, updateMailboxById]);
+	  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize, t, updateMailboxById, vercelMode]);
+
+  useEffect(() => {
+    if (!vercelMode) return;
+    if (!emailsPageSizeLoaded) return;
+
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      setEmailsRefreshKey((k) => k + 1);
+    }, 15_000);
+
+    return () => clearInterval(interval);
+  }, [emailSearch, emailsPageSizeLoaded, selectedMailboxId, selectedTagId, statusFilter, vercelMode]);
 
   useEffect(() => {
     setSelectedEmailIds([]);

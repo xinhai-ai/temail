@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { readJsonBody } from "@/lib/request";
+import { isVercelDeployment } from "@/lib/deployment/server";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 import { rateLimit } from "@/lib/api-rate-limit";
 import { getTelegramBotToken } from "@/services/telegram/bot-api";
@@ -63,6 +64,10 @@ export async function POST(req: NextRequest) {
       config: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
       email: TestEmailData;
     };
+
+    if (isVercelDeployment() && type === "forward:email") {
+      return NextResponse.json({ error: "SMTP forwarding is disabled in this deployment" }, { status: 404 });
+    }
 
     // Build template variables
     const vars: Record<string, unknown> = {

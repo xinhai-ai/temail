@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { verifyDkim, type DkimUiResult } from "@/lib/email/dkim";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 const DKIM_CACHE_TTL_MS = 5 * 60_000;
 const DKIM_CACHE_MAX_ENTRIES = 500;
@@ -46,6 +47,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

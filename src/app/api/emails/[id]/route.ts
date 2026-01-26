@@ -6,6 +6,7 @@ import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { getRestoreStatusForTrash, moveOwnedEmailToTrash } from "@/services/email-trash";
 import { Prisma } from "@prisma/client";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 const updateSchema = z.object({
   status: z.enum(["UNREAD", "READ", "ARCHIVED", "DELETED"]).optional(),
@@ -48,16 +49,19 @@ export async function GET(
     return NextResponse.json({ error: "Email not found" }, { status: 404 });
   }
 
+  const vercelMode = isVercelDeployment();
+
   // For lazy loading: exclude rawContent from response, but indicate if it's available
   // - If rawContentPath exists: raw content is in file storage
   // - If only rawContent exists (legacy): keep a flag so frontend knows raw is available
-  const { rawContent, emailTags, ...emailWithoutRawContent } = email;
+  const { rawContent, rawContentPath, emailTags, ...emailWithoutRawContent } = email;
   const response = {
     ...emailWithoutRawContent,
     tags: emailTags.map((et) => et.tag),
+    ...(vercelMode ? {} : { rawContentPath }),
     // For backward compatibility: if no rawContentPath but rawContent exists,
     // set rawContent to true (as a flag) so frontend knows to fetch from /raw
-    rawContent: !email.rawContentPath && rawContent ? true : undefined,
+    rawContent: vercelMode ? undefined : !rawContentPath && rawContent ? true : undefined,
   };
 
   if (email.status === "UNREAD") {

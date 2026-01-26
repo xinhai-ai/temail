@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 const updateSchema = z.object({
   name: z.string().optional(),
@@ -78,6 +79,13 @@ export async function PATCH(
 
   try {
     const data = updateSchema.parse(bodyResult.data);
+
+    if (isVercelDeployment() && data.sourceType === "IMAP") {
+      return NextResponse.json(
+        { error: "IMAP is disabled in this deployment mode" },
+        { status: 400 }
+      );
+    }
 
     const domain = await prisma.domain.updateMany({
       where: { id },

@@ -4,6 +4,7 @@ import { DragEvent, useState } from "react";
 import { cn } from "@/lib/utils";
 import { NODE_DEFINITIONS, NodeType } from "@/lib/workflow/types";
 import { useTranslations } from "next-intl";
+import { isVercelDeployment } from "@/lib/deployment/public";
 import {
   Mail,
   Clock,
@@ -100,6 +101,7 @@ interface NodePaletteProps {
 
 export function NodePalette({ collapsed = false }: NodePaletteProps) {
   const t = useTranslations("workflows");
+  const vercelMode = isVercelDeployment();
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     trigger: true,
     condition: true,
@@ -122,6 +124,7 @@ export function NodePalette({ collapsed = false }: NodePaletteProps) {
 
   const categories = categoryTypes.map((c) => ({
     ...c,
+    types: vercelMode ? c.types.filter((type) => type !== "forward:email") : c.types,
     label: t(`nodePalette.categories.${c.id}`),
   }));
 

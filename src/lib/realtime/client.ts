@@ -1,6 +1,7 @@
 "use client";
 
 import type { RealtimeEvent } from "@/lib/realtime/types";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 type RealtimeHandlers = {
   onReady?: () => void;
@@ -10,6 +11,7 @@ type RealtimeHandlers = {
 
 export function connectRealtime(handlers: RealtimeHandlers) {
   if (typeof window === "undefined") return () => {};
+  if (isVercelDeployment()) return () => {};
 
   const source = new EventSource("/api/realtime");
 

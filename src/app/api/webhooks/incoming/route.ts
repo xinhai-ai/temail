@@ -7,6 +7,7 @@ import { readJsonBody } from "@/lib/request";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { getStorage, generateAttachmentPath, generateRawContentPath, getMaxAttachmentSize } from "@/lib/storage";
 import { simpleParser, type Attachment } from "mailparser";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 function extractEmailAddress(value: unknown) {
   if (typeof value !== "string") return null;
@@ -106,6 +107,7 @@ async function processAttachments(
 
 export async function POST(request: NextRequest) {
   try {
+    const vercelMode = isVercelDeployment();
     const ip = getClientIp(request) || "unknown";
     const limited = rateLimit(`webhook-incoming:${ip}`, { limit: 600, windowMs: 60_000 });
     if (!limited.allowed) {
@@ -230,24 +232,26 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const receivedAt = parsedRaw?.date ? new Date(parsedRaw.date) : now;
 
-    const rawContent = providedRaw
-      ? providedRaw
-      : JSON.stringify({
-          to,
-          from,
-          subject: normalizedSubject,
-          text: textBody,
-          html: htmlBody,
-          messageId: effectiveMessageId,
-          ...(parsedHeaders.length ? { headers: parsedHeaders } : {}),
-        });
+    const rawContent = !vercelMode
+      ? (providedRaw
+          ? providedRaw
+          : JSON.stringify({
+              to,
+              from,
+              subject: normalizedSubject,
+              text: textBody,
+              html: htmlBody,
+              messageId: effectiveMessageId,
+              ...(parsedHeaders.length ? { headers: parsedHeaders } : {}),
+            }))
+      : null;
 
     // Generate a unique ID for file storage
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
     // Save raw content to file
     let rawContentPath: string | undefined;
-    if (rawContent) {
+    if (rawContent && !vercelMode) {
       try {
         const storage = getStorage();
         rawContentPath = generateRawContentPath(tempId, receivedAt);
@@ -301,7 +305,9 @@ export async function POST(request: NextRequest) {
     }
 
     const attachmentRecords = parsedRaw
-      ? await processAttachments(parsedRaw.attachments || [], tempId, receivedAt)
+      ? vercelMode
+        ? []
+        : await processAttachments(parsedRaw.attachments || [], tempId, receivedAt)
       : [];
 
     const email = await prisma.email.create({

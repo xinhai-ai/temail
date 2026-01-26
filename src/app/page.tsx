@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Check, FileText, Forward, Globe, Inbox, Mail, Menu, Shield, Zap } from "lucide-react";
 import { getRegistrationMode } from "@/lib/registration";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function HomePage() {
     getTranslations("auth"),
   ]);
   const canRegister = mode !== "closed";
+  const vercelMode = isVercelDeployment();
   const isAuthed = Boolean(session);
 
   const primaryCta = isAuthed
@@ -87,11 +89,15 @@ export default async function HomePage() {
       q: tHome("faqSection.items.selfHosted.q"),
       a: tHome("faqSection.items.selfHosted.a"),
     },
-    {
-      key: "imap",
-      q: tHome("faqSection.items.imap.q"),
-      a: tHome("faqSection.items.imap.a"),
-    },
+    ...(!vercelMode
+      ? [
+          {
+            key: "imap",
+            q: tHome("faqSection.items.imap.q"),
+            a: tHome("faqSection.items.imap.a"),
+          },
+        ]
+      : []),
     {
       key: "registration",
       q: tHome("faqSection.items.registration.q"),
@@ -356,7 +362,7 @@ export default async function HomePage() {
 	                      <div className="grid grid-cols-2 gap-3">
 	                        <div className="rounded-xl border border-border/60 bg-card/40 p-3">
 	                          <div className="text-xs text-muted-foreground">{tHome("preview.forward")}</div>
-	                          <div className="mt-1 text-sm font-medium">SMTP</div>
+	                          <div className="mt-1 text-sm font-medium">{vercelMode ? "Webhook" : "SMTP"}</div>
 	                        </div>
 	                        <div className="rounded-xl border border-border/60 bg-card/40 p-3">
 	                          <div className="text-xs text-muted-foreground">{tHome("preview.workflow")}</div>

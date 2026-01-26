@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useWorkflowStore, selectSelectedNode } from "@/lib/workflow/store";
+import { isVercelDeployment } from "@/lib/deployment/public";
 import {
   NODE_DEFINITIONS,
   NodeType,
@@ -58,6 +59,7 @@ type Translator = (key: string, values?: Record<string, string | number | Date>)
 
 export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProps) {
   const t = useTranslations("workflows");
+  const vercelMode = isVercelDeployment();
   const selectedNode = useWorkflowStore(selectSelectedNode);
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const deleteNode = useWorkflowStore((s) => s.deleteNode);
@@ -150,7 +152,7 @@ export function NodeConfigPanel({ mailboxes = [], onClose }: NodeConfigPanelProp
       {/* Footer */}
       <div className="p-3 border-t flex-shrink-0 space-y-2">
         {/* 为转发节点显示测试按钮 */}
-        {selectedNode.type.startsWith("forward:") && (
+        {selectedNode.type.startsWith("forward:") && !(vercelMode && selectedNode.type === "forward:email") && (
           <ForwardTestButton
             nodeType={selectedNode.type as NodeType}
             nodeData={data as never}

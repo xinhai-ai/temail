@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 interface InboundEmail {
   id: string;
@@ -33,6 +34,7 @@ export default function AdminInboundEmailDetailPage() {
   const id = params.id as string;
   const router = useRouter();
   const t = useTranslations("admin");
+  const vercelMode = isVercelDeployment();
 
   const [inboundEmail, setInboundEmail] = useState<InboundEmail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,7 +123,7 @@ export default function AdminInboundEmailDetailPage() {
     );
   }
 
-  const hasRawContent = inboundEmail.rawContent || inboundEmail.rawContentPath;
+  const hasRawContent = !vercelMode && (inboundEmail.rawContent || inboundEmail.rawContentPath);
 
   return (
     <div className="space-y-6">

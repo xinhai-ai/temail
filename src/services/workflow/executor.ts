@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
+import { isVercelDeployment } from "@/lib/deployment/server";
 import type {
   WorkflowNode,
   ExecutionContext,
@@ -772,6 +773,9 @@ async function executeForwardEmail(
   context: ExecutionContext
 ): Promise<boolean> {
   if (!context.email) return false;
+  if (isVercelDeployment()) {
+    throw new Error("SMTP forwarding is disabled in Vercel deployment mode");
+  }
 
   const templateCtx = buildTemplateContext(context);
   const subject = data.template?.subject

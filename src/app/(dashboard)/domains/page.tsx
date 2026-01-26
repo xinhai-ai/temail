@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Globe, Trash2, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 interface Domain {
   id: string;
@@ -42,6 +43,7 @@ export default function DomainsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const t = useTranslations("domains");
+  const vercelMode = isVercelDeployment();
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
 
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -168,13 +170,17 @@ export default function DomainsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t("dialog.sourceType.label")}</Label>
-                  <Select value={sourceType} onValueChange={(v) => setSourceType(v as "IMAP" | "WEBHOOK")}>
+                  <Select
+                    value={sourceType}
+                    onValueChange={(v) => setSourceType(v as "IMAP" | "WEBHOOK")}
+                    disabled={vercelMode}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="WEBHOOK">{t("sourceType.webhook")}</SelectItem>
-                      <SelectItem value="IMAP">{t("sourceType.imap")}</SelectItem>
+                      {!vercelMode ? <SelectItem value="IMAP">{t("sourceType.imap")}</SelectItem> : null}
                     </SelectContent>
                   </Select>
                 </div>

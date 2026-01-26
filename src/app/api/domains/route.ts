@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 const domainSchema = z.object({
   name: z.string().min(1, "Domain name is required"),
@@ -48,6 +49,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const data = domainSchema.parse(bodyResult.data);
+
+    if (isVercelDeployment() && data.sourceType === "IMAP") {
+      return NextResponse.json(
+        { error: "IMAP is disabled in this deployment mode" },
+        { status: 400 }
+      );
+    }
 
     const existing = await prisma.domain.findUnique({
       where: { name: data.name },

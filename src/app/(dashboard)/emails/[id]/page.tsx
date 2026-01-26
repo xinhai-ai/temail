@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 interface Email {
   id: string;
@@ -53,6 +54,7 @@ export default function EmailDetailPage({
   const t = useTranslations("emailDetail");
   const tCommon = useTranslations("common");
   const tInbox = useTranslations("inbox");
+  const vercelMode = isVercelDeployment();
   const [email, setEmail] = useState<Email | null>(null);
   const [loading, setLoading] = useState(true);
   const [showHtml, setShowHtml] = useState(true);
@@ -150,7 +152,7 @@ export default function EmailDetailPage({
     );
   }
 
-  const hasRawContent = email.rawContent || email.rawContentPath;
+  const hasRawContent = !vercelMode && (email.rawContent || email.rawContentPath);
   const displayRawContent = rawContent || (typeof email.rawContent === "string" ? email.rawContent : null);
   const distanceLocale = locale === "zh" ? zhCN : enUS;
 
@@ -185,7 +187,7 @@ export default function EmailDetailPage({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <DkimStatusIndicator emailId={email.id} />
+              {!vercelMode ? <DkimStatusIndicator emailId={email.id} /> : null}
               <Badge variant={email.status === "UNREAD" ? "default" : "secondary"}>
                 {email.status === "UNREAD" ? tInbox("email.status.new") : tInbox("email.status.read")}
               </Badge>

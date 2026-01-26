@@ -26,6 +26,7 @@ import { ChevronDown, Copy, Download, Globe, Image as ImageIcon, ImageOff as Ima
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
+import { isVercelDeployment } from "@/lib/deployment/public";
 
 type PreviewPanelProps = {
   selectedEmailId: string | null;
@@ -109,6 +110,7 @@ export function PreviewPanel({
 }: PreviewPanelProps) {
   const locale = useLocale();
   const t = useTranslations("inbox");
+  const vercelMode = isVercelDeployment();
 
   const REMOTE_RESOURCES_WARNED_KEY = "temail.preview.remoteResourcesWarned";
   const REMOTE_RESOURCES_ALLOWED_SENDERS_KEY = "temail.preview.allowedRemoteSenders";
@@ -151,10 +153,11 @@ export function PreviewPanel({
   }, [selectedEmailId]);
 
   const previewMode: "text" | "html" | "raw" = manualPreviewMode ?? (selectedEmail?.htmlBody ? "html" : "text");
+  const effectivePreviewMode: "text" | "html" | "raw" = vercelMode && previewMode === "raw" ? "text" : previewMode;
 
   // Check if raw content is available (either in database or file)
   // rawContent can be: string (inline), true (available via API), or rawContentPath (file storage)
-  const hasRawContent = selectedEmail?.rawContent || selectedEmail?.rawContentPath;
+  const hasRawContent = !vercelMode && (selectedEmail?.rawContent || selectedEmail?.rawContentPath);
 
   const warnAboutRemoteResources = () => {
     try {
@@ -185,6 +188,7 @@ export function PreviewPanel({
   }, [allowedRemoteHosts, REMOTE_RESOURCES_ALLOWED_HOSTS_KEY]);
 
   const handleRawClick = async () => {
+    if (vercelMode) return;
     setManualPreviewMode("raw");
 
     // If raw content is already loaded from API, use it
@@ -330,11 +334,13 @@ export function PreviewPanel({
                 </h2>
               )}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <DkimStatusIndicator
-                  emailId={selectedEmailId}
-                  enabled={!loadingPreview && Boolean(selectedEmail)}
-                  deferMs={150}
-                />
+                {!vercelMode ? (
+                  <DkimStatusIndicator
+                    emailId={selectedEmailId}
+                    enabled={!loadingPreview && Boolean(selectedEmail)}
+                    deferMs={150}
+                  />
+                ) : null}
                 {loadingPreview ? (
                   <Skeleton className="h-5 w-16 rounded-full" />
                 ) : selectedEmail ? (
@@ -445,15 +451,17 @@ export function PreviewPanel({
                   >
                     {t("preview.mode.html")}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={previewMode === "raw" ? "default" : "outline"}
-                    className="h-8 px-2"
-                    onClick={handleRawClick}
-                    disabled={!hasRawContent}
-                  >
-                    {t("preview.mode.raw")}
-                  </Button>
+                  {!vercelMode ? (
+                    <Button
+                      size="sm"
+                      variant={previewMode === "raw" ? "default" : "outline"}
+                      className="h-8 px-2"
+                      onClick={handleRawClick}
+                      disabled={!hasRawContent}
+                    >
+                      {t("preview.mode.raw")}
+                    </Button>
+                  ) : null}
                 </div>
 
                 {remoteContentBlocked ? (
@@ -546,7 +554,7 @@ export function PreviewPanel({
                       allowedRemoteImageHosts={allowAllRemoteImages ? undefined : allowedRemoteHostsForMessage}
                       className="w-full h-full rounded-md border bg-background"
                     />
-                  ) : previewMode === "raw" ? (
+                  ) : effectivePreviewMode === "raw" ? (
                     <div className="h-full rounded-md border bg-muted/30 overflow-hidden flex flex-col">
                         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background/50">
                           <span className="text-xs font-medium text-muted-foreground">

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { isAdminRole } from "@/lib/rbac";
 import { triggerImapReconcile, isImapServiceEnabled } from "@/lib/imap-client";
 import { readJsonBody } from "@/lib/request";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 const imapSchema = z.object({
   host: z.string().min(1, "Host is required"),
@@ -19,6 +20,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -122,6 +127,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (isVercelDeployment()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

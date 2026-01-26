@@ -59,11 +59,14 @@ export async function POST(request: NextRequest) {
 
     const userCount = await prisma.user.count();
     const bootstrapSecret = process.env.BOOTSTRAP_SUPER_ADMIN_SECRET;
+    const bootstrapMail = process.env.BOOTSTRAP_SUPER_ADMIN_MAIL?.trim().toLowerCase();
+    const mailMatches = !bootstrapMail || bootstrapMail === email.trim().toLowerCase();
     const isBootstrap =
       userCount === 0 &&
       typeof bootstrapSecret === "string" &&
       typeof adminSecret === "string" &&
-      safeEqual(adminSecret, bootstrapSecret);
+      safeEqual(adminSecret, bootstrapSecret) &&
+      mailMatches;
 
     if (!isBootstrap) {
       const { mode, inviteCodes } = await getRegistrationSettings();
