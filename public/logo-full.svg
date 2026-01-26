@@ -1,0 +1,21 @@
+<svg width="280" height="80" viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="logoGrad" x1="0" y1="0" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF9533"/>
+            <stop offset="100%" stop-color="#DE6900"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Icon background -->
+    <rect x="4" y="4" width="72" height="72" rx="16" fill="url(#logoGrad)"/>
+
+    <!-- Simplified envelope icon -->
+    <path d="M16 24H64C66.2 24 68 25.8 68 28V56C68 58.2 66.2 60 64 60H16C13.8 60 12 58.2 12 56V28C12 25.8 13.8 24 16 24Z" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M12 28L40 46L68 28" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M40 46V60" stroke="white" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- Text: TEmail -->
+    <text x="92" y="52" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="36" font-weight="700" fill="#1f2937">
+        <tspan fill="#DE6900">T</tspan><tspan>Email</tspan>
+    </text>
+</svg>

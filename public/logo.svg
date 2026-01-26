@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- 定义渐变色 -->
+    <defs>
+        <linearGradient id="bg-gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF9533" /> <!-- Lighter tint for highlight -->
+            <stop offset="100%" stop-color="#DE6900" /> <!-- Your Brand Color rgb(222, 105, 0) -->
+        </linearGradient>
+        <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="15"/>
+            <feOffset dx="0" dy="10" result="offsetblur"/>
+            <feComponentTransfer>
+                <feFuncA type="linear" slope="0.3"/>
+            </feComponentTransfer>
+            <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+
+    <!-- 背景：圆角矩形 -->
+    <rect x="32" y="32" width="448" height="448" rx="110" fill="url(#bg-gradient)" />
+
+    <!-- 图标主体：白色 -->
+    <g filter="url(#dropShadow)">
+        <!-- 信封主体轮廓 -->
+        <path d="M128 320L256 392L384 320V192L256 264L128 192V320Z" fill="white" fill-opacity="0.2"/>
+
+        <!-- 构成 "T" 字母的信封翻盖和中心线条 -->
+        <!-- 顶部横条 (T的顶部) -->
+        <path d="M100 160H412C425.255 160 436 170.745 436 184V352C436 365.255 425.255 376 412 376H100C86.7452 376 76 365.255 76 352V184C76 170.745 86.7452 160 100 160Z" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+        <!-- 内部线条，形成信封结构同时强化 "T" 的竖线视觉 -->
+        <path d="M76 184L256 312L436 184" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M256 312V376" stroke="white" stroke-width="40" stroke-linecap="round"/>
+    </g>
+</svg>

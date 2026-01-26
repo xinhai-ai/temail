@@ -18,7 +18,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "TEmail",
-  description: "Temporary email service",
+  description: "Self-hosted inbound email pipeline",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/logo.svg", sizes: "512x512", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default async function RootLayout({
