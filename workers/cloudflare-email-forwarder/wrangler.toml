@@ -1,0 +1,14 @@
+name = "temail-email-forwarder"
+main = "src/index.ts"
+compatibility_date = "2026-01-26"
+
+# Environment variables (set these in Cloudflare dashboard or here for dev):
+# [vars]
+# TEMAIL_WEBHOOK_URL = "https://your-app.vercel.app/api/webhooks/incoming"
+# TEMAIL_WEBHOOK_SECRET = "your-temail-domain-webhook-secret"
+# TEMAIL_WEBHOOK_SECRETS = "{\"example.com\":\"sk_xxx\"}"
+# TEMAIL_WEBHOOK_TIMEOUT_MS = "10000"
+# TEMAIL_MAX_TEXT_CHARS = "200000"
+# TEMAIL_MAX_HTML_CHARS = "200000"
+# TEMAIL_FALLBACK_FORWARD_TO = "backup@example.com"
+
