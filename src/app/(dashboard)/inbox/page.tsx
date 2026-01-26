@@ -1677,6 +1677,7 @@ export default function InboxPage() {
               onStarMailbox={handleStarMailbox}
               onRequestEditMailboxNote={handleOpenEditMailboxNote}
               onMoveMailboxToGroup={handleMoveMailboxToGroup}
+              onMarkMailboxRead={handleMarkMailboxRead}
               onRequestDeleteMailbox={handleDeleteMailbox}
               onCopyMailboxAddress={handleCopyMailboxAddress}
               onRefreshImap={handleRefreshImap}
@@ -1806,6 +1807,7 @@ export default function InboxPage() {
             onStarMailbox={handleStarMailbox}
             onRequestEditMailboxNote={handleOpenEditMailboxNote}
             onMoveMailboxToGroup={handleMoveMailboxToGroup}
+            onMarkMailboxRead={handleMarkMailboxRead}
             onRequestDeleteMailbox={handleDeleteMailbox}
             onCopyMailboxAddress={handleCopyMailboxAddress}
             onRefreshImap={handleRefreshImap}

@@ -50,6 +50,7 @@ import {
   FolderInput,
   FolderMinus,
   Inbox,
+  MailOpen,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -126,6 +127,7 @@ type MailboxesPanelProps = {
   onStarMailbox: (mailboxId: string, isStarred: boolean) => void;
   onRequestEditMailboxNote: (mailbox: Mailbox) => void;
   onMoveMailboxToGroup: (mailboxId: string, groupId: string | null) => void;
+  onMarkMailboxRead: (mailboxId: string) => void;
   onRequestDeleteMailbox: (mailboxId: string) => void;
   onCopyMailboxAddress: (address: string) => void;
   onRefreshImap: () => void;
@@ -192,6 +194,7 @@ export function MailboxesPanel({
   onStarMailbox,
   onRequestEditMailboxNote,
   onMoveMailboxToGroup,
+  onMarkMailboxRead,
   onRequestDeleteMailbox,
   onCopyMailboxAddress,
   onRefreshImap,
@@ -318,6 +321,13 @@ export function MailboxesPanel({
                 {t("mailboxes.context.star")}
               </>
             )}
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => onMarkMailboxRead(mailbox.id)}
+            disabled={mailbox._count.emails <= 0}
+          >
+            <MailOpen />
+            {t("mailboxes.context.markAllAsRead")}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuSub>

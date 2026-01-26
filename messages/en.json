@@ -895,6 +895,7 @@
         "editNote": "Edit Note",
         "star": "Star",
         "unstar": "Unstar",
+        "markAllAsRead": "Mark all as Read",
         "moveToGroup": "Move to Group",
         "noGroups": "No groups"
       }

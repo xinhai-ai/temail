@@ -895,6 +895,7 @@
         "editNote": "编辑备注",
         "star": "收藏",
         "unstar": "取消收藏",
+        "markAllAsRead": "将该邮箱所有邮件标为已读",
         "moveToGroup": "移动到分组",
         "noGroups": "暂无分组"
       }
