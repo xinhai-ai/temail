@@ -365,19 +365,19 @@ export function EmailsPanel({
       </div>
 
       <CardContent className="flex-1 min-h-0 overflow-y-auto p-0">
-        <div className="p-4 pt-3">
+        <div className="p-3 pt-2">
           {loadingEmails ? (
             <div className="divide-y rounded-md border">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="p-3 space-y-2">
+                <div key={i} className="p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Skeleton className="h-5 w-12 rounded-full" />
-                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-32" />
                     </div>
-                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-3 w-12" />
                   </div>
-                  <Skeleton className="h-3 w-64" />
+                  <Skeleton className="h-3 w-80 max-w-full" />
                 </div>
               ))}
             </div>
@@ -440,16 +440,16 @@ export function EmailsPanel({
                           }
                         }}
                         className={cn(
-                          "w-full text-left p-3 transition-all duration-150 group",
+                          "w-full text-left p-2.5 transition-all duration-150 group",
                           "cursor-pointer hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                           selected && "bg-accent ring-1 ring-primary/20",
                           !selected && contextOpen && "bg-accent/60 ring-1 ring-border",
                           isUnread && !active && "bg-primary/[0.03]"
                         )}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2">
                           {selectionMode ? (
-                            <div className="pt-1">
+                            <div className="pt-0.5">
                               <Checkbox
                                 checked={selectedEmailIdSet.has(email.id)}
                                 onClick={(e) => e.stopPropagation()}
@@ -463,52 +463,55 @@ export function EmailsPanel({
 
                           <DomainIconPlaceholder fromAddress={email.fromAddress} unread={isUnread} />
 
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="flex items-center justify-between gap-2">
                               <span
                                 className={cn(
-                                  "truncate",
-                                  isUnread
-                                    ? "font-semibold text-foreground"
-                                    : "font-medium text-foreground/90"
+                                  "truncate text-sm",
+                                  isUnread ? "font-semibold text-foreground" : "font-medium text-foreground/90"
                                 )}
                               >
-                                {email.subject || t("email.noSubject")}
-                              </span>
-                              {email.isStarred && (
-                                <Star className="h-4 w-4 flex-shrink-0 fill-yellow-400 text-yellow-400" />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="truncate">
                                 {email.fromName || email.fromAddress}
                               </span>
-                              <span className="text-muted-foreground/50">·</span>
-                              <span className="flex-shrink-0">
-                                {formatDistanceToNow(new Date(email.receivedAt), {
-                                  addSuffix: true,
-                                  locale: distanceLocale,
-                                })}
-                              </span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {email.isStarred ? (
+                                  <Star className="h-3.5 w-3.5 flex-shrink-0 fill-yellow-400 text-yellow-400" />
+                                ) : null}
+                                <span className="text-[11px] text-muted-foreground">
+                                  {formatDistanceToNow(new Date(email.receivedAt), {
+                                    addSuffix: true,
+                                    locale: distanceLocale,
+                                  })}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                                {email.mailbox.address.split("@")[0]}
-                              </Badge>
-                              {email.tags && email.tags.length > 0 ? (
-                                <div className="flex flex-wrap items-center gap-1">
-                                  {email.tags.slice(0, 3).map((tag) => (
-                                    <Badge key={tag.id} variant="outline" className="text-[10px] h-5 px-1.5">
-                                      {tag.name}
-                                    </Badge>
-                                  ))}
-                                  {email.tags.length > 3 && (
-                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                      +{email.tags.length - 3}
-                                    </Badge>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate text-sm">
+                                <span
+                                  className={cn(
+                                    isUnread ? "font-semibold text-foreground" : "font-medium text-foreground/90"
                                   )}
-                                </div>
-                              ) : null}
+                                >
+                                  {email.subject || t("email.noSubject")}
+                                </span>
+                                {email.snippet ? (
+                                  <span className="text-muted-foreground">
+                                    {" "}
+                                    — {email.snippet}
+                                  </span>
+                                ) : null}
+                              </span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                                  {email.mailbox.address.split("@")[0]}
+                                </Badge>
+                                {email.tags && email.tags.length > 0 ? (
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+                                    <TagIcon className="h-3 w-3 mr-0.5" />
+                                    {email.tags.length}
+                                  </Badge>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -828,7 +831,7 @@ function DomainIconPlaceholder({ fromAddress, unread }: { fromAddress: string; u
     <div className="pt-0.5 flex-shrink-0">
       <div className="relative">
         <div
-          className="h-9 w-9 rounded-md border bg-muted/40 flex items-center justify-center text-xs font-semibold text-muted-foreground"
+          className="h-8 w-8 rounded-md border bg-muted/40 flex items-center justify-center text-[11px] font-semibold text-muted-foreground"
           title={title}
         >
           {initial}

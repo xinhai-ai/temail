@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
+import { getEmailSnippetsById } from "@/lib/email/snippet";
 import prisma, { databaseType } from "@/lib/prisma";
 
 let cachedFtsAvailable: boolean | null = null;
@@ -28,6 +29,7 @@ type EmailListItem = {
   mailboxId: string;
   mailbox: { address: string };
   tags?: Array<{ id: string; name: string; color: string | null }>;
+  snippet?: string | null;
 };
 
 async function attachTags(items: EmailListItem[]) {
@@ -57,6 +59,12 @@ async function attachTags(items: EmailListItem[]) {
     ...item,
     tags: byEmail.get(item.id) || [],
   }));
+}
+
+async function attachSnippets(items: EmailListItem[]) {
+  const ids = items.map((i) => i.id);
+  const snippetsById = await getEmailSnippetsById(prisma, ids);
+  return items.map((item) => ({ ...item, snippet: snippetsById.get(item.id) ?? null }));
 }
 
 function containsCjk(input: string) {
@@ -252,7 +260,7 @@ export async function GET(request: NextRequest) {
 
           const total = Number(countRows?.[0]?.total ?? 0);
 
-          const emails = await attachTags(rows.map((row) => ({
+          const emails = await attachSnippets(await attachTags(rows.map((row) => ({
             id: row.id,
             subject: row.subject,
             fromAddress: row.fromAddress,
@@ -262,7 +270,7 @@ export async function GET(request: NextRequest) {
             receivedAt: row.receivedAt,
             mailboxId: row.mailboxId,
             mailbox: { address: row.mailboxAddress },
-          })));
+          }))));
 
           return NextResponse.json({
             emails,
@@ -351,8 +359,12 @@ export async function GET(request: NextRequest) {
         prisma.email.count({ where: fallbackWhere }),
       ]);
 
+      const emails = await attachSnippets(
+        items.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) }))
+      );
+
       return NextResponse.json({
-        emails: items.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) })),
+        emails,
         pagination: {
           mode: "page",
           page,
@@ -421,7 +433,7 @@ export async function GET(request: NextRequest) {
         const slice = hasMore ? rows.slice(0, parsed.limit) : rows;
         const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1].id : null;
 
-        const emails = await attachTags(slice.map((row) => ({
+        const emails = await attachSnippets(await attachTags(slice.map((row) => ({
           id: row.id,
           subject: row.subject,
           fromAddress: row.fromAddress,
@@ -431,7 +443,7 @@ export async function GET(request: NextRequest) {
           receivedAt: row.receivedAt,
           mailboxId: row.mailboxId,
           mailbox: { address: row.mailboxAddress },
-        })));
+        }))));
 
         return NextResponse.json({ emails, hasMore, nextCursor, mode: "fts" });
       } catch (error) {
@@ -520,8 +532,12 @@ export async function GET(request: NextRequest) {
     const slice = hasMore ? items.slice(0, parsed.limit) : items;
     const nextCursor = hasMore && slice.length > 0 ? slice[slice.length - 1].id : null;
 
+    const emails = await attachSnippets(
+      slice.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) }))
+    );
+
     return NextResponse.json({
-      emails: slice.map(({ emailTags, ...rest }) => ({ ...rest, tags: emailTags.map((et) => et.tag) })),
+      emails,
       hasMore,
       nextCursor,
       mode: databaseType === "postgresql" ? "ilike" : "fallback",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { getEmailSnippetsById } from "@/lib/email/snippet";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
@@ -74,9 +75,14 @@ export async function GET(request: NextRequest) {
 
     const hasMore = items.length > limit;
     const slice = hasMore ? items.slice(0, limit) : items;
-    const emails = slice.map(({ emailTags, ...rest }) => ({
+    const baseEmails = slice.map(({ emailTags, ...rest }) => ({
       ...rest,
       tags: emailTags.map((et) => et.tag),
+    }));
+    const snippetsById = await getEmailSnippetsById(prisma, baseEmails.map((email) => email.id));
+    const emails = baseEmails.map((email) => ({
+      ...email,
+      snippet: snippetsById.get(email.id) ?? null,
     }));
     const nextCursor = hasMore && emails.length > 0 ? emails[emails.length - 1].id : null;
 
@@ -121,10 +127,13 @@ export async function GET(request: NextRequest) {
     prisma.email.count({ where }),
   ]);
 
+  const snippetsById = await getEmailSnippetsById(prisma, emails.map((email) => email.id));
+
   return NextResponse.json({
     emails: emails.map(({ emailTags, ...rest }) => ({
       ...rest,
       tags: emailTags.map((et) => et.tag),
+      snippet: snippetsById.get(rest.id) ?? null,
     })),
     pagination: {
       mode: "page",

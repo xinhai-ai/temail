@@ -44,6 +44,7 @@ export type EmailListItem = {
   mailboxId: string;
   mailbox: { address: string };
   tags?: Tag[];
+  snippet?: string | null;
 };
 
 export type EmailDetail = EmailListItem & {
