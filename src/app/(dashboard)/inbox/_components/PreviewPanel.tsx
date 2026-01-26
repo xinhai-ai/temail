@@ -322,7 +322,11 @@ export function PreviewPanel({
                 </h2>
               )}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <DkimStatusIndicator emailId={selectedEmailId} />
+                <DkimStatusIndicator
+                  emailId={selectedEmailId}
+                  enabled={!loadingPreview && Boolean(selectedEmail)}
+                  deferMs={150}
+                />
                 {loadingPreview ? (
                   <Skeleton className="h-5 w-16 rounded-full" />
                 ) : selectedEmail ? (

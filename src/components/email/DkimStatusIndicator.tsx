@@ -28,6 +28,80 @@ const DEFAULT_LOADING: DkimUiResult = {
   summary: "DKIM: Checking...",
 };
 
+const DKIM_CLIENT_CACHE_TTL_MS = 5 * 60_000;
+const DKIM_CLIENT_CACHE_MAX_ENTRIES = 500;
+const dkimClientCache = new Map<string, { expiresAt: number; value: DkimUiResult }>();
+const dkimClientInFlight = new Map<string, Promise<DkimUiResult>>();
+
+function peekCachedClientResult(emailId: string): DkimUiResult | null {
+  const cached = dkimClientCache.get(emailId);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) return null;
+  return cached.value;
+}
+
+function getCachedClientResult(emailId: string): DkimUiResult | null {
+  const value = peekCachedClientResult(emailId);
+  if (value) return value;
+  dkimClientCache.delete(emailId);
+  return null;
+}
+
+function setCachedClientResult(emailId: string, value: DkimUiResult) {
+  const now = Date.now();
+  dkimClientCache.set(emailId, { expiresAt: now + DKIM_CLIENT_CACHE_TTL_MS, value });
+
+  if (dkimClientCache.size <= DKIM_CLIENT_CACHE_MAX_ENTRIES) return;
+
+  for (const [key, entry] of dkimClientCache) {
+    if (entry.expiresAt <= now) dkimClientCache.delete(key);
+  }
+  while (dkimClientCache.size > DKIM_CLIENT_CACHE_MAX_ENTRIES) {
+    const firstKey = dkimClientCache.keys().next().value as string | undefined;
+    if (!firstKey) break;
+    dkimClientCache.delete(firstKey);
+  }
+}
+
+async function fetchDkim(emailId: string) {
+  const cached = getCachedClientResult(emailId);
+  if (cached) return cached;
+
+  const existing = dkimClientInFlight.get(emailId);
+  if (existing) return existing;
+
+  const promise = fetch(`/api/emails/${emailId}/dkim`)
+    .then(async (res) => {
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        return {
+          status: "unknown",
+          summary: "DKIM: Unknown (failed to load)",
+          error: data?.error || `HTTP ${res.status}`,
+        } satisfies DkimUiResult;
+      }
+      return (await res.json()) as DkimUiResult;
+    })
+    .catch((err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        status: "unknown",
+        summary: "DKIM: Unknown (failed to load)",
+        error: message,
+      } satisfies DkimUiResult;
+    })
+    .then((data) => {
+      setCachedClientResult(emailId, data);
+      return data;
+    })
+    .finally(() => {
+      dkimClientInFlight.delete(emailId);
+    });
+
+  dkimClientInFlight.set(emailId, promise);
+  return promise;
+}
+
 function getIconClassName(status: DkimUiStatus) {
   if (status === "correct") return "text-green-600";
   if (status === "error") return "text-destructive";
@@ -37,47 +111,57 @@ function getIconClassName(status: DkimUiStatus) {
 export function DkimStatusIndicator({
   emailId,
   className,
+  enabled = true,
+  deferMs = 0,
 }: {
   emailId: string | null;
   className?: string;
+  enabled?: boolean;
+  deferMs?: number;
 }) {
   const [result, setResult] = useState<{ emailId: string; data: DkimUiResult } | null>(null);
 
   useEffect(() => {
-    if (!emailId) return;
+    if (!emailId || !enabled) return;
 
-    const controller = new AbortController();
+    const cached = getCachedClientResult(emailId);
+    if (cached) return;
 
-    fetch(`/api/emails/${emailId}/dkim`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          return {
-            status: "unknown",
-            summary: "DKIM: Unknown (failed to load)",
-            error: data?.error || `HTTP ${res.status}`,
-          } satisfies DkimUiResult;
-        }
-        return (await res.json()) as DkimUiResult;
-      })
-      .then((data) => {
+    let canceled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+
+    const run = () => {
+      void fetchDkim(emailId).then((data) => {
+        if (canceled) return;
         setResult({ emailId, data });
-      })
-      .catch((err) => {
-        if (controller.signal.aborted) return;
-        const message = err instanceof Error ? err.message : String(err);
-        setResult({
-          emailId,
-          data: { status: "unknown", summary: "DKIM: Unknown (failed to load)", error: message },
-        });
       });
+    };
 
-    return () => controller.abort();
-  }, [emailId]);
+    if (deferMs > 0) {
+      timerId = setTimeout(run, deferMs);
+    } else {
+      const requestIdleCallback = (globalThis as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
+        .requestIdleCallback;
+      if (typeof requestIdleCallback === "function") {
+        idleId = requestIdleCallback(run, { timeout: 750 });
+      } else {
+        timerId = setTimeout(run, 0);
+      }
+    }
+
+    return () => {
+      canceled = true;
+      if (timerId !== null) clearTimeout(timerId);
+      const cancelIdleCallback = (globalThis as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      if (idleId !== null && typeof cancelIdleCallback === "function") cancelIdleCallback(idleId);
+    };
+  }, [deferMs, emailId, enabled]);
 
   if (!emailId) return null;
 
-  const display = result?.emailId === emailId ? result.data : DEFAULT_LOADING;
+  const cachedDisplay = peekCachedClientResult(emailId);
+  const display = result?.emailId === emailId ? result.data : cachedDisplay ?? DEFAULT_LOADING;
 
   return (
     <Tooltip>
