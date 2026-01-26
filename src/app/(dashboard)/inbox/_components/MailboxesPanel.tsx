@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -202,6 +203,7 @@ export function MailboxesPanel({
   const tCommon = useTranslations("common");
   const mailboxSearchQuery = mailboxSearch.trim();
   const isSearchMode = mailboxSearchQuery.length > 0;
+  const [openContextMenuMailboxId, setOpenContextMenuMailboxId] = useState<string | null>(null);
 
   const groupNameById = new Map<string, string>();
   for (const group of groups) {
@@ -229,7 +231,8 @@ export function MailboxesPanel({
   );
 
   const renderMailboxItem = (mailbox: Mailbox, options?: { showGroupLabel?: boolean }) => {
-    const active = selectedMailboxId === mailbox.id;
+    const selected = selectedMailboxId === mailbox.id;
+    const contextOpen = openContextMenuMailboxId === mailbox.id;
     const showGroupLabel = options?.showGroupLabel === true;
     const groupLabel = showGroupLabel ? getMailboxGroupLabel(mailbox) : "";
     const meta = showGroupLabel
@@ -237,12 +240,15 @@ export function MailboxesPanel({
       : mailbox.note || "";
 
     return (
-      <ContextMenu key={mailbox.id}>
+      <ContextMenu
+        key={mailbox.id}
+        onOpenChange={(open) => setOpenContextMenuMailboxId(open ? mailbox.id : null)}
+      >
         <ContextMenuTrigger asChild>
           <div
             role="button"
             tabIndex={0}
-            aria-pressed={active}
+            aria-pressed={selected}
             onClick={() => onSelectMailbox(mailbox.id)}
             onKeyDown={(e) => {
               if (e.target !== e.currentTarget) return;
@@ -254,7 +260,7 @@ export function MailboxesPanel({
             className={cn(
               "w-full flex items-center justify-between rounded-md px-2 py-2 text-sm transition-colors",
               "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-              active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+              selected ? "bg-primary text-primary-foreground" : contextOpen ? "bg-accent" : "hover:bg-accent"
             )}
           >
             <div className="text-left min-w-0">
@@ -263,7 +269,7 @@ export function MailboxesPanel({
                 <div
                   className={cn(
                     "truncate text-xs",
-                    active ? "text-primary-foreground/80" : "text-muted-foreground"
+                    selected ? "text-primary-foreground/80" : "text-muted-foreground"
                   )}
                 >
                   {meta}
@@ -277,7 +283,7 @@ export function MailboxesPanel({
               {mailbox._count.emails > 0 && (
                 <Badge
                   variant="secondary"
-                  className={cn(active ? "bg-white/15 text-white" : "")}
+                  className={cn(selected ? "bg-white/15 text-white" : "")}
                 >
                   {mailbox._count.emails}
                 </Badge>
@@ -659,48 +665,76 @@ export function MailboxesPanel({
 
               return (
                 <div key={groupItem.key} className="space-y-1">
-                  <div className="flex items-center justify-between px-1 py-1">
-                    <button
-                      type="button"
-                      onClick={() => onToggleGroupCollapse(groupItem.key)}
-                      className="flex items-center gap-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider hover:text-muted-foreground"
-                    >
-                      {collapsed ? (
-                        <ChevronRight className="h-3 w-3" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" />
-                      )}
-                      {label}
-                    </button>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground tabular-nums">
-                        {countLabel}
-                      </span>
-                      {groupItem.group && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
-                              <Pencil />
-                              {t("mailboxes.context.rename")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
-                            >
-                              <Trash2 />
-                              {tCommon("delete")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </div>
+                  <ContextMenu>
+                    <ContextMenuTrigger asChild>
+                      <div className="flex items-center justify-between px-1 py-1">
+                        <button
+                          type="button"
+                          onClick={() => onToggleGroupCollapse(groupItem.key)}
+                          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider hover:text-muted-foreground"
+                        >
+                          {collapsed ? (
+                            <ChevronRight className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3" />
+                          )}
+                          {label}
+                        </button>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-muted-foreground tabular-nums">
+                            {countLabel}
+                          </span>
+                          {groupItem.group && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
+                                  <Pencil />
+                                  {t("mailboxes.context.rename")}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
+                                >
+                                  <Trash2 />
+                                  {tCommon("delete")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-48">
+                      <ContextMenuLabel>{label}</ContextMenuLabel>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={() => onToggleGroupCollapse(groupItem.key)}>
+                        {collapsed ? <ChevronDown /> : <ChevronRight />}
+                        {collapsed ? t("mailboxes.context.expand") : t("mailboxes.context.collapse")}
+                      </ContextMenuItem>
+                      {groupItem.group ? (
+                        <>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
+                            <Pencil />
+                            {t("mailboxes.context.rename")}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            variant="destructive"
+                            onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
+                          >
+                            <Trash2 />
+                            {tCommon("delete")}
+                          </ContextMenuItem>
+                        </>
+                      ) : null}
+                    </ContextMenuContent>
+                  </ContextMenu>
 
                   {!collapsed ? (
                     <div className="space-y-1">

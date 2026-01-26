@@ -1405,15 +1405,20 @@ export default function InboxPage() {
     }
   };
 
-	  const handleCopyMailboxAddress = (address: string) => {
-	    navigator.clipboard.writeText(address);
-	    toast.success(t("toast.clipboard.copied"));
-	  };
+  const handleCopyMailboxAddress = (address: string) => {
+    navigator.clipboard.writeText(address);
+    toast.success(t("toast.clipboard.copied"));
+  };
 
-	  const handleCopySenderAddress = (address: string) => {
-	    navigator.clipboard.writeText(address);
-	    toast.success(t("toast.clipboard.senderCopied"));
-	  };
+  const handleCopySenderAddress = (address: string) => {
+    navigator.clipboard.writeText(address);
+    toast.success(t("toast.clipboard.senderCopied"));
+  };
+
+  const handleCopyEmailSubject = (subject: string) => {
+    navigator.clipboard.writeText(subject);
+    toast.success(t("toast.clipboard.copied"));
+  };
 
   const handleMarkEmailRead = async (emailId: string) => {
     const email = emails.find((e) => e.id === emailId);
@@ -1434,6 +1439,30 @@ export default function InboxPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "READ" }),
+    }).catch(() => {
+      // ignore
+    });
+  };
+
+  const handleMarkEmailUnread = async (emailId: string) => {
+    const email = emails.find((e) => e.id === emailId);
+    if (!email || email.status !== "READ") return;
+
+    // Optimistic UI update
+    setEmails((prev) => prev.map((e) => (e.id === emailId ? { ...e, status: "UNREAD" } : e)));
+    setSelectedEmail((prev) => (prev?.id === emailId ? { ...prev, status: "UNREAD" } : prev));
+
+    // Increment unread count for the mailbox
+    updateMailboxById(email.mailboxId, (mailbox) => ({
+      ...mailbox,
+      _count: { emails: mailbox._count.emails + 1 },
+    }));
+
+    // Persist
+    fetch(`/api/emails/${emailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "UNREAD" }),
     }).catch(() => {
       // ignore
     });
@@ -1609,9 +1638,12 @@ export default function InboxPage() {
               onStarEmail={handleStarEmail}
               onDeleteEmail={handleDeleteEmail}
               onMarkEmailRead={handleMarkEmailRead}
+              onMarkEmailUnread={handleMarkEmailUnread}
               onArchiveEmail={handleArchiveEmail}
               onUnarchiveEmail={handleUnarchiveEmail}
               onCopySenderAddress={handleCopySenderAddress}
+              onCopyMailboxAddress={handleCopyMailboxAddress}
+              onCopyEmailSubject={handleCopyEmailSubject}
               onPrevPage={goPrevEmailsPage}
               onNextPage={goNextEmailsPage}
               onStatusFilterChange={handleStatusFilterChange}
@@ -1728,9 +1760,12 @@ export default function InboxPage() {
             onStarEmail={handleStarEmail}
             onDeleteEmail={handleDeleteEmail}
             onMarkEmailRead={handleMarkEmailRead}
+            onMarkEmailUnread={handleMarkEmailUnread}
             onArchiveEmail={handleArchiveEmail}
             onUnarchiveEmail={handleUnarchiveEmail}
             onCopySenderAddress={handleCopySenderAddress}
+            onCopyMailboxAddress={handleCopyMailboxAddress}
+            onCopyEmailSubject={handleCopyEmailSubject}
             onPrevPage={goPrevEmailsPage}
             onNextPage={goNextEmailsPage}
             onStatusFilterChange={handleStatusFilterChange}

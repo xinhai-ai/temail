@@ -66,9 +66,12 @@ type EmailsPanelProps = {
   onStarEmail: (emailId: string, isStarred: boolean) => void;
   onDeleteEmail: (emailId: string) => void;
   onMarkEmailRead: (emailId: string) => void;
+  onMarkEmailUnread: (emailId: string) => void;
   onArchiveEmail: (emailId: string) => void;
   onUnarchiveEmail: (emailId: string) => void;
   onCopySenderAddress: (address: string) => void;
+  onCopyMailboxAddress: (address: string) => void;
+  onCopyEmailSubject: (subject: string) => void;
   onPrevPage: () => void;
   onNextPage: () => void;
   onStatusFilterChange: (filter: EmailStatusFilter) => void;
@@ -106,9 +109,12 @@ export function EmailsPanel({
   onStarEmail,
   onDeleteEmail,
   onMarkEmailRead,
+  onMarkEmailUnread,
   onArchiveEmail,
   onUnarchiveEmail,
   onCopySenderAddress,
+  onCopyMailboxAddress,
+  onCopyEmailSubject,
   onPrevPage,
   onNextPage,
   onStatusFilterChange,
@@ -131,6 +137,7 @@ export function EmailsPanel({
   const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
   const [addTagEmailId, setAddTagEmailId] = useState<string | null>(null);
   const [addTagName, setAddTagName] = useState("");
+  const [openContextMenuEmailId, setOpenContextMenuEmailId] = useState<string | null>(null);
 
   useEffect(() => {
     setEmailSearchInput(emailSearch);
@@ -384,16 +391,21 @@ export function EmailsPanel({
           ) : (
             <div className="divide-y rounded-md border">
               {emails.map((email) => {
-                const active = selectedEmailId === email.id;
+                const selected = selectedEmailId === email.id;
+                const contextOpen = openContextMenuEmailId === email.id;
+                const active = selected || contextOpen;
                 const isUnread = email.status === "UNREAD";
                 const emailTagIds = new Set((email.tags || []).map((t) => t.id));
                 return (
-                  <ContextMenu key={email.id}>
+                  <ContextMenu
+                    key={email.id}
+                    onOpenChange={(open) => setOpenContextMenuEmailId(open ? email.id : null)}
+                  >
                     <ContextMenuTrigger asChild>
                       <div
                         role="button"
                         tabIndex={0}
-                        aria-pressed={active}
+                        aria-pressed={selected}
                         onClick={() => onSelectEmail(email)}
                         onKeyDown={(e) => {
                           if (e.target !== e.currentTarget) return;
@@ -405,7 +417,8 @@ export function EmailsPanel({
                         className={cn(
                           "w-full text-left p-3 transition-all duration-150 group",
                           "cursor-pointer hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                          active && "bg-accent ring-1 ring-primary/20",
+                          selected && "bg-accent ring-1 ring-primary/20",
+                          !selected && contextOpen && "bg-accent/60 ring-1 ring-border",
                           isUnread && !active && "bg-primary/[0.03]"
                         )}
                       >
@@ -491,6 +504,18 @@ export function EmailsPanel({
                         <Copy />
                         {t("emails.context.copySender")}
                       </ContextMenuItem>
+                      <ContextMenuItem
+                        onClick={() => onCopyEmailSubject(email.subject || t("email.noSubject"))}
+                      >
+                        <Copy />
+                        {t("emails.context.copySubject")}
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        onClick={() => onCopyMailboxAddress(email.mailbox.address)}
+                      >
+                        <Copy />
+                        {t("emails.context.copyMailbox")}
+                      </ContextMenuItem>
                       <ContextMenuSub>
                         <ContextMenuSubTrigger>
                           <TagIcon />
@@ -530,14 +555,21 @@ export function EmailsPanel({
                           </ContextMenuItem>
                         </ContextMenuSubContent>
                       </ContextMenuSub>
-                      {isUnread && (
+                      {isUnread ? (
                         <ContextMenuItem
                           onClick={() => onMarkEmailRead(email.id)}
                         >
                           <MailOpen />
                           {t("emails.context.markAsRead")}
                         </ContextMenuItem>
-                      )}
+                      ) : email.status === "READ" ? (
+                        <ContextMenuItem
+                          onClick={() => onMarkEmailUnread(email.id)}
+                        >
+                          <Mail />
+                          {t("emails.context.markAsUnread")}
+                        </ContextMenuItem>
+                      ) : null}
                       <ContextMenuItem
                         onClick={() => onStarEmail(email.id, email.isStarred)}
                       >
