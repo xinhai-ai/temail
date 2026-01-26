@@ -285,25 +285,32 @@ export function PreviewPanel({
 
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
-      <CardContent className="p-4 space-y-3 flex-1 overflow-auto">
-	        {!selectedEmailId ? (
-	          <EmptyState
-	            icon={<Mail className="h-8 w-8 text-muted-foreground" />}
-	            title={t("preview.empty.title")}
-	            description={t("preview.empty.description")}
-	          />
-	        ) : (
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
+      <CardContent className="p-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+        {!selectedEmailId ? (
+          <div className="flex-1 flex items-center justify-center">
+            <EmptyState
+              icon={<Mail className="h-8 w-8 text-muted-foreground" />}
+              title={t("preview.empty.title")}
+              description={t("preview.empty.description")}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col flex-1 min-h-0 gap-2">
+            <div className="flex items-center justify-between gap-2 flex-shrink-0">
               {loadingPreview ? (
-                <Skeleton className="h-6 w-3/4" />
-	              ) : selectedEmail ? (
-	                <h2 className="text-lg font-semibold leading-tight flex-1">
-	                  {selectedEmail.subject || t("email.noSubject")}
-	                </h2>
-	              ) : (
-	                <h2 className="text-lg font-semibold leading-tight flex-1">{t("preview.emailNotFound")}</h2>
-	              )}
+                <Skeleton className="h-5 w-3/4" />
+              ) : selectedEmail ? (
+                <h2
+                  className="text-base font-semibold leading-snug flex-1 min-w-0 truncate"
+                  title={selectedEmail.subject || t("email.noSubject")}
+                >
+                  {selectedEmail.subject || t("email.noSubject")}
+                </h2>
+              ) : (
+                <h2 className="text-base font-semibold leading-snug flex-1 min-w-0 truncate">
+                  {t("preview.emailNotFound")}
+                </h2>
+              )}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <DkimStatusIndicator emailId={selectedEmailId} />
                 {loadingPreview ? (
@@ -335,170 +342,181 @@ export function PreviewPanel({
                 </div>
                 <Skeleton className="h-[400px] w-full rounded-md" />
               </div>
-	            ) : !selectedEmail ? (
-	              <div className="text-sm text-muted-foreground">{t("preview.emailNotFound")}</div>
-	            ) : (
+            ) : !selectedEmail ? (
+              <div className="text-sm text-muted-foreground">{t("preview.emailNotFound")}</div>
+            ) : (
               <>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-muted/30 flex-shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs flex-shrink-0">
                     {(selectedEmail.fromName || selectedEmail.fromAddress || "?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">
-                      {selectedEmail.fromName || selectedEmail.fromAddress}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {selectedEmail.fromAddress}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {selectedEmail.fromName || selectedEmail.fromAddress}
+                      </p>
+                      {selectedEmail.fromName ? (
+                        <p className="text-xs text-muted-foreground truncate">{selectedEmail.fromAddress}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0 text-[11px] text-muted-foreground">
+                      <span className="truncate">
+                        <span className="text-muted-foreground/60">{t("preview.to")}:</span>{" "}
+                        <span className="font-mono">{selectedEmail.toAddress}</span>
+                      </span>
+                      <span className="truncate">
+                        <span className="text-muted-foreground/60">{t("preview.mailbox")}:</span>{" "}
+                        <span className="font-mono">{selectedEmail.mailbox.address}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground tabular-nums flex-shrink-0">
+                    <p>
+                      {new Date(selectedEmail.receivedAt).toLocaleDateString(locale)}{" "}
+                      {new Date(selectedEmail.receivedAt).toLocaleTimeString(locale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </p>
                   </div>
-	                  <div className="text-right text-xs text-muted-foreground">
-	                    <p>{new Date(selectedEmail.receivedAt).toLocaleDateString(locale)}</p>
-	                    <p>
-	                      {new Date(selectedEmail.receivedAt).toLocaleTimeString(locale, {
-	                        hour: "2-digit",
-	                        minute: "2-digit",
-	                      })}
-	                    </p>
-	                  </div>
                 </div>
 
-	                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-	                  <span>
-	                    <span className="text-muted-foreground/60">{t("preview.to")}:</span>{" "}
-	                    <span className="font-mono">{selectedEmail.toAddress}</span>
-	                  </span>
-	                  <span>
-	                    <span className="text-muted-foreground/60">{t("preview.mailbox")}:</span>{" "}
-	                    <span className="font-mono">{selectedEmail.mailbox.address}</span>
-	                  </span>
-	                </div>
-
                 {selectedEmail.tags && selectedEmail.tags.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {selectedEmail.tags.map((tag) => (
-                      <Badge key={tag.id} variant="secondary">
+                  <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
+                    {selectedEmail.tags.slice(0, 4).map((tag) => (
+                      <Badge key={tag.id} variant="secondary" className="text-[10px] h-5 px-1.5">
                         {tag.name}
                       </Badge>
                     ))}
+                    {selectedEmail.tags.length > 4 ? (
+                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                        +{selectedEmail.tags.length - 4}
+                      </Badge>
+                    ) : null}
                   </div>
                 ) : null}
 
-	                <div className="flex items-center gap-2">
-	                  <Button
-	                    size="sm"
-	                    variant={previewMode === "text" ? "default" : "outline"}
-	                    onClick={() => setManualPreviewMode("text")}
-	                  >
-	                    {t("preview.mode.text")}
-	                  </Button>
-	                  <Button
-	                    size="sm"
-	                    variant={previewMode === "html" ? "default" : "outline"}
-	                    onClick={() => setManualPreviewMode("html")}
-	                    disabled={!selectedEmail.htmlBody}
-	                  >
-	                    {t("preview.mode.html")}
-	                  </Button>
-	                  <Button
-	                    size="sm"
-	                    variant={previewMode === "raw" ? "default" : "outline"}
-	                    onClick={handleRawClick}
-	                    disabled={!hasRawContent}
-	                  >
-	                    {t("preview.mode.raw")}
-	                  </Button>
-	                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button
+                    size="sm"
+                    variant={previewMode === "text" ? "default" : "outline"}
+                    className="h-8 px-2"
+                    onClick={() => setManualPreviewMode("text")}
+                  >
+                    {t("preview.mode.text")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewMode === "html" ? "default" : "outline"}
+                    className="h-8 px-2"
+                    onClick={() => setManualPreviewMode("html")}
+                    disabled={!selectedEmail.htmlBody}
+                  >
+                    {t("preview.mode.html")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewMode === "raw" ? "default" : "outline"}
+                    className="h-8 px-2"
+                    onClick={handleRawClick}
+                    disabled={!hasRawContent}
+                  >
+                    {t("preview.mode.raw")}
+                  </Button>
+                </div>
 
-                  {remoteContentBlocked ? (
-                    <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-                      <div className="flex items-start gap-2 min-w-0">
-                        <ImageOffIcon className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                        <p className="text-sm text-muted-foreground leading-snug">
-                          {t("preview.remoteContent.blocked")}
-                        </p>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button type="button" size="sm" variant="outline" className="flex-shrink-0">
-                            {t("preview.remoteContent.actions.show")}
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64">
-                          <DropdownMenuLabel>{t("preview.remoteContent.menuTitle")}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => {
-                              warnAboutRemoteResources();
-                              setAllowRemoteForMessage(true);
-                            }}
-                          >
-                            <ImageIcon />
-                            {t("preview.remoteContent.actions.showOnce")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              if (!senderKey) return;
-                              warnAboutRemoteResources();
-                              setAllowedRemoteSenders((prev) => {
-                                const next = new Set(prev);
-                                next.add(senderKey);
-                                return Array.from(next).sort((a, b) => a.localeCompare(b));
-                              });
-                            }}
-                            disabled={!senderKey}
-                          >
-                            <Mail />
-                            {t("preview.remoteContent.actions.allowSender")}
-                          </DropdownMenuItem>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger disabled={remoteImageHosts.length === 0}>
-                              <Globe />
-                              {t("preview.remoteContent.actions.allowDomain")}
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="w-56">
-                              {remoteImageHosts.length === 0 ? (
-                                <DropdownMenuItem disabled>
-                                  {t("preview.remoteContent.noDomains")}
-                                </DropdownMenuItem>
-                              ) : (
-                                remoteImageHosts.map((host) => (
-                                  <DropdownMenuCheckboxItem
-                                    key={host}
-                                    checked={allowedRemoteHostsSet.has(host)}
-                                    onSelect={(e) => e.preventDefault()}
-                                    onCheckedChange={(checked) => {
-                                      warnAboutRemoteResources();
-                                      setAllowedRemoteHosts((prev) => {
-                                        const next = new Set(prev);
-                                        if (checked) {
-                                          next.add(host);
-                                        } else {
-                                          next.delete(host);
-                                        }
-                                        return Array.from(next).sort((a, b) => a.localeCompare(b));
-                                      });
-                                    }}
-                                  >
-                                    {host}
-                                  </DropdownMenuCheckboxItem>
-                                ))
-                              )}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {remoteContentBlocked ? (
+                  <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-2 py-1.5 flex-shrink-0">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <ImageOffIcon className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        {t("preview.remoteContent.blocked")}
+                      </p>
                     </div>
-                  ) : null}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" size="sm" variant="outline" className="h-7 px-2 flex-shrink-0">
+                          {t("preview.remoteContent.actions.show")}
+                          <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-64">
+                        <DropdownMenuLabel>{t("preview.remoteContent.menuTitle")}</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => {
+                            warnAboutRemoteResources();
+                            setAllowRemoteForMessage(true);
+                          }}
+                        >
+                          <ImageIcon />
+                          {t("preview.remoteContent.actions.showOnce")}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (!senderKey) return;
+                            warnAboutRemoteResources();
+                            setAllowedRemoteSenders((prev) => {
+                              const next = new Set(prev);
+                              next.add(senderKey);
+                              return Array.from(next).sort((a, b) => a.localeCompare(b));
+                            });
+                          }}
+                          disabled={!senderKey}
+                        >
+                          <Mail />
+                          {t("preview.remoteContent.actions.allowSender")}
+                        </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger disabled={remoteImageHosts.length === 0}>
+                            <Globe />
+                            {t("preview.remoteContent.actions.allowDomain")}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="w-56">
+                            {remoteImageHosts.length === 0 ? (
+                              <DropdownMenuItem disabled>
+                                {t("preview.remoteContent.noDomains")}
+                              </DropdownMenuItem>
+                            ) : (
+                              remoteImageHosts.map((host) => (
+                                <DropdownMenuCheckboxItem
+                                  key={host}
+                                  checked={allowedRemoteHostsSet.has(host)}
+                                  onSelect={(e) => e.preventDefault()}
+                                  onCheckedChange={(checked) => {
+                                    warnAboutRemoteResources();
+                                    setAllowedRemoteHosts((prev) => {
+                                      const next = new Set(prev);
+                                      if (checked) {
+                                        next.add(host);
+                                      } else {
+                                        next.delete(host);
+                                      }
+                                      return Array.from(next).sort((a, b) => a.localeCompare(b));
+                                    });
+                                  }}
+                                >
+                                  {host}
+                                </DropdownMenuCheckboxItem>
+                              ))
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ) : null}
 
-	                {previewMode === "html" && selectedEmail.htmlBody ? (
-	                  <EmailHtmlPreview
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {previewMode === "html" && selectedEmail.htmlBody ? (
+                    <EmailHtmlPreview
                       html={selectedEmail.htmlBody}
                       allowRemoteResources={allowAllRemoteImages}
                       allowedRemoteImageHosts={allowAllRemoteImages ? undefined : allowedRemoteHostsForMessage}
+                      className="w-full h-full rounded-md border bg-background"
                     />
-		                ) : previewMode === "raw" ? (
-                      <div className="rounded-md border bg-muted/30 overflow-hidden">
+                  ) : previewMode === "raw" ? (
+                    <div className="h-full rounded-md border bg-muted/30 overflow-hidden flex flex-col">
                         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background/50">
                           <span className="text-xs font-medium text-muted-foreground">
                             {t("preview.mode.raw")}
@@ -530,60 +548,61 @@ export function PreviewPanel({
                         </div>
 
                         {loadingRaw ? (
-                          <div className="flex items-center justify-center min-h-[360px]">
+                          <div className="flex-1 min-h-0 flex items-center justify-center">
                             <div className="text-sm text-muted-foreground">
                               {t("preview.raw.loading")}
                             </div>
                           </div>
                         ) : displayRawContent ? (
-                          <pre className="whitespace-pre-wrap break-words text-xs font-mono p-4 overflow-auto max-h-[520px] text-foreground">
+                          <pre className="flex-1 min-h-0 whitespace-pre-wrap break-words text-xs font-mono p-4 overflow-auto text-foreground">
                             {displayRawContent}
                           </pre>
                         ) : (
-                          <div className="flex items-center justify-center min-h-[360px]">
+                          <div className="flex-1 min-h-0 flex items-center justify-center">
                             <div className="text-sm text-muted-foreground">
                               {t("preview.raw.unavailable")}
                             </div>
                           </div>
                         )}
                       </div>
-		                ) : (
-		                  <pre className="whitespace-pre-wrap break-words text-sm bg-muted/30 p-4 rounded-md border min-h-[360px]">
-		                    {selectedEmail.textBody || t("preview.text.unavailable")}
-		                  </pre>
-		                )}
+                  ) : (
+                    <pre className="h-full whitespace-pre-wrap break-words text-sm bg-muted/30 p-4 rounded-md border overflow-auto">
+                      {selectedEmail.textBody || t("preview.text.unavailable")}
+                    </pre>
+                  )}
+                </div>
 
                 {/* Attachments section */}
 	                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
-	                  <div className="rounded-md border bg-muted/30 p-3">
-	                    <div className="flex items-center gap-2 text-sm font-medium mb-2">
-	                      <Paperclip className="h-4 w-4" />
-	                      <span>{t("preview.attachments", { count: selectedEmail.attachments.length })}</span>
-	                    </div>
-                    <div className="space-y-1">
-                      {selectedEmail.attachments.map((attachment) => (
-                        <div
-                          key={attachment.id}
-                          className="flex items-center justify-between gap-2 py-1.5 px-2 rounded hover:bg-muted/50"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm truncate">{attachment.filename}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatFileSize(attachment.size)}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDownloadAttachment(attachment.id, attachment.filename)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+	                  <div className="rounded-md border bg-muted/30 p-2 flex-shrink-0">
+		                    <div className="flex items-center gap-2 text-xs font-medium mb-1">
+		                      <Paperclip className="h-4 w-4" />
+		                      <span>{t("preview.attachments", { count: selectedEmail.attachments.length })}</span>
+		                    </div>
+                    <div className="space-y-1 max-h-32 overflow-auto">
+	                      {selectedEmail.attachments.map((attachment) => (
+	                        <div
+	                          key={attachment.id}
+	                          className="flex items-center justify-between gap-2 py-1 px-2 rounded hover:bg-muted/50"
+	                        >
+	                          <div className="flex-1 min-w-0">
+	                            <p className="text-xs truncate">{attachment.filename}</p>
+	                            <p className="text-[11px] text-muted-foreground">
+	                              {formatFileSize(attachment.size)}
+	                            </p>
+	                          </div>
+	                          <Button
+	                            size="icon-sm"
+	                            variant="ghost"
+	                            onClick={() => handleDownloadAttachment(attachment.id, attachment.filename)}
+	                          >
+	                            <Download className="h-4 w-4" />
+	                          </Button>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
+	                )}
               </>
             )}
           </div>
