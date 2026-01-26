@@ -1032,7 +1032,10 @@
       "raw": {
         "loadFailed": "原始内容加载失败",
         "loading": "正在加载原始内容...",
-        "unavailable": "原始内容不可用"
+        "unavailable": "原始内容不可用",
+        "copy": "复制原始内容",
+        "download": "下载 .eml",
+        "downloadFailed": "下载原始内容失败"
       },
       "text": {
         "unavailable": "无文本内容"
@@ -1098,7 +1101,8 @@
       },
       "clipboard": {
         "copied": "已复制到剪贴板",
-        "senderCopied": "发件人地址已复制"
+        "senderCopied": "发件人地址已复制",
+        "failed": "复制到剪贴板失败"
       }
     }
   },

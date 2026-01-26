@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { EmailHtmlPreview } from "@/components/email/EmailHtmlPreview";
 import { DkimStatusIndicator } from "@/components/email/DkimStatusIndicator";
-import { Image as ImageIcon, ImageOff as ImageOffIcon, Mail, Paperclip, Download } from "lucide-react";
+import { Copy, Download, Image as ImageIcon, ImageOff as ImageOffIcon, Mail, Paperclip } from "lucide-react";
 import type { EmailDetail } from "../types";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
@@ -134,6 +134,51 @@ export function PreviewPanel({
 
   // Get the raw content to display (only use selectedEmail.rawContent if it's a string)
   const displayRawContent = rawContent || (typeof selectedEmail?.rawContent === "string" ? selectedEmail.rawContent : null);
+
+  const copyRawContent = async () => {
+    if (!displayRawContent) return;
+    try {
+      await navigator.clipboard.writeText(displayRawContent);
+      toast.success(t("toast.clipboard.copied"));
+    } catch (error) {
+      console.error("Failed to copy raw content:", error);
+      toast.error(t("toast.clipboard.failed"));
+    }
+  };
+
+  const downloadRawContent = async () => {
+    if (!selectedEmailId) return;
+    const filename = `email-${selectedEmailId}.eml`;
+    const downloadText = async (text: string) => {
+      const blob = new Blob([text], { type: "message/rfc822" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    try {
+      if (displayRawContent) {
+        await downloadText(displayRawContent);
+        return;
+      }
+
+      const res = await fetch(`/api/emails/${selectedEmailId}/raw`);
+      if (!res.ok) {
+        toast.error(t("preview.raw.downloadFailed"));
+        return;
+      }
+      const text = await res.text();
+      await downloadText(text);
+    } catch (error) {
+      console.error("Failed to download raw content:", error);
+      toast.error(t("preview.raw.downloadFailed"));
+    }
+  };
 
   return (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
@@ -279,27 +324,63 @@ export function PreviewPanel({
                   ) : null}
                 </div>
 
-                {previewMode === "html" && selectedEmail.htmlBody ? (
-                  <EmailHtmlPreview html={selectedEmail.htmlBody} allowRemoteResources={allowRemoteResources} />
-	                ) : previewMode === "raw" ? (
-	                  loadingRaw ? (
-	                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
-	                      <div className="text-slate-400">{t("preview.raw.loading")}</div>
-	                    </div>
-	                  ) : displayRawContent ? (
-                    <pre className="whitespace-pre-wrap break-words text-xs bg-slate-950 text-slate-50 p-4 rounded-md overflow-auto max-h-[520px]">
-                      {displayRawContent}
-                    </pre>
-	                  ) : (
-	                    <div className="flex items-center justify-center h-[360px] bg-slate-950 rounded-md">
-	                      <div className="text-slate-400">{t("preview.raw.unavailable")}</div>
-	                    </div>
-	                  )
-	                ) : (
-	                  <pre className="whitespace-pre-wrap break-words text-sm bg-white p-4 rounded-md border min-h-[360px]">
-	                    {selectedEmail.textBody || t("preview.text.unavailable")}
-	                  </pre>
-	                )}
+	                {previewMode === "html" && selectedEmail.htmlBody ? (
+	                  <EmailHtmlPreview html={selectedEmail.htmlBody} allowRemoteResources={allowRemoteResources} />
+		                ) : previewMode === "raw" ? (
+                      <div className="rounded-md border bg-muted/30 overflow-hidden">
+                        <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background/50">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {t("preview.mode.raw")}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="outline"
+                              onClick={() => void copyRawContent()}
+                              disabled={loadingRaw || !displayRawContent}
+                              title={t("preview.raw.copy")}
+                              aria-label={t("preview.raw.copy")}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="outline"
+                              onClick={() => void downloadRawContent()}
+                              disabled={loadingRaw || !hasRawContent}
+                              title={t("preview.raw.download")}
+                              aria-label={t("preview.raw.download")}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {loadingRaw ? (
+                          <div className="flex items-center justify-center min-h-[360px]">
+                            <div className="text-sm text-muted-foreground">
+                              {t("preview.raw.loading")}
+                            </div>
+                          </div>
+                        ) : displayRawContent ? (
+                          <pre className="whitespace-pre-wrap break-words text-xs font-mono p-4 overflow-auto max-h-[520px] text-foreground">
+                            {displayRawContent}
+                          </pre>
+                        ) : (
+                          <div className="flex items-center justify-center min-h-[360px]">
+                            <div className="text-sm text-muted-foreground">
+                              {t("preview.raw.unavailable")}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+		                ) : (
+		                  <pre className="whitespace-pre-wrap break-words text-sm bg-muted/30 p-4 rounded-md border min-h-[360px]">
+		                    {selectedEmail.textBody || t("preview.text.unavailable")}
+		                  </pre>
+		                )}
 
                 {/* Attachments section */}
 	                {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (

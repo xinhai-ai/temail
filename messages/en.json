@@ -1032,7 +1032,10 @@
       "raw": {
         "loadFailed": "Failed to load raw content",
         "loading": "Loading raw content...",
-        "unavailable": "Raw content not available"
+        "unavailable": "Raw content not available",
+        "copy": "Copy raw",
+        "download": "Download .eml",
+        "downloadFailed": "Failed to download raw email"
       },
       "text": {
         "unavailable": "No text content"
@@ -1098,7 +1101,8 @@
       },
       "clipboard": {
         "copied": "Copied to clipboard",
-        "senderCopied": "Sender address copied"
+        "senderCopied": "Sender address copied",
+        "failed": "Failed to copy to clipboard"
       }
     }
   },
