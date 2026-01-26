@@ -682,6 +682,20 @@ export default function InboxPage() {
             setEmails((prev) => prev.filter((e) => !event.data.ids.includes(e.id)));
           }
         }
+
+        if (event.type === "mailbox.mark_read") {
+          if (event.data.count <= 0) return;
+          updateMailboxById(event.data.mailboxId, (mailbox) => ({
+            ...mailbox,
+            _count: { emails: Math.max(0, mailbox._count.emails - event.data.count) },
+          }));
+          setSelectedEmail((prev) =>
+            prev && prev.mailboxId === event.data.mailboxId && prev.status === "UNREAD"
+              ? { ...prev, status: "READ" }
+              : prev
+          );
+          setEmailsRefreshKey((k) => k + 1);
+        }
 	      },
 	    });
 
@@ -1501,6 +1515,42 @@ export default function InboxPage() {
     });
   };
 
+  const handleMarkMailboxRead = async (mailboxId: string) => {
+    const res = await fetch(`/api/mailboxes/${mailboxId}/mark-read`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(data?.error || t("toast.mailboxes.markReadFailed"));
+      return;
+    }
+
+    const count = typeof data?.count === "number" ? data.count : 0;
+    if (count <= 0) {
+      toast.message(t("toast.mailboxes.alreadyRead"));
+      return;
+    }
+
+    toast.success(t("toast.mailboxes.markedRead", { count }));
+
+    updateMailboxById(mailboxId, (mailbox) => ({
+      ...mailbox,
+      _count: { emails: Math.max(0, mailbox._count.emails - count) },
+    }));
+
+    if (statusFilter === "unread") {
+      setEmailsRefreshKey((k) => k + 1);
+      return;
+    }
+
+    setEmails((prev) =>
+      prev.map((e) => (e.mailboxId === mailboxId && e.status === "UNREAD" ? { ...e, status: "READ" } : e))
+    );
+    setSelectedEmail((prev) =>
+      prev && prev.mailboxId === mailboxId && prev.status === "UNREAD"
+        ? { ...prev, status: "READ" }
+        : prev
+    );
+  };
+
   const handleRefreshImap = async () => {
     if (refreshingImap || refreshCooldown > 0) return;
     setRefreshingImap(true);
@@ -1675,6 +1725,7 @@ export default function InboxPage() {
               onMarkEmailUnread={handleMarkEmailUnread}
               onArchiveEmail={handleArchiveEmail}
               onUnarchiveEmail={handleUnarchiveEmail}
+              onMarkMailboxRead={handleMarkMailboxRead}
               onCopySenderAddress={handleCopySenderAddress}
               onCopyMailboxAddress={handleCopyMailboxAddress}
               onCopyEmailSubject={handleCopyEmailSubject}
@@ -1798,6 +1849,7 @@ export default function InboxPage() {
             onMarkEmailUnread={handleMarkEmailUnread}
             onArchiveEmail={handleArchiveEmail}
             onUnarchiveEmail={handleUnarchiveEmail}
+            onMarkMailboxRead={handleMarkMailboxRead}
             onCopySenderAddress={handleCopySenderAddress}
             onCopyMailboxAddress={handleCopyMailboxAddress}
             onCopyEmailSubject={handleCopyEmailSubject}

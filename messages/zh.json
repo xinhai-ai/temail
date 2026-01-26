@@ -962,7 +962,8 @@
         "star": "收藏",
         "unstar": "取消收藏",
         "archive": "归档",
-        "unarchive": "取消归档"
+        "unarchive": "取消归档",
+        "markMailboxAsRead": "将该邮箱所有邮件标为已读"
       },
       "addTag": {
         "title": "添加标签",
@@ -1107,6 +1108,9 @@
         "created": "邮箱已创建",
         "updateFailed": "更新邮箱失败",
         "updated": "邮箱已更新",
+        "markReadFailed": "标记邮箱为已读失败",
+        "markedRead": "已标记 {count} 封为已读",
+        "alreadyRead": "该邮箱暂无未读邮件",
         "deleteFailed": "删除邮箱失败",
         "deleted": "邮箱已删除"
       },

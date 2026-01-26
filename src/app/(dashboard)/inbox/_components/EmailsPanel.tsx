@@ -28,7 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
-import { Archive, ArchiveRestore, Copy, ExternalLink, ListChecks, Mail, MailOpen, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, ExternalLink, Inbox, ListChecks, Mail, MailOpen, Plus, Search, Star, StarOff, Tag as TagIcon, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { FaviconImage } from "@/components/email/FaviconImage";
@@ -70,6 +70,7 @@ type EmailsPanelProps = {
   onDeleteEmail: (emailId: string) => void;
   onMarkEmailRead: (emailId: string) => void;
   onMarkEmailUnread: (emailId: string) => void;
+  onMarkMailboxRead: (mailboxId: string) => void;
   onArchiveEmail: (emailId: string) => void;
   onUnarchiveEmail: (emailId: string) => void;
   onCopySenderAddress: (address: string) => void;
@@ -114,6 +115,7 @@ export function EmailsPanel({
   onDeleteEmail,
   onMarkEmailRead,
   onMarkEmailUnread,
+  onMarkMailboxRead,
   onArchiveEmail,
   onUnarchiveEmail,
   onCopySenderAddress,
@@ -632,6 +634,10 @@ export function EmailsPanel({
                               {t("emails.context.markAsUnread")}
                             </ContextMenuItem>
                           ) : null}
+                          <ContextMenuItem onClick={() => onMarkMailboxRead(email.mailboxId)}>
+                            <Inbox />
+                            {t("emails.context.markMailboxAsRead")}
+                          </ContextMenuItem>
                           <ContextMenuItem
                             onClick={() => onStarEmail(email.id, email.isStarred)}
                           >

@@ -21,6 +21,7 @@ export function connectRealtime(handlers: RealtimeHandlers) {
     "email.updated",
     "email.deleted",
     "emails.bulk_updated",
+    "mailbox.mark_read",
   ];
 
   const listeners = eventTypes.map((type) => {
@@ -48,4 +49,3 @@ export function connectRealtime(handlers: RealtimeHandlers) {
     source.close();
   };
 }
-

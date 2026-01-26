@@ -31,6 +31,13 @@ export type RealtimeEvent =
         ids: string[];
         mailboxId?: string;
       };
+    }
+  | {
+      type: "mailbox.mark_read";
+      data: {
+        mailboxId: string;
+        count: number;
+      };
     };
 
 export type RealtimeEnvelope = {

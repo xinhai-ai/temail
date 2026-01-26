@@ -962,7 +962,8 @@
         "star": "Star",
         "unstar": "Unstar",
         "archive": "Archive",
-        "unarchive": "Unarchive"
+        "unarchive": "Unarchive",
+        "markMailboxAsRead": "Mark mailbox as Read"
       },
       "addTag": {
         "title": "Add tag",
@@ -1107,6 +1108,9 @@
         "created": "Mailbox created",
         "updateFailed": "Failed to update mailbox",
         "updated": "Mailbox updated",
+        "markReadFailed": "Failed to mark mailbox as read",
+        "markedRead": "Marked {count} as read",
+        "alreadyRead": "No unread emails in this mailbox",
         "deleteFailed": "Failed to delete mailbox",
         "deleted": "Mailbox deleted"
       },
