@@ -5,7 +5,8 @@ import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { Prisma } from "@prisma/client";
 import { readJsonBody } from "@/lib/request";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
-import { getStorage, generateRawContentPath } from "@/lib/storage";
+import { getStorage, generateAttachmentPath, generateRawContentPath, getMaxAttachmentSize } from "@/lib/storage";
+import { simpleParser, type Attachment } from "mailparser";
 
 function extractEmailAddress(value: unknown) {
   if (typeof value !== "string") return null;
@@ -48,6 +49,59 @@ function extractWebhookHeaders(value: unknown): Array<{ name: string; value: str
   }
 
   return headers;
+}
+
+async function processAttachments(
+  attachments: Attachment[],
+  emailId: string,
+  date: Date
+): Promise<Array<{ id: string; filename: string; contentType: string; size: number; path: string }>> {
+  if (!attachments || attachments.length === 0) {
+    return [];
+  }
+
+  const storage = getStorage();
+  const maxSize = getMaxAttachmentSize();
+  const records: Array<{ id: string; filename: string; contentType: string; size: number; path: string }> = [];
+
+  for (const attachment of attachments) {
+    const size = attachment.size || 0;
+    if (size > maxSize) {
+      continue;
+    }
+
+    if (!attachment.content) {
+      continue;
+    }
+
+    const buffer = Buffer.isBuffer(attachment.content)
+      ? attachment.content
+      : Buffer.from(attachment.content);
+    const resolvedSize = size || buffer.length;
+    if (resolvedSize > maxSize) {
+      continue;
+    }
+
+    const attachmentId = `${emailId}-${records.length}`;
+    const filename = attachment.filename || "unnamed";
+    const contentType = attachment.contentType || "application/octet-stream";
+
+    try {
+      const path = generateAttachmentPath(attachmentId, filename, date);
+      await storage.write(path, buffer);
+      records.push({
+        id: attachmentId,
+        filename,
+        contentType,
+        size: resolvedSize,
+        path,
+      });
+    } catch (error) {
+      console.error("[webhook] failed to save attachment:", error);
+    }
+  }
+
+  return records;
 }
 
 export async function POST(request: NextRequest) {
@@ -136,36 +190,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
     }
 
+    const providedRaw = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    let parsedRaw: Awaited<ReturnType<typeof simpleParser>> | null = null;
+    if (providedRaw) {
+      try {
+        parsedRaw = await simpleParser(providedRaw);
+      } catch (error) {
+        console.error("[webhook] failed to parse raw email:", error);
+      }
+    }
+
+    const parsedRawFrom = Array.isArray(parsedRaw?.from?.value) ? parsedRaw?.from?.value[0] : undefined;
+    const rawFromAddress =
+      typeof parsedRawFrom?.address === "string" ? parsedRawFrom.address : null;
+    const rawFromName = typeof parsedRawFrom?.name === "string" ? parsedRawFrom.name : null;
+
     const parsedMessageId = typeof messageId === "string" ? messageId : null;
+    const rawMessageId =
+      typeof parsedRaw?.messageId === "string" && parsedRaw.messageId.trim()
+        ? parsedRaw.messageId.trim()
+        : null;
+    const effectiveMessageId = parsedMessageId || rawMessageId;
+
     const fromAddress =
       extractEmailAddress(from) ||
+      (rawFromAddress ? rawFromAddress.toLowerCase() : null) ||
       (typeof from === "string" ? from : null) ||
       "unknown@unknown.com";
-    const normalizedSubject = typeof subject === "string" && subject.trim() ? subject.trim() : "(No subject)";
+    const fromName = rawFromName;
+
+    const normalizedSubject =
+      typeof subject === "string" && subject.trim()
+        ? subject.trim()
+        : (typeof parsedRaw?.subject === "string" && parsedRaw.subject.trim() ? parsedRaw.subject.trim() : "(No subject)");
+
+    const textBody = typeof text === "string" ? text : parsedRaw?.text || undefined;
+    const htmlBody = typeof html === "string" ? html : typeof parsedRaw?.html === "string" ? parsedRaw.html : undefined;
     const parsedHeaders = extractWebhookHeaders(headers);
-    const providedRaw = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    const now = new Date();
+    const receivedAt = parsedRaw?.date ? new Date(parsedRaw.date) : now;
+
     const rawContent = providedRaw
       ? providedRaw
       : JSON.stringify({
           to,
           from,
-          subject,
-          text,
-          html,
-          messageId: parsedMessageId,
+          subject: normalizedSubject,
+          text: textBody,
+          html: htmlBody,
+          messageId: effectiveMessageId,
           ...(parsedHeaders.length ? { headers: parsedHeaders } : {}),
         });
 
     // Generate a unique ID for file storage
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const now = new Date();
 
     // Save raw content to file
     let rawContentPath: string | undefined;
     if (rawContent) {
       try {
         const storage = getStorage();
-        rawContentPath = generateRawContentPath(tempId, now);
+        rawContentPath = generateRawContentPath(tempId, receivedAt);
         await storage.write(rawContentPath, rawContent);
       } catch (error) {
         console.error("[webhook] failed to save raw content:", error);
@@ -177,13 +262,15 @@ export async function POST(request: NextRequest) {
       await prisma.inboundEmail.create({
         data: {
           sourceType: "WEBHOOK",
-          messageId: parsedMessageId || undefined,
+          messageId: effectiveMessageId || undefined,
           fromAddress,
+          fromName: fromName || undefined,
           toAddress,
           subject: normalizedSubject,
-          textBody: typeof text === "string" ? text : undefined,
-          htmlBody: typeof html === "string" ? html : undefined,
+          textBody,
+          htmlBody,
           rawContentPath,
+          receivedAt,
           domainId: webhookConfig.domainId,
           mailboxId: mailbox?.id,
         },
@@ -198,9 +285,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, matched: false });
     }
 
-    if (parsedMessageId) {
+    if (effectiveMessageId) {
       const existing = await prisma.email.findFirst({
-        where: { mailboxId: mailbox.id, messageId: parsedMessageId },
+        where: { mailboxId: mailbox.id, messageId: effectiveMessageId },
         select: { id: true },
       });
       if (existing) {
@@ -213,17 +300,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const attachmentRecords = parsedRaw
+      ? await processAttachments(parsedRaw.attachments || [], tempId, receivedAt)
+      : [];
+
     const email = await prisma.email.create({
       data: {
-        messageId: parsedMessageId || undefined,
+        messageId: effectiveMessageId || undefined,
         fromAddress,
+        fromName: fromName || undefined,
         toAddress,
         subject: normalizedSubject,
-        textBody: typeof text === "string" ? text : undefined,
-        htmlBody: typeof html === "string" ? html : undefined,
+        textBody,
+        htmlBody,
         rawContentPath,
         mailboxId: mailbox.id,
+        receivedAt,
         ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
+        ...(attachmentRecords.length ? { attachments: { create: attachmentRecords } } : {}),
       },
     });
 
