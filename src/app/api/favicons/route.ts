@@ -31,7 +31,7 @@ const inflight = new Map<string, Promise<CacheEntry>>();
 
 const querySchema = z.object({
   domain: z.string().trim().min(1).max(253),
-  size: z.coerce.number().int().min(16).max(256).optional().default(32),
+  size: z.coerce.number().int().min(16).max(256).optional().default(64),
   provider: z.enum(["auto", "google", "im"]).optional().default("auto"),
 });
 
@@ -117,7 +117,11 @@ async function resolveFavicon(domain: string, size: number, mode: ProviderMode):
 
   try {
     const order: Provider[] =
-      mode === "auto" ? ["google", "im"] : [mode];
+      mode === "auto"
+        ? size >= 64
+          ? ["im", "google"]
+          : ["google", "im"]
+        : [mode];
 
     for (const provider of order) {
       try {

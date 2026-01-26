@@ -32,7 +32,9 @@ export function FaviconImage({
 
   const url = useMemo(() => {
     if (!domain) return null;
-    const fetchSize = Math.min(256, Math.max(16, Math.round(requestSize ?? size * 2)));
+    const devicePixelRatio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const scale = Math.min(4, Math.max(2, Math.ceil(devicePixelRatio) * 2));
+    const fetchSize = Math.min(256, Math.max(16, Math.round(requestSize ?? size * scale)));
     const params = new URLSearchParams();
     params.set("domain", domain);
     params.set("size", String(fetchSize));
