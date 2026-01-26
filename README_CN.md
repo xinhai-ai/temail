@@ -77,6 +77,39 @@
 
 ---
 
+## 截图预览
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-dashboard.jpg" alt="仪表盘" width="100%">
+        <br><em>仪表盘 - 统计数据与快捷操作</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-inbox.jpg" alt="收件箱" width="100%">
+        <br><em>收件箱 - 三栏式邮件管理</em>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-workflow.jpg" alt="工作流编辑器" width="100%">
+        <br><em>工作流 - 可视化自动化编辑器</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-telegram-group.jpg" alt="Telegram 集成" width="100%">
+        <br><em>Telegram - 超级群组集成</em>
+      </td>
+    </tr>
+  </table>
+  <p>
+    <img src="docs/images/screenshot-inbox-mobile.jpg" alt="移动端" height="400">
+    <br><em>移动端 - 响应式设计</em>
+  </p>
+</div>
+
+---
+
 ## 功能特性
 
 ### 核心功能
@@ -121,6 +154,69 @@
 - 入站邮件监控与重新匹配
 - 审计日志（用于合规）
 - Telegram Bot 管理
+
+### Telegram 集成
+
+TEmail 提供深度 Telegram 集成，让你在手机上高效管理邮件。
+
+#### 超级群组支持
+
+绑定 Telegram **超级群组（开启话题功能）** 来管理所有邮件：
+
+| 功能 | 说明 |
+|------|------|
+| **自动创建话题** | 每个邮箱自动创建专属话题 |
+| **实时通知** | 新邮件即时转发到对应话题 |
+| **有序管理** | 邮件按邮箱分组，便于追踪对话 |
+| **预览链接** | 点击即可在浏览器查看完整邮件 |
+
+#### Bot 命令
+
+**私聊（直接给 Bot 发消息）：**
+
+| 命令 | 说明 |
+|------|------|
+| `/start <code>` | 绑定 TEmail 账号 |
+| `/new [domain\|prefix@domain]` | 创建新邮箱 |
+| `/mailboxes` | 列出你的邮箱 |
+| `/emails [mailbox]` | 列出最近邮件 |
+| `/search <query>` | 搜索邮件 |
+| `/open <emailId>` | 获取安全预览链接 |
+| `/delete <emailId>` | 将邮件移至垃圾箱 |
+| `/restore <emailId>` | 从垃圾箱恢复 |
+| `/purge <emailId>` | 永久删除 |
+| `/refresh` | 同步入站邮件（IMAP + 重新匹配） |
+| `/help` | 显示帮助信息 |
+| `/unlink` | 解绑 Telegram 账号 |
+
+**超级群组：**
+
+| 命令 | 说明 |
+|------|------|
+| `/bind <code>` | 绑定群组并创建 General 话题 |
+
+**群组话题：**
+- 在 **General 话题** 中运行命令进行全局管理
+- 在 **邮箱话题** 中运行命令进行单邮箱操作
+
+#### 工作流集成
+
+通过工作流节点将邮件转发到 Telegram：
+
+- **Telegram（已绑定）**：发送到绑定的超级群组，自动路由到对应话题
+- **Telegram（自定义）**：使用自定义 Bot 发送到任意聊天/频道
+- **丰富模板**：支持 Markdown/HTML 格式的自定义消息模板
+
+#### 快速设置
+
+1. 通过 [@BotFather](https://t.me/BotFather) 创建 Telegram Bot
+2. 创建超级群组（开启话题功能）
+3. 将 Bot 添加到群组并设为管理员
+4. 在 TEmail 管理后台配置 Bot Token
+5. 在 Telegram 群组中使用 `/bindgroup` 命令绑定
+6. 创建包含 `forward:telegram-bound` 节点的工作流
+
+> **💡 提示**：超级群组支持无限话题，非常适合在一个群组中管理多个邮箱。
 
 ---
 

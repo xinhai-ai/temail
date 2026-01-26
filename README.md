@@ -77,6 +77,39 @@ Perfect for building notification systems, customer support pipelines, email-to-
 
 ---
 
+## Screenshots
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-dashboard.jpg" alt="Dashboard" width="100%">
+        <br><em>Dashboard - Statistics & Quick Actions</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-inbox.jpg" alt="Inbox" width="100%">
+        <br><em>Inbox - Three-panel Email Management</em>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-workflow.jpg" alt="Workflow Editor" width="100%">
+        <br><em>Workflow - Visual Automation Editor</em>
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/screenshot-telegram-group.jpg" alt="Telegram Integration" width="100%">
+        <br><em>Telegram - Forum Group Integration</em>
+      </td>
+    </tr>
+  </table>
+  <p>
+    <img src="docs/images/screenshot-inbox-mobile.jpg" alt="Mobile View" height="400">
+    <br><em>Mobile - Responsive Design</em>
+  </p>
+</div>
+
+---
+
 ## Features
 
 ### Core Features
@@ -121,6 +154,69 @@ Build powerful email processing pipelines with 20+ node types:
 - Inbound email monitoring and rematch
 - Audit logs for compliance
 - Telegram bot management
+
+### Telegram Integration
+
+TEmail provides deep Telegram integration for efficient email management on mobile.
+
+#### Forum Group Support
+
+Bind a Telegram **Forum Group (Supergroup with Topics)** to manage all your emails:
+
+| Feature | Description |
+|---------|-------------|
+| **Auto Topic Creation** | Each mailbox automatically creates a dedicated topic |
+| **Real-time Notifications** | New emails instantly forwarded to corresponding topics |
+| **Organized Threads** | Emails grouped by mailbox, easy to track conversations |
+| **Preview Links** | Click to view full email in browser |
+
+#### Bot Commands
+
+**Private Chat (DM the bot):**
+
+| Command | Description |
+|---------|-------------|
+| `/start <code>` | Link your TEmail account |
+| `/new [domain\|prefix@domain]` | Create a new mailbox |
+| `/mailboxes` | List your mailboxes |
+| `/emails [mailbox]` | List recent emails |
+| `/search <query>` | Search emails |
+| `/open <emailId>` | Get a safe preview link |
+| `/delete <emailId>` | Move email to Trash |
+| `/restore <emailId>` | Restore from Trash |
+| `/purge <emailId>` | Permanently delete |
+| `/refresh` | Sync inbound emails (IMAP + rematch) |
+| `/help` | Show help message |
+| `/unlink` | Unlink Telegram account |
+
+**Forum Group:**
+
+| Command | Description |
+|---------|-------------|
+| `/bind <code>` | Bind group and create General topic |
+
+**Forum Topics:**
+- Run commands in **General topic** for global management
+- Run commands in **mailbox topics** for per-mailbox operations
+
+#### Workflow Integration
+
+Forward emails to Telegram via workflow nodes:
+
+- **Telegram (Bound)**: Send to your bound forum group with auto topic routing
+- **Telegram (Custom)**: Send to any chat/channel with custom bot token
+- **Rich Templates**: Customizable message format with Markdown/HTML support
+
+#### Quick Setup
+
+1. Create a Telegram Bot via [@BotFather](https://t.me/BotFather)
+2. Create a Forum Group (Supergroup with Topics enabled)
+3. Add your bot to the group as admin
+4. Configure bot token in TEmail Admin Settings
+5. Use `/bindgroup` in your Telegram group
+6. Create workflows with `forward:telegram-bound` node
+
+> **💡 Tip**: Forum Groups allow unlimited topics, perfect for managing multiple mailboxes in one place.
 
 ---
 
