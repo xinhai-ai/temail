@@ -11,11 +11,11 @@ function normalizeWhitespace(value: string) {
 function decodeBasicEntities(value: string) {
   return value
     .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, "\"")
-    .replace(/&#39;/g, "'");
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/gi, "&");
 }
 
 function stripHtml(value: string) {
