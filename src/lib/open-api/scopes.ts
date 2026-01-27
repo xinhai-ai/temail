@@ -12,6 +12,8 @@ export const OPEN_API_SCOPES = [
 
 export type OpenApiScope = (typeof OPEN_API_SCOPES)[number];
 
+export const OPEN_API_SCOPES_ZOD = [...OPEN_API_SCOPES] as [OpenApiScope, ...OpenApiScope[]];
+
 export const DEFAULT_OPEN_API_KEY_SCOPES: OpenApiScope[] = [
   "mailboxes:read",
   "emails:read",
