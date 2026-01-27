@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
@@ -30,7 +31,7 @@ export async function PATCH(
 
   try {
     const data = patchSchema.parse(bodyResult.data);
-    const updateData: Record<string, unknown> = {};
+    const updateData: Prisma.ApiKeyUpdateManyMutationInput = {};
 
     if (typeof data.name === "string") {
       updateData.name = data.name;
