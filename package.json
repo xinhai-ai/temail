@@ -9,7 +9,7 @@
     "dev:all": "concurrently -n next,imap -c blue,green \"cross-env IMAP_SERVICE_ENABLED=1 next dev\" \"npm run imap:service\"",
     "prebuild": "prisma generate",
     "build": "next build",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build",
+    "vercel-build": "prisma generate && prisma migrate deploy && node scripts/bootstrap-admin.js && next build",
     "start": "next start",
     "start:all": "concurrently -n next,imap -c blue,green \"cross-env IMAP_SERVICE_ENABLED=1 next start\" \"npm run imap:service\"",
     "lint": "eslint",
