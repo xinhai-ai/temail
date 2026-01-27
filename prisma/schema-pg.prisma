@@ -37,6 +37,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   tags          Tag[]
+  apiKeys       ApiKey[]
   authChallenges AuthChallenge[]
   passkeyCredentials PasskeyCredential[]
   loginTokens    LoginToken[]
@@ -86,6 +87,31 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// ==================== Open API Keys ====================
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  keyPrefix String
+  keyHash   String   @unique
+  scopes    String   // JSON array string
+  usageCount Int     @default(0)
+  lastUsedAt DateTime?
+  lastUsedIp String?
+  lastUsedUserAgent String?
+  disabledAt DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyPrefix])
+  @@map("api_keys")
 }
 
 // ==================== 认证安全（Passkey / OTP） ====================
