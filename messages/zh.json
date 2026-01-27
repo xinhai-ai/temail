@@ -16,7 +16,7 @@
     "logout": "退出",
     "email": "邮箱",
     "password": "密码",
-    "name": "姓名",
+    "name": "用户名",
     "welcomeBack": "欢迎回来",
     "createAccount": "创建账户",
     "confirmPassword": "确认密码",
@@ -30,7 +30,7 @@
       "password": "请输入密码",
       "newPassword": "设置密码",
       "confirmPassword": "再次输入密码",
-      "name": "你的姓名",
+      "name": "你的用户名",
       "inviteCode": "请输入邀请码",
       "otpCode": "123456"
     },
@@ -1536,7 +1536,7 @@
     },
     "link": {
       "title": "1）关联账号",
-      "description": "生成一次性验证码，然后私聊机器人：<mono>/start &lt;code&gt;</mono>",
+      "description": "生成一次性验证码，然后私聊机器人：<mono>/start code</mono>",
       "linkedAs": "已关联为",
       "unlinkHint": "在机器人私聊中使用 <mono>/unlink</mono> 可解除关联。",
       "notLinked": "尚未关联。",

@@ -113,10 +113,11 @@ async function ensureBootstrapAdmin(prisma) {
     return;
   }
 
-  const email = resolveEnvString("BOOTSTRAP_ADMIN_EMAIL") || "admin@temail.local";
+  // Support both naming conventions for environment variables
+  const email = resolveEnvString("BOOTSTRAP_ADMIN_EMAIL") || resolveEnvString("BOOTSTRAP_SUPER_ADMIN_MAIL") || "admin@temail.local";
   const name = resolveEnvString("BOOTSTRAP_ADMIN_NAME") || "Admin";
   const role = resolveEnvString("BOOTSTRAP_ADMIN_ROLE") || "SUPER_ADMIN";
-  const configuredPassword = resolveEnvString("BOOTSTRAP_ADMIN_PASSWORD");
+  const configuredPassword = resolveEnvString("BOOTSTRAP_ADMIN_PASSWORD") || resolveEnvString("BOOTSTRAP_SUPER_ADMIN_SECRET");
   const password = configuredPassword || createRandomPassword();
 
   const hashedPassword = await bcrypt.hash(password, 12);
@@ -142,7 +143,7 @@ async function ensureBootstrapAdmin(prisma) {
   if (!configuredPassword) {
     console.log(`[bootstrap] generated password: ${password}`);
   } else {
-    console.log("[bootstrap] password provided via BOOTSTRAP_ADMIN_PASSWORD");
+    console.log("[bootstrap] password provided via environment variable");
   }
 }
 
