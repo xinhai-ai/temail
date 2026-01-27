@@ -36,7 +36,11 @@ export function parseOpenApiKeyToken(raw: string): { token: string; keyPrefix: s
 }
 
 export function hashOpenApiKeyToken(token: string): string {
-  return crypto.createHmac("sha256", getPepper()).update(token, "utf8").digest("hex");
+  const pepper = getPepper();
+  const salt = `${pepper}|open-api-key`;
+  // Use scrypt as a computationally expensive KDF for hashing API key tokens.
+  const derivedKey = crypto.scryptSync(token, salt, 32);
+  return derivedKey.toString("hex");
 }
 
 export function generateOpenApiKeyToken(): { token: string; keyPrefix: string; keyHash: string } {
