@@ -1211,6 +1211,7 @@
     "tabs": {
       "account": "账户",
       "security": "安全",
+      "api": "API",
       "data": "数据",
       "about": "关于"
     },
@@ -1299,6 +1300,39 @@
         "lastUsed": "上次使用：{date}"
       }
     },
+    "apiKeys": {
+      "title": "Open API 密钥",
+      "description": "创建并管理用于集成的 API Key。",
+      "create": {
+        "title": "创建密钥",
+        "name": "名称",
+        "scopes": "Scopes",
+        "creating": "创建中...",
+        "create": "创建密钥"
+      },
+      "token": {
+        "title": "新 Token",
+        "help": "该 Token 仅显示一次，请立即复制。",
+        "copy": "复制"
+      },
+      "list": {
+        "title": "我的密钥",
+        "empty": "暂无 API Key。",
+        "prefix": "前缀",
+        "usage": "使用次数",
+        "lastUsed": "上次使用",
+        "status": {
+          "active": "启用",
+          "disabled": "已禁用"
+        },
+        "actions": {
+          "disable": "禁用",
+          "enable": "启用",
+          "delete": "删除"
+        }
+      },
+      "confirmDelete": "确定删除该 API Key？此操作不可撤销。"
+    },
     "trash": {
       "title": "回收站",
       "description": "在指定天数后自动清理回收站。",
@@ -1350,7 +1384,15 @@
       "passkeyRegisterFailed": "注册 Passkey 失败",
       "passkeyAdded": "Passkey 已添加",
       "passkeyRemoveFailed": "移除 Passkey 失败",
-      "passkeyRemoved": "Passkey 已移除"
+      "passkeyRemoved": "Passkey 已移除",
+      "selectAtLeastOneScope": "请至少选择一个 scope",
+      "apiKeyCreated": "API Key 已创建",
+      "apiKeyCreateFailed": "创建 API Key 失败",
+      "apiKeyCopied": "Token 已复制",
+      "apiKeyUpdated": "API Key 已更新",
+      "apiKeyUpdateFailed": "更新 API Key 失败",
+      "apiKeyDeleted": "API Key 已删除",
+      "apiKeyDeleteFailed": "删除 API Key 失败"
     }
   },
   "trash": {

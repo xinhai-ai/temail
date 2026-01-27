@@ -1211,6 +1211,7 @@
     "tabs": {
       "account": "Account",
       "security": "Security",
+      "api": "API",
       "data": "Data",
       "about": "About"
     },
@@ -1299,6 +1300,39 @@
         "lastUsed": "Last used: {date}"
       }
     },
+    "apiKeys": {
+      "title": "Open API Keys",
+      "description": "Create and manage API keys for integrations.",
+      "create": {
+        "title": "Create key",
+        "name": "Name",
+        "scopes": "Scopes",
+        "creating": "Creating...",
+        "create": "Create key"
+      },
+      "token": {
+        "title": "New token",
+        "help": "This token is shown once. Copy it now.",
+        "copy": "Copy"
+      },
+      "list": {
+        "title": "Your keys",
+        "empty": "No API keys yet.",
+        "prefix": "Prefix",
+        "usage": "Usage",
+        "lastUsed": "Last used",
+        "status": {
+          "active": "Active",
+          "disabled": "Disabled"
+        },
+        "actions": {
+          "disable": "Disable",
+          "enable": "Enable",
+          "delete": "Delete"
+        }
+      },
+      "confirmDelete": "Delete this API key? This cannot be undone."
+    },
     "trash": {
       "title": "Trash",
       "description": "Automatically purge trash after a set number of days.",
@@ -1350,7 +1384,15 @@
       "passkeyRegisterFailed": "Failed to register passkey",
       "passkeyAdded": "Passkey added",
       "passkeyRemoveFailed": "Failed to remove passkey",
-      "passkeyRemoved": "Passkey removed"
+      "passkeyRemoved": "Passkey removed",
+      "selectAtLeastOneScope": "Select at least one scope",
+      "apiKeyCreated": "API key created",
+      "apiKeyCreateFailed": "Failed to create API key",
+      "apiKeyCopied": "Token copied",
+      "apiKeyUpdated": "API key updated",
+      "apiKeyUpdateFailed": "Failed to update API key",
+      "apiKeyDeleted": "API key deleted",
+      "apiKeyDeleteFailed": "Failed to delete API key"
     }
   },
   "trash": {
