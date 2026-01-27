@@ -18,11 +18,26 @@ export function formatBackupCode(value: string): string {
 }
 
 export function generateBackupCode(): string {
-  const bytes = crypto.randomBytes(BACKUP_CODE_LENGTH);
+  const alphabetLength = BACKUP_CODE_ALPHABET.length;
+  // Use rejection sampling to avoid modulo bias when mapping bytes to characters.
+  // We only accept byte values in [0, maxUnbiased), where maxUnbiased is the
+  // largest multiple of alphabetLength less than or equal to 256.
+  const maxUnbiased = 256 - (256 % alphabetLength);
+
   let raw = "";
-  for (let i = 0; i < BACKUP_CODE_LENGTH; i += 1) {
-    raw += BACKUP_CODE_ALPHABET[bytes[i] % BACKUP_CODE_ALPHABET.length];
+  while (raw.length < BACKUP_CODE_LENGTH) {
+    const bytes = crypto.randomBytes(BACKUP_CODE_LENGTH);
+    for (let i = 0; i < bytes.length && raw.length < BACKUP_CODE_LENGTH; i += 1) {
+      const byte = bytes[i];
+      if (byte >= maxUnbiased) {
+        // Discard values that would introduce modulo bias.
+        continue;
+      }
+      const index = byte % alphabetLength;
+      raw += BACKUP_CODE_ALPHABET[index];
+    }
   }
+
   return formatBackupCode(raw);
 }
 
