@@ -3,11 +3,16 @@ import { auth } from "@/lib/auth";
 import { createTelegramBindCode } from "@/services/telegram/bind-codes";
 import { getTelegramBotUsername } from "@/services/telegram/bot-api";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { isTelegramBotEnabled } from "@/lib/telegram-features";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isTelegramBotEnabled())) {
+    return NextResponse.json({ error: "Telegram bot is disabled", disabled: true }, { status: 403 });
   }
 
   const ip = getClientIp(request) || "unknown";

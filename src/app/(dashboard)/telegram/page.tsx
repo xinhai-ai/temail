@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Copy, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, Copy, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ type TelegramMailboxTopic = {
 export default function TelegramPage() {
   const t = useTranslations("telegram");
   const [loading, setLoading] = useState(true);
+  const [disabled, setDisabled] = useState(false);
   const [link, setLink] = useState<TelegramLink | null>(null);
   const [forumBindings, setForumBindings] = useState<TelegramForumBinding[]>([]);
   const [mailboxTopics, setMailboxTopics] = useState<TelegramMailboxTopic[]>([]);
@@ -72,6 +73,12 @@ export default function TelegramPage() {
       const bindingsRes = await fetch("/api/telegram/bindings");
       const bindingsData = await bindingsRes.json().catch(() => null);
 
+      if (bindingsRes.status === 403 && bindingsData?.disabled) {
+        setDisabled(true);
+        return;
+      }
+
+      setDisabled(false);
       if (bindingsRes.ok) {
         setLink(bindingsData?.link || null);
         setForumBindings(Array.isArray(bindingsData?.forumBindings) ? (bindingsData.forumBindings as TelegramForumBinding[]) : []);
@@ -189,6 +196,18 @@ export default function TelegramPage() {
         </Button>
       </div>
 
+      {disabled && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium text-destructive">{t("disabled.title")}</p>
+            <p className="text-sm text-destructive/80 mt-1">{t("disabled.description")}</p>
+          </div>
+        </div>
+      )}
+
+      {!disabled && (
+        <>
       <Card>
         <CardHeader>
           <CardTitle>{t("link.title")}</CardTitle>
@@ -320,6 +339,8 @@ export default function TelegramPage() {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

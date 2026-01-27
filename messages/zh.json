@@ -339,7 +339,8 @@
         "security": "安全",
         "smtp": "SMTP",
         "ai": "AI",
-        "workflow": "工作流"
+        "workflow": "工作流",
+        "telegram": "Telegram"
       },
       "toasts": {
         "loadFailed": "加载设置失败",
@@ -482,6 +483,14 @@
           "label": "每个工作流最大执行日志数",
           "help": "每个工作流保留的执行日志上限，超过后会自动删除更旧的日志。",
           "recommended": "建议：50-500。数值越大占用的数据库存储越多。"
+        }
+      },
+      "telegramBot": {
+        "cardTitle": "Telegram 机器人功能",
+        "subtitle": "控制用户对 Telegram 机器人集成的访问",
+        "enable": {
+          "label": "启用 Telegram 机器人",
+          "help": "禁用后，用户无法关联 Telegram 账号或绑定群组。工作流中的 Telegram Webhook 不受影响。"
         }
       },
       "fields": {
@@ -1530,6 +1539,10 @@
   "telegram": {
     "title": "Telegram",
     "subtitle": "关联账号并绑定群组话题，用于接收通知。",
+    "disabled": {
+      "title": "Telegram 机器人已禁用",
+      "description": "管理员已禁用 Telegram 机器人功能。如需使用，请联系管理员。"
+    },
     "actions": {
       "refresh": "刷新",
       "generate": "生成"

@@ -96,7 +96,8 @@ export default function AdminSettingsPage() {
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const [otpEnabled, setOtpEnabled] = useState(false);
-  const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow">("general");
+  const [telegramBotEnabled, setTelegramBotEnabled] = useState(true);
+  const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow" | "telegram">("general");
 
   const [appInfo, setAppInfo] = useState<AppInfoResponse | null>(null);
   const [appInfoLoading, setAppInfoLoading] = useState(true);
@@ -237,6 +238,8 @@ export default function AdminSettingsPage() {
     setTurnstileEnabled(map.turnstile_enabled === "true");
     setPasskeyEnabled(map.auth_passkey_enabled === "true");
     setOtpEnabled(map.auth_otp_enabled === "true");
+    // Default to true if not set (backward compatibility)
+    setTelegramBotEnabled(map.telegram_bot_enabled !== "false");
     const mode = map.registration_mode;
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
     setRegistrationInviteCodes(map.registration_invite_codes || "");
@@ -327,6 +330,7 @@ export default function AdminSettingsPage() {
         { key: "turnstile_enabled", value: turnstileEnabled ? "true" : "false" },
         { key: "auth_passkey_enabled", value: passkeyEnabled ? "true" : "false" },
         { key: "auth_otp_enabled", value: otpEnabled ? "true" : "false" },
+        { key: "telegram_bot_enabled", value: telegramBotEnabled ? "true" : "false" },
       ].filter((x) => x.value !== "");
 
       payload.push(
@@ -381,13 +385,14 @@ export default function AdminSettingsPage() {
       </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 h-auto">
             <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="registration">{t("settings.tabs.registration")}</TabsTrigger>
           <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
           {!vercelMode && <TabsTrigger value="smtp">{t("settings.tabs.smtp")}</TabsTrigger>}
           <TabsTrigger value="ai">{t("settings.tabs.ai")}</TabsTrigger>
           <TabsTrigger value="workflow">{t("settings.tabs.workflow")}</TabsTrigger>
+          <TabsTrigger value="telegram">{t("settings.tabs.telegram")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -869,6 +874,31 @@ export default function AdminSettingsPage() {
                 <p className="text-xs text-muted-foreground">
                   {t("settings.workflow.maxExecutionLogs.recommended")}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="telegram">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                {t("settings.telegramBot.cardTitle")}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("settings.telegramBot.subtitle")}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{t("settings.telegramBot.enable.label")}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.telegramBot.enable.help")}
+                  </p>
+                </div>
+                <Switch checked={telegramBotEnabled} onCheckedChange={setTelegramBotEnabled} />
               </div>
             </CardContent>
           </Card>

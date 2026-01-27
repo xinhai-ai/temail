@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
 import { deleteTelegramNotifyWorkflowForBinding } from "@/services/telegram/notify-workflows";
+import { isTelegramBotEnabled } from "@/lib/telegram-features";
 
 const patchSchema = z.object({
   enabled: z.boolean(),
@@ -13,6 +14,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isTelegramBotEnabled())) {
+    return NextResponse.json({ error: "Telegram bot is disabled", disabled: true }, { status: 403 });
   }
 
   const { id } = await params;
@@ -57,6 +62,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await isTelegramBotEnabled())) {
+    return NextResponse.json({ error: "Telegram bot is disabled", disabled: true }, { status: 403 });
   }
 
   const { id } = await params;

@@ -339,7 +339,8 @@
         "security": "Security",
         "smtp": "SMTP",
         "ai": "AI",
-        "workflow": "Workflow"
+        "workflow": "Workflow",
+        "telegram": "Telegram"
       },
       "toasts": {
         "loadFailed": "Failed to load settings",
@@ -482,6 +483,14 @@
           "label": "Max Execution Logs per Workflow",
           "help": "Maximum number of execution logs to keep for each workflow. Older logs will be automatically deleted when this limit is exceeded.",
           "recommended": "Recommended: 50-500. Higher values will use more database storage."
+        }
+      },
+      "telegramBot": {
+        "cardTitle": "Telegram Bot Feature",
+        "subtitle": "Control user access to the Telegram bot integration",
+        "enable": {
+          "label": "Enable Telegram Bot",
+          "help": "When disabled, users cannot link their Telegram accounts or bind groups. Workflow Telegram webhooks are not affected."
         }
       },
       "fields": {
@@ -1530,6 +1539,10 @@
   "telegram": {
     "title": "Telegram",
     "subtitle": "Link your account and bind group Topics for notifications.",
+    "disabled": {
+      "title": "Telegram Bot Disabled",
+      "description": "The administrator has disabled the Telegram bot feature. Please contact your administrator if you need access."
+    },
     "actions": {
       "refresh": "Refresh",
       "generate": "Generate"
