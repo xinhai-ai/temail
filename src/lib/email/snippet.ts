@@ -20,8 +20,8 @@ function decodeBasicEntities(value: string) {
 
 function stripHtml(value: string) {
   const withoutScripts = value
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ");
+    .replace(/<script[\s\S]*?<\/script[^>]*>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style[^>]*>/gi, " ");
   const withoutTags = withoutScripts.replace(/<[^>]+>/g, " ");
   return normalizeWhitespace(decodeBasicEntities(withoutTags));
 }
