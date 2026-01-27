@@ -5,6 +5,7 @@
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
+    "done": "完成",
     "edit": "编辑",
     "create": "创建",
     "search": "搜索",
@@ -1328,8 +1329,15 @@
         "actions": {
           "disable": "禁用",
           "enable": "启用",
-          "delete": "删除"
+          "delete": "删除",
+          "editScopes": "编辑权限"
         }
+      },
+      "edit": {
+        "title": "编辑 API 密钥",
+        "scopes": "权限",
+        "saving": "保存中...",
+        "save": "保存"
       },
       "confirmDelete": "确定删除该 API Key？此操作不可撤销。"
     },

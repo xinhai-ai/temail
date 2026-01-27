@@ -10,7 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, Trash2, Info, Key } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { User, Lock, Trash2, Info, Key, Plus } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import { startRegistration } from "@simplewebauthn/browser";
@@ -79,10 +87,13 @@ export default function SettingsPage() {
   const [apiKeysLoading, setApiKeysLoading] = useState(true);
   const [apiKeysWorkingId, setApiKeysWorkingId] = useState<string | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([]);
+  const [showCreateApiKeyDialog, setShowCreateApiKeyDialog] = useState(false);
   const [apiKeyName, setApiKeyName] = useState("");
   const [apiKeyScopes, setApiKeyScopes] = useState<string[]>(DEFAULT_OPEN_API_KEY_SCOPES);
   const [creatingApiKey, setCreatingApiKey] = useState(false);
   const [createdApiToken, setCreatedApiToken] = useState<string | null>(null);
+  const [editingApiKey, setEditingApiKey] = useState<ApiKeyInfo | null>(null);
+  const [editingApiKeyScopes, setEditingApiKeyScopes] = useState<string[]>([]);
 
   type AppInfoResponse = {
     version: string;
@@ -279,6 +290,69 @@ export default function SettingsPage() {
     } finally {
       setApiKeysWorkingId(null);
     }
+  };
+
+  const handleStartEditApiKeyScopes = (key: ApiKeyInfo) => {
+    setEditingApiKey(key);
+    setEditingApiKeyScopes([...key.scopes]);
+  };
+
+  const handleCancelEditApiKeyScopes = () => {
+    setEditingApiKey(null);
+    setEditingApiKeyScopes([]);
+  };
+
+  const setEditingApiKeyScopeChecked = useCallback((scope: string, checked: boolean) => {
+    setEditingApiKeyScopes((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(scope);
+      else next.delete(scope);
+      return Array.from(next).sort();
+    });
+  }, []);
+
+  const handleSaveApiKeyScopes = async () => {
+    if (!editingApiKey) return;
+    if (editingApiKeyScopes.length === 0) {
+      toast.error(t("toast.selectAtLeastOneScope"));
+      return;
+    }
+
+    setApiKeysWorkingId(editingApiKey.id);
+    try {
+      const res = await fetch(`/api/open-api/keys/${editingApiKey.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scopes: editingApiKeyScopes }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.apiKeyUpdateFailed"));
+        return;
+      }
+      toast.success(t("toast.apiKeyUpdated"));
+      setEditingApiKey(null);
+      setEditingApiKeyScopes([]);
+      fetchApiKeys().catch(() => null);
+    } catch {
+      toast.error(t("toast.apiKeyUpdateFailed"));
+    } finally {
+      setApiKeysWorkingId(null);
+    }
+  };
+
+  const handleOpenCreateDialog = () => {
+    setApiKeyName("");
+    setApiKeyScopes([...DEFAULT_OPEN_API_KEY_SCOPES]);
+    setCreatedApiToken(null);
+    setShowCreateApiKeyDialog(true);
+  };
+
+  const handleCloseCreateDialog = () => {
+    setShowCreateApiKeyDialog(false);
+    setCreatedApiToken(null);
+    setApiKeyName("");
+    setApiKeyScopes([...DEFAULT_OPEN_API_KEY_SCOPES]);
   };
 
   const handleUpdateProfile = async () => {
@@ -908,56 +982,12 @@ export default function SettingsPage() {
                   {t("apiKeys.title")}
                 </CardTitle>
                 <CardDescription>{t("apiKeys.description")}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>{t("apiKeys.create.name")}</Label>
-                  <Input
-                    value={apiKeyName}
-                    onChange={(e) => setApiKeyName(e.target.value)}
-                    placeholder="My integration key"
-                    disabled={creatingApiKey}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("apiKeys.create.scopes")}</Label>
-                  <div className="grid gap-2">
-                    {OPEN_API_SCOPES.map((scope) => (
-                      <label key={scope} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={apiKeyScopes.includes(scope)}
-                          onCheckedChange={(checked) => setApiKeyScopeChecked(scope, checked === true)}
-                          disabled={creatingApiKey}
-                        />
-                        <span className="font-mono text-xs">{scope}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <Button onClick={handleCreateApiKey} disabled={creatingApiKey}>
-                  {creatingApiKey ? t("apiKeys.create.creating") : t("apiKeys.create.create")}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {createdApiToken && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t("apiKeys.token.title")}</CardTitle>
-                  <CardDescription>{t("apiKeys.token.help")}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input value={createdApiToken} readOnly className="font-mono" />
-                  <Button type="button" variant="outline" onClick={handleCopyApiToken}>
-                    {t("apiKeys.token.copy")}
+                <CardAction>
+                  <Button size="sm" onClick={handleOpenCreateDialog}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    {t("apiKeys.create.create")}
                   </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("apiKeys.list.title")}</CardTitle>
+                </CardAction>
               </CardHeader>
               <CardContent className="space-y-4">
                 {apiKeysLoading ? (
@@ -1002,6 +1032,15 @@ export default function SettingsPage() {
                             type="button"
                             size="sm"
                             variant="outline"
+                            onClick={() => handleStartEditApiKeyScopes(key)}
+                            disabled={apiKeysWorkingId === key.id}
+                          >
+                            {t("apiKeys.list.actions.editScopes")}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleSetApiKeyDisabled(key.id, !key.disabledAt)}
                             disabled={apiKeysWorkingId === key.id}
                           >
@@ -1026,6 +1065,111 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Dialog open={showCreateApiKeyDialog} onOpenChange={setShowCreateApiKeyDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("apiKeys.create.title")}</DialogTitle>
+                <DialogDescription>{t("apiKeys.description")}</DialogDescription>
+              </DialogHeader>
+              {createdApiToken ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>{t("apiKeys.token.title")}</Label>
+                    <Input value={createdApiToken} readOnly className="font-mono text-sm" />
+                    <p className="text-xs text-muted-foreground">{t("apiKeys.token.help")}</p>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={handleCopyApiToken}>
+                      {t("apiKeys.token.copy")}
+                    </Button>
+                    <Button type="button" onClick={handleCloseCreateDialog}>
+                      {tCommon("done")}
+                    </Button>
+                  </DialogFooter>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>{t("apiKeys.create.name")}</Label>
+                    <Input
+                      value={apiKeyName}
+                      onChange={(e) => setApiKeyName(e.target.value)}
+                      placeholder="My integration key"
+                      disabled={creatingApiKey}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("apiKeys.create.scopes")}</Label>
+                    <div className="grid gap-2 max-h-64 overflow-y-auto">
+                      {OPEN_API_SCOPES.map((scope) => (
+                        <label key={scope} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={apiKeyScopes.includes(scope)}
+                            onCheckedChange={(checked) => setApiKeyScopeChecked(scope, checked === true)}
+                            disabled={creatingApiKey}
+                          />
+                          <span className="font-mono text-xs">{scope}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={handleCloseCreateDialog} disabled={creatingApiKey}>
+                      {tCommon("cancel")}
+                    </Button>
+                    <Button onClick={handleCreateApiKey} disabled={creatingApiKey || apiKeyScopes.length === 0}>
+                      {creatingApiKey ? t("apiKeys.create.creating") : t("apiKeys.create.create")}
+                    </Button>
+                  </DialogFooter>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={editingApiKey !== null} onOpenChange={(open) => !open && handleCancelEditApiKeyScopes()}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("apiKeys.edit.title")}</DialogTitle>
+                <DialogDescription>
+                  {editingApiKey?.name} ({editingApiKey?.keyPrefix})
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t("apiKeys.edit.scopes")}</Label>
+                  <div className="grid gap-2 max-h-64 overflow-y-auto">
+                    {OPEN_API_SCOPES.map((scope) => (
+                      <label key={scope} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={editingApiKeyScopes.includes(scope)}
+                          onCheckedChange={(checked) => setEditingApiKeyScopeChecked(scope, checked === true)}
+                          disabled={apiKeysWorkingId === editingApiKey?.id}
+                        />
+                        <span className="font-mono text-xs">{scope}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancelEditApiKeyScopes}
+                    disabled={apiKeysWorkingId === editingApiKey?.id}
+                  >
+                    {tCommon("cancel")}
+                  </Button>
+                  <Button
+                    onClick={handleSaveApiKeyScopes}
+                    disabled={apiKeysWorkingId === editingApiKey?.id || editingApiKeyScopes.length === 0}
+                  >
+                    {apiKeysWorkingId === editingApiKey?.id ? t("apiKeys.edit.saving") : t("apiKeys.edit.save")}
+                  </Button>
+                </DialogFooter>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="data">

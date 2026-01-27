@@ -26,6 +26,7 @@
     <a href="#-features">Features</a> •
     <a href="#-quick-start">Quick Start</a> •
     <a href="#-deployment">Deployment</a> •
+    <a href="#open-api">Open API</a> •
     <a href="#-documentation">Documentation</a> •
     <a href="#-contributing">Contributing</a>
   </p>
@@ -121,6 +122,7 @@ Perfect for building notification systems, customer support pipelines, email-to-
 | **IMAP Sync** | Connect to any IMAP server (Gmail, Outlook, self-hosted) |
 | **Visual Workflow Editor** | Drag-and-drop workflow builder with ReactFlow |
 | **Multi-Channel Notifications** | Forward to Telegram, Slack, Discord, or custom webhooks |
+| **Open API** | RESTful API with granular scopes for integrations and automation |
 | **Email Preview** | Shareable preview links with expiration |
 | **Full-Text Search** | Search emails by subject, sender, content |
 | **Tagging & Labeling** | Organize emails with custom tags |
@@ -595,6 +597,99 @@ Incoming emails should be posted as JSON:
 ```
 
 Required header: `X-Webhook-Secret: your-webhook-secret`
+
+---
+
+## Open API
+
+TEmail provides an Open API (v1) for programmatic access to your emails and mailboxes. This enables integrations, automation scripts, and third-party applications.
+
+### Getting Started
+
+1. Go to **Settings** → **API** tab
+2. Click **Create key** to generate a new API key
+3. Select the required scopes (permissions)
+4. Copy and securely store the token (shown only once)
+
+### Authentication
+
+Include your API key in requests using either header:
+
+```bash
+# Option 1: Authorization header
+curl -H "Authorization: Bearer temail_api_v1.<prefix>.<secret>" \
+  https://your-domain.com/api/open/v1/mailboxes
+
+# Option 2: X-API-Key header
+curl -H "X-API-Key: temail_api_v1.<prefix>.<secret>" \
+  https://your-domain.com/api/open/v1/mailboxes
+```
+
+### Available Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `mailboxes:read` | List and view mailboxes |
+| `mailboxes:write` | Create, update, delete mailboxes |
+| `emails:read` | List and view emails |
+| `emails:write` | Update email status, batch operations |
+| `emails:raw` | Download RFC822 raw email |
+| `emails:attachments` | Download attachments |
+| `tags:read` | List tags |
+| `tags:write` | Manage email tags |
+| `search:read` | Search emails |
+| `domains:read` | List available domains |
+| `groups:read` | List mailbox groups |
+| `groups:write` | Create, update, delete groups |
+
+### API Endpoints
+
+| Endpoint | Method | Scope | Description |
+|----------|--------|-------|-------------|
+| `/api/open/v1/domains` | GET | `domains:read` | List available domains |
+| `/api/open/v1/mailboxes` | GET | `mailboxes:read` | List mailboxes |
+| `/api/open/v1/mailboxes` | POST | `mailboxes:write` | Create mailbox |
+| `/api/open/v1/mailboxes/{id}` | GET | `mailboxes:read` | Get mailbox details |
+| `/api/open/v1/mailboxes/{id}` | PATCH | `mailboxes:write` | Update mailbox |
+| `/api/open/v1/mailboxes/{id}` | DELETE | `mailboxes:write` | Delete mailbox |
+| `/api/open/v1/mailboxes/{id}/stats` | GET | `mailboxes:read` | Get mailbox statistics |
+| `/api/open/v1/emails` | GET | `emails:read` | List emails |
+| `/api/open/v1/emails/{id}` | GET | `emails:read` | Get email details |
+| `/api/open/v1/emails/{id}` | PATCH | `emails:write` | Update email status |
+| `/api/open/v1/emails/{id}` | DELETE | `emails:write` | Move to trash |
+| `/api/open/v1/emails/{id}/restore` | POST | `emails:write` | Restore from trash |
+| `/api/open/v1/emails/{id}/purge` | DELETE | `emails:write` | Permanently delete |
+| `/api/open/v1/emails/{id}/raw` | GET | `emails:raw` | Get RFC822 raw content |
+| `/api/open/v1/emails/batch` | POST | `emails:write` | Batch operations |
+| `/api/open/v1/groups` | GET | `groups:read` | List groups |
+| `/api/open/v1/groups` | POST | `groups:write` | Create group |
+| `/api/open/v1/groups/{id}` | GET | `groups:read` | Get group with mailboxes |
+| `/api/open/v1/groups/{id}` | PATCH | `groups:write` | Update group |
+| `/api/open/v1/groups/{id}` | DELETE | `groups:write` | Delete group |
+| `/api/open/v1/tags` | GET | `tags:read` | List tags |
+| `/api/open/v1/search/emails` | GET | `search:read` | Search emails |
+
+### Example: Create Mailbox
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prefix": "support", "domainId": "clx123abc"}' \
+  https://your-domain.com/api/open/v1/mailboxes
+```
+
+### Example: Batch Mark as Read
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "mark_read", "emailIds": ["id1", "id2", "id3"]}' \
+  https://your-domain.com/api/open/v1/emails/batch
+```
+
+> **📖 See [Open API Documentation (中文)](docs/OPEN_API_CN.md) for complete API reference with detailed examples.**
 
 ---
 

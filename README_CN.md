@@ -26,6 +26,7 @@
     <a href="#-功能特性">功能特性</a> •
     <a href="#-快速开始">快速开始</a> •
     <a href="#-部署方式">部署方式</a> •
+    <a href="#open-api">Open API</a> •
     <a href="#-配置说明">配置说明</a> •
     <a href="#-贡献指南">贡献指南</a>
   </p>
@@ -121,6 +122,7 @@
 | **IMAP 同步** | 连接任意 IMAP 服务器（Gmail、Outlook、自建邮箱） |
 | **可视化工作流编辑器** | 基于 ReactFlow 的拖拽式工作流构建器 |
 | **多渠道通知** | 转发到 Telegram、Slack、Discord 或自定义 Webhook |
+| **Open API** | 支持细粒度权限的 RESTful API，便于集成和自动化 |
 | **邮件预览** | 带过期时间的可分享预览链接 |
 | **全文搜索** | 按主题、发件人、内容搜索邮件 |
 | **标签管理** | 使用自定义标签整理邮件 |
@@ -595,6 +597,99 @@ TEmail 提供完整的 REST API。
 ```
 
 必需请求头：`X-Webhook-Secret: your-webhook-secret`
+
+---
+
+## Open API
+
+TEmail 提供 Open API (v1) 用于程序化访问邮件和邮箱，支持集成、自动化脚本和第三方应用。
+
+### 快速开始
+
+1. 进入 **设置** → **API** 标签页
+2. 点击 **创建密钥** 生成新的 API Key
+3. 选择所需的权限范围（Scopes）
+4. 复制并安全保存 Token（仅显示一次）
+
+### 认证方式
+
+在请求中使用以下任一方式传递 API Key：
+
+```bash
+# 方式一：Authorization 头
+curl -H "Authorization: Bearer temail_api_v1.<prefix>.<secret>" \
+  https://your-domain.com/api/open/v1/mailboxes
+
+# 方式二：X-API-Key 头
+curl -H "X-API-Key: temail_api_v1.<prefix>.<secret>" \
+  https://your-domain.com/api/open/v1/mailboxes
+```
+
+### 权限范围（Scopes）
+
+| Scope | 说明 |
+|-------|------|
+| `mailboxes:read` | 查看邮箱列表和详情 |
+| `mailboxes:write` | 创建、更新、删除邮箱 |
+| `emails:read` | 查看邮件列表和详情 |
+| `emails:write` | 更新邮件状态、批量操作 |
+| `emails:raw` | 下载 RFC822 原始邮件 |
+| `emails:attachments` | 下载附件 |
+| `tags:read` | 查看标签 |
+| `tags:write` | 管理邮件标签 |
+| `search:read` | 搜索邮件 |
+| `domains:read` | 查看可用域名 |
+| `groups:read` | 查看邮箱分组 |
+| `groups:write` | 创建、更新、删除分组 |
+
+### API 端点
+
+| 端点 | 方法 | 权限 | 说明 |
+|------|------|------|------|
+| `/api/open/v1/domains` | GET | `domains:read` | 获取可用域名列表 |
+| `/api/open/v1/mailboxes` | GET | `mailboxes:read` | 获取邮箱列表 |
+| `/api/open/v1/mailboxes` | POST | `mailboxes:write` | 创建邮箱 |
+| `/api/open/v1/mailboxes/{id}` | GET | `mailboxes:read` | 获取邮箱详情 |
+| `/api/open/v1/mailboxes/{id}` | PATCH | `mailboxes:write` | 更新邮箱 |
+| `/api/open/v1/mailboxes/{id}` | DELETE | `mailboxes:write` | 删除邮箱 |
+| `/api/open/v1/mailboxes/{id}/stats` | GET | `mailboxes:read` | 获取邮箱统计 |
+| `/api/open/v1/emails` | GET | `emails:read` | 获取邮件列表 |
+| `/api/open/v1/emails/{id}` | GET | `emails:read` | 获取邮件详情 |
+| `/api/open/v1/emails/{id}` | PATCH | `emails:write` | 更新邮件状态 |
+| `/api/open/v1/emails/{id}` | DELETE | `emails:write` | 移入回收站 |
+| `/api/open/v1/emails/{id}/restore` | POST | `emails:write` | 从回收站恢复 |
+| `/api/open/v1/emails/{id}/purge` | DELETE | `emails:write` | 永久删除 |
+| `/api/open/v1/emails/{id}/raw` | GET | `emails:raw` | 获取 RFC822 原文 |
+| `/api/open/v1/emails/batch` | POST | `emails:write` | 批量操作 |
+| `/api/open/v1/groups` | GET | `groups:read` | 获取分组列表 |
+| `/api/open/v1/groups` | POST | `groups:write` | 创建分组 |
+| `/api/open/v1/groups/{id}` | GET | `groups:read` | 获取分组详情及邮箱 |
+| `/api/open/v1/groups/{id}` | PATCH | `groups:write` | 更新分组 |
+| `/api/open/v1/groups/{id}` | DELETE | `groups:write` | 删除分组 |
+| `/api/open/v1/tags` | GET | `tags:read` | 获取标签列表 |
+| `/api/open/v1/search/emails` | GET | `search:read` | 搜索邮件 |
+
+### 示例：创建邮箱
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prefix": "support", "domainId": "clx123abc"}' \
+  https://your-domain.com/api/open/v1/mailboxes
+```
+
+### 示例：批量标记已读
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "mark_read", "emailIds": ["id1", "id2", "id3"]}' \
+  https://your-domain.com/api/open/v1/emails/batch
+```
+
+> **📖 完整 API 文档请查看 [Open API 文档](docs/OPEN_API_CN.md)，包含详细的请求/响应示例。**
 
 ---
 

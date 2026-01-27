@@ -5,6 +5,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
+    "done": "Done",
     "edit": "Edit",
     "create": "Create",
     "search": "Search",
@@ -1328,8 +1329,15 @@
         "actions": {
           "disable": "Disable",
           "enable": "Enable",
-          "delete": "Delete"
+          "delete": "Delete",
+          "editScopes": "Edit Scopes"
         }
+      },
+      "edit": {
+        "title": "Edit API Key",
+        "scopes": "Scopes",
+        "saving": "Saving...",
+        "save": "Save"
       },
       "confirmDelete": "Delete this API key? This cannot be undone."
     },
