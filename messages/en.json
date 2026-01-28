@@ -45,13 +45,23 @@
     "registerPage": {
       "description": "Sign up for a new TEmail account",
       "descriptionInvite": "Sign up with an invite code",
-      "alreadyHaveAccount": "Already have an account?"
+      "alreadyHaveAccount": "Already have an account?",
+      "verifyEmail": {
+        "title": "Check your inbox",
+        "description": "We sent a verification email to {email}. Please click the link to finish setting up your account.",
+        "sent": "Verification email sent.",
+        "resend": "Resend verification email",
+        "resendIn": "Resend in {seconds}s",
+        "resendFailed": "Failed to resend verification email"
+      }
     },
     "verifyEmailPage": {
       "title": "Verify Email",
       "verifying": "Verifying your email...",
+      "signingIn": "Signing you in...",
       "successTitle": "Email verified",
       "successDescription": "Your email has been verified. You can now sign in.",
+      "redirecting": "Redirecting to dashboard...",
       "errorTitle": "Verification failed",
       "failed": "Email verification failed",
       "missingToken": "Missing verification token.",
@@ -64,6 +74,8 @@
       "action": "Send reset link",
       "sending": "Sending...",
       "emailSent": "If an account exists for this email, a reset link has been sent.",
+      "resend": "Resend reset link",
+      "resendIn": "Resend in {seconds}s",
       "failed": "Failed to send reset email",
       "disabledTitle": "Password reset is disabled",
       "disabledDescription": "Please contact the administrator.",

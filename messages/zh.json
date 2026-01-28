@@ -45,13 +45,23 @@
     "registerPage": {
       "description": "注册一个新的 TEmail 账户",
       "descriptionInvite": "使用邀请码注册",
-      "alreadyHaveAccount": "已有账户？"
+      "alreadyHaveAccount": "已有账户？",
+      "verifyEmail": {
+        "title": "请查收邮箱",
+        "description": "我们已向 {email} 发送了一封验证邮件，请点击邮件中的链接完成注册。",
+        "sent": "验证邮件已发送，请查收。",
+        "resend": "重新发送验证邮件",
+        "resendIn": "重新发送（{seconds} 秒）",
+        "resendFailed": "重发验证邮件失败"
+      }
     },
     "verifyEmailPage": {
       "title": "邮箱验证",
       "verifying": "正在验证邮箱...",
+      "signingIn": "正在登录...",
       "successTitle": "邮箱已验证",
       "successDescription": "你的邮箱已验证，现在可以登录。",
+      "redirecting": "正在进入面板...",
       "errorTitle": "验证失败",
       "failed": "邮箱验证失败",
       "missingToken": "缺少验证令牌。",
@@ -64,6 +74,8 @@
       "action": "发送重置链接",
       "sending": "发送中...",
       "emailSent": "如果该邮箱存在账号，我们已发送重置链接。",
+      "resend": "重新发送重置链接",
+      "resendIn": "重新发送（{seconds} 秒）",
       "failed": "发送重置邮件失败",
       "disabledTitle": "密码找回已禁用",
       "disabledDescription": "请联系管理员。",
