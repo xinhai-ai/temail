@@ -80,25 +80,66 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
   return { host, port, secure, user, pass, from };
 }
 
-export async function createSmtpTransporter(): Promise<{ transporter: Transporter; config: SmtpConfig }> {
-  const config = await getSmtpConfig();
-  const implicitTls = config.port === 465;
-  const secure = Boolean(config.secure && implicitTls);
-  const requireTLS = Boolean(config.secure && !implicitTls);
+type TransportSecurity = { secure: boolean; requireTLS: boolean };
 
-  const transporter = nodemailer.createTransport({
+function resolveTransportSecurity(config: SmtpConfig): TransportSecurity {
+  if (!config.secure) return { secure: false, requireTLS: false };
+  const implicitTls = config.port === 465;
+  return {
+    secure: implicitTls,
+    requireTLS: !implicitTls,
+  };
+}
+
+function buildTransporter(config: SmtpConfig, security: TransportSecurity): Transporter {
+  return nodemailer.createTransport({
     host: config.host,
     port: config.port,
-    secure,
-    requireTLS,
+    secure: security.secure,
+    requireTLS: security.requireTLS,
     auth: config.user && config.pass ? { user: config.user, pass: config.pass } : undefined,
   });
+}
+
+export async function createSmtpTransporter(): Promise<{ transporter: Transporter; config: SmtpConfig }> {
+  const config = await getSmtpConfig();
+  const transporter = buildTransporter(config, resolveTransportSecurity(config));
   return { transporter, config };
 }
 
+function isWrongTlsVersionError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybe = error as { code?: string; reason?: string; message?: string };
+  const message = (maybe.message || "").toLowerCase();
+  return (
+    maybe.code === "ESOCKET" &&
+    (maybe.reason === "wrong version number" || message.includes("wrong version number"))
+  );
+}
+
+async function withSmtpTransporter<T>(
+  handler: (options: { transporter: Transporter; config: SmtpConfig }) => Promise<T>
+): Promise<T> {
+  const config = await getSmtpConfig();
+  const primarySecurity = resolveTransportSecurity(config);
+
+  try {
+    return await handler({ transporter: buildTransporter(config, primarySecurity), config });
+  } catch (error) {
+    if (config.secure && config.port !== 465 && primarySecurity.requireTLS && isWrongTlsVersionError(error)) {
+      return await handler({
+        transporter: buildTransporter(config, { secure: true, requireTLS: false }),
+        config,
+      });
+    }
+    throw error;
+  }
+}
+
 export async function verifySmtpTransport(): Promise<void> {
-  const { transporter } = await createSmtpTransporter();
-  await transporter.verify();
+  await withSmtpTransporter(async ({ transporter }) => {
+    await transporter.verify();
+  });
 }
 
 export async function sendSmtpMail(options: {
@@ -108,14 +149,15 @@ export async function sendSmtpMail(options: {
   html?: string | null;
   replyTo?: string | null;
 }): Promise<{ messageId: string }> {
-  const { transporter, config } = await createSmtpTransporter();
-  const info = await transporter.sendMail({
-    from: config.from,
-    to: options.to,
-    subject: options.subject,
-    text: options.text || undefined,
-    html: options.html || undefined,
-    replyTo: options.replyTo || undefined,
+  return await withSmtpTransporter(async ({ transporter, config }) => {
+    const info = await transporter.sendMail({
+      from: config.from,
+      to: options.to,
+      subject: options.subject,
+      text: options.text || undefined,
+      html: options.html || undefined,
+      replyTo: options.replyTo || undefined,
+    });
+    return { messageId: info.messageId };
   });
-  return { messageId: info.messageId };
 }

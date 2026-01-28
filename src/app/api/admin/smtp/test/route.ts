@@ -60,8 +60,11 @@ export async function POST(req: NextRequest) {
     if (error instanceof SmtpConfigError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    if (error instanceof Error) {
+      console.error("[api/admin/smtp/test] error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     console.error("[api/admin/smtp/test] error:", error);
     return NextResponse.json({ error: "Failed to send test email" }, { status: 500 });
   }
 }
-
