@@ -16,18 +16,16 @@ type VerifyEmailResponse =
 export default function VerifyEmailClient({ token }: { token: string }) {
   const router = useRouter();
   const t = useTranslations("auth");
+  const trimmedToken = (token || "").trim();
   const [status, setStatus] = useState<
     "idle" | "verifying" | "signing_in" | "success" | "success_no_login" | "error"
-  >("idle");
-  const [errorKey, setErrorKey] = useState<"missing_token" | "invalid_or_expired" | "failed" | null>(null);
+  >(trimmedToken ? "idle" : "error");
+  const [errorKey, setErrorKey] = useState<"missing_token" | "invalid_or_expired" | "failed" | null>(
+    trimmedToken ? null : "missing_token"
+  );
 
   useEffect(() => {
-    const trimmed = (token || "").trim();
-    if (!trimmed) {
-      setStatus("error");
-      setErrorKey("missing_token");
-      return;
-    }
+    if (!trimmedToken) return;
 
     const run = async () => {
       setStatus("verifying");
@@ -38,7 +36,7 @@ export default function VerifyEmailClient({ token }: { token: string }) {
         res = await fetch("/api/auth/verify-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: trimmed }),
+          body: JSON.stringify({ token: trimmedToken }),
         });
       } catch {
         setStatus("error");
@@ -82,11 +80,14 @@ export default function VerifyEmailClient({ token }: { token: string }) {
       router.refresh();
     };
 
-    run().catch(() => {
-      setStatus("error");
-      setErrorKey("failed");
-    });
-  }, [router, token]);
+    const id = setTimeout(() => {
+      run().catch(() => {
+        setStatus("error");
+        setErrorKey("failed");
+      });
+    }, 0);
+    return () => clearTimeout(id);
+  }, [router, trimmedToken]);
 
   const isError = status === "error";
   const isSuccess = status === "success" || status === "success_no_login";
@@ -152,4 +153,3 @@ export default function VerifyEmailClient({ token }: { token: string }) {
     </div>
   );
 }
-
