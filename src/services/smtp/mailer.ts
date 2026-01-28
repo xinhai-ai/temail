@@ -82,10 +82,15 @@ export async function getSmtpConfig(): Promise<SmtpConfig> {
 
 export async function createSmtpTransporter(): Promise<{ transporter: Transporter; config: SmtpConfig }> {
   const config = await getSmtpConfig();
+  const implicitTls = config.port === 465;
+  const secure = Boolean(config.secure && implicitTls);
+  const requireTLS = Boolean(config.secure && !implicitTls);
+
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port,
-    secure: config.secure,
+    secure,
+    requireTLS,
     auth: config.user && config.pass ? { user: config.user, pass: config.pass } : undefined,
   });
   return { transporter, config };
@@ -114,4 +119,3 @@ export async function sendSmtpMail(options: {
   });
   return { messageId: info.messageId };
 }
-
