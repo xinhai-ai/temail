@@ -502,6 +502,16 @@
           "title": "模板变量",
           "help": "你可以在提示词模板中使用这些变量："
         },
+        "provider": {
+          "cardTitle": "AI 提供商设置",
+          "subtitle": "配置统一的 AI 提供商与模型列表",
+          "models": {
+            "placeholder": "例如：gpt-4o-mini",
+            "add": "添加模型",
+            "remove": "移除",
+            "empty": "尚未添加模型。"
+          }
+        },
         "classifier": {
           "cardTitle": "AI 分类器设置",
           "subtitle": "为工作流配置 AI 邮件分类能力",
@@ -589,6 +599,18 @@
         },
         "webauthn_rp_id": {
           "label": "WebAuthn RP ID（可选）"
+        },
+        "ai_provider_base_url": {
+          "label": "API 基础地址",
+          "description": "兼容 OpenAI 的 API 端点"
+        },
+        "ai_provider_api_key": {
+          "label": "API Key",
+          "description": "OpenAI API Key 或兼容供应商的 Key"
+        },
+        "ai_provider_models": {
+          "label": "模型列表",
+          "description": "可选：用于下拉选择的模型名列表（例如：gpt-4o-mini、gpt-4o）"
         },
         "ai_classifier_base_url": {
           "label": "API 基础地址",

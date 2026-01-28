@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Info, Settings, Shield } from "lucide-react";
+import { Info, Settings, Shield, X } from "lucide-react";
 import { toast } from "sonner";
 import { isVercelDeployment } from "@/lib/deployment/public";
 
@@ -66,6 +66,30 @@ Existing Variables (JSON):
 Instruction:
 {{instruction}}`;
 
+function parseAiProviderModels(raw: string | undefined): string[] {
+  if (!raw) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  const models: string[] = [];
+  for (const item of parsed) {
+    if (typeof item !== "string") continue;
+    const model = item.trim();
+    if (!model) continue;
+    if (models.includes(model)) continue;
+    models.push(model);
+  }
+
+  return models;
+}
+
 export default function AdminSettingsPage() {
   type AppInfoResponse = {
     version: string;
@@ -91,6 +115,8 @@ export default function AdminSettingsPage() {
   const [smtpTestTo, setSmtpTestTo] = useState("");
   const [smtpTestSubject, setSmtpTestSubject] = useState("TEmail SMTP Test");
   const [smtpTesting, setSmtpTesting] = useState(false);
+  const [aiProviderModels, setAiProviderModels] = useState<string[]>([]);
+  const [aiProviderModelDraft, setAiProviderModelDraft] = useState("");
   const [aiClassifierEnabled, setAiClassifierEnabled] = useState(false);
   const [aiRewriteEnabled, setAiRewriteEnabled] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
@@ -155,26 +181,31 @@ export default function AdminSettingsPage() {
     ],
     []
   );
-  const aiClassifierItems = useMemo(
+  const aiProviderItems = useMemo(
     () => [
       {
-        key: "ai_classifier_base_url",
-        labelKey: "settings.fields.ai_classifier_base_url.label",
+        key: "ai_provider_base_url",
+        labelKey: "settings.fields.ai_provider_base_url.label",
         placeholder: "https://api.openai.com/v1",
-        descriptionKey: "settings.fields.ai_classifier_base_url.description",
+        descriptionKey: "settings.fields.ai_provider_base_url.description",
       },
+      {
+        key: "ai_provider_api_key",
+        labelKey: "settings.fields.ai_provider_api_key.label",
+        placeholder: "sk-...",
+        secret: true,
+        descriptionKey: "settings.fields.ai_provider_api_key.description",
+      },
+    ],
+    []
+  );
+  const aiClassifierItems = useMemo(
+    () => [
       {
         key: "ai_classifier_model",
         labelKey: "settings.fields.ai_classifier_model.label",
         placeholder: "gpt-4o-mini",
         descriptionKey: "settings.fields.ai_classifier_model.description",
-      },
-      {
-        key: "ai_classifier_api_key",
-        labelKey: "settings.fields.ai_classifier_api_key.label",
-        placeholder: "sk-...",
-        secret: true,
-        descriptionKey: "settings.fields.ai_classifier_api_key.description",
       },
       {
         key: "ai_classifier_default_prompt",
@@ -189,23 +220,10 @@ export default function AdminSettingsPage() {
   const aiRewriteItems = useMemo(
     () => [
       {
-        key: "ai_rewrite_base_url",
-        labelKey: "settings.fields.ai_rewrite_base_url.label",
-        placeholder: "https://api.openai.com/v1",
-        descriptionKey: "settings.fields.ai_rewrite_base_url.description",
-      },
-      {
         key: "ai_rewrite_model",
         labelKey: "settings.fields.ai_rewrite_model.label",
         placeholder: "gpt-4o-mini",
         descriptionKey: "settings.fields.ai_rewrite_model.description",
-      },
-      {
-        key: "ai_rewrite_api_key",
-        labelKey: "settings.fields.ai_rewrite_api_key.label",
-        placeholder: "sk-...",
-        secret: true,
-        descriptionKey: "settings.fields.ai_rewrite_api_key.description",
       },
       {
         key: "ai_rewrite_default_prompt",
@@ -217,6 +235,17 @@ export default function AdminSettingsPage() {
     ],
     []
   );
+
+  const addAiProviderModel = useCallback(() => {
+    const model = aiProviderModelDraft.trim();
+    if (!model) return;
+    setAiProviderModels((prev) => (prev.includes(model) ? prev : [...prev, model]));
+    setAiProviderModelDraft("");
+  }, [aiProviderModelDraft]);
+
+  const removeAiProviderModel = useCallback((model: string) => {
+    setAiProviderModels((prev) => prev.filter((m) => m !== model));
+  }, []);
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -253,6 +282,8 @@ export default function AdminSettingsPage() {
     setRegistrationInviteCodes(map.registration_invite_codes || "");
     setWorkflowMaxExecutionLogs(map.workflow_max_execution_logs || "100");
     setWorkflowForwardEmailEnabled(map.workflow_forward_email_enabled !== "false");
+    setAiProviderModels(parseAiProviderModels(map.ai_provider_models));
+    setAiProviderModelDraft("");
     setLoading(false);
   }, [t]);
 
@@ -321,6 +352,11 @@ export default function AdminSettingsPage() {
           key: item.key,
           value: values[item.key] || "",
         })),
+        ...aiProviderItems.map((item) => ({
+          key: item.key,
+          value: values[item.key] || "",
+        })),
+        { key: "ai_provider_models", value: JSON.stringify(aiProviderModels) },
         ...aiClassifierItems.map((item) => ({
           key: item.key,
           value: values[item.key] || "",
@@ -805,12 +841,103 @@ export default function AdminSettingsPage() {
           </TabsContent>
         )}
 
-        <TabsContent value="ai">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
+	        <TabsContent value="ai">
+	          <div className="space-y-6">
+	            <Card>
+	              <CardHeader>
+	                <CardTitle className="flex items-center gap-2">
+	                  <Settings className="h-5 w-5" />
+	                  {t("settings.ai.provider.cardTitle")}
+	                </CardTitle>
+	                <p className="text-sm text-muted-foreground mt-1">
+	                  {t("settings.ai.provider.subtitle")}
+	                </p>
+	              </CardHeader>
+	              <CardContent className="space-y-4">
+	                {aiProviderItems.map((item) => (
+	                  <div key={item.key} className="space-y-2">
+	                    <Label>{t(item.labelKey)}</Label>
+	                    {item.descriptionKey && (
+	                      <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
+	                    )}
+	                    <Input
+	                      placeholder={
+	                        item.secret && maskedValues[item.key] && !values[item.key]
+	                          ? t("settings.common.secretConfigured")
+	                          : item.placeholder
+	                      }
+	                      value={values[item.key] || ""}
+	                      type={item.secret ? "password" : "text"}
+	                      onChange={(e) => setValue(item.key, e.target.value)}
+	                    />
+	                  </div>
+	                ))}
+
+	                <Separator />
+
+	                <div className="space-y-2">
+	                  <div>
+	                    <Label>{t("settings.fields.ai_provider_models.label")}</Label>
+	                    <p className="text-xs text-muted-foreground">
+	                      {t("settings.fields.ai_provider_models.description")}
+	                    </p>
+	                  </div>
+	                  <div className="flex gap-2">
+	                    <Input
+	                      placeholder={t("settings.ai.provider.models.placeholder")}
+	                      value={aiProviderModelDraft}
+	                      onChange={(e) => setAiProviderModelDraft(e.target.value)}
+	                      onKeyDown={(e) => {
+	                        if (e.key === "Enter") {
+	                          e.preventDefault();
+	                          addAiProviderModel();
+	                        }
+	                      }}
+	                    />
+	                    <Button
+	                      type="button"
+	                      variant="secondary"
+	                      onClick={addAiProviderModel}
+	                      disabled={!aiProviderModelDraft.trim()}
+	                    >
+	                      {t("settings.ai.provider.models.add")}
+	                    </Button>
+	                  </div>
+
+	                  {aiProviderModels.length > 0 ? (
+	                    <div className="flex flex-wrap gap-2">
+	                      {aiProviderModels.map((model) => (
+	                        <span
+	                          key={model}
+	                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium"
+	                        >
+	                          <code className="font-mono">{model}</code>
+	                          <Button
+	                            type="button"
+	                            variant="ghost"
+	                            size="icon-sm"
+	                            className="h-6 w-6"
+	                            onClick={() => removeAiProviderModel(model)}
+	                            title={t("settings.ai.provider.models.remove")}
+	                          >
+	                            <X className="h-3 w-3" />
+	                          </Button>
+	                        </span>
+	                      ))}
+	                    </div>
+	                  ) : (
+	                    <p className="text-xs text-muted-foreground">
+	                      {t("settings.ai.provider.models.empty")}
+	                    </p>
+	                  )}
+	                </div>
+	              </CardContent>
+	            </Card>
+
+	            <Card>
+	              <CardHeader>
+	                <CardTitle className="flex items-center gap-2">
+	                  <Settings className="h-5 w-5" />
                   {t("settings.ai.classifier.cardTitle")}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -828,32 +955,55 @@ export default function AdminSettingsPage() {
                   <Switch checked={aiClassifierEnabled} onCheckedChange={setAiClassifierEnabled} />
                 </div>
 
-                <Separator />
+	                <Separator />
 
-                {aiClassifierItems.map((item) => (
-                  <div key={item.key} className="space-y-2">
-                    <Label>{t(item.labelKey)}</Label>
-                    {item.descriptionKey && (
-                      <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
-                    )}
-                    {item.type === "textarea" ? (
-                      <Textarea
-                        placeholder={item.placeholder}
-                        value={values[item.key] || ""}
-                        onChange={(e) => setValue(item.key, e.target.value)}
-                        rows={8}
-                        className="font-mono text-sm"
-                      />
-                    ) : (
-                      <Input
-                        placeholder={item.placeholder}
-                        value={values[item.key] || ""}
-                        type={item.secret ? "password" : "text"}
-                        onChange={(e) => setValue(item.key, e.target.value)}
-                      />
-                    )}
-                  </div>
-                ))}
+	                {aiClassifierItems.map((item) => {
+	                  const rawValue = values[item.key] || "";
+	                  const trimmedValue = rawValue.trim();
+	                  const isModel = item.key === "ai_classifier_model";
+	                  const canUseSelect =
+	                    isModel &&
+	                    aiProviderModels.length > 0 &&
+	                    (!trimmedValue || aiProviderModels.includes(trimmedValue));
+
+	                  return (
+	                    <div key={item.key} className="space-y-2">
+	                      <Label>{t(item.labelKey)}</Label>
+	                      {item.descriptionKey && (
+	                        <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
+	                      )}
+	                      {item.type === "textarea" ? (
+	                        <Textarea
+	                          placeholder={item.placeholder}
+	                          value={rawValue}
+	                          onChange={(e) => setValue(item.key, e.target.value)}
+	                          rows={8}
+	                          className="font-mono text-sm"
+	                        />
+	                      ) : canUseSelect ? (
+	                        <Select value={trimmedValue || undefined} onValueChange={(v) => setValue(item.key, v)}>
+	                          <SelectTrigger className="w-full">
+	                            <SelectValue placeholder={item.placeholder} />
+	                          </SelectTrigger>
+	                          <SelectContent>
+	                            {aiProviderModels.map((model) => (
+	                              <SelectItem key={model} value={model}>
+	                                {model}
+	                              </SelectItem>
+	                            ))}
+	                          </SelectContent>
+	                        </Select>
+	                      ) : (
+	                        <Input
+	                          placeholder={item.placeholder}
+	                          value={rawValue}
+	                          type={item.secret ? "password" : "text"}
+	                          onChange={(e) => setValue(item.key, e.target.value)}
+	                        />
+	                      )}
+	                    </div>
+	                  );
+	                })}
 
 	                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
 	                  <div className="flex items-start gap-2">
@@ -896,32 +1046,55 @@ export default function AdminSettingsPage() {
                   <Switch checked={aiRewriteEnabled} onCheckedChange={setAiRewriteEnabled} />
                 </div>
 
-                <Separator />
+	                <Separator />
 
-                {aiRewriteItems.map((item) => (
-                  <div key={item.key} className="space-y-2">
-                    <Label>{t(item.labelKey)}</Label>
-                    {item.descriptionKey && (
-                      <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
-                    )}
-                    {item.type === "textarea" ? (
-                      <Textarea
-                        placeholder={item.placeholder}
-                        value={values[item.key] || ""}
-                        onChange={(e) => setValue(item.key, e.target.value)}
-                        rows={10}
-                        className="font-mono text-sm"
-                      />
-                    ) : (
-                      <Input
-                        placeholder={item.placeholder}
-                        value={values[item.key] || ""}
-                        type={item.secret ? "password" : "text"}
-                        onChange={(e) => setValue(item.key, e.target.value)}
-                      />
-                    )}
-                  </div>
-                ))}
+	                {aiRewriteItems.map((item) => {
+	                  const rawValue = values[item.key] || "";
+	                  const trimmedValue = rawValue.trim();
+	                  const isModel = item.key === "ai_rewrite_model";
+	                  const canUseSelect =
+	                    isModel &&
+	                    aiProviderModels.length > 0 &&
+	                    (!trimmedValue || aiProviderModels.includes(trimmedValue));
+
+	                  return (
+	                    <div key={item.key} className="space-y-2">
+	                      <Label>{t(item.labelKey)}</Label>
+	                      {item.descriptionKey && (
+	                        <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
+	                      )}
+	                      {item.type === "textarea" ? (
+	                        <Textarea
+	                          placeholder={item.placeholder}
+	                          value={rawValue}
+	                          onChange={(e) => setValue(item.key, e.target.value)}
+	                          rows={10}
+	                          className="font-mono text-sm"
+	                        />
+	                      ) : canUseSelect ? (
+	                        <Select value={trimmedValue || undefined} onValueChange={(v) => setValue(item.key, v)}>
+	                          <SelectTrigger className="w-full">
+	                            <SelectValue placeholder={item.placeholder} />
+	                          </SelectTrigger>
+	                          <SelectContent>
+	                            {aiProviderModels.map((model) => (
+	                              <SelectItem key={model} value={model}>
+	                                {model}
+	                              </SelectItem>
+	                            ))}
+	                          </SelectContent>
+	                        </Select>
+	                      ) : (
+	                        <Input
+	                          placeholder={item.placeholder}
+	                          value={rawValue}
+	                          type={item.secret ? "password" : "text"}
+	                          onChange={(e) => setValue(item.key, e.target.value)}
+	                        />
+	                      )}
+	                    </div>
+	                  );
+	                })}
 
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                   <div className="flex items-start gap-2">

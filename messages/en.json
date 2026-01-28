@@ -502,6 +502,16 @@
           "title": "Template Variables",
           "help": "You can use these variables in the prompt template:"
         },
+        "provider": {
+          "cardTitle": "AI Provider",
+          "subtitle": "Configure a shared AI provider and manage available models",
+          "models": {
+            "placeholder": "e.g. gpt-4o-mini",
+            "add": "Add model",
+            "remove": "Remove",
+            "empty": "No models added yet."
+          }
+        },
         "classifier": {
           "cardTitle": "AI Classifier Settings",
           "subtitle": "Configure AI-powered email classification for workflows",
@@ -589,6 +599,18 @@
         },
         "webauthn_rp_id": {
           "label": "WebAuthn RP ID (optional)"
+        },
+        "ai_provider_base_url": {
+          "label": "API Base URL",
+          "description": "OpenAI-compatible API endpoint"
+        },
+        "ai_provider_api_key": {
+          "label": "API Key",
+          "description": "OpenAI API key or compatible provider key"
+        },
+        "ai_provider_models": {
+          "label": "Models",
+          "description": "Optional: model names used for selection (e.g., gpt-4o-mini, gpt-4o)"
         },
         "ai_classifier_base_url": {
           "label": "API Base URL",
