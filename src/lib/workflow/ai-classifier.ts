@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getAiProviderSettingsFromValues } from "@/lib/workflow/ai-provider";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import type { ConditionAiClassifierData, ExecutionContext } from "@/lib/workflow/types";
 
@@ -35,26 +36,38 @@ export async function getAiClassifierConfig(): Promise<AiClassifierConfig | null
       where: {
         key: {
           in: [
+            "ai_provider_base_url",
+            "ai_provider_api_key",
+            "ai_provider_models",
             "ai_classifier_enabled",
-            "ai_classifier_base_url",
             "ai_classifier_model",
-            "ai_classifier_api_key",
             "ai_classifier_default_prompt",
+            // Legacy (kept for backward compatibility)
+            "ai_classifier_base_url",
+            "ai_classifier_api_key",
           ],
         },
       },
     });
 
     const values = new Map(settings.map((s) => [s.key, s.value]));
+    const provider = getAiProviderSettingsFromValues(values);
 
     const enabled = values.get("ai_classifier_enabled") === "true";
     if (!enabled) return null;
 
+    const legacyBaseUrl = (values.get("ai_classifier_base_url") || "").trim();
+    const legacyApiKey = (values.get("ai_classifier_api_key") || "").trim();
+    const baseUrl = provider.baseUrl || legacyBaseUrl || "https://api.openai.com/v1";
+    const apiKey = provider.apiKey || legacyApiKey || "";
+    const selectedModel = (values.get("ai_classifier_model") || "").trim();
+    const model = selectedModel || provider.models[0] || "gpt-4o-mini";
+
     return {
       enabled,
-      baseUrl: values.get("ai_classifier_base_url") || "https://api.openai.com/v1",
-      model: values.get("ai_classifier_model") || "gpt-4o-mini",
-      apiKey: values.get("ai_classifier_api_key") || "",
+      baseUrl,
+      model,
+      apiKey,
       defaultPrompt: values.get("ai_classifier_default_prompt") || DEFAULT_AI_CLASSIFIER_PROMPT,
     };
   } catch (error) {

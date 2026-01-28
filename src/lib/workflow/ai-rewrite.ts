@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getAiProviderSettingsFromValues } from "@/lib/workflow/ai-provider";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import type { ActionAiRewriteData, EmailContentField, ExecutionContext } from "@/lib/workflow/types";
 
@@ -73,26 +74,38 @@ export async function getAiRewriteConfig(options?: { allowDisabled?: boolean }):
       where: {
         key: {
           in: [
+            "ai_provider_base_url",
+            "ai_provider_api_key",
+            "ai_provider_models",
             "ai_rewrite_enabled",
-            "ai_rewrite_base_url",
             "ai_rewrite_model",
-            "ai_rewrite_api_key",
             "ai_rewrite_default_prompt",
+            // Legacy (kept for backward compatibility)
+            "ai_rewrite_base_url",
+            "ai_rewrite_api_key",
           ],
         },
       },
     });
 
     const values = new Map(settings.map((s) => [s.key, s.value]));
+    const provider = getAiProviderSettingsFromValues(values);
 
     const enabled = values.get("ai_rewrite_enabled") === "true";
     if (!enabled && !options?.allowDisabled) return null;
 
+    const legacyBaseUrl = (values.get("ai_rewrite_base_url") || "").trim();
+    const legacyApiKey = (values.get("ai_rewrite_api_key") || "").trim();
+    const baseUrl = provider.baseUrl || legacyBaseUrl || "https://api.openai.com/v1";
+    const apiKey = provider.apiKey || legacyApiKey || "";
+    const selectedModel = (values.get("ai_rewrite_model") || "").trim();
+    const model = selectedModel || provider.models[0] || "gpt-4o-mini";
+
     return {
       enabled,
-      baseUrl: values.get("ai_rewrite_base_url") || "https://api.openai.com/v1",
-      model: values.get("ai_rewrite_model") || "gpt-4o-mini",
-      apiKey: values.get("ai_rewrite_api_key") || "",
+      baseUrl,
+      model,
+      apiKey,
       defaultPrompt: values.get("ai_rewrite_default_prompt") || DEFAULT_AI_REWRITE_PROMPT,
     };
   } catch (error) {
