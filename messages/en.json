@@ -46,6 +46,17 @@
       "descriptionInvite": "Sign up with an invite code",
       "alreadyHaveAccount": "Already have an account?"
     },
+    "verifyEmailPage": {
+      "title": "Verify Email",
+      "verifying": "Verifying your email...",
+      "successTitle": "Email verified",
+      "successDescription": "Your email has been verified. You can now sign in.",
+      "errorTitle": "Verification failed",
+      "failed": "Email verification failed",
+      "missingToken": "Missing verification token.",
+      "invalidOrExpired": "Invalid or expired verification link.",
+      "goToLogin": "Go to Login"
+    },
     "registerClosed": {
       "title": "Registration Disabled",
       "description": "This server is not accepting new sign-ups.",
@@ -429,6 +440,18 @@
           "enable": {
             "label": "Enable OTP (2FA)",
             "help": "Allow users to enable OTP-based two-factor authentication."
+          }
+        },
+        "emailVerification": {
+          "enable": {
+            "label": "Enable Email Verification",
+            "help": "Require users to verify their email address (requires Turnstile)."
+          }
+        },
+        "passwordReset": {
+          "enable": {
+            "label": "Enable Password Reset",
+            "help": "Allow users to reset their password via email (requires Turnstile)."
           }
         }
       },

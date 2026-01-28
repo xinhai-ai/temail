@@ -46,6 +46,17 @@
       "descriptionInvite": "使用邀请码注册",
       "alreadyHaveAccount": "已有账户？"
     },
+    "verifyEmailPage": {
+      "title": "邮箱验证",
+      "verifying": "正在验证邮箱...",
+      "successTitle": "邮箱已验证",
+      "successDescription": "你的邮箱已验证，现在可以登录。",
+      "errorTitle": "验证失败",
+      "failed": "邮箱验证失败",
+      "missingToken": "缺少验证令牌。",
+      "invalidOrExpired": "验证链接无效或已过期。",
+      "goToLogin": "前往登录"
+    },
     "registerClosed": {
       "title": "已关闭注册",
       "description": "该服务器不接受新的注册。",
@@ -429,6 +440,18 @@
           "enable": {
             "label": "启用 OTP（2FA）",
             "help": "允许用户启用基于 OTP 的双因素认证。"
+          }
+        },
+        "emailVerification": {
+          "enable": {
+            "label": "启用邮箱验证",
+            "help": "要求用户验证邮箱（需要启用 Turnstile）。"
+          }
+        },
+        "passwordReset": {
+          "enable": {
+            "label": "启用密码找回",
+            "help": "允许用户通过邮件重置密码（需要启用 Turnstile）。"
           }
         }
       },

@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/rbac";
 import { readJsonBody } from "@/lib/request";
+import { isTurnstileDevBypassEnabled } from "@/lib/turnstile";
 
 const settingSchema = z.object({
   key: z.string().min(1),
@@ -10,6 +11,11 @@ const settingSchema = z.object({
   type: z.string().optional(),
   description: z.string().nullable().optional(),
 });
+
+function parseBoolean(value: string | undefined | null): boolean {
+  const raw = (value || "").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes" || raw === "on";
+}
 
 export async function GET() {
   const session = await getAdminSession();
@@ -53,6 +59,50 @@ export async function PUT(request: NextRequest) {
   try {
     const items = Array.isArray(body) ? body : [body];
     const data = items.map((item) => settingSchema.parse(item));
+
+    const keysToValidate = new Set([
+      "turnstile_enabled",
+      "turnstile_site_key",
+      "turnstile_secret_key",
+      "auth_email_verification_enabled",
+      "auth_password_reset_enabled",
+    ]);
+
+    const wantsValidation = data.some((item) => keysToValidate.has(item.key));
+    if (wantsValidation) {
+      const keys = Array.from(keysToValidate);
+      const rows = await prisma.systemSetting.findMany({
+        where: { key: { in: keys } },
+        select: { key: true, value: true },
+      });
+
+      const current: Record<string, string> = {};
+      for (const row of rows) current[row.key] = row.value;
+
+      const next: Record<string, string> = { ...current };
+      for (const item of data) {
+        if (keysToValidate.has(item.key)) {
+          next[item.key] = item.value;
+        }
+      }
+
+      const bypass = isTurnstileDevBypassEnabled();
+      const turnstileReady =
+        bypass ||
+        (parseBoolean(next.turnstile_enabled) &&
+          Boolean((next.turnstile_site_key || "").trim()) &&
+          Boolean((next.turnstile_secret_key || "").trim()));
+
+      const emailVerificationEnabled = parseBoolean(next.auth_email_verification_enabled);
+      const passwordResetEnabled = parseBoolean(next.auth_password_reset_enabled);
+
+      if ((emailVerificationEnabled || passwordResetEnabled) && !turnstileReady) {
+        return NextResponse.json(
+          { error: "Turnstile must be enabled and configured to enable email verification/password reset" },
+          { status: 400 }
+        );
+      }
+    }
 
     const results = await prisma.$transaction(
       data.map((item) =>

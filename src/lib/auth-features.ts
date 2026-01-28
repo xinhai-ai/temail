@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 
 const AUTH_PASSKEY_ENABLED_KEY = "auth_passkey_enabled";
 const AUTH_OTP_ENABLED_KEY = "auth_otp_enabled";
+const AUTH_EMAIL_VERIFICATION_ENABLED_KEY = "auth_email_verification_enabled";
+const AUTH_PASSWORD_RESET_ENABLED_KEY = "auth_password_reset_enabled";
 const WEBAUTHN_RP_ID_KEY = "webauthn_rp_id";
 const WEBAUTHN_ORIGIN_KEY = "webauthn_origin";
 
@@ -29,11 +31,13 @@ function normalizeUrl(value: string | undefined): string | null {
 export type AuthFeatureFlags = {
   passkeyEnabled: boolean;
   otpEnabled: boolean;
+  emailVerificationEnabled: boolean;
+  passwordResetEnabled: boolean;
 };
 
 export async function getAuthFeatureFlags(): Promise<AuthFeatureFlags> {
   const rows = await prisma.systemSetting.findMany({
-    where: { key: { in: [AUTH_PASSKEY_ENABLED_KEY, AUTH_OTP_ENABLED_KEY] } },
+    where: { key: { in: [AUTH_PASSKEY_ENABLED_KEY, AUTH_OTP_ENABLED_KEY, AUTH_EMAIL_VERIFICATION_ENABLED_KEY, AUTH_PASSWORD_RESET_ENABLED_KEY] } },
     select: { key: true, value: true },
   });
 
@@ -43,6 +47,8 @@ export async function getAuthFeatureFlags(): Promise<AuthFeatureFlags> {
   return {
     passkeyEnabled: parseBoolean(map[AUTH_PASSKEY_ENABLED_KEY]),
     otpEnabled: parseBoolean(map[AUTH_OTP_ENABLED_KEY]),
+    emailVerificationEnabled: parseBoolean(map[AUTH_EMAIL_VERIFICATION_ENABLED_KEY]),
+    passwordResetEnabled: parseBoolean(map[AUTH_PASSWORD_RESET_ENABLED_KEY]),
   };
 }
 
@@ -77,4 +83,3 @@ export async function getWebAuthnConfig(options: { request: Request }): Promise<
 
   return { rpID, origin, rpName };
 }
-

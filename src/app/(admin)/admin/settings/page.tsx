@@ -100,6 +100,8 @@ export default function AdminSettingsPage() {
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const [otpEnabled, setOtpEnabled] = useState(false);
+  const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(false);
+  const [passwordResetEnabled, setPasswordResetEnabled] = useState(false);
   const [telegramBotEnabled, setTelegramBotEnabled] = useState(true);
   const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow" | "telegram">("general");
 
@@ -242,6 +244,8 @@ export default function AdminSettingsPage() {
     setTurnstileEnabled(map.turnstile_enabled === "true");
     setPasskeyEnabled(map.auth_passkey_enabled === "true");
     setOtpEnabled(map.auth_otp_enabled === "true");
+    setEmailVerificationEnabled(map.auth_email_verification_enabled === "true");
+    setPasswordResetEnabled(map.auth_password_reset_enabled === "true");
     // Default to true if not set (backward compatibility)
     setTelegramBotEnabled(map.telegram_bot_enabled !== "false");
     const mode = map.registration_mode;
@@ -335,6 +339,8 @@ export default function AdminSettingsPage() {
         { key: "turnstile_enabled", value: turnstileEnabled ? "true" : "false" },
         { key: "auth_passkey_enabled", value: passkeyEnabled ? "true" : "false" },
         { key: "auth_otp_enabled", value: otpEnabled ? "true" : "false" },
+        { key: "auth_email_verification_enabled", value: emailVerificationEnabled ? "true" : "false" },
+        { key: "auth_password_reset_enabled", value: passwordResetEnabled ? "true" : "false" },
         { key: "telegram_bot_enabled", value: telegramBotEnabled ? "true" : "false" },
         { key: "workflow_forward_email_enabled", value: workflowForwardEmailEnabled ? "true" : "false" },
       ].filter((x) => x.value !== "");
@@ -638,6 +644,26 @@ export default function AdminSettingsPage() {
                   </p>
                 </div>
                 <Switch checked={otpEnabled} onCheckedChange={setOtpEnabled} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{t("settings.security.emailVerification.enable.label")}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.security.emailVerification.enable.help")}
+                  </p>
+                </div>
+                <Switch checked={emailVerificationEnabled} onCheckedChange={setEmailVerificationEnabled} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{t("settings.security.passwordReset.enable.label")}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.security.passwordReset.enable.help")}
+                  </p>
+                </div>
+                <Switch checked={passwordResetEnabled} onCheckedChange={setPasswordResetEnabled} />
               </div>
 
               <Separator />

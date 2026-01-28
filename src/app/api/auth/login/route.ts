@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: data.email },
-      select: { id: true, password: true, isActive: true },
+      select: { id: true, password: true, isActive: true, emailVerified: true },
     });
 
     if (!user?.password) {
@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
     }
 
     const flags = await getAuthFeatureFlags();
+    if (flags.emailVerificationEnabled && !user.emailVerified) {
+      return NextResponse.json({ error: "Email is not verified" }, { status: 403 });
+    }
     if (flags.otpEnabled) {
       const totp = await prisma.userTotp.findUnique({
         where: { userId: user.id },

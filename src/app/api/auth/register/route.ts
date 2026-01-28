@@ -4,9 +4,13 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import { getRegistrationSettings, isInviteCodeValid } from "@/lib/registration";
+import { getAuthFeatureFlags } from "@/lib/auth-features";
+import { getTurnstileClientConfig } from "@/lib/turnstile";
 import { readJsonBody } from "@/lib/request";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { issueEmailVerificationToken } from "@/lib/auth-tokens";
+import { sendEmailVerificationEmail } from "@/services/auth/email-verification";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -45,6 +49,8 @@ export async function POST(request: NextRequest) {
     if (!turnstile.ok) {
       return NextResponse.json({ error: turnstile.error }, { status: 400 });
     }
+
+    const flags = await getAuthFeatureFlags();
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -94,6 +100,17 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const role = isBootstrap ? "SUPER_ADMIN" : "USER";
+    const requiresEmailVerification = flags.emailVerificationEnabled && !isBootstrap;
+
+    if (requiresEmailVerification) {
+      const turnstileConfig = await getTurnstileClientConfig();
+      if (!turnstileConfig.enabled && !turnstileConfig.bypass) {
+        return NextResponse.json(
+          { error: "Email verification requires Turnstile to be enabled and configured" },
+          { status: 400 }
+        );
+      }
+    }
 
     const user = await prisma.user.create({
       data: {
@@ -101,14 +118,34 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         role,
+        emailVerified: requiresEmailVerification ? null : new Date(),
       },
     });
+
+    if (requiresEmailVerification) {
+      try {
+        const token = await issueEmailVerificationToken({ userId: user.id, request });
+        await sendEmailVerificationEmail({ to: user.email, token });
+      } catch (error) {
+        console.error("[api/auth/register] failed to send verification email:", error);
+        try {
+          await prisma.user.delete({ where: { id: user.id } });
+        } catch (cleanupError) {
+          console.error("[api/auth/register] failed to cleanup user after mail error:", cleanupError);
+        }
+        return NextResponse.json(
+          { error: "Failed to send verification email" },
+          { status: 500 }
+        );
+      }
+    }
 
     return NextResponse.json({
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      requiresEmailVerification,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -41,6 +41,7 @@ model User {
   authChallenges AuthChallenge[]
   passkeyCredentials PasskeyCredential[]
   loginTokens    LoginToken[]
+  emailVerificationTokens EmailVerificationToken[]
   mfaChallenges  MfaChallenge[]
   totp           UserTotp?
   telegramUserLinks TelegramUserLink[]
@@ -173,6 +174,23 @@ model LoginToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("login_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
 }
 
 model MfaChallenge {
