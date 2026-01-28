@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import prisma from "@/lib/prisma";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { issueLoginToken, sha256Hex } from "@/lib/auth-tokens";
 import { readJsonBody } from "@/lib/request";
-import { verifyEmailToken } from "@/services/auth/email-verification";
 
 const schema = z.object({
   token: z.string().trim().min(1),
@@ -26,18 +27,36 @@ export async function POST(request: NextRequest) {
 
   try {
     const data = schema.parse(bodyResult.data);
-    const result = await verifyEmailToken(data.token);
-    if (!result.ok) {
-      if (result.error === "missing_token") {
-        return NextResponse.json({ error: "Missing token" }, { status: 400 });
-      }
-      if (result.error === "invalid_or_expired") {
-        return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
-      }
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+    const raw = data.token.trim();
+    const tokenHash = sha256Hex(raw);
+    const record = await prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      select: { id: true, userId: true, expiresAt: true, usedAt: true },
+    });
+
+    const now = new Date();
+    if (!record || record.expiresAt <= now) {
+      return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
     }
 
-    return NextResponse.json(result);
+    let canIssueLoginToken = false;
+    if (!record.usedAt) {
+      const updated = await prisma.emailVerificationToken.updateMany({
+        where: { id: record.id, usedAt: null },
+        data: { usedAt: now },
+      });
+      canIssueLoginToken = updated.count === 1;
+    }
+
+    await prisma.user.update({
+      where: { id: record.userId },
+      data: { emailVerified: now },
+    });
+
+    const loginToken = canIssueLoginToken ? await issueLoginToken({ userId: record.userId, request }) : null;
+
+    return NextResponse.json({ ok: true, loginToken });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
