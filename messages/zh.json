@@ -39,6 +39,7 @@
       "description": "登录到你的 TEmail 账户",
       "otpHelp": "请输入身份验证器中的验证码或备用码。",
       "dontHaveAccount": "还没有账户？",
+      "forgotPassword": "忘记密码？",
       "registrationDisabled": "本服务器已关闭注册。"
     },
     "registerPage": {
@@ -56,6 +57,29 @@
       "missingToken": "缺少验证令牌。",
       "invalidOrExpired": "验证链接无效或已过期。",
       "goToLogin": "前往登录"
+    },
+    "forgotPasswordPage": {
+      "title": "找回密码",
+      "description": "输入邮箱，我们会发送重置链接。",
+      "action": "发送重置链接",
+      "sending": "发送中...",
+      "emailSent": "如果该邮箱存在账号，我们已发送重置链接。",
+      "failed": "发送重置邮件失败",
+      "disabledTitle": "密码找回已禁用",
+      "disabledDescription": "请联系管理员。",
+      "backToLogin": "返回登录"
+    },
+    "resetPasswordPage": {
+      "title": "重置密码",
+      "description": "为你的账号设置新密码。",
+      "action": "重置密码",
+      "resetting": "重置中...",
+      "success": "密码已重置，现在可以登录。",
+      "failed": "重置密码失败",
+      "missingToken": "缺少重置令牌。",
+      "disabledTitle": "密码找回已禁用",
+      "disabledDescription": "请联系管理员。",
+      "backToLogin": "前往登录"
     },
     "registerClosed": {
       "title": "已关闭注册",

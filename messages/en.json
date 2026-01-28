@@ -39,6 +39,7 @@
       "description": "Sign in to your TEmail account",
       "otpHelp": "Enter the code from your authenticator app or a backup code.",
       "dontHaveAccount": "Don't have an account?",
+      "forgotPassword": "Forgot password?",
       "registrationDisabled": "Registration is disabled on this server."
     },
     "registerPage": {
@@ -56,6 +57,29 @@
       "missingToken": "Missing verification token.",
       "invalidOrExpired": "Invalid or expired verification link.",
       "goToLogin": "Go to Login"
+    },
+    "forgotPasswordPage": {
+      "title": "Forgot Password",
+      "description": "Enter your email and we'll send you a reset link.",
+      "action": "Send reset link",
+      "sending": "Sending...",
+      "emailSent": "If an account exists for this email, a reset link has been sent.",
+      "failed": "Failed to send reset email",
+      "disabledTitle": "Password reset is disabled",
+      "disabledDescription": "Please contact the administrator.",
+      "backToLogin": "Back to Login"
+    },
+    "resetPasswordPage": {
+      "title": "Reset Password",
+      "description": "Set a new password for your account.",
+      "action": "Reset password",
+      "resetting": "Resetting...",
+      "success": "Your password has been reset. You can now sign in.",
+      "failed": "Failed to reset password",
+      "missingToken": "Missing reset token.",
+      "disabledTitle": "Password reset is disabled",
+      "disabledDescription": "Please contact the administrator.",
+      "backToLogin": "Go to Login"
     },
     "registerClosed": {
       "title": "Registration Disabled",

@@ -32,10 +32,12 @@ export default function LoginForm({
   showRegisterLink = true,
   turnstile,
   passkeyEnabled = false,
+  passwordResetEnabled = false,
 }: {
   showRegisterLink?: boolean;
   turnstile: TurnstileConfig;
   passkeyEnabled?: boolean;
+  passwordResetEnabled?: boolean;
 }) {
   const router = useRouter();
   const t = useTranslations("auth");
@@ -305,6 +307,16 @@ export default function LoginForm({
                     disabled={loading}
                   />
                 </div>
+                {passwordResetEnabled && (
+                  <div className="flex justify-end">
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                    >
+                      {t("loginPage.forgotPassword")}
+                    </Link>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">

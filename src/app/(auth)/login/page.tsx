@@ -18,5 +18,12 @@ export default async function LoginPage() {
     getTurnstileClientConfig(),
     getAuthFeatureFlags(),
   ]);
-  return <LoginForm showRegisterLink={mode !== "closed"} turnstile={turnstile} passkeyEnabled={flags.passkeyEnabled} />;
+  return (
+    <LoginForm
+      showRegisterLink={mode !== "closed"}
+      turnstile={turnstile}
+      passkeyEnabled={flags.passkeyEnabled}
+      passwordResetEnabled={flags.passwordResetEnabled}
+    />
+  );
 }
