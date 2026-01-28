@@ -437,6 +437,17 @@
         "secure": {
           "label": "SMTP 安全连接",
           "help": "使用 SSL/TLS（或将端口设置为 465）"
+        },
+        "test": {
+          "title": "测试发信",
+          "help": "使用已保存的 SMTP 设置发送测试邮件。",
+          "toLabel": "收件人",
+          "subjectLabel": "主题",
+          "send": "发送测试邮件",
+          "sending": "发送中...",
+          "success": "测试邮件已发送",
+          "failed": "测试邮件发送失败",
+          "toRequired": "请填写收件人邮箱"
         }
       },
       "ai": {

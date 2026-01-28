@@ -88,6 +88,9 @@ export default function AdminSettingsPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [maskedValues, setMaskedValues] = useState<Record<string, boolean>>({});
   const [smtpSecure, setSmtpSecure] = useState(false);
+  const [smtpTestTo, setSmtpTestTo] = useState("");
+  const [smtpTestSubject, setSmtpTestSubject] = useState("TEmail SMTP Test");
+  const [smtpTesting, setSmtpTesting] = useState(false);
   const [aiClassifierEnabled, setAiClassifierEnabled] = useState(false);
   const [aiRewriteEnabled, setAiRewriteEnabled] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
@@ -356,6 +359,38 @@ export default function AdminSettingsPage() {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSmtpTest = async () => {
+    const to = smtpTestTo.trim();
+    if (!to) {
+      toast.error(t("settings.smtp.test.toRequired"));
+      return;
+    }
+
+    setSmtpTesting(true);
+    try {
+      const res = await fetch("/api/admin/smtp/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to,
+          subject: smtpTestSubject.trim() || undefined,
+        }),
+      });
+
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; messageId?: string; error?: string } | null;
+      if (!res.ok) {
+        toast.error(data?.error || t("settings.smtp.test.failed"));
+        return;
+      }
+
+      toast.success(t("settings.smtp.test.success"));
+    } catch {
+      toast.error(t("settings.smtp.test.failed"));
+    } finally {
+      setSmtpTesting(false);
     }
   };
 
@@ -701,6 +736,41 @@ export default function AdminSettingsPage() {
                     />
                   </div>
                 ))}
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">{t("settings.smtp.test.title")}</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("settings.smtp.test.help")}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>{t("settings.smtp.test.toLabel")}</Label>
+                      <Input
+                        placeholder="recipient@example.com"
+                        value={smtpTestTo}
+                        onChange={(e) => setSmtpTestTo(e.target.value)}
+                        type="email"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("settings.smtp.test.subjectLabel")}</Label>
+                      <Input
+                        placeholder="TEmail SMTP Test"
+                        value={smtpTestSubject}
+                        onChange={(e) => setSmtpTestSubject(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <Button onClick={handleSmtpTest} disabled={smtpTesting}>
+                    {smtpTesting ? t("settings.smtp.test.sending") : t("settings.smtp.test.send")}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

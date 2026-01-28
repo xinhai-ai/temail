@@ -437,6 +437,17 @@
         "secure": {
           "label": "SMTP Secure",
           "help": "Use SSL/TLS (or set port 465)"
+        },
+        "test": {
+          "title": "Test Email",
+          "help": "Send a test email using the saved SMTP settings.",
+          "toLabel": "To",
+          "subjectLabel": "Subject",
+          "send": "Send Test Email",
+          "sending": "Sending...",
+          "success": "Test email sent",
+          "failed": "Failed to send test email",
+          "toRequired": "Recipient email is required"
         }
       },
       "ai": {
