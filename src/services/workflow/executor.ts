@@ -22,6 +22,8 @@ import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
 import { evaluateAiRewrite, getAiRewriteRequestedVariableKeys } from "@/lib/workflow/ai-rewrite";
 import { getRestoreStatusForTrash } from "@/services/email-trash";
 import { getTelegramBotToken, getTelegramForumGeneralTopicName, telegramCreateForumTopic } from "@/services/telegram/bot-api";
+import { getSystemSettingValue } from "@/services/system-settings";
+import { sendSmtpMail } from "@/services/smtp/mailer";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -768,6 +770,17 @@ function buildTemplateContext(context: ExecutionContext) {
   };
 }
 
+function parseBoolean(value: string | null | undefined): boolean {
+  const raw = (value || "").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes" || raw === "on";
+}
+
+async function isWorkflowEmailForwardingEnabled(): Promise<boolean> {
+  const raw = await getSystemSettingValue("workflow_forward_email_enabled");
+  if (raw === null) return true;
+  return parseBoolean(raw);
+}
+
 async function executeForwardEmail(
   data: { to: string; template?: { subject?: string; body?: string; html?: string } },
   context: ExecutionContext
@@ -777,13 +790,22 @@ async function executeForwardEmail(
     throw new Error("SMTP forwarding is disabled in Vercel deployment mode");
   }
 
+  const enabled = await isWorkflowEmailForwardingEnabled();
+  if (!enabled) {
+    console.warn("[workflow] Email forwarding is disabled by admin");
+    return true;
+  }
+
   const templateCtx = buildTemplateContext(context);
   const subject = data.template?.subject
     ? replaceTemplateVariables(data.template.subject, templateCtx)
     : `[Forwarded] ${context.email.subject}`;
-  const body = data.template?.body
+  const textBody = data.template?.body
     ? replaceTemplateVariables(data.template.body, templateCtx)
     : context.email.textBody;
+  const htmlBody = data.template?.html
+    ? replaceTemplateVariables(data.template.html, templateCtx)
+    : context.email.htmlBody;
 
   // 测试模式下跳过实际发送
   if (context.isTestMode) {
@@ -791,8 +813,12 @@ async function executeForwardEmail(
     return true;
   }
 
-  // TODO: Implement email forwarding via SMTP
-  console.log("Forward email to:", data.to, "Subject:", subject);
+  await sendSmtpMail({
+    to: data.to,
+    subject,
+    text: textBody,
+    html: htmlBody,
+  });
   return true;
 }
 

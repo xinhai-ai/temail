@@ -491,6 +491,10 @@
       "workflow": {
         "cardTitle": "Workflow Settings",
         "subtitle": "Configure workflow execution and logging behavior",
+        "forwardEmail": {
+          "label": "Enable Workflow Email Forwarding",
+          "help": "Allow workflows to forward emails via SMTP."
+        },
         "maxExecutionLogs": {
           "label": "Max Execution Logs per Workflow",
           "help": "Maximum number of execution logs to keep for each workflow. Older logs will be automatically deleted when this limit is exceeded.",

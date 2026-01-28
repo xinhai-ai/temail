@@ -7,6 +7,7 @@ import { isVercelDeployment } from "@/lib/deployment/server";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 import { rateLimit } from "@/lib/api-rate-limit";
 import { getTelegramBotToken } from "@/services/telegram/bot-api";
+import { getSystemSettingValue } from "@/services/system-settings";
 import type {
   ForwardEmailData,
   ForwardTelegramBoundData,
@@ -23,6 +24,17 @@ function normalizeWebhookMethod(method: string | undefined): "GET" | "POST" | "P
     return candidate;
   }
   return "POST";
+}
+
+function parseBoolean(value: string | null | undefined): boolean {
+  const raw = (value || "").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes" || raw === "on";
+}
+
+async function isWorkflowEmailForwardingEnabled(): Promise<boolean> {
+  const raw = await getSystemSettingValue("workflow_forward_email_enabled");
+  if (raw === null) return true;
+  return parseBoolean(raw);
 }
 
 interface TestEmailData {
@@ -67,6 +79,12 @@ export async function POST(req: NextRequest) {
 
     if (isVercelDeployment() && type === "forward:email") {
       return NextResponse.json({ error: "SMTP forwarding is disabled in this deployment" }, { status: 404 });
+    }
+    if (type === "forward:email") {
+      const enabled = await isWorkflowEmailForwardingEnabled();
+      if (!enabled) {
+        return NextResponse.json({ error: "Email forwarding is disabled by admin" }, { status: 403 });
+      }
     }
 
     // Build template variables

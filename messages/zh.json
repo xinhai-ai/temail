@@ -491,6 +491,10 @@
       "workflow": {
         "cardTitle": "工作流设置",
         "subtitle": "配置工作流执行与日志保留策略",
+        "forwardEmail": {
+          "label": "启用工作流邮件转发",
+          "help": "允许工作流通过 SMTP 转发邮件。"
+        },
         "maxExecutionLogs": {
           "label": "每个工作流最大执行日志数",
           "help": "每个工作流保留的执行日志上限，超过后会自动删除更旧的日志。",

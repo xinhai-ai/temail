@@ -96,6 +96,7 @@ export default function AdminSettingsPage() {
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
   const [registrationInviteCodes, setRegistrationInviteCodes] = useState("");
   const [workflowMaxExecutionLogs, setWorkflowMaxExecutionLogs] = useState("100");
+  const [workflowForwardEmailEnabled, setWorkflowForwardEmailEnabled] = useState(true);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const [otpEnabled, setOtpEnabled] = useState(false);
@@ -247,6 +248,7 @@ export default function AdminSettingsPage() {
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
     setRegistrationInviteCodes(map.registration_invite_codes || "");
     setWorkflowMaxExecutionLogs(map.workflow_max_execution_logs || "100");
+    setWorkflowForwardEmailEnabled(map.workflow_forward_email_enabled !== "false");
     setLoading(false);
   }, [t]);
 
@@ -334,6 +336,7 @@ export default function AdminSettingsPage() {
         { key: "auth_passkey_enabled", value: passkeyEnabled ? "true" : "false" },
         { key: "auth_otp_enabled", value: otpEnabled ? "true" : "false" },
         { key: "telegram_bot_enabled", value: telegramBotEnabled ? "true" : "false" },
+        { key: "workflow_forward_email_enabled", value: workflowForwardEmailEnabled ? "true" : "false" },
       ].filter((x) => x.value !== "");
 
       payload.push(
@@ -928,6 +931,18 @@ export default function AdminSettingsPage() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{t("settings.workflow.forwardEmail.label")}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.workflow.forwardEmail.help")}
+                  </p>
+                </div>
+                <Switch checked={workflowForwardEmailEnabled} onCheckedChange={setWorkflowForwardEmailEnabled} />
+              </div>
+
+              <Separator />
+
               <div className="space-y-2">
                 <Label>{t("settings.workflow.maxExecutionLogs.label")}</Label>
                 <p className="text-xs text-muted-foreground">
