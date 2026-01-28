@@ -505,6 +505,14 @@
         "provider": {
           "cardTitle": "AI 提供商设置",
           "subtitle": "配置统一的 AI 提供商与模型列表",
+          "migrate": {
+            "title": "检测到旧 AI 配置",
+            "help": "可将旧的 AI base_url / API Key 迁移到新的“AI 提供商”配置中（不会覆盖已配置的 provider 值）。",
+            "fromRewrite": "从 AI 改写迁移",
+            "fromClassifier": "从 AI 分类迁移",
+            "success": "AI 提供商设置已迁移",
+            "failed": "迁移 AI 提供商设置失败"
+          },
           "models": {
             "placeholder": "例如：gpt-4o-mini",
             "add": "添加模型",

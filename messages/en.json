@@ -505,6 +505,14 @@
         "provider": {
           "cardTitle": "AI Provider",
           "subtitle": "Configure a shared AI provider and manage available models",
+          "migrate": {
+            "title": "Legacy AI settings detected",
+            "help": "Migrate legacy AI base URL / API key into the new provider configuration (it will not overwrite existing provider values).",
+            "fromRewrite": "Migrate from AI Rewrite",
+            "fromClassifier": "Migrate from AI Classifier",
+            "success": "AI provider settings migrated",
+            "failed": "Failed to migrate AI provider settings"
+          },
           "models": {
             "placeholder": "e.g. gpt-4o-mini",
             "add": "Add model",

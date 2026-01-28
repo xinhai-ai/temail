@@ -117,6 +117,7 @@ export default function AdminSettingsPage() {
   const [smtpTesting, setSmtpTesting] = useState(false);
   const [aiProviderModels, setAiProviderModels] = useState<string[]>([]);
   const [aiProviderModelDraft, setAiProviderModelDraft] = useState("");
+  const [aiProviderMigrating, setAiProviderMigrating] = useState(false);
   const [aiClassifierEnabled, setAiClassifierEnabled] = useState(false);
   const [aiRewriteEnabled, setAiRewriteEnabled] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
@@ -287,6 +288,30 @@ export default function AdminSettingsPage() {
     setLoading(false);
   }, [t]);
 
+  const handleMigrateAiProvider = useCallback(
+    async (source: "rewrite" | "classifier") => {
+      setAiProviderMigrating(true);
+      try {
+        const res = await fetch(`/api/admin/ai/provider/migrate?source=${source}`, {
+          method: "POST",
+        });
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+        if (!res.ok) {
+          toast.error(data?.error || t("settings.ai.provider.migrate.failed"));
+          return;
+        }
+
+        toast.success(t("settings.ai.provider.migrate.success"));
+        await fetchSettings();
+      } catch {
+        toast.error(t("settings.ai.provider.migrate.failed"));
+      } finally {
+        setAiProviderMigrating(false);
+      }
+    },
+    [fetchSettings, t]
+  );
+
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
@@ -438,6 +463,21 @@ export default function AdminSettingsPage() {
       setSmtpTesting(false);
     }
   };
+
+  const aiProviderBaseUrlConfigured = Boolean((values["ai_provider_base_url"] || "").trim());
+  const aiProviderApiKeyConfigured =
+    Boolean(maskedValues["ai_provider_api_key"]) || Boolean((values["ai_provider_api_key"] || "").trim());
+  const legacyAiRewriteConfigured =
+    Boolean((values["ai_rewrite_base_url"] || "").trim()) ||
+    Boolean(maskedValues["ai_rewrite_api_key"]) ||
+    Boolean((values["ai_rewrite_api_key"] || "").trim());
+  const legacyAiClassifierConfigured =
+    Boolean((values["ai_classifier_base_url"] || "").trim()) ||
+    Boolean(maskedValues["ai_classifier_api_key"]) ||
+    Boolean((values["ai_classifier_api_key"] || "").trim());
+  const showAiProviderMigration =
+    (!aiProviderBaseUrlConfigured || !aiProviderApiKeyConfigured) &&
+    (legacyAiRewriteConfigured || legacyAiClassifierConfigured);
 
   if (loading) {
     return (
@@ -852,13 +892,47 @@ export default function AdminSettingsPage() {
 	                <p className="text-sm text-muted-foreground mt-1">
 	                  {t("settings.ai.provider.subtitle")}
 	                </p>
-	              </CardHeader>
-	              <CardContent className="space-y-4">
-	                {aiProviderItems.map((item) => (
-	                  <div key={item.key} className="space-y-2">
-	                    <Label>{t(item.labelKey)}</Label>
-	                    {item.descriptionKey && (
-	                      <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
+		              </CardHeader>
+		              <CardContent className="space-y-4">
+		                {showAiProviderMigration && (
+		                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+		                    <div className="flex items-start gap-2">
+		                      <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+		                      <div className="text-xs text-blue-900 space-y-2">
+		                        <p className="font-medium">{t("settings.ai.provider.migrate.title")}</p>
+		                        <p>{t("settings.ai.provider.migrate.help")}</p>
+		                        <div className="flex flex-wrap gap-2 pt-1">
+		                          {legacyAiRewriteConfigured && (
+		                            <Button
+		                              type="button"
+		                              variant="outline"
+		                              onClick={() => handleMigrateAiProvider("rewrite")}
+		                              disabled={aiProviderMigrating || saving}
+		                            >
+		                              {t("settings.ai.provider.migrate.fromRewrite")}
+		                            </Button>
+		                          )}
+		                          {legacyAiClassifierConfigured && (
+		                            <Button
+		                              type="button"
+		                              variant="outline"
+		                              onClick={() => handleMigrateAiProvider("classifier")}
+		                              disabled={aiProviderMigrating || saving}
+		                            >
+		                              {t("settings.ai.provider.migrate.fromClassifier")}
+		                            </Button>
+		                          )}
+		                        </div>
+		                      </div>
+		                    </div>
+		                  </div>
+		                )}
+
+		                {aiProviderItems.map((item) => (
+		                  <div key={item.key} className="space-y-2">
+		                    <Label>{t(item.labelKey)}</Label>
+		                    {item.descriptionKey && (
+		                      <p className="text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
 	                    )}
 	                    <Input
 	                      placeholder={
