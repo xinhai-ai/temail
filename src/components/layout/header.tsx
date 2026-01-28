@@ -48,7 +48,8 @@ export function Header({ isAdmin = false }: HeaderProps) {
 
   // Prevent hydration mismatch with Radix UI components
   useEffect(() => {
-    setMounted(true);
+    const id = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(id);
   }, []);
 
   const userNavItems = APP_NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
