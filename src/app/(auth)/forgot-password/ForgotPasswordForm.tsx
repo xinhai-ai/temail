@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,14 +31,34 @@ export default function ForgotPasswordForm({
   const [done, setDone] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
+  const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
 
   const turnstileRequired = Boolean(turnstile.enabled && turnstile.siteKey);
   const handleTurnstileToken = useCallback((token: string | null) => {
     setTurnstileToken(token);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const canResend = done && resendAvailableAt !== null && resendCooldownSeconds === 0;
+
+  useEffect(() => {
+    if (!done) return;
+    if (!resendAvailableAt) {
+      setResendCooldownSeconds(0);
+      return;
+    }
+
+    const update = () => {
+      const next = Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000));
+      setResendCooldownSeconds(next);
+    };
+
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [done, resendAvailableAt]);
+
+  const sendResetEmail = useCallback(async () => {
     setError("");
 
     if (!enabled) {
@@ -74,11 +94,25 @@ export default function ForgotPasswordForm({
       }
 
       setDone(true);
+      setResendAvailableAt(Date.now() + 60_000);
+      setResendCooldownSeconds(60);
+      setTurnstileToken(null);
+      setTurnstileReset((prev) => prev + 1);
     } catch {
       setError(t("forgotPasswordPage.failed"));
     } finally {
       setLoading(false);
     }
+  }, [email, enabled, t, turnstileRequired, turnstileToken]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendResetEmail();
+  };
+
+  const handleResend = async () => {
+    if (!canResend) return;
+    await sendResetEmail();
   };
 
   if (!enabled) {
@@ -136,9 +170,30 @@ export default function ForgotPasswordForm({
               </div>
             )}
             {done ? (
-              <div className="p-3 text-sm text-green-700 bg-green-500/10 rounded-lg border border-green-500/20">
-                {t("forgotPasswordPage.emailSent")}
-              </div>
+              <>
+                <div className="p-3 text-sm text-green-700 bg-green-500/10 rounded-lg border border-green-500/20">
+                  {t("forgotPasswordPage.emailSent")}
+                </div>
+
+                {turnstileRequired && (
+                  <div className="space-y-2">
+                    <TurnstileWidget
+                      siteKey={turnstile.siteKey as string}
+                      onToken={handleTurnstileToken}
+                      resetKey={turnstileReset}
+                      className="flex justify-center"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {t("turnstile.protected")}
+                    </p>
+                  </div>
+                )}
+                {!turnstileRequired && turnstile.bypass && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("turnstile.bypassEnabled")}
+                  </p>
+                )}
+              </>
             ) : (
               <>
                 <div className="space-y-2">
@@ -177,7 +232,20 @@ export default function ForgotPasswordForm({
             )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-3 pt-2">
-            {!done && (
+            {done ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full h-11 font-medium"
+                onClick={handleResend}
+                disabled={loading || !canResend}
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {resendCooldownSeconds > 0
+                  ? t("forgotPasswordPage.resendIn", { seconds: resendCooldownSeconds })
+                  : t("forgotPasswordPage.resend")}
+              </Button>
+            ) : (
               <Button type="submit" className="w-full h-11 font-medium" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {loading ? t("forgotPasswordPage.sending") : t("forgotPasswordPage.action")}
@@ -192,4 +260,3 @@ export default function ForgotPasswordForm({
     </div>
   );
 }
-

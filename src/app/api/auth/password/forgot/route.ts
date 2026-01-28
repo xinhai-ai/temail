@@ -5,7 +5,7 @@ import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { readJsonBody } from "@/lib/request";
 import { verifyTurnstileToken, getTurnstileClientConfig } from "@/lib/turnstile";
 import { getAuthFeatureFlags } from "@/lib/auth-features";
-import { issuePasswordResetToken } from "@/lib/auth-tokens";
+import { issuePasswordResetToken, sha256Hex } from "@/lib/auth-tokens";
 import { sendPasswordResetEmail } from "@/services/auth/password-reset";
 
 const schema = z.object({
@@ -50,8 +50,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: turnstile.error }, { status: 400 });
     }
 
+    const normalizedEmail = data.email.trim();
+    const emailKey = sha256Hex(normalizedEmail.toLowerCase());
+    const limitedEmail = rateLimit(`password:forgot:email:${emailKey}`, { limit: 1, windowMs: 60_000 });
+    if (!limitedEmail.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil(limitedEmail.retryAfterMs / 1000));
+      return NextResponse.json(
+        { error: "Rate limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+      );
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email: normalizedEmail },
       select: { id: true, email: true, emailVerified: true, isActive: true },
     });
 
@@ -74,4 +85,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
