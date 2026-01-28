@@ -1067,14 +1067,14 @@ export default function AdminSettingsPage() {
 	                            ))}
 	                          </SelectContent>
 	                        </Select>
-	                      ) : (
-	                        <Input
-	                          placeholder={item.placeholder}
-	                          value={rawValue}
-	                          type={item.secret ? "password" : "text"}
-	                          onChange={(e) => setValue(item.key, e.target.value)}
-	                        />
-	                      )}
+		                      ) : (
+		                        <Input
+		                          placeholder={item.placeholder}
+		                          value={rawValue}
+		                          type="text"
+		                          onChange={(e) => setValue(item.key, e.target.value)}
+		                        />
+		                      )}
 	                    </div>
 	                  );
 	                })}
@@ -1158,14 +1158,14 @@ export default function AdminSettingsPage() {
 	                            ))}
 	                          </SelectContent>
 	                        </Select>
-	                      ) : (
-	                        <Input
-	                          placeholder={item.placeholder}
-	                          value={rawValue}
-	                          type={item.secret ? "password" : "text"}
-	                          onChange={(e) => setValue(item.key, e.target.value)}
-	                        />
-	                      )}
+		                      ) : (
+		                        <Input
+		                          placeholder={item.placeholder}
+		                          value={rawValue}
+		                          type="text"
+		                          onChange={(e) => setValue(item.key, e.target.value)}
+		                        />
+		                      )}
 	                    </div>
 	                  );
 	                })}
