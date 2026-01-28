@@ -31,6 +31,7 @@ export async function GET() {
     "smtp_pass",
     "ai_classifier_api_key",
     "ai_rewrite_api_key",
+    "ai_provider_api_key",
     "turnstile_secret_key",
     "telegram_bot_token",
     "telegram_webhook_secret",
