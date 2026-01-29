@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getLocale, getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Inbox, Mail, Globe, TrendingUp, TrendingDown } from "lucide-react";
@@ -171,13 +172,16 @@ async function getAvailableDomainsCount() {
 
 export default async function DashboardPage() {
   const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
   const [locale, tDashboard, tNav, tLayout] = await Promise.all([
     getLocale(),
     getTranslations("dashboard"),
     getTranslations("nav"),
     getTranslations("layout"),
   ]);
-  const userId = session!.user.id;
+  const userId = session.user.id;
 
   const [stats, activityData, recentEmails, topMailboxes, activities, availableDomains] =
     await Promise.all([

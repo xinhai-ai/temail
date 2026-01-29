@@ -41,6 +41,8 @@ export function RouteProgressBar() {
   const [progress, setProgress] = useState(0);
 
   const statusRef = useRef<Status>("idle");
+  const mountedRef = useRef(false);
+  const scheduledStartRef = useRef(false);
   const startTimeRef = useRef(0);
   const prefersReducedMotionRef = useRef(false);
 
@@ -66,6 +68,16 @@ export function RouteProgressBar() {
       window.clearTimeout(safetyTimeoutIdRef.current);
       safetyTimeoutIdRef.current = null;
     }
+  };
+
+  const scheduleStart = () => {
+    if (scheduledStartRef.current) return;
+    scheduledStartRef.current = true;
+    queueMicrotask(() => {
+      scheduledStartRef.current = false;
+      if (!mountedRef.current) return;
+      start();
+    });
   };
 
   const start = () => {
@@ -130,6 +142,7 @@ export function RouteProgressBar() {
   useEffect(() => {
     prefersReducedMotionRef.current =
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    mountedRef.current = true;
 
     const onClickCapture = (event: MouseEvent) => {
       if (event.defaultPrevented) return;
@@ -143,11 +156,11 @@ export function RouteProgressBar() {
       if (!anchor) return;
       if (!isInternalNavigation(anchor)) return;
 
-      start();
+      scheduleStart();
     };
 
     const onPopState = () => {
-      start();
+      scheduleStart();
     };
 
     const originalPushState = history.pushState;
@@ -161,9 +174,9 @@ export function RouteProgressBar() {
         const currentUrl = new URL(window.location.href);
         if (nextUrl.origin !== currentUrl.origin) return;
         if (nextUrl.pathname === currentUrl.pathname && nextUrl.search === currentUrl.search) return;
-        start();
+        scheduleStart();
       } catch {
-        start();
+        scheduleStart();
       }
     };
 
@@ -181,6 +194,7 @@ export function RouteProgressBar() {
     window.addEventListener("popstate", onPopState);
 
     return () => {
+      mountedRef.current = false;
       clearTimers();
       history.pushState = originalPushState;
       history.replaceState = originalReplaceState;
