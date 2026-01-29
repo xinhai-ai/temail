@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
 import { useLocale, useTranslations } from "next-intl";
-import { getApiErrorMessage } from "@/lib/policy-client";
+import { getApiErrorMessage, type Translator } from "@/lib/policy-client";
 
 interface WorkflowItem {
   id: string;
@@ -30,7 +30,7 @@ interface WorkflowItem {
 export default function WorkflowsPage() {
   const locale = useLocale();
   const t = useTranslations("workflows");
-  const tPolicy = useTranslations("policy");
+  const tPolicy = useTranslations("policy") as unknown as Translator;
   const distanceLocale = locale === "zh" ? zhCN : enUS;
 
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);

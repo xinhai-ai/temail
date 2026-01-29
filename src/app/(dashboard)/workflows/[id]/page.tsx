@@ -19,7 +19,7 @@ import { validateWorkflow } from "@/lib/workflow/utils";
 import { useTranslations } from "next-intl";
 import type { NodeType, WorkflowConfig } from "@/lib/workflow/types";
 import { isVercelDeployment } from "@/lib/deployment/public";
-import { getApiErrorMessage } from "@/lib/policy-client";
+import { getApiErrorMessage, type Translator } from "@/lib/policy-client";
 
 type UserGroupInfo = {
   userGroup: {
@@ -63,7 +63,7 @@ export default function WorkflowEditorPage() {
   const router = useRouter();
   const params = useParams();
   const t = useTranslations("workflows");
-  const tPolicy = useTranslations("policy");
+  const tPolicy = useTranslations("policy") as unknown as Translator;
   const isNew = params.id === "new";
   const workflowId = isNew ? null : (params.id as string);
   const vercelMode = isVercelDeployment();

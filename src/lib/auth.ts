@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import type { Adapter } from "next-auth/adapters";
+import type { Adapter, AdapterUser } from "next-auth/adapters";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -11,9 +11,9 @@ import { getAuthProviderConfig } from "@/lib/auth-providers";
 
 const adapterBase = PrismaAdapter(prisma);
 
-const adapter: Adapter = {
+const adapter = {
   ...adapterBase,
-  async createUser(data) {
+  async createUser(data: AdapterUser) {
     const providers = await getAuthProviderConfig();
     if (!providers.github.registrationEnabled) {
       throw new Error("Registration is disabled");
@@ -47,7 +47,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
   const githubConfigured = Boolean(providersConfig.github.clientId && providersConfig.github.clientSecret);
 
   return {
-    adapter,
+    adapter: adapter as Adapter,
     session: { strategy: "jwt" },
     pages: {
       signIn: "/login",

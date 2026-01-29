@@ -5,7 +5,7 @@ import { connectRealtime } from "@/lib/realtime/client";
 import { isVercelDeployment } from "@/lib/deployment/public";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { getApiErrorMessage } from "@/lib/policy-client";
+import { getApiErrorMessage, type Translator } from "@/lib/policy-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,7 @@ export default function InboxPage() {
   const DEFAULT_EMAILS_PAGE_SIZE = 15;
   const DEFAULT_MAILBOXES_PAGE_SIZE = 5;
   const t = useTranslations("inbox");
-  const tPolicy = useTranslations("policy");
+  const tPolicy = useTranslations("policy") as unknown as Translator;
   const [mailboxSearch, setMailboxSearch] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
   const mailboxSearchQuery = mailboxSearch.trim();
