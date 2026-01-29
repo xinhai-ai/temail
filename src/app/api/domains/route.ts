@@ -5,6 +5,7 @@ import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { isVercelDeployment } from "@/lib/deployment/server";
+import { getAllowedDomainIdsForUser } from "@/services/usergroups/policy";
 
 const domainSchema = z.object({
   name: z.string().min(1, "Domain name is required"),
@@ -20,9 +21,19 @@ export async function GET() {
   }
 
   const isAdmin = isAdminRole(session.user.role);
+  const allowed = await getAllowedDomainIdsForUser(session.user.id);
+  if (!allowed.ok) {
+    return NextResponse.json({ error: allowed.error, code: allowed.code }, { status: allowed.status });
+  }
 
   const domains = await prisma.domain.findMany({
-    where: isAdmin ? {} : { isPublic: true, status: "ACTIVE" },
+    where: isAdmin
+      ? {}
+      : {
+          isPublic: true,
+          status: "ACTIVE",
+          ...(allowed.domainIds ? { id: { in: allowed.domainIds } } : {}),
+        },
     include: {
       _count: { select: { mailboxes: true } },
     },

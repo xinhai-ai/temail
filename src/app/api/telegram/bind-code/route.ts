@@ -5,6 +5,7 @@ import { readJsonBody } from "@/lib/request";
 import { createTelegramBindCode } from "@/services/telegram/bind-codes";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { isTelegramBotEnabled } from "@/lib/telegram-features";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 const requestSchema = z.object({
   ttlSeconds: z.coerce.number().int().positive().max(60 * 60).optional(),
@@ -18,6 +19,14 @@ export async function POST(request: NextRequest) {
 
   if (!(await isTelegramBotEnabled())) {
     return NextResponse.json({ error: "Telegram bot is disabled", disabled: true }, { status: 403 });
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "telegram" });
+  if (!feature.ok) {
+    return NextResponse.json(
+      { error: feature.error, code: feature.code, meta: feature.meta, disabled: true },
+      { status: feature.status }
+    );
   }
 
   const ip = getClientIp(request) || "unknown";

@@ -9,6 +9,7 @@ import {
   parseOpenApiScopes,
 } from "@/lib/open-api/api-keys";
 import type { OpenApiScope } from "@/lib/open-api/scopes";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 export type OpenApiAuthOk = {
   ok: true;
@@ -87,6 +88,15 @@ export async function authenticateOpenApiRequest(
     const required = options?.requiredScopes;
     if (required && !hasOpenApiScope(scopes, required)) {
       return { ok: false, status: 403, error: "Missing scope" };
+    }
+
+    const feature = await assertUserGroupFeatureEnabled({ userId: key.userId, feature: "openapi" });
+    if (!feature.ok) {
+      const status = feature.status === 404 ? 401 : feature.status;
+      if (status !== 401 && status !== 403 && status !== 500) {
+        return { ok: false, status: 500, error: "Internal server error" };
+      }
+      return { ok: false, status, error: feature.error };
     }
 
     const ip = getClientIp(request);

@@ -6,6 +6,7 @@ import { formatRemainingTime, tryAcquireSyncLock } from "@/lib/rate-limit";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 import { moveOwnedEmailToTrash, purgeOwnedEmail, restoreOwnedEmailFromTrash } from "@/services/email-trash";
 import { rematchUnmatchedInboundEmailsForUser } from "@/services/inbound/rematch";
+import { assertCanCreateMailbox, assertDomainAllowedForUser, assertUserGroupFeatureEnabled, getAllowedDomainIdsForUser } from "@/services/usergroups/policy";
 import type { TelegramInlineKeyboardMarkup } from "./bot-api";
 import {
   getTelegramForumGeneralTopicName,
@@ -95,6 +96,13 @@ async function requireLinkedUserId(message: TelegramMessage): Promise<string | n
     await replyToMessage(message, "Not linked. Generate a code in the dashboard, then DM me: /start <code>");
     return null;
   }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: link.userId, feature: "telegram" });
+  if (!feature.ok) {
+    await replyToMessage(message, feature.error);
+    return null;
+  }
+
   return link.userId;
 }
 
@@ -150,6 +158,12 @@ async function handleStart(message: TelegramMessage, args: string) {
   const consumed = await consumeTelegramBindCode(args, "LINK_USER" satisfies TelegramBindPurpose);
   if (!consumed.ok) {
     await replyToMessage(message, `Link failed: ${consumed.message}`);
+    return;
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: consumed.userId, feature: "telegram" });
+  if (!feature.ok) {
+    await replyToMessage(message, feature.error);
     return;
   }
 
@@ -263,6 +277,12 @@ async function handleMailboxCreate(message: TelegramMessage, args: string) {
     return;
   }
 
+  const quota = await assertCanCreateMailbox(userId);
+  if (!quota.ok) {
+    await replyToMessage(message, quota.error);
+    return;
+  }
+
   const isAdmin = await getIsAdminUser(userId);
 
   const domain = await prisma.domain.findFirst({
@@ -272,6 +292,12 @@ async function handleMailboxCreate(message: TelegramMessage, args: string) {
 
   if (!domain) {
     await replyToMessage(message, "Domain not found (or not available). Create mailboxes in public ACTIVE domains.");
+    return;
+  }
+
+  const allowed = await assertDomainAllowedForUser({ userId, domainId: domain.id });
+  if (!allowed.ok) {
+    await replyToMessage(message, allowed.error);
     return;
   }
 
@@ -408,6 +434,11 @@ async function getIsAdminUser(userId: string) {
 }
 
 async function createMailboxWithGeneratedPrefix(params: { userId: string; domainId: string }) {
+  const quota = await assertCanCreateMailbox(params.userId);
+  if (!quota.ok) {
+    throw new Error(quota.error);
+  }
+
   const isAdmin = await getIsAdminUser(params.userId);
   const domain = await prisma.domain.findFirst({
     where: isAdmin ? { id: params.domainId } : { id: params.domainId, isPublic: true, status: "ACTIVE" },
@@ -415,6 +446,11 @@ async function createMailboxWithGeneratedPrefix(params: { userId: string; domain
   });
   if (!domain) {
     throw new Error("Domain not found (or not available). Create mailboxes in public ACTIVE domains.");
+  }
+
+  const allowed = await assertDomainAllowedForUser({ userId: params.userId, domainId: domain.id });
+  if (!allowed.ok) {
+    throw new Error(allowed.error);
   }
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -447,9 +483,25 @@ async function buildNewDomainPickerPayload(params: { userId: string; page: numbe
   const skip = (page - 1) * DOMAINS_PAGE_SIZE;
 
   const isAdmin = await getIsAdminUser(params.userId);
+  const title = `New mailbox — choose a domain (page ${page})`;
+
+  const allowed = await getAllowedDomainIdsForUser(params.userId);
+  if (!allowed.ok) {
+    return {
+      text: `${title}\n\nFailed to load domains.`,
+      replyMarkup: undefined as TelegramInlineKeyboardMarkup | undefined,
+      hasNext: false,
+    };
+  }
 
   const rows = await prisma.domain.findMany({
-    where: isAdmin ? {} : { isPublic: true, status: "ACTIVE" },
+    where: isAdmin
+      ? {}
+      : {
+          isPublic: true,
+          status: "ACTIVE",
+          ...(allowed.domainIds ? { id: { in: allowed.domainIds } } : {}),
+        },
     select: { id: true, name: true, status: true, isPublic: true },
     orderBy: [{ name: "asc" }, { id: "asc" }],
     skip,
@@ -458,8 +510,6 @@ async function buildNewDomainPickerPayload(params: { userId: string; page: numbe
 
   const hasNext = rows.length > DOMAINS_PAGE_SIZE;
   const domains = rows.slice(0, DOMAINS_PAGE_SIZE);
-
-  const title = `New mailbox — choose a domain (page ${page})`;
 
   if (domains.length === 0) {
     return {
@@ -1057,6 +1107,12 @@ async function handleBind(message: TelegramMessage, args: string) {
   }
   if (consumed.userId !== link.userId) {
     await replyToMessage(message, "Bind failed: this code belongs to a different TEmail account.");
+    return;
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: link.userId, feature: "telegram" });
+  if (!feature.ok) {
+    await replyToMessage(message, feature.error);
     return;
   }
 

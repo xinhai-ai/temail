@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isTelegramBotEnabled } from "@/lib/telegram-features";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 export async function GET() {
   const session = await auth();
@@ -11,6 +12,14 @@ export async function GET() {
 
   if (!(await isTelegramBotEnabled())) {
     return NextResponse.json({ error: "Telegram bot is disabled", disabled: true }, { status: 403 });
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "telegram" });
+  if (!feature.ok) {
+    return NextResponse.json(
+      { error: feature.error, code: feature.code, meta: feature.meta, disabled: true },
+      { status: feature.status }
+    );
   }
 
   const [link, forumBindings, mailboxTopics] = await Promise.all([

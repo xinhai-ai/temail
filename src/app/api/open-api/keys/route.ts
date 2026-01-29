@@ -9,6 +9,7 @@ import {
   serializeOpenApiScopes,
 } from "@/lib/open-api/api-keys";
 import { DEFAULT_OPEN_API_KEY_SCOPES, OPEN_API_SCOPES_ZOD } from "@/lib/open-api/scopes";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80).default("API Key"),
@@ -19,6 +20,11 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });
+  if (!feature.ok) {
+    return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
   }
 
   const keys = await prisma.apiKey.findMany({
@@ -49,6 +55,11 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });
+  if (!feature.ok) {
+    return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
   }
 
   const bodyResult = await readJsonBody(request, { maxBytes: 10_000 });

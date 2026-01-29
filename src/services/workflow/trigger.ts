@@ -3,6 +3,7 @@ import { triggerWorkflow } from "./engine";
 import { logWorkflowDispatch, updateDispatchLogExecution } from "./logging";
 import type { Email } from "@prisma/client";
 import type { EmailContext } from "@/lib/workflow/types";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 /**
  * Trigger workflows when a new email is received
@@ -13,6 +14,12 @@ export async function triggerEmailWorkflows(
   userId: string
 ): Promise<void> {
   try {
+    const feature = await assertUserGroupFeatureEnabled({ userId, feature: "workflow" });
+    if (!feature.ok) {
+      console.log(`[workflow-trigger] Skipping workflows for user ${userId}: ${feature.error}`);
+      return;
+    }
+
     console.log(`[workflow-trigger] Looking for workflows for user ${userId}, mailbox ${mailboxId}`);
 
     // Find all active workflows for this user

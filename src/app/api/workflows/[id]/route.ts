@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { updateWorkflowSchema, validateWorkflowConfig } from "@/lib/workflow/schema";
 import { validateWorkflow } from "@/lib/workflow/utils";
 import { readJsonBody } from "@/lib/request";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +14,11 @@ export async function GET(
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "workflow" });
+    if (!feature.ok) {
+      return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
     }
 
     const { id } = await params;
@@ -62,6 +68,11 @@ export async function PATCH(
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "workflow" });
+    if (!feature.ok) {
+      return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
     }
 
     const { id } = await params;
@@ -172,6 +183,11 @@ export async function DELETE(
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "workflow" });
+    if (!feature.ok) {
+      return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
     }
 
     const { id } = await params;

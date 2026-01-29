@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
+import { assertCanCreateMailbox, assertDomainAllowedForUser } from "@/services/usergroups/policy";
 
 const createSchema = z.object({
   prefix: z.string().trim().min(1, "Prefix is required").max(64),
@@ -69,6 +70,11 @@ export async function POST(request: NextRequest) {
   try {
     const data = createSchema.parse(bodyResult.data);
 
+    const quota = await assertCanCreateMailbox(authResult.apiKey.userId);
+    if (!quota.ok) {
+      return NextResponse.json({ error: quota.error, code: quota.code, meta: quota.meta }, { status: quota.status });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: authResult.apiKey.userId },
       select: { role: true },
@@ -84,6 +90,11 @@ export async function POST(request: NextRequest) {
 
     if (!domain) {
       return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+    }
+
+    const allowed = await assertDomainAllowedForUser({ userId: authResult.apiKey.userId, domainId: domain.id });
+    if (!allowed.ok) {
+      return NextResponse.json({ error: allowed.error, code: allowed.code, meta: allowed.meta }, { status: allowed.status });
     }
 
     const address = `${data.prefix}@${domain.name}`;

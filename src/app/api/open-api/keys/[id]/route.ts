@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
 import { parseOpenApiScopes, serializeOpenApiScopes } from "@/lib/open-api/api-keys";
 import { OPEN_API_SCOPES_ZOD } from "@/lib/open-api/scopes";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -20,6 +21,11 @@ export async function PATCH(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });
+  if (!feature.ok) {
+    return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
   }
 
   const { id } = await params;
@@ -90,6 +96,11 @@ export async function DELETE(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });
+  if (!feature.ok) {
+    return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
   }
 
   const { id } = await params;

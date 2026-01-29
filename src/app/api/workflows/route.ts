@@ -4,12 +4,18 @@ import { prisma } from "@/lib/prisma";
 import { createWorkflowSchema } from "@/lib/workflow/schema";
 import { createEmptyWorkflowConfig } from "@/lib/workflow/types";
 import { readJsonBody } from "@/lib/request";
+import { assertCanCreateWorkflow, assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "workflow" });
+    if (!feature.ok) {
+      return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
     }
 
     const { searchParams } = new URL(request.url);
@@ -75,6 +81,16 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "workflow" });
+    if (!feature.ok) {
+      return NextResponse.json({ error: feature.error, code: feature.code, meta: feature.meta }, { status: feature.status });
+    }
+
+    const quota = await assertCanCreateWorkflow(session.user.id);
+    if (!quota.ok) {
+      return NextResponse.json({ error: quota.error, code: quota.code, meta: quota.meta }, { status: quota.status });
     }
 
     const bodyResult = await readJsonBody(request, { maxBytes: 400_000 });

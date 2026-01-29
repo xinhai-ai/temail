@@ -12,6 +12,7 @@ import { topologicalSort, getNextNodes } from "@/lib/workflow/utils";
 import { executeNode } from "./executor";
 import { WorkflowLogger, cleanupWorkflowExecutionLogs } from "./logging";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
 const DEFAULT_MAX_STEPS = 1_000;
 const DEFAULT_MAX_DURATION_MS = 26 * 60 * 60_000;
@@ -345,6 +346,11 @@ export async function triggerWorkflow(
 
   if (!workflow) {
     throw new Error("Workflow not found");
+  }
+
+  const feature = await assertUserGroupFeatureEnabled({ userId: workflow.userId, feature: "workflow" });
+  if (!feature.ok) {
+    throw new Error(feature.error);
   }
 
   if (workflow.status !== "ACTIVE") {

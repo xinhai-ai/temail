@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
+import { getAllowedDomainIdsForUser } from "@/services/usergroups/policy";
 
 export async function GET(request: NextRequest) {
   const authResult = await authenticateOpenApiRequest(request, { requiredScopes: "domains:read" });
@@ -18,9 +19,15 @@ export async function GET(request: NextRequest) {
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
+  const allowed = await getAllowedDomainIdsForUser(authResult.apiKey.userId);
+  if (!allowed.ok) {
+    return NextResponse.json({ error: allowed.error, code: allowed.code }, { status: allowed.status });
+  }
+
   const domains = await prisma.domain.findMany({
     where: {
       ...(!isAdmin && { isPublic: true, status: "ACTIVE" }),
+      ...(!isAdmin && allowed.domainIds ? { id: { in: allowed.domainIds } } : {}),
       ...(search && { name: { contains: search } }),
     },
     select: {

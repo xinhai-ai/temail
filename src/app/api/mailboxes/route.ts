@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
+import { assertCanCreateMailbox, assertDomainAllowedForUser } from "@/services/usergroups/policy";
 
 const mailboxSchema = z.object({
   prefix: z.string().min(1, "Prefix is required"),
@@ -62,6 +63,11 @@ export async function POST(request: NextRequest) {
   try {
     const data = mailboxSchema.parse(bodyResult.data);
 
+    const quota = await assertCanCreateMailbox(session.user.id);
+    if (!quota.ok) {
+      return NextResponse.json({ error: quota.error, code: quota.code, meta: quota.meta }, { status: quota.status });
+    }
+
     const isAdmin = isAdminRole(session.user.role);
     const domain = await prisma.domain.findFirst({
       where: isAdmin
@@ -71,6 +77,11 @@ export async function POST(request: NextRequest) {
 
     if (!domain) {
       return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+    }
+
+    const allowed = await assertDomainAllowedForUser({ userId: session.user.id, domainId: domain.id });
+    if (!allowed.ok) {
+      return NextResponse.json({ error: allowed.error, code: allowed.code, meta: allowed.meta }, { status: allowed.status });
     }
 
     const address = `${data.prefix}@${domain.name}`;

@@ -8,6 +8,7 @@ import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 import { rateLimit } from "@/lib/api-rate-limit";
 import { getTelegramBotToken } from "@/services/telegram/bot-api";
 import { getSystemSettingValue } from "@/services/system-settings";
+import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 import type {
   ForwardEmailData,
   ForwardTelegramBoundData,
@@ -56,6 +57,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const workflowFeature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "workflow" });
+  if (!workflowFeature.ok) {
+    return NextResponse.json(
+      { error: workflowFeature.error, code: workflowFeature.code, meta: workflowFeature.meta },
+      { status: workflowFeature.status }
+    );
+  }
+
   const limited = rateLimit(`workflows:test-forward:${session.user.id}`, { limit: 60, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
@@ -76,6 +85,16 @@ export async function POST(req: NextRequest) {
       config: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
       email: TestEmailData;
     };
+
+    if (type === "forward:telegram" || type === "forward:telegram-bound") {
+      const telegramFeature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "telegram" });
+      if (!telegramFeature.ok) {
+        return NextResponse.json(
+          { error: telegramFeature.error, code: telegramFeature.code, meta: telegramFeature.meta },
+          { status: telegramFeature.status }
+        );
+      }
+    }
 
     if (isVercelDeployment() && type === "forward:email") {
       return NextResponse.json({ error: "SMTP forwarding is disabled in this deployment" }, { status: 404 });
