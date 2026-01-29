@@ -33,6 +33,8 @@ export default function WorkflowsPage() {
 
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [disabled, setDisabled] = useState(false);
+  const [disabledMessage, setDisabledMessage] = useState("");
 
   const getWorkflowStatusLabel = (value: WorkflowItem["status"]) => {
     if (value === "ACTIVE") return t("status.active");
@@ -43,10 +45,25 @@ export default function WorkflowsPage() {
   const fetchWorkflows = async () => {
     try {
       const res = await fetch("/api/workflows");
-      const data = await res.json().catch(() => []);
-      setWorkflows(res.ok ? data : []);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setWorkflows([]);
+        if (res.status === 403 && data && typeof data === "object" && "error" in data) {
+          setDisabled(true);
+          setDisabledMessage(String((data as { error?: unknown }).error || ""));
+        } else {
+          setDisabled(false);
+          setDisabledMessage("");
+        }
+        return;
+      }
+      setDisabled(false);
+      setDisabledMessage("");
+      setWorkflows(Array.isArray(data) ? (data as WorkflowItem[]) : []);
     } catch {
       setWorkflows([]);
+      setDisabled(false);
+      setDisabledMessage("");
     } finally {
       setLoading(false);
     }
@@ -107,14 +124,25 @@ export default function WorkflowsPage() {
             {t("subtitle")}
           </p>
         </div>
-        <Button asChild>
-          <Link href="/workflows/new">
-            <Plus className="mr-2 h-4 w-4" /> {t("actions.newWorkflow")}
-          </Link>
-        </Button>
+        {!disabled && (
+          <Button asChild>
+            <Link href="/workflows/new">
+              <Plus className="mr-2 h-4 w-4" /> {t("actions.newWorkflow")}
+            </Link>
+          </Button>
+        )}
       </div>
 
-      {workflows.length === 0 ? (
+      {disabled ? (
+        <Card className="border-border/50 border-dashed">
+          <CardContent className="flex flex-col items-center py-16">
+            <div className="p-4 rounded-full bg-muted mb-4">
+              <Workflow className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground font-medium">{disabledMessage || t("toast.updateFailed")}</p>
+          </CardContent>
+        </Card>
+      ) : workflows.length === 0 ? (
         <Card className="border-border/50 border-dashed">
           <CardContent className="flex flex-col items-center py-16">
             <div className="p-4 rounded-full bg-muted mb-4">
