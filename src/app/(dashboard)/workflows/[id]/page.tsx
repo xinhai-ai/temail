@@ -17,13 +17,56 @@ import { WorkflowTestDialog } from "@/components/workflow/WorkflowTestDialog";
 import { useWorkflowStore } from "@/lib/workflow/store";
 import { validateWorkflow } from "@/lib/workflow/utils";
 import { useTranslations } from "next-intl";
+import type { NodeType, WorkflowConfig } from "@/lib/workflow/types";
+import { isVercelDeployment } from "@/lib/deployment/public";
+import { getApiErrorMessage } from "@/lib/policy-client";
+
+type UserGroupInfo = {
+  userGroup: {
+    telegramEnabled: boolean;
+    workflowForwardEmailEnabled: boolean;
+  } | null;
+};
+
+function getDisabledWorkflowNodeTypes(params: {
+  vercelMode: boolean;
+  userGroup: UserGroupInfo["userGroup"];
+}): Set<NodeType> {
+  const disabled = new Set<NodeType>();
+  if (params.vercelMode) disabled.add("forward:email");
+  if (params.userGroup && !params.userGroup.workflowForwardEmailEnabled) disabled.add("forward:email");
+  if (params.userGroup && !params.userGroup.telegramEnabled) {
+    disabled.add("forward:telegram");
+    disabled.add("forward:telegram-bound");
+  }
+  return disabled;
+}
+
+function pruneWorkflowConfig(config: WorkflowConfig, disabledTypes: Set<NodeType>) {
+  const removedTypes = new Set<NodeType>();
+  const keptNodes = config.nodes.filter((node) => {
+    const blocked = disabledTypes.has(node.type);
+    if (blocked) removedTypes.add(node.type);
+    return !blocked;
+  });
+
+  const keptNodeIds = new Set(keptNodes.map((n) => n.id));
+  const keptEdges = config.edges.filter((edge) => keptNodeIds.has(edge.source) && keptNodeIds.has(edge.target));
+
+  return {
+    config: { ...config, nodes: keptNodes, edges: keptEdges },
+    removedTypes: Array.from(removedTypes).sort(),
+  };
+}
 
 export default function WorkflowEditorPage() {
   const router = useRouter();
   const params = useParams();
   const t = useTranslations("workflows");
+  const tPolicy = useTranslations("policy");
   const isNew = params.id === "new";
   const workflowId = isNew ? null : (params.id as string);
+  const vercelMode = isVercelDeployment();
 
   const [loading, setLoading] = useState(!isNew);
   const [mailboxes, setMailboxes] = useState<{ id: string; address: string }[]>([]);
@@ -63,21 +106,37 @@ export default function WorkflowEditorPage() {
     if (!isNew && workflowId) {
       const fetchWorkflow = async () => {
         try {
-          const res = await fetch(`/api/workflows/${workflowId}`);
+          const [res, groupRes] = await Promise.all([
+            fetch(`/api/workflows/${workflowId}`),
+            fetch("/api/users/me/usergroup"),
+          ]);
           if (!res.ok) {
-            toast.error(t("editor.toast.loadFailed"));
+            const error = await res.json().catch(() => null);
+            toast.error(getApiErrorMessage(tPolicy, error, t("editor.toast.loadFailed")));
             router.push("/workflows");
             return;
           }
           const data = await res.json();
-          const config = JSON.parse(data.config);
+          const config = JSON.parse(data.config) as WorkflowConfig;
+
+          const groupData = await groupRes.json().catch(() => null);
+          const userGroup = groupRes.ok && groupData && typeof groupData === "object"
+            ? ((groupData as UserGroupInfo).userGroup ?? null)
+            : null;
+
+          const disabledTypes = getDisabledWorkflowNodeTypes({ vercelMode, userGroup });
+          const pruned = pruneWorkflowConfig(config, disabledTypes);
+          if (pruned.removedTypes.length > 0) {
+            toast.warning(tPolicy("nodesRemoved", { nodes: pruned.removedTypes.join(", ") }));
+          }
+
           loadWorkflow(
             data.id,
             data.name,
             data.description || "",
             data.status,
             data.mailboxId,
-            config
+            pruned.config
           );
         } catch (error) {
           toast.error(t("editor.toast.loadFailed"));
@@ -88,7 +147,7 @@ export default function WorkflowEditorPage() {
       };
       fetchWorkflow();
     }
-  }, [isNew, workflowId, router, loadWorkflow, t]);
+  }, [isNew, workflowId, router, loadWorkflow, t, tPolicy, vercelMode]);
 
   const handleSave = useCallback(async () => {
     const config = getConfig();
@@ -122,7 +181,8 @@ export default function WorkflowEditorPage() {
         });
 
         if (!res.ok) {
-          toast.error(t("editor.toast.createFailed"));
+          const data = await res.json().catch(() => null);
+          toast.error(getApiErrorMessage(tPolicy, data, t("editor.toast.createFailed")));
           return;
         }
 
@@ -142,7 +202,8 @@ export default function WorkflowEditorPage() {
         });
 
         if (!res.ok) {
-          toast.error(t("editor.toast.saveFailed"));
+          const data = await res.json().catch(() => null);
+          toast.error(getApiErrorMessage(tPolicy, data, t("editor.toast.saveFailed")));
           return;
         }
 
@@ -154,7 +215,7 @@ export default function WorkflowEditorPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [isNew, workflowId, name, description, mailboxId, router, getConfig, setIsSaving, markClean, t]);
+  }, [isNew, workflowId, name, description, mailboxId, router, getConfig, setIsSaving, markClean, t, tPolicy]);
 
   const handleToggleStatus = useCallback(async () => {
     if (isNew) return;

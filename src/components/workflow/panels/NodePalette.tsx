@@ -1,6 +1,6 @@
 "use client";
 
-import { DragEvent, useState } from "react";
+import { DragEvent, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { NODE_DEFINITIONS, NodeType } from "@/lib/workflow/types";
 import { useTranslations } from "next-intl";
@@ -99,9 +99,45 @@ interface NodePaletteProps {
   collapsed?: boolean;
 }
 
+type UserGroupInfo = {
+  userGroup: {
+    telegramEnabled: boolean;
+    workflowForwardEmailEnabled: boolean;
+  } | null;
+};
+
+let cachedUserGroup: UserGroupInfo["userGroup"] | null | undefined;
+let cachedUserGroupPromise: Promise<UserGroupInfo["userGroup"] | null> | null = null;
+
+async function getCachedUserGroup(): Promise<UserGroupInfo["userGroup"] | null> {
+  if (cachedUserGroup !== undefined) return cachedUserGroup;
+  if (!cachedUserGroupPromise) {
+    cachedUserGroupPromise = fetch("/api/users/me/usergroup")
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || typeof data !== "object") {
+          cachedUserGroup = null;
+          return null;
+        }
+        const userGroup = (data as UserGroupInfo).userGroup ?? null;
+        cachedUserGroup = userGroup;
+        return userGroup;
+      })
+      .catch(() => {
+        cachedUserGroup = null;
+        return null;
+      })
+      .finally(() => {
+        cachedUserGroupPromise = null;
+      });
+  }
+  return cachedUserGroupPromise;
+}
+
 export function NodePalette({ collapsed = false }: NodePaletteProps) {
   const t = useTranslations("workflows");
   const vercelMode = isVercelDeployment();
+  const [userGroup, setUserGroup] = useState<UserGroupInfo["userGroup"] | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     trigger: true,
     condition: true,
@@ -109,6 +145,10 @@ export function NodePalette({ collapsed = false }: NodePaletteProps) {
     forward: true,
     control: true,
   });
+
+  useEffect(() => {
+    getCachedUserGroup().then((value) => setUserGroup(value));
+  }, []);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) => ({
@@ -122,9 +162,17 @@ export function NodePalette({ collapsed = false }: NodePaletteProps) {
     event.dataTransfer.effectAllowed = "move";
   };
 
+  const disabledNodeTypes = new Set<NodeType>();
+  if (vercelMode) disabledNodeTypes.add("forward:email");
+  if (userGroup && !userGroup.workflowForwardEmailEnabled) disabledNodeTypes.add("forward:email");
+  if (userGroup && !userGroup.telegramEnabled) {
+    disabledNodeTypes.add("forward:telegram");
+    disabledNodeTypes.add("forward:telegram-bound");
+  }
+
   const categories = categoryTypes.map((c) => ({
     ...c,
-    types: vercelMode ? c.types.filter((type) => type !== "forward:email") : c.types,
+    types: c.types.filter((type) => !disabledNodeTypes.has(type)),
     label: t(`nodePalette.categories.${c.id}`),
   }));
 

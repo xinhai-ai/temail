@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Power, PowerOff, PencilLine, Trash2, Workflow, Clock, CheckCircle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
 import { useLocale, useTranslations } from "next-intl";
+import { getApiErrorMessage } from "@/lib/policy-client";
 
 interface WorkflowItem {
   id: string;
@@ -29,6 +30,7 @@ interface WorkflowItem {
 export default function WorkflowsPage() {
   const locale = useLocale();
   const t = useTranslations("workflows");
+  const tPolicy = useTranslations("policy");
   const distanceLocale = locale === "zh" ? zhCN : enUS;
 
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
@@ -42,7 +44,7 @@ export default function WorkflowsPage() {
     return value;
   };
 
-  const fetchWorkflows = async () => {
+  const fetchWorkflows = useCallback(async () => {
     try {
       const res = await fetch("/api/workflows");
       const data = await res.json().catch(() => null);
@@ -50,7 +52,7 @@ export default function WorkflowsPage() {
         setWorkflows([]);
         if (res.status === 403 && data && typeof data === "object" && "error" in data) {
           setDisabled(true);
-          setDisabledMessage(String((data as { error?: unknown }).error || ""));
+          setDisabledMessage(getApiErrorMessage(tPolicy, data, String((data as { error?: unknown }).error || "")));
         } else {
           setDisabled(false);
           setDisabledMessage("");
@@ -67,11 +69,11 @@ export default function WorkflowsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tPolicy]);
 
   useEffect(() => {
     fetchWorkflows();
-  }, []);
+  }, [fetchWorkflows]);
 
   const handleToggle = async (id: string, status: string) => {
     const newStatus = status === "ACTIVE" ? "INACTIVE" : "ACTIVE";

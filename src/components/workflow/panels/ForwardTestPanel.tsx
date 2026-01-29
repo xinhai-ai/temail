@@ -25,6 +25,7 @@ import type { NodeType, ForwardEmailData, ForwardTelegramBoundData, ForwardTeleg
 import { DEFAULT_FORWARD_TEMPLATES } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { getApiErrorMessage } from "@/lib/policy-client";
 
 interface ForwardTestDialogProps {
   open: boolean;
@@ -40,6 +41,7 @@ export function ForwardTestDialog({
   nodeData,
 }: ForwardTestDialogProps) {
   const t = useTranslations("workflows");
+  const tPolicy = useTranslations("policy");
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -88,12 +90,13 @@ export function ForwardTestDialog({
         });
         toast.success(t("forwardTest.toast.success"));
       } else {
+        const message = getApiErrorMessage(tPolicy, data, t("forwardTest.toast.failed"));
         setResult({
           success: false,
-          message: data.error || t("forwardTest.toast.failed"),
+          message,
           details: data.details,
         });
-        toast.error(data.error || t("forwardTest.toast.failed"));
+        toast.error(message);
       }
     } catch (error) {
       setResult({
