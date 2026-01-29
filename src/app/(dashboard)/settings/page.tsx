@@ -44,6 +44,9 @@ export default function SettingsPage() {
   const [profileOriginalName, setProfileOriginalName] = useState(session?.user?.name || "");
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [emailChangeOpen, setEmailChangeOpen] = useState(false);
+  const [emailChangeNewEmail, setEmailChangeNewEmail] = useState("");
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
 
   const [tab, setTab] = useState<"account" | "security" | "api" | "data" | "about">("account");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -390,6 +393,50 @@ export default function SettingsPage() {
     setName(profileOriginalName);
   };
 
+  const handleRequestEmailChange = async () => {
+    const newEmail = emailChangeNewEmail.trim();
+    if (!newEmail) {
+      toast.error(t("toast.emailChangeEmailRequired"));
+      return;
+    }
+
+    const currentEmail = (profileEmail || session?.user?.email || "").trim();
+    if (currentEmail && newEmail === currentEmail) {
+      toast.error(t("toast.emailChangeSameEmail"));
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      const res = await fetch("/api/users/me/email-change/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newEmail }),
+      });
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok) {
+        if (res.status === 429) {
+          const retryAfterHeader = res.headers.get("Retry-After") || "";
+          const retryAfterSeconds = Number(retryAfterHeader);
+          if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+            toast.error(t("toast.rateLimitedRetry", { seconds: retryAfterSeconds }));
+            return;
+          }
+        }
+        toast.error(data?.error || t("toast.emailChangeFailed"));
+        return;
+      }
+
+      toast.success(t("toast.emailChangeSent"));
+      setEmailChangeNewEmail("");
+      setEmailChangeOpen(false);
+    } catch {
+      toast.error(t("toast.emailChangeFailed"));
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error(t("toast.fillAllFields"));
@@ -701,6 +748,16 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">
                     {t("profile.email.help")}
                   </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEmailChangeOpen(true)}
+                      disabled={profileLoading || profileSaving}
+                    >
+                      {t("profile.email.change")}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>{t("profile.name.label")}</Label>
@@ -1297,6 +1354,39 @@ export default function SettingsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={emailChangeOpen} onOpenChange={setEmailChangeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("profile.email.dialog.title")}</DialogTitle>
+            <DialogDescription>{t("profile.email.dialog.description")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="email-change-new-email">{t("profile.email.dialog.newEmail.label")}</Label>
+            <Input
+              id="email-change-new-email"
+              type="email"
+              placeholder={t("profile.email.dialog.newEmail.placeholder")}
+              value={emailChangeNewEmail}
+              onChange={(e) => setEmailChangeNewEmail(e.target.value)}
+              disabled={emailChangeLoading}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEmailChangeOpen(false)}
+              disabled={emailChangeLoading}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button type="button" onClick={handleRequestEmailChange} disabled={emailChangeLoading}>
+              {emailChangeLoading ? t("profile.email.dialog.sending") : t("profile.email.dialog.send")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

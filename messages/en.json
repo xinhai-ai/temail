@@ -72,6 +72,18 @@
       "invalidOrExpired": "Invalid or expired verification link.",
       "goToLogin": "Go to Login"
     },
+    "emailChangePage": {
+      "title": "Confirm Email Change",
+      "confirming": "Confirming your new email...",
+      "successTitle": "Email updated",
+      "redirecting": "Redirecting to settings...",
+      "errorTitle": "Confirmation failed",
+      "failed": "Email change confirmation failed",
+      "missingToken": "Missing confirmation token.",
+      "invalidOrExpired": "Invalid or expired confirmation link.",
+      "emailInUse": "This email is already in use.",
+      "goToSettings": "Go to Settings"
+    },
     "forgotPasswordPage": {
       "title": "Forgot Password",
       "description": "Enter your email and we'll send you a reset link.",
@@ -1395,7 +1407,19 @@
       "unsaved": "Unsaved",
       "email": {
         "label": "Email",
-        "help": "Email is used for login and can't be changed here."
+        "help": "Email is used for login. You can change it by confirming a link sent to your new email.",
+        "change": "Change email",
+        "dialog": {
+          "title": "Change email",
+          "description": "We'll send a confirmation link to your new email address.",
+          "newEmail": {
+            "label": "New email",
+            "placeholder": "new@example.com"
+          },
+          "sending": "Sending...",
+          "send": "Send confirmation",
+          "sent": "Confirmation email sent to {email}."
+        }
       },
       "name": {
         "label": "Name",
@@ -1549,6 +1573,11 @@
       "fillAllFields": "Please fill in all fields",
       "passwordChangeFailed": "Failed to change password",
       "passwordChanged": "Password changed",
+      "emailChangeEmailRequired": "Please enter a new email",
+      "emailChangeSameEmail": "New email matches current email",
+      "emailChangeFailed": "Failed to send confirmation email",
+      "emailChangeSent": "Confirmation email sent",
+      "rateLimitedRetry": "Rate limited. Try again in {seconds}s",
       "trashRetentionInvalid": "Trash retention days must be 0 or a positive number",
       "trashRetentionTooLarge": "Trash retention days is too large",
       "saveFailed": "Failed to save",

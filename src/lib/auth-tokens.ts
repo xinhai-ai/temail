@@ -8,6 +8,8 @@ const LOGIN_TOKEN_BYTES = 32;
 const LOGIN_TOKEN_TTL_MS = 10 * 60_000;
 const EMAIL_VERIFICATION_TOKEN_BYTES = 32;
 const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60_000;
+const EMAIL_CHANGE_TOKEN_BYTES = 32;
+const EMAIL_CHANGE_TOKEN_TTL_MS = 60 * 60_000;
 const PASSWORD_RESET_TOKEN_BYTES = 32;
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60_000;
 const MFA_CHALLENGE_BYTES = 32;
@@ -142,6 +144,57 @@ export async function consumeEmailVerificationToken(token: string): Promise<{ us
   if (updated.count !== 1) return null;
 
   return { userId: existing.userId };
+}
+
+export async function issueEmailChangeToken(options: {
+  userId: string;
+  newEmail: string;
+  request?: Request;
+  ttlMs?: number;
+}): Promise<string> {
+  const token = generateOpaqueToken(EMAIL_CHANGE_TOKEN_BYTES);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + (options.ttlMs ?? EMAIL_CHANGE_TOKEN_TTL_MS));
+
+  const ip = options.request ? getClientIp(options.request) : null;
+  const userAgent = options.request?.headers.get("user-agent") || null;
+
+  await prisma.emailChangeToken.create({
+    data: {
+      userId: options.userId,
+      newEmail: options.newEmail,
+      tokenHash: sha256Hex(token),
+      expiresAt,
+      ip,
+      userAgent,
+    },
+  });
+
+  return token;
+}
+
+export async function consumeEmailChangeToken(token: string): Promise<{ userId: string; newEmail: string } | null> {
+  const raw = token.trim();
+  if (!raw) return null;
+
+  const now = new Date();
+  const tokenHash = sha256Hex(raw);
+
+  const existing = await prisma.emailChangeToken.findUnique({
+    where: { tokenHash },
+    select: { id: true, userId: true, newEmail: true, usedAt: true, expiresAt: true },
+  });
+  if (!existing || existing.usedAt || existing.expiresAt <= now) {
+    return null;
+  }
+
+  const updated = await prisma.emailChangeToken.updateMany({
+    where: { id: existing.id, usedAt: null },
+    data: { usedAt: now },
+  });
+  if (updated.count !== 1) return null;
+
+  return { userId: existing.userId, newEmail: existing.newEmail };
 }
 
 export async function issuePasswordResetToken(options: {

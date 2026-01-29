@@ -72,6 +72,18 @@
       "invalidOrExpired": "验证链接无效或已过期。",
       "goToLogin": "前往登录"
     },
+    "emailChangePage": {
+      "title": "确认更换邮箱",
+      "confirming": "正在确认新邮箱...",
+      "successTitle": "邮箱已更新",
+      "redirecting": "正在进入设置...",
+      "errorTitle": "确认失败",
+      "failed": "邮箱更换确认失败",
+      "missingToken": "缺少确认令牌。",
+      "invalidOrExpired": "确认链接无效或已过期。",
+      "emailInUse": "该邮箱已被占用。",
+      "goToSettings": "前往设置"
+    },
     "forgotPasswordPage": {
       "title": "找回密码",
       "description": "输入邮箱，我们会发送重置链接。",
@@ -1395,7 +1407,19 @@
       "unsaved": "未保存",
       "email": {
         "label": "邮箱",
-        "help": "邮箱用于登录，无法在此处修改。"
+        "help": "邮箱用于登录。你可以通过确认发送到新邮箱的链接来更换邮箱。",
+        "change": "更换邮箱",
+        "dialog": {
+          "title": "更换邮箱",
+          "description": "我们会向你的新邮箱发送一封确认邮件。",
+          "newEmail": {
+            "label": "新邮箱",
+            "placeholder": "new@example.com"
+          },
+          "sending": "发送中...",
+          "send": "发送确认邮件",
+          "sent": "确认邮件已发送到 {email}。"
+        }
       },
       "name": {
         "label": "名称",
@@ -1549,6 +1573,11 @@
       "fillAllFields": "请填写所有字段",
       "passwordChangeFailed": "修改密码失败",
       "passwordChanged": "密码已修改",
+      "emailChangeEmailRequired": "请输入新邮箱",
+      "emailChangeSameEmail": "新邮箱与当前邮箱相同",
+      "emailChangeFailed": "发送确认邮件失败",
+      "emailChangeSent": "确认邮件已发送",
+      "rateLimitedRetry": "请求过于频繁，请 {seconds} 秒后重试",
       "trashRetentionInvalid": "回收站保留天数必须为 0 或正数",
       "trashRetentionTooLarge": "回收站保留天数过大",
       "saveFailed": "保存失败",

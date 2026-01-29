@@ -82,6 +82,7 @@ model User {
   passkeyCredentials PasskeyCredential[]
   loginTokens    LoginToken[]
   emailVerificationTokens EmailVerificationToken[]
+  emailChangeTokens EmailChangeToken[]
   passwordResetTokens PasswordResetToken[]
   mfaChallenges  MfaChallenge[]
   totp           UserTotp?
@@ -233,6 +234,25 @@ model EmailVerificationToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("email_verification_tokens")
+}
+
+model EmailChangeToken {
+  id        String   @id @default(cuid())
+  userId    String
+  newEmail  String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([newEmail])
+  @@map("email_change_tokens")
 }
 
 model PasswordResetToken {
