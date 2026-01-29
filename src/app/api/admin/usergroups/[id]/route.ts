@@ -109,15 +109,11 @@ export async function PATCH(
       });
 
       if (domainIds !== undefined) {
-        if (domainIds.length === 0) {
-          await tx.userGroupDomain.deleteMany({ where: { userGroupId: id } });
-        } else {
-          await tx.userGroupDomain.deleteMany({
-            where: { userGroupId: id, domainId: { notIn: domainIds } },
-          });
+        // Delete all existing domain associations and recreate
+        await tx.userGroupDomain.deleteMany({ where: { userGroupId: id } });
+        if (domainIds.length > 0) {
           await tx.userGroupDomain.createMany({
             data: domainIds.map((domainId) => ({ userGroupId: id, domainId })),
-            skipDuplicates: true,
           });
         }
       }
