@@ -92,7 +92,6 @@ export async function POST(request: NextRequest) {
       if (domainIds.length > 0) {
         await tx.userGroupDomain.createMany({
           data: domainIds.map((domainId) => ({ userGroupId: group.id, domainId })),
-          skipDuplicates: true,
         });
       }
 
