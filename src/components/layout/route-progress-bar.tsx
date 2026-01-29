@@ -42,7 +42,6 @@ export function RouteProgressBar() {
 
   const statusRef = useRef<Status>("idle");
   const mountedRef = useRef(false);
-  const scheduledStartRef = useRef(false);
   const startTimeRef = useRef(0);
   const prefersReducedMotionRef = useRef(false);
 
@@ -71,13 +70,8 @@ export function RouteProgressBar() {
   };
 
   const scheduleStart = () => {
-    if (scheduledStartRef.current) return;
-    scheduledStartRef.current = true;
-    queueMicrotask(() => {
-      scheduledStartRef.current = false;
-      if (!mountedRef.current) return;
-      start();
-    });
+    if (!mountedRef.current) return;
+    start();
   };
 
   const start = () => {
