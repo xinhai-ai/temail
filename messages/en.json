@@ -130,6 +130,7 @@
     "settings": "Settings",
     "admin": "Admin",
     "users": "Users",
+    "usergroups": "User Groups",
     "inbound": "Inbound",
     "logs": "Logs",
     "system": "System"
@@ -168,6 +169,7 @@
       "save": "Save",
       "saving": "Saving...",
       "cancel": "Cancel",
+      "create": "Create",
       "reload": "Reload",
       "yes": "Yes",
       "no": "No",
@@ -209,6 +211,7 @@
         "level": "Level",
         "message": "Message",
         "name": "Name",
+        "description": "Description",
         "received": "Received",
         "role": "Role",
         "source": "Source",
@@ -262,6 +265,66 @@
       "subtitle": "Manage system users",
       "empty": "No users found"
     },
+    "usergroups": {
+      "title": "User Groups",
+      "subtitle": "Quotas, domains, and feature flags",
+      "empty": "No user groups found",
+      "table": {
+        "policy": "Domain Policy",
+        "mailboxes": "Mailboxes",
+        "workflows": "Workflows",
+        "features": "Features",
+        "users": "Users",
+        "domains": "Domains"
+      },
+      "actions": {
+        "newGroup": "New Group",
+        "assignDefault": "Assign Default"
+      },
+      "create": {
+        "title": "Create user group",
+        "namePlaceholder": "e.g. Team A"
+      },
+      "fields": {
+        "domainPolicy": "Domain policy",
+        "maxMailboxes": "Max mailboxes",
+        "maxWorkflows": "Max workflows"
+      },
+      "placeholders": {
+        "unlimited": "Unlimited"
+      },
+      "domainPolicy": {
+        "allPublic": "All public domains",
+        "allowlist": "Allowlist"
+      },
+      "features": {
+        "telegram": "Telegram",
+        "telegramDesc": "Telegram integration",
+        "workflow": "Workflows",
+        "workflowDesc": "Workflow system",
+        "openapi": "OpenAPI",
+        "openapiDesc": "API keys and Open endpoints"
+      },
+      "detail": {
+        "subtitle": "Users: {users}",
+        "settings": "Settings",
+        "domains": "Allowed domains",
+        "domainsHintAll": "Domain policy is ALL_PUBLIC — allow all public ACTIVE domains.",
+        "domainsEmpty": "No domains available.",
+        "descriptionPlaceholder": "Optional description"
+      },
+      "errors": {
+        "nameRequired": "Name is required"
+      },
+      "confirmDelete": "Delete this user group?",
+      "notFound": "User group not found",
+      "toasts": {
+        "created": "User group created",
+        "saved": "Saved",
+        "deleted": "Deleted",
+        "assignedDefault": "Assigned default group to {count} user(s)"
+      }
+    },
     "userDetail": {
       "summary": {
         "created": "Created {date}",
@@ -285,6 +348,8 @@
           "admin": "Admin",
           "superAdmin": "Super Admin"
         },
+        "userGroup": "User group",
+        "userGroupNone": "(none)",
         "emailVerified": "Email Verified (ISO)",
         "active": "Active",
         "activeHelp": "Disable user login"

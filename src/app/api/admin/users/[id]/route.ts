@@ -10,6 +10,7 @@ const updateSchema = z.object({
   role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]).optional(),
   isActive: z.boolean().optional(),
   emailVerified: z.string().datetime().nullable().optional(),
+  userGroupId: z.string().trim().min(1).nullable().optional(),
 });
 
 async function logAdminAction(request: NextRequest, adminUserId: string, message: string, metadata?: unknown) {
@@ -50,6 +51,8 @@ export async function GET(
         role: true,
         isActive: true,
         emailVerified: true,
+        userGroupId: true,
+        userGroup: { select: { id: true, name: true } },
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -140,6 +143,7 @@ export async function PATCH(
       role?: "SUPER_ADMIN" | "ADMIN" | "USER";
       isActive?: boolean;
       emailVerified?: Date | null;
+      userGroupId?: string | null;
     } = {};
 
     if (data.email !== undefined) updateData.email = data.email;
@@ -148,6 +152,18 @@ export async function PATCH(
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.emailVerified !== undefined) {
       updateData.emailVerified = data.emailVerified ? new Date(data.emailVerified) : null;
+    }
+    if (data.userGroupId !== undefined) {
+      if (typeof data.userGroupId === "string") {
+        const group = await prisma.userGroup.findUnique({
+          where: { id: data.userGroupId },
+          select: { id: true },
+        });
+        if (!group) {
+          return NextResponse.json({ error: "User group not found" }, { status: 404 });
+        }
+      }
+      updateData.userGroupId = data.userGroupId;
     }
 
     const updated = await prisma.user.update({
@@ -160,6 +176,8 @@ export async function PATCH(
         role: true,
         isActive: true,
         emailVerified: true,
+        userGroupId: true,
+        userGroup: { select: { id: true, name: true } },
         createdAt: true,
         updatedAt: true,
       },

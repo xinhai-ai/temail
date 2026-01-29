@@ -15,6 +15,8 @@ export async function GET() {
       name: true,
       role: true,
       isActive: true,
+      userGroupId: true,
+      userGroup: { select: { id: true, name: true } },
       createdAt: true,
       _count: { select: { mailboxes: true, domains: true } },
     },

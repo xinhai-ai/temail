@@ -11,6 +11,7 @@ import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { issueEmailVerificationToken } from "@/lib/auth-tokens";
 import { sendEmailVerificationEmail } from "@/services/auth/email-verification";
+import { getOrCreateDefaultUserGroupId } from "@/services/usergroups/default-group";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
     const role = isBootstrap ? "SUPER_ADMIN" : "USER";
     const requiresEmailVerification = flags.emailVerificationEnabled && !isBootstrap;
+    const userGroupId = role === "USER" ? await getOrCreateDefaultUserGroupId() : null;
 
     if (requiresEmailVerification) {
       const turnstileConfig = await getTurnstileClientConfig();
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         role,
+        ...(userGroupId ? { userGroupId } : {}),
         emailVerified: requiresEmailVerification ? null : new Date(),
       },
     });

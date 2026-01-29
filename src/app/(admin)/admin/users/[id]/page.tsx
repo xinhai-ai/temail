@@ -60,6 +60,8 @@ interface UserDetail {
   role: "SUPER_ADMIN" | "ADMIN" | "USER";
   isActive: boolean;
   emailVerified: string | null;
+  userGroupId: string | null;
+  userGroup?: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
   _count: { mailboxes: number; domains: number; workflows: number; emails: number };
@@ -119,6 +121,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [role, setRole] = useState<UserDetail["role"]>("USER");
   const [isActive, setIsActive] = useState(true);
   const [emailVerified, setEmailVerified] = useState<string>("");
+  const [userGroupId, setUserGroupId] = useState<string>("");
+  const [userGroups, setUserGroups] = useState<Array<{ id: string; name: string }>>([]);
 
   // Security
   const [newPassword, setNewPassword] = useState("");
@@ -172,6 +176,18 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     setRole(data.role);
     setIsActive(data.isActive);
     setEmailVerified(data.emailVerified || "");
+    setUserGroupId(data.userGroupId || "");
+  };
+
+  const fetchUserGroups = async () => {
+    const res = await fetch("/api/admin/usergroups");
+    const data = await res.json().catch(() => []);
+    if (!res.ok) {
+      setUserGroups([]);
+      return;
+    }
+    const rows = Array.isArray(data) ? (data as Array<{ id: string; name: string }>) : [];
+    setUserGroups(rows.map((row) => ({ id: row.id, name: row.name })));
   };
 
   const fetchMailboxes = async () => {
@@ -205,7 +221,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     const run = async () => {
       setLoading(true);
-      await Promise.all([fetchUser(), fetchMailboxes(), fetchEmails(), fetchWorkflows(), fetchAuth()]);
+      await Promise.all([fetchUser(), fetchUserGroups(), fetchMailboxes(), fetchEmails(), fetchWorkflows(), fetchAuth()]);
       setLoading(false);
     };
     run();
@@ -233,6 +249,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     if (isActive !== user.isActive) payload.isActive = isActive;
     if ((emailVerified || null) !== (user.emailVerified || null)) {
       payload.emailVerified = emailVerified ? new Date(emailVerified).toISOString() : null;
+    }
+    if ((userGroupId || null) !== (user.userGroupId || null)) {
+      payload.userGroupId = userGroupId ? userGroupId : null;
     }
 
     const res = await fetch(`/api/admin/users/${id}`, {
@@ -547,9 +566,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{t("common.table.role")}</Label>
+	              <div className="grid gap-4 md:grid-cols-2">
+	                <div className="space-y-2">
+	                  <Label>{t("common.table.role")}</Label>
                   <Select
                     value={role}
                     onValueChange={(v) => setRole(v as UserDetail["role"])}
@@ -569,16 +588,36 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                       {t("userDetail.profile.roleHelp")}
                     </p>
                   )}
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("userDetail.profile.emailVerified")}</Label>
-                  <Input
-                    placeholder="2026-01-16T00:00:00.000Z"
-                    value={emailVerified}
-                    onChange={(e) => setEmailVerified(e.target.value)}
-                  />
-                </div>
-              </div>
+	                </div>
+	                <div className="space-y-2">
+	                  <Label>{t("userDetail.profile.userGroup")}</Label>
+	                  <Select
+	                    value={userGroupId || "__none__"}
+	                    onValueChange={(v) => setUserGroupId(v === "__none__" ? "" : v)}
+	                  >
+	                    <SelectTrigger>
+	                      <SelectValue />
+	                    </SelectTrigger>
+	                    <SelectContent>
+	                      <SelectItem value="__none__">{t("userDetail.profile.userGroupNone")}</SelectItem>
+	                      {userGroups.map((g) => (
+	                        <SelectItem key={g.id} value={g.id}>
+	                          {g.name}
+	                        </SelectItem>
+	                      ))}
+	                    </SelectContent>
+	                  </Select>
+	                </div>
+	              </div>
+
+	              <div className="space-y-2">
+	                <Label>{t("userDetail.profile.emailVerified")}</Label>
+	                <Input
+	                  placeholder="2026-01-16T00:00:00.000Z"
+	                  value={emailVerified}
+	                  onChange={(e) => setEmailVerified(e.target.value)}
+	                />
+	              </div>
 
               <div className="flex items-center justify-between">
                 <div>

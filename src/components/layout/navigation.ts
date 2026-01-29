@@ -5,6 +5,7 @@ import {
   Globe,
   Inbox,
   LayoutDashboard,
+  Layers,
   MessageCircle,
   Settings,
   Shield,
@@ -33,6 +34,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { titleKey: "nav.admin", href: "/admin", icon: Shield },
   { titleKey: "nav.users", href: "/admin/users", icon: Users },
+  { titleKey: "nav.usergroups", href: "/admin/usergroups", icon: Layers },
   { titleKey: "nav.inbound", href: "/admin/inbound", icon: Inbox },
   { titleKey: "nav.logs", href: "/admin/logs", icon: FileText },
   { titleKey: "nav.telegram", href: "/admin/telegram", icon: MessageCircle },
@@ -49,6 +51,7 @@ export const PAGE_TITLES: Record<string, { titleKey: string; descriptionKey?: st
   "/settings": { titleKey: "nav.settings", descriptionKey: "pages.settings.description" },
   "/admin": { titleKey: "nav.admin", descriptionKey: "pages.admin.description" },
   "/admin/telegram": { titleKey: "nav.telegram", descriptionKey: "pages.adminTelegram.description" },
+  "/admin/usergroups": { titleKey: "nav.usergroups" },
 };
 
 function matchesPathname(pathname: string, href: string) {
