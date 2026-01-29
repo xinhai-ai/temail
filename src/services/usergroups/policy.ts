@@ -1,7 +1,10 @@
 import prisma from "@/lib/prisma";
-import { isAdminRole } from "@/lib/rbac";
 
 export type UserGroupFeature = "telegram" | "workflow" | "openapi";
+
+function isAdminRole(role?: string | null) {
+  return role === "ADMIN" || role === "SUPER_ADMIN";
+}
 
 export type PolicyError = {
   ok: false;
@@ -200,4 +203,3 @@ export async function assertUserHasUserGroup(params: { userId: string }): Promis
   if (isAdminRole(user.role)) return { ok: true, value: { userGroupId: null } };
   return { ok: true, value: { userGroupId: user.userGroupId } };
 }
-
