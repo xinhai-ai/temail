@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,6 +26,7 @@ import { startRegistration } from "@simplewebauthn/browser";
 import type { PublicKeyCredentialCreationOptionsJSON } from "@simplewebauthn/types";
 import { useTranslations } from "next-intl";
 import { DEFAULT_OPEN_API_KEY_SCOPES, OPEN_API_SCOPES } from "@/lib/open-api/scopes";
+import { getApiErrorMessage } from "@/lib/policy-client";
 
 export default function SettingsPage() {
   type PasskeyInfo = {
@@ -39,6 +41,7 @@ export default function SettingsPage() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const tAuthErrors = useTranslations("auth.errors");
+  const tPolicy = useTranslations("policy");
   const [name, setName] = useState(session?.user?.name || "");
   const [profileEmail, setProfileEmail] = useState(session?.user?.email || "");
   const [profileOriginalName, setProfileOriginalName] = useState(session?.user?.name || "");
@@ -47,6 +50,22 @@ export default function SettingsPage() {
   const [emailChangeOpen, setEmailChangeOpen] = useState(false);
   const [emailChangeNewEmail, setEmailChangeNewEmail] = useState("");
   const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+
+  type UserGroupInfo = {
+    userGroup: {
+      id: string;
+      name: string;
+      maxMailboxes: number | null;
+      maxWorkflows: number | null;
+      telegramEnabled: boolean;
+      workflowEnabled: boolean;
+      workflowForwardEmailEnabled: boolean;
+      openApiEnabled: boolean;
+    } | null;
+    usage: { mailboxes: number; workflows: number };
+  };
+  const [userGroupInfo, setUserGroupInfo] = useState<UserGroupInfo | null>(null);
+  const [userGroupLoading, setUserGroupLoading] = useState(true);
 
   const [tab, setTab] = useState<"account" | "security" | "api" | "data" | "about">("account");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -123,6 +142,21 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const load = async () => {
+      setUserGroupLoading(true);
+      const res = await fetch("/api/users/me/usergroup");
+      const data = await res.json().catch(() => null);
+      if (res.ok && data && typeof data === "object") {
+        setUserGroupInfo(data as UserGroupInfo);
+      } else {
+        setUserGroupInfo(null);
+      }
+      setUserGroupLoading(false);
+    };
+    load().catch(() => setUserGroupLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
       setProfileLoading(true);
       const res = await fetch("/api/users/me");
       const data = await res.json().catch(() => null);
@@ -192,10 +226,10 @@ export default function SettingsPage() {
     if (res.ok) {
       setApiKeys(Array.isArray(data?.keys) ? (data.keys as ApiKeyInfo[]) : []);
     } else {
-      toast.error(data?.error || t("toast.saveFailed"));
+      toast.error(getApiErrorMessage(tPolicy, data, t("toast.saveFailed")));
     }
     setApiKeysLoading(false);
-  }, [t]);
+  }, [t, tPolicy]);
 
   useEffect(() => {
     fetchApiKeys().catch(() => setApiKeysLoading(false));
@@ -229,7 +263,7 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || t("toast.apiKeyCreateFailed"));
+        toast.error(getApiErrorMessage(tPolicy, data, t("toast.apiKeyCreateFailed")));
         return;
       }
 
@@ -263,7 +297,7 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || t("toast.apiKeyUpdateFailed"));
+        toast.error(getApiErrorMessage(tPolicy, data, t("toast.apiKeyUpdateFailed")));
         return;
       }
       toast.success(t("toast.apiKeyUpdated"));
@@ -283,7 +317,7 @@ export default function SettingsPage() {
       const res = await fetch(`/api/open-api/keys/${keyId}`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || t("toast.apiKeyDeleteFailed"));
+        toast.error(getApiErrorMessage(tPolicy, data, t("toast.apiKeyDeleteFailed")));
         return;
       }
       toast.success(t("toast.apiKeyDeleted"));
@@ -330,7 +364,7 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.error || t("toast.apiKeyUpdateFailed"));
+        toast.error(getApiErrorMessage(tPolicy, data, t("toast.apiKeyUpdateFailed")));
         return;
       }
       toast.success(t("toast.apiKeyUpdated"));
@@ -784,6 +818,60 @@ export default function SettingsPage() {
                     {t("profile.actions.reset")}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Info className="h-5 w-5" />
+                  {t("userGroup.title")}
+                </CardTitle>
+                <CardDescription>{t("userGroup.description")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userGroupLoading ? (
+                  <div className="text-sm text-muted-foreground">{tCommon("loading")}</div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-medium">{t("userGroup.group")}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {userGroupInfo?.userGroup?.name || t("userGroup.notAssigned")}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {(["mailboxes", "workflows"] as const).map((key) => {
+                      const used = userGroupInfo?.usage?.[key] ?? 0;
+                      const quota =
+                        key === "mailboxes"
+                          ? userGroupInfo?.userGroup?.maxMailboxes ?? null
+                          : userGroupInfo?.userGroup?.maxWorkflows ?? null;
+
+                      const quotaLabel = quota === null ? t("userGroup.unlimited") : String(quota);
+                      const progress =
+                        quota === null ? 0 : quota <= 0 ? (used > 0 ? 100 : 0) : Math.min(100, (used / quota) * 100);
+
+                      return (
+                        <div key={key} className="space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-sm font-medium">
+                              {key === "mailboxes" ? t("userGroup.mailboxes") : t("userGroup.workflows")}
+                            </div>
+                            <div className="text-xs text-muted-foreground tabular-nums">
+                              {t("userGroup.used")}: {used} · {t("userGroup.quota")}: {quotaLabel}
+                            </div>
+                          </div>
+                          {quota === null ? null : (
+                            <Progress value={progress} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>

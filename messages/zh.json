@@ -11,6 +11,24 @@
     "search": "搜索",
     "actions": "操作"
   },
+  "policy": {
+    "featureDisabled": "你的用户组已禁用此功能。",
+    "featureDisabledNamed": "你的用户组已禁用「{feature}」。",
+    "quotaExceeded": "{resource} 配额已用尽（{count}/{limit}）。",
+    "quotaExceededGeneric": "{resource} 配额已用尽。",
+    "domainNotAllowed": "你的用户组不允许使用该域名。",
+    "nodesRemoved": "由于权限限制，已从工作流中移除以下节点：{nodes}。",
+    "resources": {
+      "mailboxes": "邮箱",
+      "workflows": "工作流"
+    },
+    "features": {
+      "telegram": "Telegram",
+      "workflow": "工作流",
+      "openapi": "OpenAPI",
+      "workflow_forward_email": "工作流发信"
+    }
+  },
   "auth": {
     "login": "登录",
     "register": "注册",
@@ -1465,6 +1483,17 @@
         "save": "保存资料",
         "reset": "重置"
       }
+    },
+    "userGroup": {
+      "title": "配额与权限",
+      "description": "查看你被分配的用户组与使用情况。",
+      "group": "用户组",
+      "notAssigned": "（未分配）",
+      "mailboxes": "邮箱",
+      "workflows": "工作流",
+      "quota": "配额",
+      "used": "已用",
+      "unlimited": "不限"
     },
     "password": {
       "title": "密码",

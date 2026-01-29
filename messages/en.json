@@ -11,6 +11,24 @@
     "search": "Search",
     "actions": "Actions"
   },
+  "policy": {
+    "featureDisabled": "This feature is disabled for your group.",
+    "featureDisabledNamed": "{feature} is disabled for your group.",
+    "quotaExceeded": "{resource} quota exceeded ({count}/{limit}).",
+    "quotaExceededGeneric": "{resource} quota exceeded.",
+    "domainNotAllowed": "This domain is not allowed for your group.",
+    "nodesRemoved": "Some workflow nodes were removed because they are disabled for your group: {nodes}.",
+    "resources": {
+      "mailboxes": "Mailbox",
+      "workflows": "Workflow"
+    },
+    "features": {
+      "telegram": "Telegram",
+      "workflow": "Workflows",
+      "openapi": "OpenAPI",
+      "workflow_forward_email": "Workflow Email Forwarding"
+    }
+  },
   "auth": {
     "login": "Sign In",
     "register": "Sign Up",
@@ -1465,6 +1483,17 @@
         "save": "Save profile",
         "reset": "Reset"
       }
+    },
+    "userGroup": {
+      "title": "Plan & Quotas",
+      "description": "Your assigned user group and usage.",
+      "group": "Group",
+      "notAssigned": "(none)",
+      "mailboxes": "Mailboxes",
+      "workflows": "Workflows",
+      "quota": "Quota",
+      "used": "Used",
+      "unlimited": "Unlimited"
     },
     "password": {
       "title": "Password",
