@@ -17,6 +17,43 @@ enum Role {
   USER
 }
 
+enum UserGroupDomainPolicy {
+  ALL_PUBLIC
+  ALLOWLIST
+}
+
+model UserGroup {
+  id             String                @id @default(cuid())
+  name           String                @unique
+  description    String?
+  domainPolicy   UserGroupDomainPolicy @default(ALL_PUBLIC)
+  maxMailboxes   Int?
+  maxWorkflows   Int?
+  telegramEnabled Boolean              @default(true)
+  workflowEnabled Boolean              @default(true)
+  openApiEnabled Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  users          User[]
+  domains        UserGroupDomain[]
+
+  @@map("user_groups")
+}
+
+model UserGroupDomain {
+  userGroupId String
+  domainId    String
+  createdAt   DateTime @default(now())
+
+  userGroup UserGroup @relation(fields: [userGroupId], references: [id], onDelete: Cascade)
+  domain    Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@id([userGroupId, domainId])
+  @@index([domainId])
+  @@map("user_group_domains")
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -29,6 +66,9 @@ model User {
   trashRetentionDays Int   @default(30) // 0 = never auto purge
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  userGroupId   String?
+  userGroup     UserGroup? @relation(fields: [userGroupId], references: [id], onDelete: SetNull)
 
   domains       Domain[]
   mailboxes     Mailbox[]
@@ -49,6 +89,7 @@ model User {
   telegramChatBindings TelegramChatBinding[]
   telegramBindCodes TelegramBindCode[]
 
+  @@index([userGroupId])
   @@map("users")
 }
 
@@ -298,6 +339,7 @@ model Domain {
   webhookConfig DomainWebhookConfig?
   mailboxes   Mailbox[]
   inboundEmails InboundEmail[]
+  userGroupDomains UserGroupDomain[]
 
   @@map("domains")
 }
