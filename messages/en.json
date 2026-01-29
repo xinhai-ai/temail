@@ -319,6 +319,8 @@
         "telegramDesc": "Telegram integration",
         "workflow": "Workflows",
         "workflowDesc": "Workflow system",
+        "workflowForwardEmail": "Workflow Email Forwarding",
+        "workflowForwardEmailDesc": "Allow the forward:email node (SMTP forwarding)",
         "openapi": "OpenAPI",
         "openapiDesc": "API keys and Open endpoints"
       },

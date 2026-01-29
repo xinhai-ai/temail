@@ -92,12 +92,13 @@ export class WorkflowEngine {
     executionId: string,
     config: WorkflowConfig,
     isTestMode: boolean = false,
-    options?: { maxSteps?: number; maxDurationMs?: number }
+    options?: { maxSteps?: number; maxDurationMs?: number; userId?: string }
   ) {
     this.workflowId = workflowId;
     this.executionId = executionId;
     this.config = config;
     this.context = {
+      userId: options?.userId,
       variables: {},
       logs: [],
       isTestMode,
@@ -370,7 +371,7 @@ export async function triggerWorkflow(
   });
 
   // Execute workflow (async, don't wait)
-  const engine = new WorkflowEngine(workflowId, execution.id, config);
+  const engine = new WorkflowEngine(workflowId, execution.id, config, false, { userId: workflow.userId });
   engine.execute(emailContext).catch((error) => {
     console.error("Workflow execution error:", error);
   });

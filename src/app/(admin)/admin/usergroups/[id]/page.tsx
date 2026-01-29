@@ -28,6 +28,7 @@ type UserGroupDetail = {
   maxWorkflows: number | null;
   telegramEnabled: boolean;
   workflowEnabled: boolean;
+  workflowForwardEmailEnabled: boolean;
   openApiEnabled: boolean;
   domainIds: string[];
   _count: { users: number; domains: number };
@@ -66,6 +67,7 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
   const [maxWorkflows, setMaxWorkflows] = useState<string>("");
   const [telegramEnabled, setTelegramEnabled] = useState(true);
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
+  const [workflowForwardEmailEnabled, setWorkflowForwardEmailEnabled] = useState(false);
   const [openApiEnabled, setOpenApiEnabled] = useState(true);
   const [domainIds, setDomainIds] = useState<string[]>([]);
 
@@ -94,6 +96,7 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
       setMaxWorkflows(g.maxWorkflows === null ? "" : String(g.maxWorkflows));
       setTelegramEnabled(Boolean(g.telegramEnabled));
       setWorkflowEnabled(Boolean(g.workflowEnabled));
+      setWorkflowForwardEmailEnabled(Boolean(g.workflowForwardEmailEnabled));
       setOpenApiEnabled(Boolean(g.openApiEnabled));
       setDomainIds(Array.isArray(g.domainIds) ? g.domainIds : []);
 
@@ -145,6 +148,7 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
         maxWorkflows: parseNullableInt(maxWorkflows),
         telegramEnabled,
         workflowEnabled,
+        workflowForwardEmailEnabled,
         openApiEnabled,
         domainIds,
       };
@@ -287,7 +291,7 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <div className="font-medium">{t("usergroups.features.telegram")}</div>
@@ -301,6 +305,13 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
                 <div className="text-xs text-muted-foreground">{t("usergroups.features.workflowDesc")}</div>
               </div>
               <Switch checked={workflowEnabled} onCheckedChange={setWorkflowEnabled} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <div className="font-medium">{t("usergroups.features.workflowForwardEmail")}</div>
+                <div className="text-xs text-muted-foreground">{t("usergroups.features.workflowForwardEmailDesc")}</div>
+              </div>
+              <Switch checked={workflowForwardEmailEnabled} onCheckedChange={setWorkflowForwardEmailEnabled} />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

@@ -319,6 +319,8 @@
         "telegramDesc": "Telegram 集成",
         "workflow": "工作流",
         "workflowDesc": "工作流系统",
+        "workflowForwardEmail": "工作流发信",
+        "workflowForwardEmailDesc": "允许使用 forward:email 节点（SMTP 转发）",
         "openapi": "OpenAPI",
         "openapiDesc": "API Key 与 Open 接口"
       },

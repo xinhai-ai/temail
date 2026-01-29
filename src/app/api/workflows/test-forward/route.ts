@@ -8,7 +8,7 @@ import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
 import { rateLimit } from "@/lib/api-rate-limit";
 import { getTelegramBotToken } from "@/services/telegram/bot-api";
 import { getSystemSettingValue } from "@/services/system-settings";
-import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
+import { assertUserGroupFeatureEnabled, assertUserGroupWorkflowForwardEmailEnabled } from "@/services/usergroups/policy";
 import type {
   ForwardEmailData,
   ForwardTelegramBoundData,
@@ -103,6 +103,14 @@ export async function POST(req: NextRequest) {
       const enabled = await isWorkflowEmailForwardingEnabled();
       if (!enabled) {
         return NextResponse.json({ error: "Email forwarding is disabled by admin" }, { status: 403 });
+      }
+
+      const permission = await assertUserGroupWorkflowForwardEmailEnabled({ userId: session.user.id });
+      if (!permission.ok) {
+        return NextResponse.json(
+          { error: permission.error, code: permission.code, meta: permission.meta },
+          { status: permission.status }
+        );
       }
     }
 

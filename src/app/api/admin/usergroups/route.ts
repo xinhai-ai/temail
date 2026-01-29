@@ -12,6 +12,7 @@ const createSchema = z.object({
   maxWorkflows: z.number().int().min(0).nullable().optional(),
   telegramEnabled: z.boolean().optional(),
   workflowEnabled: z.boolean().optional(),
+  workflowForwardEmailEnabled: z.boolean().optional(),
   openApiEnabled: z.boolean().optional(),
   domainIds: z.array(z.string().trim().min(1)).max(10_000).optional(),
 });
@@ -33,6 +34,7 @@ export async function GET() {
       maxWorkflows: true,
       telegramEnabled: true,
       workflowEnabled: true,
+      workflowForwardEmailEnabled: true,
       openApiEnabled: true,
       createdAt: true,
       updatedAt: true,
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
           maxWorkflows: data.maxWorkflows === undefined ? undefined : data.maxWorkflows,
           telegramEnabled: data.telegramEnabled,
           workflowEnabled: data.workflowEnabled,
+          workflowForwardEmailEnabled: data.workflowForwardEmailEnabled,
           openApiEnabled: data.openApiEnabled,
         },
         select: {
@@ -79,6 +82,7 @@ export async function POST(request: NextRequest) {
           maxWorkflows: true,
           telegramEnabled: true,
           workflowEnabled: true,
+          workflowForwardEmailEnabled: true,
           openApiEnabled: true,
           createdAt: true,
           updatedAt: true,
@@ -103,4 +107,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

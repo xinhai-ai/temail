@@ -479,6 +479,7 @@ export interface ControlEndData {
 // ==================== 执行上下文 ====================
 
 export interface ExecutionContext {
+  userId?: string;
   email?: EmailContext;
   variables: Record<string, unknown>;
   logs: ExecutionLog[];

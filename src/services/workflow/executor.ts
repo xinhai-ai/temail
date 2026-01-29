@@ -24,6 +24,7 @@ import { getRestoreStatusForTrash } from "@/services/email-trash";
 import { getTelegramBotToken, getTelegramForumGeneralTopicName, telegramCreateForumTopic } from "@/services/telegram/bot-api";
 import { getSystemSettingValue } from "@/services/system-settings";
 import { sendSmtpMail } from "@/services/smtp/mailer";
+import { assertUserGroupWorkflowForwardEmailEnabled } from "@/services/usergroups/policy";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -794,6 +795,14 @@ async function executeForwardEmail(
   if (!enabled) {
     console.warn("[workflow] Email forwarding is disabled by admin");
     return true;
+  }
+
+  if (context.userId) {
+    const allowed = await assertUserGroupWorkflowForwardEmailEnabled({ userId: context.userId });
+    if (!allowed.ok) {
+      console.warn("[workflow] Email forwarding blocked by user group:", allowed.error);
+      return true;
+    }
   }
 
   const templateCtx = buildTemplateContext(context);

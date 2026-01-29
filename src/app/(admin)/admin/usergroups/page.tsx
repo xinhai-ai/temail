@@ -34,6 +34,7 @@ type UserGroupRow = {
   maxWorkflows: number | null;
   telegramEnabled: boolean;
   workflowEnabled: boolean;
+  workflowForwardEmailEnabled: boolean;
   openApiEnabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -191,6 +192,7 @@ export default function AdminUserGroupsPage() {
                     {[
                       g.telegramEnabled ? "TG" : null,
                       g.workflowEnabled ? "WF" : null,
+                      g.workflowForwardEmailEnabled ? "WF-Email" : null,
                       g.openApiEnabled ? "API" : null,
                     ].filter(Boolean).join(" / ") || "-"}
                   </TableCell>

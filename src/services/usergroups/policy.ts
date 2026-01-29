@@ -30,6 +30,7 @@ type UserGroupRow = {
   maxWorkflows: number | null;
   telegramEnabled: boolean;
   workflowEnabled: boolean;
+  workflowForwardEmailEnabled: boolean;
   openApiEnabled: boolean;
 };
 
@@ -53,6 +54,7 @@ async function getUserPolicyContext(userId: string): Promise<
           maxWorkflows: true,
           telegramEnabled: true,
           workflowEnabled: true,
+          workflowForwardEmailEnabled: true,
           openApiEnabled: true,
         },
       },
@@ -93,6 +95,27 @@ export async function assertUserGroupFeatureEnabled(params: {
     error: `${params.feature} is disabled for your group`,
     code: "USERGROUP_FEATURE_DISABLED",
     meta: { feature: params.feature },
+  };
+}
+
+export async function assertUserGroupWorkflowForwardEmailEnabled(params: { userId: string }): Promise<PolicyResult> {
+  const ctx = await getUserPolicyContext(params.userId);
+  if (!ctx) {
+    return { ok: false, status: 404, error: "User not found", code: "USER_NOT_FOUND" };
+  }
+  if (ctx.isAdmin) return { ok: true, value: undefined };
+  if (!ctx.userGroup) return { ok: true, value: undefined };
+
+  if (ctx.userGroup.workflowForwardEmailEnabled) {
+    return { ok: true, value: undefined };
+  }
+
+  return {
+    ok: false,
+    status: 403,
+    error: "Workflow email forwarding is disabled for your group",
+    code: "USERGROUP_FEATURE_DISABLED",
+    meta: { feature: "workflow_forward_email" },
   };
 }
 

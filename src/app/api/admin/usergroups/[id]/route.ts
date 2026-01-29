@@ -13,6 +13,7 @@ const patchSchema = z.object({
   maxWorkflows: z.number().int().min(0).nullable().optional(),
   telegramEnabled: z.boolean().optional(),
   workflowEnabled: z.boolean().optional(),
+  workflowForwardEmailEnabled: z.boolean().optional(),
   openApiEnabled: z.boolean().optional(),
   domainIds: z.array(z.string().trim().min(1)).max(10_000).optional(),
 });
@@ -39,6 +40,7 @@ export async function GET(
       maxWorkflows: true,
       telegramEnabled: true,
       workflowEnabled: true,
+      workflowForwardEmailEnabled: true,
       openApiEnabled: true,
       createdAt: true,
       updatedAt: true,
@@ -87,6 +89,7 @@ export async function PATCH(
           ...(data.maxWorkflows !== undefined && { maxWorkflows: data.maxWorkflows }),
           ...(data.telegramEnabled !== undefined && { telegramEnabled: data.telegramEnabled }),
           ...(data.workflowEnabled !== undefined && { workflowEnabled: data.workflowEnabled }),
+          ...(data.workflowForwardEmailEnabled !== undefined && { workflowForwardEmailEnabled: data.workflowForwardEmailEnabled }),
           ...(data.openApiEnabled !== undefined && { openApiEnabled: data.openApiEnabled }),
         },
         select: {
@@ -98,6 +101,7 @@ export async function PATCH(
           maxWorkflows: true,
           telegramEnabled: true,
           workflowEnabled: true,
+          workflowForwardEmailEnabled: true,
           openApiEnabled: true,
           createdAt: true,
           updatedAt: true,

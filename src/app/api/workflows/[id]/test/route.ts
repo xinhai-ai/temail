@@ -112,7 +112,7 @@ export async function POST(
     await updateDispatchLogExecution(dispatchLogId, execution.id);
 
     // Execute workflow synchronously (wait for completion)
-    const engine = new WorkflowEngine(id, execution.id, cfgParse.data as WorkflowConfig, true);
+    const engine = new WorkflowEngine(id, execution.id, cfgParse.data as WorkflowConfig, true, { userId: session.user.id });
 
     try {
       await engine.execute(emailContext);

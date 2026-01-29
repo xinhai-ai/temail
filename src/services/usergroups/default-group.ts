@@ -11,7 +11,16 @@ export async function getOrCreateDefaultUserGroupId(): Promise<string> {
 
   try {
     const created = await prisma.userGroup.create({
-      data: { name: DEFAULT_USERGROUP_NAME },
+      data: {
+        name: DEFAULT_USERGROUP_NAME,
+        domainPolicy: "ALL_PUBLIC",
+        maxMailboxes: 300,
+        maxWorkflows: 10,
+        telegramEnabled: true,
+        workflowEnabled: true,
+        workflowForwardEmailEnabled: false,
+        openApiEnabled: true,
+      },
       select: { id: true },
     });
     return created.id;
@@ -36,4 +45,3 @@ export async function assignDefaultUserGroupToUnassignedUsers(): Promise<{
   });
   return { defaultGroupId, updatedCount: updated.count };
 }
-
