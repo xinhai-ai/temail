@@ -19,6 +19,10 @@ export default async function RegisterPage() {
   }
 
   const mode = await getRegistrationMode();
+  const githubEnabled = Boolean(
+    (process.env.AUTH_GITHUB_ID || process.env.GITHUB_ID) &&
+      (process.env.AUTH_GITHUB_SECRET || process.env.GITHUB_SECRET)
+  );
 
   if (mode === "closed") {
     return (
@@ -58,5 +62,5 @@ export default async function RegisterPage() {
   }
 
   const turnstile = await getTurnstileClientConfig();
-  return <RegisterForm mode={mode} turnstile={turnstile} />;
+  return <RegisterForm mode={mode} turnstile={turnstile} githubEnabled={githubEnabled} />;
 }

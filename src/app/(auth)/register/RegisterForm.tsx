@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { TurnstileWidget } from "@/components/security/TurnstileWidget";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { KeyRound, Lock, Mail, User, Loader2, MailCheck } from "lucide-react";
+import { Github, KeyRound, Lock, Mail, User, Loader2, MailCheck } from "lucide-react";
 import type { RegistrationMode } from "@/lib/registration";
 
 type TurnstileConfig = {
@@ -22,9 +24,11 @@ type TurnstileConfig = {
 export default function RegisterForm({
   mode,
   turnstile,
+  githubEnabled = false,
 }: {
   mode: RegistrationMode;
   turnstile: TurnstileConfig;
+  githubEnabled?: boolean;
 }) {
   const router = useRouter();
   const t = useTranslations("auth");
@@ -197,6 +201,12 @@ export default function RegisterForm({
     }
   };
 
+  const handleGitHubSignIn = async () => {
+    if (!githubEnabled) return;
+    setError("");
+    await signIn("github", { callbackUrl: "/dashboard" });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
       {/* 装饰背景 */}
@@ -279,6 +289,25 @@ export default function RegisterForm({
                 <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg border border-destructive/20">
                   {error}
                 </div>
+              )}
+              {githubEnabled && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-11 font-medium"
+                    onClick={handleGitHubSignIn}
+                    disabled={loading}
+                  >
+                    <Github className="mr-2 h-4 w-4" aria-hidden="true" />
+                    {t("oauth.continueWithGithub")}
+                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Separator className="flex-1" />
+                    <span className="text-xs text-muted-foreground">{t("oauth.or")}</span>
+                    <Separator className="flex-1" />
+                  </div>
+                </>
               )}
               <div className="space-y-2">
                 <Label htmlFor="name">{t("name")}</Label>

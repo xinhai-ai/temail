@@ -26,6 +26,10 @@
     "usePasskey": "使用 Passkey",
     "verify": "验证",
     "back": "返回",
+    "oauth": {
+      "or": "或",
+      "continueWithGithub": "使用 GitHub 继续"
+    },
     "placeholders": {
       "email": "name@example.com",
       "password": "请输入密码",

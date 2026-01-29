@@ -13,6 +13,11 @@ export default async function LoginPage() {
     redirect("/dashboard");
   }
 
+  const githubEnabled = Boolean(
+    (process.env.AUTH_GITHUB_ID || process.env.GITHUB_ID) &&
+      (process.env.AUTH_GITHUB_SECRET || process.env.GITHUB_SECRET)
+  );
+
   const [mode, turnstile, flags] = await Promise.all([
     getRegistrationMode(),
     getTurnstileClientConfig(),
@@ -22,6 +27,7 @@ export default async function LoginPage() {
     <LoginForm
       showRegisterLink={mode !== "closed"}
       turnstile={turnstile}
+      githubEnabled={githubEnabled}
       passkeyEnabled={flags.passkeyEnabled}
       passwordResetEnabled={flags.passwordResetEnabled}
     />

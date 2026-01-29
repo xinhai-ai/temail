@@ -26,6 +26,10 @@
     "usePasskey": "Use passkey",
     "verify": "Verify",
     "back": "Back",
+    "oauth": {
+      "or": "or",
+      "continueWithGithub": "Continue with GitHub"
+    },
     "placeholders": {
       "email": "name@example.com",
       "password": "Enter your password",

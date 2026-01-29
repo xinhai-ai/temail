@@ -10,6 +10,7 @@ import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/type
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { TurnstileWidget } from "@/components/security/TurnstileWidget";
 import {
   Card,
@@ -19,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { KeyRound, Loader2, Lock, Mail } from "lucide-react";
+import { Github, KeyRound, Loader2, Lock, Mail } from "lucide-react";
 
 type TurnstileConfig = {
   enabled: boolean;
@@ -31,11 +32,13 @@ type TurnstileConfig = {
 export default function LoginForm({
   showRegisterLink = true,
   turnstile,
+  githubEnabled = false,
   passkeyEnabled = false,
   passwordResetEnabled = false,
 }: {
   showRegisterLink?: boolean;
   turnstile: TurnstileConfig;
+  githubEnabled?: boolean;
   passkeyEnabled?: boolean;
   passwordResetEnabled?: boolean;
 }) {
@@ -138,6 +141,13 @@ export default function LoginForm({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGitHubSignIn = async () => {
+    if (!githubEnabled) return;
+    if (step !== "primary") return;
+    setError("");
+    await signIn("github", { callbackUrl: "/dashboard" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -262,6 +272,25 @@ export default function LoginForm({
               <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg border border-destructive/20">
                 {error}
               </div>
+            )}
+            {step === "primary" && githubEnabled && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 font-medium"
+                  onClick={handleGitHubSignIn}
+                  disabled={loading}
+                >
+                  <Github className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("oauth.continueWithGithub")}
+                </Button>
+                <div className="flex items-center gap-3">
+                  <Separator className="flex-1" />
+                  <span className="text-xs text-muted-foreground">{t("oauth.or")}</span>
+                  <Separator className="flex-1" />
+                </div>
+              </>
             )}
             {step === "primary" && passkeyEnabled && (
               <Button
