@@ -24,11 +24,13 @@ type TurnstileConfig = {
 export default function RegisterForm({
   mode,
   turnstile,
-  githubEnabled = false,
+  githubRegistrationEnabled = false,
+  emailRegistrationEnabled = true,
 }: {
   mode: RegistrationMode;
   turnstile: TurnstileConfig;
-  githubEnabled?: boolean;
+  githubRegistrationEnabled?: boolean;
+  emailRegistrationEnabled?: boolean;
 }) {
   const router = useRouter();
   const t = useTranslations("auth");
@@ -202,7 +204,7 @@ export default function RegisterForm({
   };
 
   const handleGitHubSignIn = async () => {
-    if (!githubEnabled) return;
+    if (!githubRegistrationEnabled) return;
     setError("");
     await signIn("github", { callbackUrl: "/dashboard" });
   };
@@ -282,6 +284,31 @@ export default function RegisterForm({
               </Button>
             </CardFooter>
           </>
+        ) : !emailRegistrationEnabled ? (
+          <>
+            <CardContent className="space-y-4">
+              {githubRegistrationEnabled && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 font-medium"
+                  onClick={handleGitHubSignIn}
+                  disabled={loading}
+                >
+                  <Github className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("oauth.continueWithGithub")}
+                </Button>
+              )}
+              <p className="text-sm text-center text-muted-foreground">
+                {t("registerPage.emailRegistrationDisabled")}
+              </p>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-3 pt-2">
+              <Button asChild variant="outline" className="w-full h-11 font-medium">
+                <Link href="/login">{t("login")}</Link>
+              </Button>
+            </CardFooter>
+          </>
         ) : (
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -290,7 +317,7 @@ export default function RegisterForm({
                   {error}
                 </div>
               )}
-              {githubEnabled && (
+              {githubRegistrationEnabled && (
                 <>
                   <Button
                     type="button"

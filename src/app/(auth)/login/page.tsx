@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getRegistrationMode } from "@/lib/registration";
 import { getTurnstileClientConfig } from "@/lib/turnstile";
 import { getAuthFeatureFlags } from "@/lib/auth-features";
+import { getAuthProviderFlags } from "@/lib/auth-providers";
 import LoginForm from "./LoginForm";
 
 export const dynamic = "force-dynamic";
@@ -13,10 +14,7 @@ export default async function LoginPage() {
     redirect("/dashboard");
   }
 
-  const githubEnabled = Boolean(
-    (process.env.AUTH_GITHUB_ID || process.env.GITHUB_ID) &&
-      (process.env.AUTH_GITHUB_SECRET || process.env.GITHUB_SECRET)
-  );
+  const providers = await getAuthProviderFlags();
 
   const [mode, turnstile, flags] = await Promise.all([
     getRegistrationMode(),
@@ -27,7 +25,7 @@ export default async function LoginPage() {
     <LoginForm
       showRegisterLink={mode !== "closed"}
       turnstile={turnstile}
-      githubEnabled={githubEnabled}
+      githubEnabled={providers.githubLoginEnabled}
       passkeyEnabled={flags.passkeyEnabled}
       passwordResetEnabled={flags.passwordResetEnabled}
     />

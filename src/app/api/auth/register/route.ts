@@ -12,6 +12,7 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 import { issueEmailVerificationToken } from "@/lib/auth-tokens";
 import { sendEmailVerificationEmail } from "@/services/auth/email-verification";
 import { getOrCreateDefaultUserGroupId } from "@/services/usergroups/default-group";
+import { getAuthProviderConfig } from "@/lib/auth-providers";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -76,6 +77,14 @@ export async function POST(request: NextRequest) {
       mailMatches;
 
     if (!isBootstrap) {
+      const providers = await getAuthProviderConfig();
+      if (!providers.email.registrationEnabled) {
+        return NextResponse.json(
+          { error: "Email registration is disabled" },
+          { status: 403 }
+        );
+      }
+
       const { mode, inviteCodes } = await getRegistrationSettings();
       if (mode === "closed") {
         return NextResponse.json(

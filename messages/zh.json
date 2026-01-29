@@ -50,6 +50,7 @@
       "description": "注册一个新的 TEmail 账户",
       "descriptionInvite": "使用邀请码注册",
       "alreadyHaveAccount": "已有账户？",
+      "emailRegistrationDisabled": "本服务器已禁用邮箱注册。",
       "verifyEmail": {
         "title": "请查收邮箱",
         "description": "我们已向 {email} 发送了一封验证邮件，请点击邮件中的链接完成注册。",
@@ -465,6 +466,7 @@
       "tabs": {
         "general": "通用",
         "registration": "注册",
+        "providers": "登录提供商",
         "security": "安全",
         "smtp": "SMTP",
         "ai": "AI",
@@ -519,6 +521,36 @@
           "help": "当注册模式为“邀请码”时使用。多个邀请码用逗号或换行分隔。",
           "placeholder": "code-1\\ncode-2",
           "warning": "已启用邀请码注册，但未配置任何邀请码。"
+        }
+      },
+      "providers": {
+        "cardTitle": "登录提供商",
+        "email": {
+          "title": "邮箱",
+          "registration": {
+            "label": "允许邮箱注册",
+            "help": "允许用户使用邮箱与密码注册。"
+          }
+        },
+        "github": {
+          "title": "GitHub OAuth",
+          "enable": {
+            "label": "启用 GitHub 登录",
+            "help": "允许用户使用 GitHub OAuth 登录。"
+          },
+          "registration": {
+            "label": "允许 GitHub 注册",
+            "help": "允许用户首次使用 GitHub 登录时自动创建账号。"
+          },
+          "clientId": {
+            "label": "Client ID",
+            "placeholder": "Iv1.XXXXXXXXXXXX"
+          },
+          "clientSecret": {
+            "label": "Client Secret",
+            "placeholder": "••••••••"
+          },
+          "callbackHint": "回调地址：/api/auth/callback/github"
         }
       },
       "security": {

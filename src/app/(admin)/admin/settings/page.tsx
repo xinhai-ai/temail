@@ -129,8 +129,13 @@ export default function AdminSettingsPage() {
   const [otpEnabled, setOtpEnabled] = useState(false);
   const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(false);
   const [passwordResetEnabled, setPasswordResetEnabled] = useState(false);
+  const [emailRegistrationEnabled, setEmailRegistrationEnabled] = useState(true);
+  const [githubEnabled, setGithubEnabled] = useState(false);
+  const [githubRegistrationEnabled, setGithubRegistrationEnabled] = useState(true);
   const [telegramBotEnabled, setTelegramBotEnabled] = useState(true);
-  const [tab, setTab] = useState<"general" | "registration" | "security" | "smtp" | "ai" | "workflow" | "telegram">("general");
+  const [tab, setTab] = useState<
+    "general" | "registration" | "providers" | "security" | "smtp" | "ai" | "workflow" | "telegram"
+  >("general");
 
   const [appInfo, setAppInfo] = useState<AppInfoResponse | null>(null);
   const [appInfoLoading, setAppInfoLoading] = useState(true);
@@ -277,6 +282,11 @@ export default function AdminSettingsPage() {
     setEmailVerificationEnabled(map.auth_email_verification_enabled === "true");
     setPasswordResetEnabled(map.auth_password_reset_enabled === "true");
     // Default to true if not set (backward compatibility)
+    setEmailRegistrationEnabled(map.auth_provider_email_registration_enabled !== "false");
+    setGithubEnabled(map.auth_provider_github_enabled === "true");
+    // Default to true if not set (backward compatibility)
+    setGithubRegistrationEnabled(map.auth_provider_github_registration_enabled !== "false");
+    // Default to true if not set (backward compatibility)
     setTelegramBotEnabled(map.telegram_bot_enabled !== "false");
     const mode = map.registration_mode;
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
@@ -402,6 +412,11 @@ export default function AdminSettingsPage() {
         { key: "auth_otp_enabled", value: otpEnabled ? "true" : "false" },
         { key: "auth_email_verification_enabled", value: emailVerificationEnabled ? "true" : "false" },
         { key: "auth_password_reset_enabled", value: passwordResetEnabled ? "true" : "false" },
+        { key: "auth_provider_email_registration_enabled", value: emailRegistrationEnabled ? "true" : "false" },
+        { key: "auth_provider_github_enabled", value: githubEnabled ? "true" : "false" },
+        { key: "auth_provider_github_registration_enabled", value: githubRegistrationEnabled ? "true" : "false" },
+        { key: "auth_provider_github_client_id", value: values["auth_provider_github_client_id"] || "" },
+        { key: "auth_provider_github_client_secret", value: values["auth_provider_github_client_secret"] || "" },
         { key: "telegram_bot_enabled", value: telegramBotEnabled ? "true" : "false" },
         { key: "workflow_forward_email_enabled", value: workflowForwardEmailEnabled ? "true" : "false" },
       ].filter((x) => x.value !== "");
@@ -504,10 +519,11 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 h-auto">
-            <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="gap-4">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-8 h-auto">
+          <TabsTrigger value="general">{t("settings.tabs.general")}</TabsTrigger>
           <TabsTrigger value="registration">{t("settings.tabs.registration")}</TabsTrigger>
+          <TabsTrigger value="providers">{t("settings.tabs.providers")}</TabsTrigger>
           <TabsTrigger value="security">{t("settings.tabs.security")}</TabsTrigger>
           {!vercelMode && <TabsTrigger value="smtp">{t("settings.tabs.smtp")}</TabsTrigger>}
           <TabsTrigger value="ai">{t("settings.tabs.ai")}</TabsTrigger>
@@ -676,6 +692,88 @@ export default function AdminSettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="providers">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  {t("settings.providers.cardTitle")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("settings.providers.email.title")}</Label>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>{t("settings.providers.email.registration.label")}</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t("settings.providers.email.registration.help")}
+                      </p>
+                    </div>
+                    <Switch checked={emailRegistrationEnabled} onCheckedChange={setEmailRegistrationEnabled} />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("settings.providers.github.title")}</Label>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>{t("settings.providers.github.enable.label")}</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t("settings.providers.github.enable.help")}
+                      </p>
+                    </div>
+                    <Switch checked={githubEnabled} onCheckedChange={setGithubEnabled} />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>{t("settings.providers.github.registration.label")}</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t("settings.providers.github.registration.help")}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={githubRegistrationEnabled}
+                      onCheckedChange={setGithubRegistrationEnabled}
+                      disabled={!githubEnabled}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("settings.providers.github.clientId.label")}</Label>
+                    <Input
+                      placeholder={t("settings.providers.github.clientId.placeholder")}
+                      value={values["auth_provider_github_client_id"] || ""}
+                      onChange={(e) => setValue("auth_provider_github_client_id", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("settings.providers.github.clientSecret.label")}</Label>
+                    <Input
+                      type="password"
+                      placeholder={t("settings.providers.github.clientSecret.placeholder")}
+                      value={
+                        maskedValues["auth_provider_github_client_secret"] && !values["auth_provider_github_client_secret"]
+                          ? t("settings.common.secretConfigured")
+                          : values["auth_provider_github_client_secret"] || ""
+                      }
+                      onChange={(e) => setValue("auth_provider_github_client_secret", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.providers.github.callbackHint")}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="security">

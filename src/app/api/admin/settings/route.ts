@@ -35,6 +35,7 @@ export async function GET() {
     "turnstile_secret_key",
     "telegram_bot_token",
     "telegram_webhook_secret",
+    "auth_provider_github_client_secret",
   ]);
   const safeSettings = settings.map((row) =>
     secretKeys.has(row.key)
@@ -67,6 +68,9 @@ export async function PUT(request: NextRequest) {
       "turnstile_secret_key",
       "auth_email_verification_enabled",
       "auth_password_reset_enabled",
+      "auth_provider_github_enabled",
+      "auth_provider_github_client_id",
+      "auth_provider_github_client_secret",
     ]);
 
     const wantsValidation = data.some((item) => keysToValidate.has(item.key));
@@ -102,6 +106,18 @@ export async function PUT(request: NextRequest) {
           { error: "Turnstile must be enabled and configured to enable email verification/password reset" },
           { status: 400 }
         );
+      }
+
+      const githubEnabled = parseBoolean(next.auth_provider_github_enabled);
+      if (githubEnabled) {
+        const clientId = (next.auth_provider_github_client_id || "").trim();
+        const clientSecret = (next.auth_provider_github_client_secret || "").trim();
+        if (!clientId || !clientSecret) {
+          return NextResponse.json(
+            { error: "GitHub OAuth must be configured (client id/secret) before enabling" },
+            { status: 400 }
+          );
+        }
       }
     }
 

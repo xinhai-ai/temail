@@ -50,6 +50,7 @@
       "description": "Sign up for a new TEmail account",
       "descriptionInvite": "Sign up with an invite code",
       "alreadyHaveAccount": "Already have an account?",
+      "emailRegistrationDisabled": "Email registration is disabled on this server.",
       "verifyEmail": {
         "title": "Check your inbox",
         "description": "We sent a verification email to {email}. Please click the link to finish setting up your account.",
@@ -465,6 +466,7 @@
       "tabs": {
         "general": "General",
         "registration": "Registration",
+        "providers": "Providers",
         "security": "Security",
         "smtp": "SMTP",
         "ai": "AI",
@@ -519,6 +521,36 @@
           "help": "Used when Registration Mode is set to Invite Code. Separate multiple codes by commas or newlines.",
           "placeholder": "code-1\\ncode-2",
           "warning": "Invite-code registration is enabled but no invite codes are configured."
+        }
+      },
+      "providers": {
+        "cardTitle": "Login Providers",
+        "email": {
+          "title": "Email",
+          "registration": {
+            "label": "Enable email registration",
+            "help": "Allow users to sign up with email and password."
+          }
+        },
+        "github": {
+          "title": "GitHub OAuth",
+          "enable": {
+            "label": "Enable GitHub login",
+            "help": "Allow users to sign in with GitHub OAuth."
+          },
+          "registration": {
+            "label": "Allow GitHub registration",
+            "help": "Allow new users to be created on first GitHub sign-in."
+          },
+          "clientId": {
+            "label": "Client ID",
+            "placeholder": "Iv1.XXXXXXXXXXXX"
+          },
+          "clientSecret": {
+            "label": "Client Secret",
+            "placeholder": "••••••••"
+          },
+          "callbackHint": "Callback URL: /api/auth/callback/github"
         }
       },
       "security": {
