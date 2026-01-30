@@ -488,6 +488,7 @@
         "registration": "Registration",
         "providers": "Providers",
         "security": "Security",
+        "emailTemplates": "Email Templates",
         "smtp": "SMTP",
         "ai": "AI",
         "workflow": "Workflow",
@@ -622,6 +623,36 @@
             "label": "Enable Password Reset",
             "help": "Allow users to reset their password via email (requires Turnstile)."
           }
+        }
+      },
+      "emailTemplates": {
+        "cardTitle": "Email Templates",
+        "cardDescription": "Customize email verification and password reset email bodies.",
+        "placeholders": {
+          "title": "Placeholders",
+          "siteName": "Site name",
+          "actionUrl": "Action link URL",
+          "note": "Leave the templates empty to use the built-in defaults."
+        },
+        "tabs": {
+          "verifyEmail": "Verify Email",
+          "passwordReset": "Password Reset"
+        },
+        "help": {
+          "leaveBlank": "Tip: leave blank to use default templates."
+        },
+        "verifyEmail": {
+          "title": "Email Verification (Registration link)"
+        },
+        "passwordReset": {
+          "title": "Password Reset"
+        },
+        "fields": {
+          "text": "Text body",
+          "html": "HTML body"
+        },
+        "actions": {
+          "useDefault": "Use default templates"
         }
       },
       "smtp": {

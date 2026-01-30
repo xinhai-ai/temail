@@ -8,6 +8,7 @@ import {
   UserPlus,
   KeyRound,
   Shield,
+  FileText,
   Mail,
   Bot,
   Workflow,
@@ -22,6 +23,7 @@ import { GeneralSection } from "./_components/sections/GeneralSection";
 import { RegistrationSection } from "./_components/sections/RegistrationSection";
 import { ProvidersSection } from "./_components/sections/ProvidersSection";
 import { SecuritySection } from "./_components/sections/SecuritySection";
+import { EmailTemplatesSection } from "./_components/sections/EmailTemplatesSection";
 import { SmtpSection } from "./_components/sections/SmtpSection";
 import { AiSection } from "./_components/sections/AiSection";
 import { WorkflowSection } from "./_components/sections/WorkflowSection";
@@ -297,6 +299,7 @@ export default function AdminSettingsPage() {
       { id: "registration", label: t("settings.tabs.registration"), icon: UserPlus },
       { id: "providers", label: t("settings.tabs.providers"), icon: KeyRound },
       { id: "security", label: t("settings.tabs.security"), icon: Shield },
+      { id: "emailTemplates", label: t("settings.tabs.emailTemplates"), icon: FileText },
     ];
 
     if (!vercelMode) {
@@ -373,6 +376,10 @@ export default function AdminSettingsPage() {
           passwordResetEnabled={passwordResetEnabled}
           setPasswordResetEnabled={handleSetPasswordResetEnabled}
         />
+      )}
+
+      {activeSection === "emailTemplates" && (
+        <EmailTemplatesSection values={values} setValue={setValue} />
       )}
 
       {activeSection === "smtp" && !vercelMode && (

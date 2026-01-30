@@ -488,6 +488,7 @@
         "registration": "注册",
         "providers": "登录提供商",
         "security": "安全",
+        "emailTemplates": "邮件模板",
         "smtp": "SMTP",
         "ai": "AI",
         "workflow": "工作流",
@@ -622,6 +623,36 @@
             "label": "启用密码找回",
             "help": "允许用户通过邮件重置密码（需要启用 Turnstile）。"
           }
+        }
+      },
+      "emailTemplates": {
+        "cardTitle": "邮件模板",
+        "cardDescription": "自定义邮箱验证与重置密码邮件的正文模板。",
+        "placeholders": {
+          "title": "占位符",
+          "siteName": "站点名称",
+          "actionUrl": "操作链接 URL",
+          "note": "模板留空则使用内置默认模板。"
+        },
+        "tabs": {
+          "verifyEmail": "邮箱验证",
+          "passwordReset": "重置密码"
+        },
+        "help": {
+          "leaveBlank": "提示：留空则使用默认模板。"
+        },
+        "verifyEmail": {
+          "title": "邮箱验证（注册链接）"
+        },
+        "passwordReset": {
+          "title": "重置密码"
+        },
+        "fields": {
+          "text": "TEXT 正文",
+          "html": "HTML 正文"
+        },
+        "actions": {
+          "useDefault": "使用默认模板"
         }
       },
       "smtp": {

@@ -4,6 +4,16 @@ import prisma from "@/lib/prisma";
 import { getSystemSettingValue } from "@/services/system-settings";
 import { sendSmtpMail } from "@/services/smtp/mailer";
 import { sha256Hex } from "@/lib/auth-tokens";
+import { pickEmailTemplate, renderEmailTemplate } from "@/services/auth/email-templates";
+
+const VERIFY_EMAIL_TEXT_TEMPLATE_KEY = "email_template_verify_email_text";
+const VERIFY_EMAIL_HTML_TEMPLATE_KEY = "email_template_verify_email_html";
+
+const DEFAULT_VERIFY_EMAIL_TEXT_TEMPLATE =
+  "Welcome to {{siteName}}.\n\nPlease verify your email address by clicking the link below:\n\n{{actionUrl}}\n\nIf you didn't create an account, you can ignore this email.";
+
+const DEFAULT_VERIFY_EMAIL_HTML_TEMPLATE =
+  '<p>Welcome to <strong>{{siteName}}</strong>.</p>\n<p>Please verify your email address by clicking the link below:</p>\n<p><a href="{{actionUrl}}">Verify Email</a></p>\n<p>If you didn\'t create an account, you can ignore this email.</p>';
 
 function normalizeOrigin(raw: string | null | undefined): string | null {
   const value = (raw || "").trim();
@@ -37,14 +47,28 @@ export async function buildVerifyEmailUrl(token: string): Promise<string> {
 }
 
 export async function sendEmailVerificationEmail(options: { to: string; token: string }): Promise<void> {
-  const [siteName, url] = await Promise.all([
+  const [siteName, url, customTextTemplate, customHtmlTemplate] = await Promise.all([
     getSiteName(),
     buildVerifyEmailUrl(options.token),
+    getSystemSettingValue(VERIFY_EMAIL_TEXT_TEMPLATE_KEY),
+    getSystemSettingValue(VERIFY_EMAIL_HTML_TEMPLATE_KEY),
   ]);
 
   const subject = `${siteName} - Verify your email`;
-  const text = `Welcome to ${siteName}.\n\nPlease verify your email address by clicking the link below:\n\n${url}\n\nIf you didn't create an account, you can ignore this email.`;
-  const html = `<p>Welcome to <strong>${siteName}</strong>.</p>\n<p>Please verify your email address by clicking the link below:</p>\n<p><a href="${url}">Verify Email</a></p>\n<p>If you didn't create an account, you can ignore this email.</p>`;
+  const vars = { siteName, actionUrl: url, url };
+  const textTemplate = pickEmailTemplate({
+    custom: customTextTemplate,
+    fallback: DEFAULT_VERIFY_EMAIL_TEXT_TEMPLATE,
+    requireActionUrl: true,
+  });
+  const htmlTemplate = pickEmailTemplate({
+    custom: customHtmlTemplate,
+    fallback: DEFAULT_VERIFY_EMAIL_HTML_TEMPLATE,
+    requireActionUrl: true,
+  });
+
+  const text = renderEmailTemplate(textTemplate, vars);
+  const html = renderEmailTemplate(htmlTemplate, vars, { html: true });
 
   await sendSmtpMail({
     to: options.to,

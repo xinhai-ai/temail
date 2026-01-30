@@ -2,6 +2,16 @@ import "server-only";
 
 import { getSystemSettingValue } from "@/services/system-settings";
 import { sendSmtpMail } from "@/services/smtp/mailer";
+import { pickEmailTemplate, renderEmailTemplate } from "@/services/auth/email-templates";
+
+const PASSWORD_RESET_TEXT_TEMPLATE_KEY = "email_template_password_reset_text";
+const PASSWORD_RESET_HTML_TEMPLATE_KEY = "email_template_password_reset_html";
+
+const DEFAULT_PASSWORD_RESET_TEXT_TEMPLATE =
+  "We received a request to reset your {{siteName}} password.\n\nUse the link below to set a new password:\n\n{{actionUrl}}\n\nIf you did not request a password reset, you can ignore this email.";
+
+const DEFAULT_PASSWORD_RESET_HTML_TEMPLATE =
+  '<p>We received a request to reset your <strong>{{siteName}}</strong> password.</p>\n<p>Use the link below to set a new password:</p>\n<p><a href="{{actionUrl}}">Reset Password</a></p>\n<p>If you did not request a password reset, you can ignore this email.</p>';
 
 function normalizeOrigin(raw: string | null | undefined): string | null {
   const value = (raw || "").trim();
@@ -35,14 +45,28 @@ export async function buildPasswordResetUrl(token: string): Promise<string> {
 }
 
 export async function sendPasswordResetEmail(options: { to: string; token: string }): Promise<void> {
-  const [siteName, url] = await Promise.all([
+  const [siteName, url, customTextTemplate, customHtmlTemplate] = await Promise.all([
     getSiteName(),
     buildPasswordResetUrl(options.token),
+    getSystemSettingValue(PASSWORD_RESET_TEXT_TEMPLATE_KEY),
+    getSystemSettingValue(PASSWORD_RESET_HTML_TEMPLATE_KEY),
   ]);
 
   const subject = `${siteName} - Reset your password`;
-  const text = `We received a request to reset your ${siteName} password.\n\nUse the link below to set a new password:\n\n${url}\n\nIf you did not request a password reset, you can ignore this email.`;
-  const html = `<p>We received a request to reset your <strong>${siteName}</strong> password.</p>\n<p>Use the link below to set a new password:</p>\n<p><a href="${url}">Reset Password</a></p>\n<p>If you did not request a password reset, you can ignore this email.</p>`;
+  const vars = { siteName, actionUrl: url, url };
+  const textTemplate = pickEmailTemplate({
+    custom: customTextTemplate,
+    fallback: DEFAULT_PASSWORD_RESET_TEXT_TEMPLATE,
+    requireActionUrl: true,
+  });
+  const htmlTemplate = pickEmailTemplate({
+    custom: customHtmlTemplate,
+    fallback: DEFAULT_PASSWORD_RESET_HTML_TEMPLATE,
+    requireActionUrl: true,
+  });
+
+  const text = renderEmailTemplate(textTemplate, vars);
+  const html = renderEmailTemplate(htmlTemplate, vars, { html: true });
 
   await sendSmtpMail({
     to: options.to,
@@ -51,4 +75,3 @@ export async function sendPasswordResetEmail(options: { to: string; token: strin
     html,
   });
 }
-
