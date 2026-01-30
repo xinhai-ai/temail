@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { readJsonBody } from "@/lib/request";
+import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
 
 const patchSchema = z.object({
   name: z
@@ -21,14 +22,30 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { email: true, name: true, role: true, createdAt: true },
+    select: {
+      email: true,
+      name: true,
+      role: true,
+      createdAt: true,
+      password: true,
+      accounts: { select: { provider: true } },
+    },
   });
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  return NextResponse.json(user);
+  const oauthProviders = uniqueOAuthProviders(user.accounts);
+  const hasPassword = Boolean(user.password);
+
+  return NextResponse.json({
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    createdAt: user.createdAt,
+    authSources: computeAuthSources({ hasPassword, oauthProviders }),
+  });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -76,4 +93,3 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

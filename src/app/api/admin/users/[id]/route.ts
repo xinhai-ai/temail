@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getAdminSession, isSuperAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
+import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
 
 const updateSchema = z.object({
   email: z.string().email().optional(),
@@ -51,6 +52,8 @@ export async function GET(
         role: true,
         isActive: true,
         emailVerified: true,
+        password: true,
+        accounts: { select: { provider: true } },
         userGroupId: true,
         userGroup: { select: { id: true, name: true } },
         createdAt: true,
@@ -71,9 +74,22 @@ export async function GET(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const oauthProviders = uniqueOAuthProviders(user.accounts);
+  const hasPassword = Boolean(user.password);
+
   return NextResponse.json({
-    ...user,
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    isActive: user.isActive,
+    emailVerified: user.emailVerified,
+    userGroupId: user.userGroupId,
+    userGroup: user.userGroup,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
     _count: { ...user._count, emails: emailCount },
+    authSources: computeAuthSources({ hasPassword, oauthProviders }),
   });
 }
 
