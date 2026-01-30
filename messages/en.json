@@ -219,6 +219,10 @@
       "unmatched": "Unmatched",
       "unknown": "Unknown",
       "unknownError": "Unknown error",
+      "authSources": {
+        "password": "Email / Password",
+        "github": "GitHub"
+      },
       "lastUpdated": "Last updated: {date}",
       "status": {
         "active": "Active",
@@ -249,6 +253,7 @@
         "description": "Description",
         "received": "Received",
         "role": "Role",
+        "authSource": "Registration source",
         "source": "Source",
         "status": "Status",
         "subject": "Subject",
@@ -388,6 +393,9 @@
         "userGroup": "User group",
         "userGroupNone": "(none)",
         "emailVerified": "Email Verified (ISO)",
+        "authSource": "Registration source",
+        "verifyEmail": "Mark verified",
+        "verifyingEmail": "Verifying...",
         "active": "Active",
         "activeHelp": "Disable user login"
       },
@@ -464,6 +472,8 @@
         "loadUserFailed": "Failed to load user",
         "userUpdated": "User updated",
         "updateUserFailed": "Failed to update user",
+        "emailVerified": "Email verified",
+        "verifyEmailFailed": "Failed to verify email",
         "userDeleted": "User deleted",
         "deleteUserFailed": "Failed to delete user",
         "newPasswordRequired": "Please enter a new password",

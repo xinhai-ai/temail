@@ -219,6 +219,10 @@
       "unmatched": "未匹配",
       "unknown": "未知",
       "unknownError": "未知错误",
+      "authSources": {
+        "password": "邮箱 / 密码",
+        "github": "GitHub"
+      },
       "lastUpdated": "最后更新：{date}",
       "status": {
         "active": "启用",
@@ -249,6 +253,7 @@
         "description": "描述",
         "received": "收取时间",
         "role": "角色",
+        "authSource": "注册来源",
         "source": "来源",
         "status": "状态",
         "subject": "主题",
@@ -388,6 +393,9 @@
         "userGroup": "用户组",
         "userGroupNone": "（无）",
         "emailVerified": "邮箱验证时间（ISO）",
+        "authSource": "注册来源",
+        "verifyEmail": "通过验证",
+        "verifyingEmail": "验证中...",
         "active": "启用",
         "activeHelp": "禁用用户登录"
       },
@@ -464,6 +472,8 @@
         "loadUserFailed": "加载用户失败",
         "userUpdated": "用户已更新",
         "updateUserFailed": "更新用户失败",
+        "emailVerified": "邮箱已验证",
+        "verifyEmailFailed": "邮箱验证失败",
         "userDeleted": "用户已删除",
         "deleteUserFailed": "删除用户失败",
         "newPasswordRequired": "请输入新密码",

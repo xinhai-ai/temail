@@ -61,6 +61,7 @@ interface UserDetail {
   role: "SUPER_ADMIN" | "ADMIN" | "USER";
   isActive: boolean;
   emailVerified: string | null;
+  authSources?: string[];
   userGroupId: string | null;
   userGroup?: { id: string; name: string } | null;
   createdAt: string;
@@ -112,10 +113,16 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const t = useTranslations("admin");
+  const formatAuthSource = (source: string) => {
+    if (source === "password") return t("common.authSources.password");
+    if (source === "github") return t("common.authSources.github");
+    return source;
+  };
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserDetail | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
 
   // Profile form state
@@ -272,6 +279,33 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     }
 
     setSavingProfile(false);
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!user) return;
+    if (user.emailVerified) return;
+    setVerifyingEmail(true);
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailVerified: new Date().toISOString() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const nextEmailVerified =
+          data && typeof data.emailVerified === "string" ? (data.emailVerified as string) : null;
+        toast.success(t("userDetail.toasts.emailVerified"));
+        setUser((prev) => (prev ? { ...prev, emailVerified: nextEmailVerified } : prev));
+        setEmailVerified(nextEmailVerified || "");
+      } else {
+        toast.error(data.error || t("userDetail.toasts.verifyEmailFailed"));
+      }
+    } catch {
+      toast.error(t("userDetail.toasts.verifyEmailFailed"));
+    } finally {
+      setVerifyingEmail(false);
+    }
   };
 
   const handleDeleteUser = async () => {
@@ -584,6 +618,21 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <CardTitle>{t("userDetail.profile.title")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("userDetail.profile.authSource")}</Label>
+                {!user.authSources || user.authSources.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">-</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {user.authSources.map((source) => (
+                      <Badge key={source} variant="outline">
+                        {formatAuthSource(source)}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>{t("common.table.email")}</Label>
@@ -641,11 +690,21 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
 	              <div className="space-y-2">
 	                <Label>{t("userDetail.profile.emailVerified")}</Label>
-	                <Input
-	                  placeholder="2026-01-16T00:00:00.000Z"
-	                  value={emailVerified}
-	                  onChange={(e) => setEmailVerified(e.target.value)}
-	                />
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      placeholder="2026-01-16T00:00:00.000Z"
+                      value={emailVerified}
+                      onChange={(e) => setEmailVerified(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleVerifyEmail}
+                      disabled={verifyingEmail || Boolean(user.emailVerified)}
+                    >
+                      {verifyingEmail ? t("userDetail.profile.verifyingEmail") : t("userDetail.profile.verifyEmail")}
+                    </Button>
+                  </div>
 	              </div>
 
               <div className="flex items-center justify-between">

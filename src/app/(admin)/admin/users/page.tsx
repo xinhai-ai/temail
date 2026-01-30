@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
- import {
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,8 +13,8 @@ import { Badge } from "@/components/ui/badge";
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
- import { Users } from "lucide-react";
- import { format } from "date-fns";
+import { Users } from "lucide-react";
+import { format } from "date-fns";
 import Link from "next/link";
 
 interface User {
@@ -22,6 +22,7 @@ interface User {
   email: string;
   name?: string;
   role: string;
+  authSources?: string[];
   isActive: boolean;
   createdAt: string;
   _count: { mailboxes: number; domains: number };
@@ -29,6 +30,12 @@ interface User {
 
 export default function AdminUsersPage() {
   const t = useTranslations("admin");
+  const formatAuthSource = (source: string) => {
+    if (source === "password") return t("common.authSources.password");
+    if (source === "github") return t("common.authSources.github");
+    return source;
+  };
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,6 +73,7 @@ export default function AdminUsersPage() {
                 <TableHead>{t("common.table.email")}</TableHead>
                 <TableHead>{t("common.table.name")}</TableHead>
                 <TableHead>{t("common.table.role")}</TableHead>
+                <TableHead>{t("common.table.authSource")}</TableHead>
                 <TableHead>{t("common.table.status")}</TableHead>
                 <TableHead>{t("common.table.mailboxes")}</TableHead>
                 <TableHead>{t("common.table.domains")}</TableHead>
@@ -90,6 +98,19 @@ export default function AdminUsersPage() {
                     >
                       {user.role}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {!user.authSources || user.authSources.length === 0 ? (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {user.authSources.map((source) => (
+                          <Badge key={source} variant="outline">
+                            {formatAuthSource(source)}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.isActive ? "default" : "secondary"}>
