@@ -1524,6 +1524,14 @@
           "sent": "Confirmation email sent to {email}."
         }
       },
+      "registrationSource": {
+        "label": "Registration source",
+        "help": "How your account was created or linked."
+      },
+      "authSources": {
+        "password": "Email / Password",
+        "github": "GitHub"
+      },
       "name": {
         "label": "Name",
         "placeholder": "Your name (optional)",

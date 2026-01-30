@@ -52,6 +52,7 @@ export function AccountSection({ profile }: AccountSectionProps) {
     profileDirty,
     profileLoading,
     profileSaving,
+    authSources,
     emailChangeOpen,
     setEmailChangeOpen,
     emailChangeNewEmail,
@@ -64,6 +65,12 @@ export function AccountSection({ profile }: AccountSectionProps) {
 
   const [userGroupInfo, setUserGroupInfo] = useState<UserGroupInfo | null>(null);
   const [userGroupLoading, setUserGroupLoading] = useState(true);
+
+  const formatAuthSource = (source: string) => {
+    if (source === "password") return t("profile.authSources.password");
+    if (source === "github") return t("profile.authSources.github");
+    return source;
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -110,6 +117,21 @@ export function AccountSection({ profile }: AccountSectionProps) {
                 {t("profile.email.change")}
               </Button>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>{t("profile.registrationSource.label")}</Label>
+            {authSources.length === 0 ? (
+              <div className="text-sm text-muted-foreground">{tCommon("none")}</div>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {authSources.map((source) => (
+                  <Badge key={source} variant="outline">
+                    {formatAuthSource(source)}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">{t("profile.registrationSource.help")}</p>
           </div>
           <div className="space-y-2">
             <Label>{t("profile.name.label")}</Label>

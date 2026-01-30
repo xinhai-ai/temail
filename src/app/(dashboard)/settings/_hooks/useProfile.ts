@@ -10,6 +10,7 @@ type UseProfileReturn = {
   setName: (name: string) => void;
   profileEmail: string;
   profileOriginalName: string;
+  authSources: string[];
   profileLoading: boolean;
   profileSaving: boolean;
   profileDirty: boolean;
@@ -29,6 +30,7 @@ export function useProfile(): UseProfileReturn {
   const [name, setName] = useState(session?.user?.name || "");
   const [profileEmail, setProfileEmail] = useState(session?.user?.email || "");
   const [profileOriginalName, setProfileOriginalName] = useState(session?.user?.name || "");
+  const [authSources, setAuthSources] = useState<string[]>([]);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [emailChangeOpen, setEmailChangeOpen] = useState(false);
@@ -43,13 +45,18 @@ export function useProfile(): UseProfileReturn {
       if (res.ok) {
         const email = typeof data?.email === "string" ? data.email : "";
         const loadedName = typeof data?.name === "string" ? data.name : "";
+        const loadedSources = Array.isArray(data?.authSources)
+          ? (data.authSources as unknown[]).filter((v): v is string => typeof v === "string")
+          : [];
         setProfileEmail(email);
         setName(loadedName);
         setProfileOriginalName(loadedName);
+        setAuthSources(loadedSources);
       } else {
         setProfileEmail(session?.user?.email || "");
         setName(session?.user?.name || "");
         setProfileOriginalName(session?.user?.name || "");
+        setAuthSources([]);
       }
       setProfileLoading(false);
     };
@@ -142,6 +149,7 @@ export function useProfile(): UseProfileReturn {
     setName,
     profileEmail,
     profileOriginalName,
+    authSources,
     profileLoading,
     profileSaving,
     profileDirty,

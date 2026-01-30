@@ -1524,6 +1524,14 @@
           "sent": "确认邮件已发送到 {email}。"
         }
       },
+      "registrationSource": {
+        "label": "注册来源",
+        "help": "该账号的创建/关联方式。"
+      },
+      "authSources": {
+        "password": "邮箱 / 密码",
+        "github": "GitHub"
+      },
       "name": {
         "label": "名称",
         "placeholder": "你的名称（可选）",
