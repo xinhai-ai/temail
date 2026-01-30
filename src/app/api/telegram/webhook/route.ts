@@ -5,6 +5,7 @@ import { verifyTelegramWebhookSecret } from "@/services/telegram/bot-api";
 import { handleTelegramUpdate } from "@/services/telegram/handlers";
 import type { TelegramUpdate } from "@/services/telegram/types";
 import { Prisma } from "@prisma/client";
+import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { getSystemSettingValue } from "@/services/system-settings";
 import { getAdminSession } from "@/lib/rbac";
 
@@ -33,6 +34,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request) || "unknown";
+  const limited = rateLimit(`telegram:webhook:${ip}`, { limit: 3_000, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
+  }
+
   const secretCheck = await verifyTelegramWebhookSecret(request.headers.get("x-telegram-bot-api-secret-token"));
   if (!secretCheck.ok) {
     return NextResponse.json({ error: secretCheck.error }, { status: secretCheck.status });
