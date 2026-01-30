@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { triggerEmailWorkflows } from "@/services/workflow/trigger";
 import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 import { getStorage, generateAttachmentPath, generateRawContentPath, getMaxAttachmentSize } from "@/lib/storage";
@@ -21,6 +22,20 @@ function extractEmailAddress(value: unknown) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(candidate)) return null;
   return candidate.toLowerCase();
 }
+
+const payloadSchema = z
+  .object({
+    to: z.string().trim().min(1).max(320),
+    from: z.string().optional(),
+    subject: z.string().optional(),
+    text: z.string().optional(),
+    html: z.string().optional(),
+    secret: z.string().trim().min(1).max(200),
+    messageId: z.string().optional(),
+    headers: z.unknown().optional(),
+    raw: z.string().optional(),
+  })
+  .passthrough();
 
 const MAX_WEBHOOK_HEADER_COUNT = 200;
 const MAX_WEBHOOK_HEADER_VALUE_LENGTH = 4000;
@@ -123,22 +138,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
     }
 
-    const body = bodyResult.data;
-    if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-    }
-    const payload = body as Record<string, unknown>;
-    const { to, from, subject, text, html, secret, messageId, headers, raw } = payload;
-
-    const secretKey = typeof secret === "string" ? secret.trim() : "";
-    const rawTo = typeof to === "string" ? to : "";
-
-    if (!rawTo || !secretKey) {
+    const parsedPayload = payloadSchema.safeParse(bodyResult.data);
+    if (!parsedPayload.success) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: parsedPayload.error.issues[0]?.message || "Invalid request body" },
         { status: 400 }
       );
     }
+
+    const { to, from, subject, text, html, secret, messageId, headers, raw } = parsedPayload.data;
+    const secretKey = secret;
+    const rawTo = to;
 
     const toAddress = extractEmailAddress(rawTo);
     if (!toAddress) {
@@ -154,6 +164,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid webhook secret" },
         { status: 401 }
+      );
+    }
+
+    const domainLimited = rateLimit(`webhook-incoming:domain:${webhookConfig.domainId}`, { limit: 3_000, windowMs: 60_000 });
+    if (!domainLimited.allowed) {
+      const retryAfterSeconds = Math.max(1, Math.ceil(domainLimited.retryAfterMs / 1000));
+      return NextResponse.json(
+        { error: "Rate limited" },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
       );
     }
 
