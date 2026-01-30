@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAdminSession } from "@/lib/rbac";
 import prisma from "@/lib/prisma";
 import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
+import { rateLimit } from "@/lib/api-rate-limit";
 
 export async function GET() {
-  const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+  const session = await getAdminSession();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`admin:users:list:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const users = await prisma.user.findMany({

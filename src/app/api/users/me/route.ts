@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { readJsonBody } from "@/lib/request";
 import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
+import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 
 const patchSchema = z.object({
   name: z
@@ -54,6 +55,15 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const limited = rateLimit(`users:me:update:${session.user.id}`, { limit: 30, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
+  }
+
   const bodyResult = await readJsonBody(request, { maxBytes: 10_000 });
   if (!bodyResult.ok) {
     return NextResponse.json({ error: bodyResult.error }, { status: bodyResult.status });
@@ -70,26 +80,30 @@ export async function PATCH(request: NextRequest) {
       select: { email: true, name: true },
     });
 
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");
-    const userAgent = request.headers.get("user-agent");
-    await prisma.log.create({
-      data: {
-        level: "INFO",
-        action: "USER_UPDATE",
-        message: `User updated profile`,
-        metadata: JSON.stringify({ userId: session.user.id }),
-        ip: ip || null,
-        userAgent: userAgent || null,
-        userId: session.user.id,
-      },
-    });
+    try {
+      const ip = getClientIp(request);
+      const userAgent = request.headers.get("user-agent");
+      await prisma.log.create({
+        data: {
+          level: "INFO",
+          action: "USER_UPDATE",
+          message: "User updated profile",
+          metadata: JSON.stringify({ userId: session.user.id }),
+          ip: ip || null,
+          userAgent: userAgent || null,
+          userId: session.user.id,
+        },
+      });
+    } catch (error) {
+      console.error("[api/users/me] failed to write audit log:", error);
+    }
 
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
     }
-    console.error("Update profile error:", error);
+    console.error("[api/users/me] update failed:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

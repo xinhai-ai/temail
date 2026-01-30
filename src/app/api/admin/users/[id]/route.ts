@@ -4,31 +4,36 @@ import { getAdminSession, isSuperAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
+import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
 
 const updateSchema = z.object({
-  email: z.string().email().optional(),
-  name: z.string().min(1).nullable().optional(),
+  email: z.string().trim().email().max(320).optional(),
+  name: z.string().trim().min(1).max(80).nullable().optional(),
   role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]).optional(),
   isActive: z.boolean().optional(),
   emailVerified: z.string().datetime().nullable().optional(),
-  userGroupId: z.string().trim().min(1).nullable().optional(),
+  userGroupId: z.string().trim().min(1).max(80).nullable().optional(),
 });
 
 async function logAdminAction(request: NextRequest, adminUserId: string, message: string, metadata?: unknown) {
-  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip");
-  const userAgent = request.headers.get("user-agent");
+  try {
+    const ip = getClientIp(request);
+    const userAgent = request.headers.get("user-agent");
 
-  await prisma.log.create({
-    data: {
-      level: "INFO",
-      action: "USER_UPDATE",
-      message,
-      metadata: metadata ? JSON.stringify(metadata) : null,
-      ip: ip || null,
-      userAgent: userAgent || null,
-      userId: adminUserId,
-    },
-  });
+    await prisma.log.create({
+      data: {
+        level: "INFO",
+        action: "USER_UPDATE",
+        message,
+        metadata: metadata ? JSON.stringify(metadata) : null,
+        ip: ip || null,
+        userAgent: userAgent || null,
+        userId: adminUserId,
+      },
+    });
+  } catch (error) {
+    console.error("[api/admin/users/[id]] failed to write audit log:", error);
+  }
 }
 
 export async function GET(
@@ -38,6 +43,15 @@ export async function GET(
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`admin:users:read:${session.user.id}`, { limit: 120, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const { id } = await params;
@@ -100,6 +114,15 @@ export async function PATCH(
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`admin:users:update:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const { id } = await params;
@@ -212,6 +235,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    console.error("[api/admin/users/[id]] update failed:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -223,6 +247,15 @@ export async function DELETE(
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`admin:users:delete:${session.user.id}`, { limit: 10, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   if (!isSuperAdminRole(session.user.role)) {
