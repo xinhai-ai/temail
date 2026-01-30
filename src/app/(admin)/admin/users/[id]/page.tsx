@@ -26,6 +26,16 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -124,6 +134,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [savingProfile, setSavingProfile] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
+  const [deleteUserOpen, setDeleteUserOpen] = useState(false);
 
   // Profile form state
   const [email, setEmail] = useState("");
@@ -315,7 +326,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       toast.error(t("userDetail.danger.cannotDeleteSelf"));
       return;
     }
-    if (!confirm(t("userDetail.confirm.deleteUser", { email: user.email }))) return;
 
     setDeletingUser(true);
     try {
@@ -323,6 +333,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         toast.success(t("userDetail.toasts.userDeleted"));
+        setDeleteUserOpen(false);
         router.push("/admin/users");
       } else {
         toast.error(data.error || t("userDetail.toasts.deleteUserFailed"));
@@ -734,10 +745,35 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   <div className="text-sm font-medium">{t("userDetail.danger.deleteUser")}</div>
                   <div className="text-sm text-muted-foreground">{t("userDetail.danger.deleteUserHelp")}</div>
                 </div>
-                <Button variant="destructive" onClick={handleDeleteUser} disabled={deletingUser || id === session?.user?.id}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {deletingUser ? t("userDetail.danger.deleting") : t("userDetail.danger.deleteUser")}
-                </Button>
+                <AlertDialog
+                  open={deleteUserOpen}
+                  onOpenChange={(open) => {
+                    if (deletingUser) return;
+                    setDeleteUserOpen(open);
+                  }}
+                >
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={deletingUser || id === session?.user?.id}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t("userDetail.danger.deleteUser")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("userDetail.danger.deleteUser")}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("userDetail.confirm.deleteUser", { email: user.email })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deletingUser}>{t("common.cancel")}</AlertDialogCancel>
+                      <Button variant="destructive" onClick={handleDeleteUser} disabled={deletingUser}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {deletingUser ? t("userDetail.danger.deleting") : t("userDetail.danger.deleteUser")}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           )}
