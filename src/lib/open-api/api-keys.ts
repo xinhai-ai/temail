@@ -23,6 +23,7 @@ export function isOpenApiKeyToken(token: string): boolean {
 export function parseOpenApiKeyToken(raw: string): { token: string; keyPrefix: string } | null {
   const token = raw.trim();
   if (!token) return null;
+  if (token.length > 200) return null;
   if (!token.startsWith(`${OPEN_API_KEY_TAG}.`)) return null;
 
   const parts = token.split(".");

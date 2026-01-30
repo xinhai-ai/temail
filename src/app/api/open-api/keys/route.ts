@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
+import { rateLimit } from "@/lib/api-rate-limit";
 import {
   generateOpenApiKeyToken,
   parseOpenApiScopes,
@@ -20,6 +21,15 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`open-api:keys:list:${session.user.id}`, { limit: 120, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });
@@ -55,6 +65,15 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`open-api:keys:create:${session.user.id}`, { limit: 30, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });

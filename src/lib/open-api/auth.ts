@@ -103,15 +103,19 @@ export async function authenticateOpenApiRequest(
     const userAgent = request.headers.get("user-agent") || null;
     const now = new Date();
 
-    await prisma.apiKey.update({
-      where: { id: key.id },
-      data: {
-        usageCount: { increment: 1 },
-        lastUsedAt: now,
-        lastUsedIp: ip,
-        lastUsedUserAgent: userAgent,
-      },
-    });
+    try {
+      await prisma.apiKey.update({
+        where: { id: key.id },
+        data: {
+          usageCount: { increment: 1 },
+          lastUsedAt: now,
+          lastUsedIp: ip,
+          lastUsedUserAgent: userAgent,
+        },
+      });
+    } catch (error) {
+      console.error("[open-api] failed to record api key usage:", error);
+    }
 
     return { ok: true, apiKey: { id: key.id, userId: key.userId, scopes } };
   } catch (error) {

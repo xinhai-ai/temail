@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
+import { rateLimit } from "@/lib/api-rate-limit";
 import { parseOpenApiScopes, serializeOpenApiScopes } from "@/lib/open-api/api-keys";
 import { OPEN_API_SCOPES_ZOD } from "@/lib/open-api/scopes";
 import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
@@ -21,6 +22,15 @@ export async function PATCH(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`open-api:keys:update:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });
@@ -96,6 +106,15 @@ export async function DELETE(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`open-api:keys:delete:${session.user.id}`, { limit: 30, windowMs: 60_000 });
+  if (!limited.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: "Rate limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   const feature = await assertUserGroupFeatureEnabled({ userId: session.user.id, feature: "openapi" });
