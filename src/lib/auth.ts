@@ -58,6 +58,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
             GitHub({
               clientId: providersConfig.github.clientId as string,
               clientSecret: providersConfig.github.clientSecret as string,
+              allowDangerousEmailAccountLinking: true,
             }),
           ]
         : []),
@@ -112,6 +113,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
             select: { user: { select: { isActive: true } } },
           });
           if (linked) return linked.user.isActive;
+        }
+
+        // If an existing user already owns the email, allow sign-in (account linking may happen),
+        // even if new registrations are currently disabled.
+        if (account?.type === "oauth" && user.email) {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { isActive: true },
+          });
+          if (existingUser) return existingUser.isActive;
         }
 
         // New OAuth user: enforce registration settings before we attempt to create the user.
