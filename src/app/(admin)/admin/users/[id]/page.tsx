@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -108,12 +109,14 @@ interface WorkflowItem {
 export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: session } = useSession();
+  const router = useRouter();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const t = useTranslations("admin");
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserDetail | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   // Profile form state
   const [email, setEmail] = useState("");
@@ -269,6 +272,32 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     }
 
     setSavingProfile(false);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!user) return;
+    if (!isSuperAdmin) return;
+    if (id === session?.user?.id) {
+      toast.error(t("userDetail.danger.cannotDeleteSelf"));
+      return;
+    }
+    if (!confirm(t("userDetail.confirm.deleteUser", { email: user.email }))) return;
+
+    setDeletingUser(true);
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(t("userDetail.toasts.userDeleted"));
+        router.push("/admin/users");
+      } else {
+        toast.error(data.error || t("userDetail.toasts.deleteUserFailed"));
+      }
+    } catch {
+      toast.error(t("userDetail.toasts.deleteUserFailed"));
+    } finally {
+      setDeletingUser(false);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -635,6 +664,24 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </CardContent>
           </Card>
+
+          {isSuperAdmin && (
+            <Card className="border-destructive/30 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="text-destructive">{t("userDetail.danger.title")}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">{t("userDetail.danger.deleteUser")}</div>
+                  <div className="text-sm text-muted-foreground">{t("userDetail.danger.deleteUserHelp")}</div>
+                </div>
+                <Button variant="destructive" onClick={handleDeleteUser} disabled={deletingUser || id === session?.user?.id}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deletingUser ? t("userDetail.danger.deleting") : t("userDetail.danger.deleteUser")}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">

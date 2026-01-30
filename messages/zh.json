@@ -391,6 +391,13 @@
         "active": "启用",
         "activeHelp": "禁用用户登录"
       },
+      "danger": {
+        "title": "危险区域",
+        "deleteUser": "删除用户",
+        "deleteUserHelp": "永久删除该用户及其相关数据。",
+        "deleting": "删除中...",
+        "cannotDeleteSelf": "你不能删除自己。"
+      },
       "security": {
         "resetPassword": {
           "title": "重置密码",
@@ -450,12 +457,15 @@
         "deletePasskeys": "确定删除 {email} 的所有 Passkeys 吗？",
         "deleteMailbox": "确定删除此邮箱吗？这将删除该邮箱下的所有邮件。",
         "deleteEmail": "确定删除这封邮件吗？",
-        "deleteWorkflow": "确定删除该工作流吗？这将删除其执行历史。"
+        "deleteWorkflow": "确定删除该工作流吗？这将删除其执行历史。",
+        "deleteUser": "确定删除用户 {email} 吗？这将永久删除该用户及其所有相关数据。"
       },
       "toasts": {
         "loadUserFailed": "加载用户失败",
         "userUpdated": "用户已更新",
         "updateUserFailed": "更新用户失败",
+        "userDeleted": "用户已删除",
+        "deleteUserFailed": "删除用户失败",
         "newPasswordRequired": "请输入新密码",
         "passwordReset": "密码已重置",
         "resetPasswordFailed": "重置密码失败",

@@ -391,6 +391,13 @@
         "active": "Active",
         "activeHelp": "Disable user login"
       },
+      "danger": {
+        "title": "Danger Zone",
+        "deleteUser": "Delete User",
+        "deleteUserHelp": "Permanently delete this user and all related data.",
+        "deleting": "Deleting...",
+        "cannotDeleteSelf": "You cannot delete yourself."
+      },
       "security": {
         "resetPassword": {
           "title": "Reset Password",
@@ -450,12 +457,15 @@
         "deletePasskeys": "Delete all passkeys for {email}?",
         "deleteMailbox": "Delete this mailbox? This will delete all emails under it.",
         "deleteEmail": "Delete this email?",
-        "deleteWorkflow": "Delete this workflow? This will delete its execution history."
+        "deleteWorkflow": "Delete this workflow? This will delete its execution history.",
+        "deleteUser": "Delete user {email}? This will permanently remove the user and all associated data."
       },
       "toasts": {
         "loadUserFailed": "Failed to load user",
         "userUpdated": "User updated",
         "updateUserFailed": "Failed to update user",
+        "userDeleted": "User deleted",
+        "deleteUserFailed": "Failed to delete user",
         "newPasswordRequired": "Please enter a new password",
         "passwordReset": "Password reset",
         "resetPasswordFailed": "Failed to reset password",
