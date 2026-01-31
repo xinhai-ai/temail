@@ -39,6 +39,11 @@ export async function triggerEmailWorkflows(
       return;
     }
 
+    const mailbox = await prisma.mailbox.findFirst({
+      where: { id: mailboxId, userId },
+      select: { group: { select: { name: true } } },
+    });
+
     // Create email context
     const emailContext: EmailContext = {
       id: email.id,
@@ -49,6 +54,7 @@ export async function triggerEmailWorkflows(
       subject: email.subject,
       textBody: email.textBody || undefined,
       htmlBody: email.htmlBody || undefined,
+      mailboxGroupName: mailbox?.group?.name || undefined,
       receivedAt: email.receivedAt,
     };
 

@@ -2704,7 +2704,8 @@
         "textBody": "正文（文本）",
         "htmlBody": "正文（HTML）",
         "messageId": "消息 ID",
-        "replyTo": "Reply-To"
+        "replyTo": "Reply-To",
+        "mailboxGroupName": "邮箱组名"
       },
       "operators": {
         "contains": "包含",

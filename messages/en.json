@@ -2704,7 +2704,8 @@
         "textBody": "Body (Text)",
         "htmlBody": "Body (HTML)",
         "messageId": "Message ID",
-        "replyTo": "Reply-To"
+        "replyTo": "Reply-To",
+        "mailboxGroupName": "Mailbox Group"
       },
       "operators": {
         "contains": "Contains",

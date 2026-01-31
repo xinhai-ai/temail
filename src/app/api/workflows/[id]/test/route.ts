@@ -60,6 +60,7 @@ export async function POST(
       subject: getOptionalString(body, "subject") ?? "Test Email Subject",
       textBody: getOptionalString(body, "textBody") ?? "This is a test email body for workflow testing.",
       htmlBody: getOptionalString(body, "htmlBody") ?? "<p>This is a test email body for workflow testing.</p>",
+      mailboxGroupName: getOptionalString(body, "mailboxGroupName"),
       receivedAt: new Date(),
     };
 

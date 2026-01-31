@@ -200,6 +200,8 @@ function getFieldValue(field: MatchField, context: ExecutionContext): string {
       return context.email.messageId || "";
     case "replyTo":
       return (context.email as { replyTo?: string }).replyTo || "";
+    case "mailboxGroupName":
+      return (context.email as { mailboxGroupName?: string }).mailboxGroupName || "";
     default:
       return "";
   }

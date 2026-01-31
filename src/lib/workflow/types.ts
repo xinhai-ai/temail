@@ -114,7 +114,16 @@ export interface TriggerManualData {
 
 // ==================== 条件判断数据 ====================
 
-export type MatchField = "subject" | "fromAddress" | "fromName" | "toAddress" | "textBody" | "htmlBody" | "messageId" | "replyTo";
+export type MatchField =
+  | "subject"
+  | "fromAddress"
+  | "fromName"
+  | "toAddress"
+  | "textBody"
+  | "htmlBody"
+  | "messageId"
+  | "replyTo"
+  | "mailboxGroupName";
 export type MatchOperator = "contains" | "notContains" | "equals" | "notEquals" | "startsWith" | "endsWith" | "regex" | "isEmpty" | "isNotEmpty";
 
 export interface MatchCondition {
@@ -496,6 +505,7 @@ export interface EmailContext {
   textBody?: string;
   htmlBody?: string;
   previewUrl?: string;
+  mailboxGroupName?: string;
   receivedAt: Date;
 }
 
@@ -895,6 +905,7 @@ export const MATCH_FIELD_LABELS: Record<MatchField, string> = {
   htmlBody: "Body (HTML)",
   messageId: "Message ID",
   replyTo: "Reply-To",
+  mailboxGroupName: "Mailbox Group",
 };
 
 // 操作符标签映射

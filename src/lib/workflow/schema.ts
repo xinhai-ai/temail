@@ -11,6 +11,7 @@ const matchFieldSchema = z.enum([
   "htmlBody",
   "messageId",
   "replyTo",
+  "mailboxGroupName",
 ]);
 const matchOperatorSchema = z.enum([
   "contains",
