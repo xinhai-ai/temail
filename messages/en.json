@@ -17,6 +17,7 @@
     "quotaExceeded": "{resource} quota exceeded ({count}/{limit}).",
     "quotaExceededGeneric": "{resource} quota exceeded.",
     "domainNotAllowed": "This domain is not allowed for your group.",
+    "mailboxPrefixReserved": "Mailbox prefix is reserved (admin-only): {prefix}.",
     "nodesRemoved": "Some workflow nodes were removed because they are disabled for your group: {nodes}.",
     "resources": {
       "mailboxes": "Mailbox",

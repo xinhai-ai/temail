@@ -17,6 +17,7 @@
     "quotaExceeded": "{resource} 配额已用尽（{count}/{limit}）。",
     "quotaExceededGeneric": "{resource} 配额已用尽。",
     "domainNotAllowed": "你的用户组不允许使用该域名。",
+    "mailboxPrefixReserved": "该邮箱前缀为保留/敏感前缀，仅管理员可创建：{prefix}。",
     "nodesRemoved": "由于权限限制，已从工作流中移除以下节点：{nodes}。",
     "resources": {
       "mailboxes": "邮箱",

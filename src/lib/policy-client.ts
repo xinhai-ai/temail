@@ -74,10 +74,19 @@ export function formatPolicyError(tPolicy: Translator, data: unknown): string | 
     return safeT(tPolicy, "domainNotAllowed", undefined, "Domain is not allowed");
   }
 
+  if (code === "MAILBOX_PREFIX_RESERVED") {
+    const prefix = meta ? asString(meta["prefix"]) : null;
+    return safeT(
+      tPolicy,
+      "mailboxPrefixReserved",
+      { prefix: prefix || "" },
+      "Mailbox prefix is reserved"
+    );
+  }
+
   return null;
 }
 
 export function getApiErrorMessage(tPolicy: Translator, data: unknown, fallback: string): string {
   return formatPolicyError(tPolicy, data) || asString(asObject(data)?.["error"]) || fallback;
 }
-

@@ -3,6 +3,8 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
+import { isAdminRole } from "@/lib/rbac";
+import { isReservedMailboxPrefix } from "@/lib/mailbox-prefix";
 import { assertCanCreateMailbox, assertDomainAllowedForUser } from "@/services/usergroups/policy";
 
 const createSchema = z.object({
@@ -80,7 +82,13 @@ export async function POST(request: NextRequest) {
       select: { role: true },
     });
 
-    const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+    const isAdmin = isAdminRole(user?.role);
+    if (!isAdmin && isReservedMailboxPrefix(data.prefix)) {
+      return NextResponse.json(
+        { error: "Mailbox prefix is reserved", code: "MAILBOX_PREFIX_RESERVED", meta: { prefix: data.prefix } },
+        { status: 403 }
+      );
+    }
     const domain = await prisma.domain.findFirst({
       where: isAdmin
         ? { id: data.domainId }

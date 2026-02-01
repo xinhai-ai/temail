@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/rbac";
+import { isReservedMailboxPrefix } from "@/lib/mailbox-prefix";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { assertCanCreateMailbox, assertDomainAllowedForUser } from "@/services/usergroups/policy";
@@ -63,12 +64,19 @@ export async function POST(request: NextRequest) {
   try {
     const data = mailboxSchema.parse(bodyResult.data);
 
+    const isAdmin = isAdminRole(session.user.role);
+    if (!isAdmin && isReservedMailboxPrefix(data.prefix)) {
+      return NextResponse.json(
+        { error: "Mailbox prefix is reserved", code: "MAILBOX_PREFIX_RESERVED", meta: { prefix: data.prefix } },
+        { status: 403 }
+      );
+    }
+
     const quota = await assertCanCreateMailbox(session.user.id);
     if (!quota.ok) {
       return NextResponse.json({ error: quota.error, code: quota.code, meta: quota.meta }, { status: quota.status });
     }
 
-    const isAdmin = isAdminRole(session.user.role);
     const domain = await prisma.domain.findFirst({
       where: isAdmin
         ? { id: data.domainId }

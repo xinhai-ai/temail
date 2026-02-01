@@ -7,6 +7,7 @@ import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 import { moveOwnedEmailToTrash, purgeOwnedEmail, restoreOwnedEmailFromTrash } from "@/services/email-trash";
 import { rematchUnmatchedInboundEmailsForUser } from "@/services/inbound/rematch";
 import { assertCanCreateMailbox, assertDomainAllowedForUser, assertUserGroupFeatureEnabled, getAllowedDomainIdsForUser } from "@/services/usergroups/policy";
+import { isReservedMailboxPrefix } from "@/lib/mailbox-prefix";
 import type { TelegramInlineKeyboardMarkup } from "./bot-api";
 import {
   getTelegramForumGeneralTopicName,
@@ -284,6 +285,10 @@ async function handleMailboxCreate(message: TelegramMessage, args: string) {
   }
 
   const isAdmin = await getIsAdminUser(userId);
+  if (!isAdmin && isReservedMailboxPrefix(parsed.prefix)) {
+    await replyToMessage(message, `Prefix is reserved (admin-only): ${parsed.prefix}`);
+    return;
+  }
 
   const domain = await prisma.domain.findFirst({
     where: isAdmin ? { name: parsed.domain } : { name: parsed.domain, isPublic: true, status: "ACTIVE" },
@@ -455,6 +460,7 @@ async function createMailboxWithGeneratedPrefix(params: { userId: string; domain
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const prefix = generateTelegramMailboxPrefix();
+    if (isReservedMailboxPrefix(prefix)) continue;
     const address = `${prefix}@${domain.name}`;
     try {
       const mailbox = await prisma.mailbox.create({
