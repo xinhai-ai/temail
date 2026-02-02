@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { User, Info } from "lucide-react";
+import { User, Info, Globe } from "lucide-react";
 import { SettingSection } from "@/components/settings/SettingSection";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,17 @@ type UserGroupInfo = {
     openApiEnabled: boolean;
   } | null;
   usage: { mailboxes: number; workflows: number };
+};
+
+type LinuxDoInfo = {
+  linked: boolean;
+  linuxdo?: {
+    id: string;
+    username: string;
+    name: string | null;
+    trustLevel: number;
+    avatarUrl: string | null;
+  };
 };
 
 type AccountSectionProps = {
@@ -65,10 +77,13 @@ export function AccountSection({ profile }: AccountSectionProps) {
 
   const [userGroupInfo, setUserGroupInfo] = useState<UserGroupInfo | null>(null);
   const [userGroupLoading, setUserGroupLoading] = useState(true);
+  const [linuxDoInfo, setLinuxDoInfo] = useState<LinuxDoInfo | null>(null);
+  const [linuxDoLoading, setLinuxDoLoading] = useState(true);
 
   const formatAuthSource = (source: string) => {
     if (source === "password") return t("profile.authSources.password");
     if (source === "github") return t("profile.authSources.github");
+    if (source === "linuxdo") return t("profile.authSources.linuxdo");
     return source;
   };
 
@@ -85,6 +100,21 @@ export function AccountSection({ profile }: AccountSectionProps) {
       setUserGroupLoading(false);
     };
     load().catch(() => setUserGroupLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      setLinuxDoLoading(true);
+      const res = await fetch("/api/users/me/linuxdo");
+      const data = await res.json().catch(() => null);
+      if (res.ok && data && typeof data === "object") {
+        setLinuxDoInfo(data as LinuxDoInfo);
+      } else {
+        setLinuxDoInfo(null);
+      }
+      setLinuxDoLoading(false);
+    };
+    load().catch(() => setLinuxDoLoading(false));
   }, []);
 
   return (
@@ -207,6 +237,62 @@ export function AccountSection({ profile }: AccountSectionProps) {
                 );
               })}
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            {t("linuxdo.title")}
+          </CardTitle>
+          <CardDescription>{t("linuxdo.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {linuxDoLoading ? (
+            <div className="text-sm text-muted-foreground">{tCommon("loading")}</div>
+          ) : linuxDoInfo?.linked && linuxDoInfo.linuxdo ? (
+            <>
+              <div className="flex items-center gap-3">
+                <Avatar className="size-10">
+                  <AvatarImage
+                    src={linuxDoInfo.linuxdo.avatarUrl || undefined}
+                    alt={linuxDoInfo.linuxdo.username}
+                  />
+                  <AvatarFallback>
+                    {(linuxDoInfo.linuxdo.username || "LD").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <div className="text-sm font-medium">{linuxDoInfo.linuxdo.username}</div>
+                  <div className="text-xs text-muted-foreground">{linuxDoInfo.linuxdo.name || ""}</div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-muted-foreground">{t("linuxdo.fields.id")}</div>
+                  <div className="font-mono text-xs">{linuxDoInfo.linuxdo.id}</div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-muted-foreground">{t("linuxdo.fields.username")}</div>
+                  <div className="font-mono text-xs">{linuxDoInfo.linuxdo.username}</div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-muted-foreground">{t("linuxdo.fields.name")}</div>
+                  <div className="text-xs">{linuxDoInfo.linuxdo.name || tCommon("none")}</div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-muted-foreground">{t("linuxdo.fields.trustLevel")}</div>
+                  <div className="font-mono text-xs">{linuxDoInfo.linuxdo.trustLevel}</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">{t("linuxdo.notLinked")}</div>
           )}
         </CardContent>
       </Card>

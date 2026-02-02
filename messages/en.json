@@ -223,7 +223,8 @@
       "unknownError": "Unknown error",
       "authSources": {
         "password": "Email / Password",
-        "github": "GitHub"
+        "github": "GitHub",
+        "linuxdo": "LinuxDO"
       },
       "lastUpdated": "Last updated: {date}",
       "status": {
@@ -1605,6 +1606,17 @@
       "quota": "Quota",
       "used": "Used",
       "unlimited": "Unlimited"
+    },
+    "linuxdo": {
+      "title": "LinuxDO",
+      "description": "Your linked LinuxDO account details.",
+      "notLinked": "Not linked",
+      "fields": {
+        "id": "ID",
+        "username": "Username",
+        "name": "Name",
+        "trustLevel": "Trust level"
+      }
     },
     "password": {
       "title": "Password",

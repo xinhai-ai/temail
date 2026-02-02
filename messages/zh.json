@@ -223,7 +223,8 @@
       "unknownError": "未知错误",
       "authSources": {
         "password": "邮箱 / 密码",
-        "github": "GitHub"
+        "github": "GitHub",
+        "linuxdo": "LinuxDO"
       },
       "lastUpdated": "最后更新：{date}",
       "status": {
@@ -1605,6 +1606,17 @@
       "quota": "配额",
       "used": "已用",
       "unlimited": "不限"
+    },
+    "linuxdo": {
+      "title": "LinuxDO",
+      "description": "你绑定的 LinuxDO 账号信息。",
+      "notLinked": "未绑定",
+      "fields": {
+        "id": "ID",
+        "username": "用户名",
+        "name": "用户名称",
+        "trustLevel": "信任等级"
+      }
     },
     "password": {
       "title": "密码",
