@@ -5,6 +5,7 @@ import { getAdminSession } from "@/lib/rbac";
 import { readJsonBody } from "@/lib/request";
 import { isTurnstileDevBypassEnabled } from "@/lib/turnstile";
 import { clearSystemSettingCache } from "@/services/system-settings";
+import { LINUXDO_TRUST_LEVEL_MAPPING_KEY, parseLinuxDoTrustLevelMapping } from "@/lib/linuxdo";
 
 const settingSchema = z.object({
   key: z.string().min(1),
@@ -37,6 +38,7 @@ export async function GET() {
     "telegram_bot_token",
     "telegram_webhook_secret",
     "auth_provider_github_client_secret",
+    "auth_provider_linuxdo_client_secret",
   ]);
   const safeSettings = settings.map((row) =>
     secretKeys.has(row.key)
@@ -72,6 +74,10 @@ export async function PUT(request: NextRequest) {
       "auth_provider_github_enabled",
       "auth_provider_github_client_id",
       "auth_provider_github_client_secret",
+      "auth_provider_linuxdo_enabled",
+      "auth_provider_linuxdo_client_id",
+      "auth_provider_linuxdo_client_secret",
+      LINUXDO_TRUST_LEVEL_MAPPING_KEY,
     ]);
 
     const wantsValidation = data.some((item) => keysToValidate.has(item.key));
@@ -118,6 +124,52 @@ export async function PUT(request: NextRequest) {
             { error: "GitHub OAuth must be configured (client id/secret) before enabling" },
             { status: 400 }
           );
+        }
+      }
+
+      const linuxdoEnabled = parseBoolean(next.auth_provider_linuxdo_enabled);
+      if (linuxdoEnabled) {
+        const clientId = (next.auth_provider_linuxdo_client_id || "").trim();
+        const clientSecret = (next.auth_provider_linuxdo_client_secret || "").trim();
+        if (!clientId || !clientSecret) {
+          return NextResponse.json(
+            { error: "LinuxDO OAuth must be configured (client id/secret) before enabling" },
+            { status: 400 }
+          );
+        }
+      }
+
+      const mappingRaw = next[LINUXDO_TRUST_LEVEL_MAPPING_KEY];
+      if (typeof mappingRaw === "string" && mappingRaw.trim() !== "") {
+        const mapping = parseLinuxDoTrustLevelMapping(mappingRaw);
+        if (!mapping) {
+          return NextResponse.json(
+            { error: "Invalid LinuxDO trust-level mapping JSON" },
+            { status: 400 }
+          );
+        }
+
+        const groupIds = Array.from(
+          new Set(
+            Object.values(mapping)
+              .map((rule) => (rule.action === "assign" ? rule.userGroupId : null))
+              .filter((value): value is string => typeof value === "string" && value.trim() !== "")
+          )
+        );
+
+        if (groupIds.length > 0) {
+          const existing = await prisma.userGroup.findMany({
+            where: { id: { in: groupIds } },
+            select: { id: true },
+          });
+          const existingIds = new Set(existing.map((g) => g.id));
+          const missing = groupIds.find((id) => !existingIds.has(id));
+          if (missing) {
+            return NextResponse.json(
+              { error: `Invalid user group id in LinuxDO trust-level mapping: ${missing}` },
+              { status: 400 }
+            );
+          }
         }
       }
     }
