@@ -9,6 +9,7 @@ import { getRegistrationMode } from "@/lib/registration";
 import { getOrCreateDefaultUserGroupId } from "@/services/usergroups/default-group";
 import { getAuthProviderConfig } from "@/lib/auth-providers";
 import LinuxDo from "@/lib/linuxdo-provider";
+import { getLinuxDoTrustLevelMapping, linuxDoTrustLevelBucket, normalizeLinuxDoTrustLevel } from "@/lib/linuxdo";
 
 const adapterBase = PrismaAdapter(prisma);
 
@@ -93,7 +94,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
       }),
     ],
     callbacks: {
-      async signIn({ user, account }) {
+      async signIn({ user, account, profile }) {
         if (!user) return false;
 
         // Credentials logins should always map to an existing DB user.
@@ -145,6 +146,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
 
           const mode = await getRegistrationMode();
           if (mode !== "open") return false;
+
+          const trustLevel = normalizeLinuxDoTrustLevel((profile as Record<string, unknown> | undefined)?.trust_level);
+          const mapping = await getLinuxDoTrustLevelMapping();
+          const bucket = linuxDoTrustLevelBucket(trustLevel);
+          const rule = mapping[bucket];
+          if (rule.action === "reject") return false;
         }
 
         // Our User.email is required; if the provider does not supply it, sign-in must be denied.
@@ -174,6 +181,80 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
           session.user.role = token.role as string;
         }
         return session;
+      },
+    },
+    events: {
+      async signIn({ user, account, profile }) {
+        if (!user?.id) return;
+        if (account?.provider !== "linuxdo") return;
+
+        const linuxdoId = account.providerAccountId ? String(account.providerAccountId) : "";
+        if (!linuxdoId) return;
+
+        const rawProfile = (profile || {}) as Record<string, unknown>;
+        const username = typeof rawProfile.username === "string" ? rawProfile.username.trim() : "";
+        const name = typeof rawProfile.name === "string" ? rawProfile.name.trim() : null;
+        const email = typeof rawProfile.email === "string" ? rawProfile.email.trim() : null;
+        const avatarTemplate =
+          typeof rawProfile.avatar_template === "string" ? rawProfile.avatar_template.trim() : null;
+        const trustLevel = normalizeLinuxDoTrustLevel(rawProfile.trust_level);
+        const active = typeof rawProfile.active === "boolean" ? rawProfile.active : true;
+        const silenced = typeof rawProfile.silenced === "boolean" ? rawProfile.silenced : false;
+
+        let raw: string | null = null;
+        try {
+          raw = JSON.stringify(rawProfile);
+        } catch {
+          raw = null;
+        }
+
+        try {
+          await prisma.linuxDoUserLink.upsert({
+            where: { userId: user.id },
+            update: {
+              linuxdoId,
+              email,
+              username: username || linuxdoId,
+              name,
+              avatarTemplate,
+              trustLevel,
+              active,
+              silenced,
+              raw,
+              lastSyncedAt: new Date(),
+            },
+            create: {
+              userId: user.id,
+              linuxdoId,
+              email,
+              username: username || linuxdoId,
+              name,
+              avatarTemplate,
+              trustLevel,
+              active,
+              silenced,
+              raw,
+              lastSyncedAt: new Date(),
+            },
+          });
+        } catch (error) {
+          console.error("[auth] failed to upsert LinuxDO user link:", error);
+          return;
+        }
+
+        try {
+          const mapping = await getLinuxDoTrustLevelMapping();
+          const bucket = linuxDoTrustLevelBucket(trustLevel);
+          const rule = mapping[bucket];
+          if (rule.action !== "assign") return;
+
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { userGroupId: rule.userGroupId },
+          });
+        } catch (error) {
+          console.error("[auth] failed to assign user group from LinuxDO trust level:", error);
+        }
       },
     },
   };
