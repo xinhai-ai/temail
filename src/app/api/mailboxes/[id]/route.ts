@@ -69,7 +69,7 @@ export async function PATCH(
       }
     }
 
-    const updateData: Prisma.MailboxUpdateManyMutationInput = {};
+    const updateData: Prisma.MailboxUncheckedUpdateManyInput = {};
     if (data.note !== undefined) updateData.note = data.note;
     if (data.isStarred !== undefined) updateData.isStarred = data.isStarred;
     if (data.status !== undefined) updateData.status = data.status;
