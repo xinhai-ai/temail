@@ -23,10 +23,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
   const groupId = searchParams.get("groupId");
+  const archived = searchParams.get("archived") || "exclude";
+
+  const archivedFilter =
+    archived === "include"
+      ? {}
+      : archived === "only"
+        ? { archivedAt: { not: null } }
+        : { archivedAt: null };
 
   const mailboxes = await prisma.mailbox.findMany({
     where: {
       userId: session.user.id,
+      ...archivedFilter,
       ...(search && {
         OR: [
           { address: { contains: search } },

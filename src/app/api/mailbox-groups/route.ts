@@ -11,15 +11,27 @@ const createSchema = z.object({
   description: z.string().optional(),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const archived = searchParams.get("archived") || "exclude";
+  const mailboxCountSelect =
+    archived === "include"
+      ? true
+      : {
+          where:
+            archived === "only"
+              ? { archivedAt: { not: null } }
+              : { archivedAt: null },
+        };
+
   const groups = await prisma.mailboxGroup.findMany({
     where: { userId: session.user.id },
-    include: { _count: { select: { mailboxes: true } } },
+    include: { _count: { select: { mailboxes: mailboxCountSelect } } },
     orderBy: { name: "asc" },
   });
 

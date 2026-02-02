@@ -3,12 +3,14 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
+import type { Prisma } from "@prisma/client";
 
 const updateSchema = z.object({
   note: z.string().nullable().optional(),
   isStarred: z.boolean().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "DELETED"]).optional(),
   groupId: z.string().trim().min(1).nullable().optional(),
+  archived: z.boolean().optional(),
 });
 
 export async function GET(
@@ -67,9 +69,29 @@ export async function PATCH(
       }
     }
 
+    const updateData: Prisma.MailboxUpdateManyMutationInput = {};
+    if (data.note !== undefined) updateData.note = data.note;
+    if (data.isStarred !== undefined) updateData.isStarred = data.isStarred;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.groupId !== undefined) updateData.groupId = data.groupId;
+    if (typeof data.archived === "boolean") {
+      updateData.archivedAt = data.archived ? new Date() : null;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      const existing = await prisma.mailbox.findFirst({
+        where: { id, userId: session.user.id },
+        include: { domain: true },
+      });
+      if (!existing) {
+        return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
+      }
+      return NextResponse.json(existing);
+    }
+
     const updateResult = await prisma.mailbox.updateMany({
       where: { id, userId: session.user.id },
-      data,
+      data: updateData,
     });
 
     if (updateResult.count === 0) {

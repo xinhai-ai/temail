@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 const querySchema = z.object({
   search: z.string().trim().max(200).optional(),
   groupId: z.string().trim().min(1).optional(),
+  archived: z.enum(["exclude", "include", "only"]).default("exclude"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(5).default(5),
 });
@@ -22,15 +23,22 @@ export async function GET(request: NextRequest) {
     const parsed = querySchema.parse({
       search: searchParams.get("search") || undefined,
       groupId: searchParams.get("groupId") || undefined,
+      archived: searchParams.get("archived") || undefined,
       page: searchParams.get("page") || undefined,
       limit: searchParams.get("limit") || undefined,
     });
 
     const search = parsed.search?.trim() || "";
     const groupId = parsed.groupId;
+    const archived = parsed.archived;
 
     const where: Prisma.MailboxWhereInput = {
       userId: session.user.id,
+      ...(archived === "exclude"
+        ? { archivedAt: null }
+        : archived === "only"
+          ? { archivedAt: { not: null } }
+          : {}),
       ...(search && {
         OR: [
           { address: { contains: search } },
