@@ -594,6 +594,48 @@
             "placeholder": "••••••••"
           },
           "callbackHint": "回调地址：/api/auth/callback/github"
+        },
+        "linuxdo": {
+          "title": "LinuxDO Connect",
+          "enable": {
+            "label": "启用 LinuxDO 登录",
+            "help": "允许用户使用 LinuxDO Connect（OAuth2）登录。"
+          },
+          "registration": {
+            "label": "允许 LinuxDO 注册",
+            "help": "允许用户首次使用 LinuxDO 登录时自动创建账号。"
+          },
+          "clientId": {
+            "label": "Client ID",
+            "placeholder": "你的 LinuxDO Client ID"
+          },
+          "clientSecret": {
+            "label": "Client Secret",
+            "placeholder": "••••••••"
+          },
+          "callbackHint": "回调地址：/api/auth/callback/linuxdo",
+          "trustLevelMapping": {
+            "title": "信任等级映射",
+            "help": "将 LinuxDO 的信任等级映射到用户组，或拒绝新用户注册。",
+            "usingDefault": "尚未配置。服务器会回退到 Default 用户组。",
+            "invalidJson": "当前映射不是合法 JSON。保存任意改动都会覆盖它。",
+            "noGroups": "暂无可用用户组，请先在“用户组”中创建。",
+            "buckets": {
+              "tl0": "信任等级 0",
+              "tl1": "信任等级 1",
+              "tl2": "信任等级 2",
+              "tl34": "信任等级 3-4"
+            },
+            "action": {
+              "label": "动作",
+              "assign": "分配到用户组",
+              "reject": "拒绝注册"
+            },
+            "group": {
+              "label": "用户组",
+              "placeholder": "选择用户组"
+            }
+          }
         }
       },
       "security": {

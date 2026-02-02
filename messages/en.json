@@ -594,6 +594,48 @@
             "placeholder": "••••••••"
           },
           "callbackHint": "Callback URL: /api/auth/callback/github"
+        },
+        "linuxdo": {
+          "title": "LinuxDO Connect",
+          "enable": {
+            "label": "Enable LinuxDO login",
+            "help": "Allow users to sign in with LinuxDO Connect (OAuth2)."
+          },
+          "registration": {
+            "label": "Allow LinuxDO registration",
+            "help": "Allow new users to be created on first LinuxDO sign-in."
+          },
+          "clientId": {
+            "label": "Client ID",
+            "placeholder": "Your LinuxDO client id"
+          },
+          "clientSecret": {
+            "label": "Client Secret",
+            "placeholder": "••••••••"
+          },
+          "callbackHint": "Callback URL: /api/auth/callback/linuxdo",
+          "trustLevelMapping": {
+            "title": "Trust-level mapping",
+            "help": "Map LinuxDO trust levels to user groups, or reject new registrations.",
+            "usingDefault": "Not configured yet. The server will fall back to the Default group.",
+            "invalidJson": "Current mapping is invalid JSON. Saving any change will overwrite it.",
+            "noGroups": "No user groups available. Create one first in User Groups.",
+            "buckets": {
+              "tl0": "Trust level 0",
+              "tl1": "Trust level 1",
+              "tl2": "Trust level 2",
+              "tl34": "Trust level 3–4"
+            },
+            "action": {
+              "label": "Action",
+              "assign": "Assign to group",
+              "reject": "Reject registration"
+            },
+            "group": {
+              "label": "User group",
+              "placeholder": "Select group"
+            }
+          }
         }
       },
       "security": {

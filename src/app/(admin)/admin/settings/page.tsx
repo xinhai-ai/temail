@@ -60,6 +60,8 @@ export default function AdminSettingsPage() {
   const [emailRegistrationEnabled, setEmailRegistrationEnabled] = useState(true);
   const [githubEnabled, setGithubEnabled] = useState(false);
   const [githubRegistrationEnabled, setGithubRegistrationEnabled] = useState(true);
+  const [linuxdoEnabled, setLinuxdoEnabled] = useState(false);
+  const [linuxdoRegistrationEnabled, setLinuxdoRegistrationEnabled] = useState(true);
   const [telegramBotEnabled, setTelegramBotEnabled] = useState(true);
   const [registrationMode, setRegistrationMode] = useState<"open" | "invite" | "closed">("open");
   const [registrationInviteCodes, setRegistrationInviteCodes] = useState("");
@@ -90,6 +92,8 @@ export default function AdminSettingsPage() {
     setEmailRegistrationEnabled(values.auth_provider_email_registration_enabled !== "false");
     setGithubEnabled(values.auth_provider_github_enabled === "true");
     setGithubRegistrationEnabled(values.auth_provider_github_registration_enabled !== "false");
+    setLinuxdoEnabled(values.auth_provider_linuxdo_enabled === "true");
+    setLinuxdoRegistrationEnabled(values.auth_provider_linuxdo_registration_enabled !== "false");
     setTelegramBotEnabled(values.telegram_bot_enabled !== "false");
     const mode = values.registration_mode;
     setRegistrationMode(mode === "invite" || mode === "closed" ? mode : "open");
@@ -185,6 +189,22 @@ export default function AdminSettingsPage() {
     (v: boolean) => {
       setGithubRegistrationEnabled(v);
       setValue("auth_provider_github_registration_enabled", v ? "true" : "false");
+    },
+    [setValue]
+  );
+
+  const handleSetLinuxdoEnabled = useCallback(
+    (v: boolean) => {
+      setLinuxdoEnabled(v);
+      setValue("auth_provider_linuxdo_enabled", v ? "true" : "false");
+    },
+    [setValue]
+  );
+
+  const handleSetLinuxdoRegistrationEnabled = useCallback(
+    (v: boolean) => {
+      setLinuxdoRegistrationEnabled(v);
+      setValue("auth_provider_linuxdo_registration_enabled", v ? "true" : "false");
     },
     [setValue]
   );
@@ -357,6 +377,10 @@ export default function AdminSettingsPage() {
           setGithubEnabled={handleSetGithubEnabled}
           githubRegistrationEnabled={githubRegistrationEnabled}
           setGithubRegistrationEnabled={handleSetGithubRegistrationEnabled}
+          linuxdoEnabled={linuxdoEnabled}
+          setLinuxdoEnabled={handleSetLinuxdoEnabled}
+          linuxdoRegistrationEnabled={linuxdoRegistrationEnabled}
+          setLinuxdoRegistrationEnabled={handleSetLinuxdoRegistrationEnabled}
         />
       )}
 
