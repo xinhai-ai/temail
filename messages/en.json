@@ -1149,6 +1149,7 @@
       },
       "searchPlaceholder": "Search mailboxes...",
       "allEmails": "All Emails",
+      "archivedMailboxes": "Archived Mailboxes",
       "allMailboxes": "All Mailboxes",
       "new": "New",
       "newMailbox": "New Mailbox",

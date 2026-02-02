@@ -28,7 +28,7 @@ export default function InboxPage() {
   const t = useTranslations("inbox");
   const tPolicy = useTranslations("policy") as unknown as Translator;
   const [mailboxSearch, setMailboxSearch] = useState("");
-  const [showAllMailboxes, setShowAllMailboxes] = useState(false);
+  const [showArchivedMailboxes, setShowArchivedMailboxes] = useState(false);
   const [emailSearch, setEmailSearch] = useState("");
   const mailboxSearchQuery = mailboxSearch.trim();
   const isMailboxSearchMode = mailboxSearchQuery.length > 0;
@@ -170,15 +170,15 @@ export default function InboxPage() {
   const loadGroups = useCallback(async () => {
     setLoadingGroups(true);
     const params = new URLSearchParams();
-    if (showAllMailboxes) {
-      params.set("archived", "include");
+    if (showArchivedMailboxes) {
+      params.set("archived", "only");
     }
     const url = params.size ? `/api/mailbox-groups?${params.toString()}` : "/api/mailbox-groups";
     const res = await fetch(url);
     const data = await res.json();
     setGroups(Array.isArray(data) ? data : []);
     setLoadingGroups(false);
-  }, [showAllMailboxes]);
+  }, [showArchivedMailboxes]);
 
   const loadTags = useCallback(async () => {
     const res = await fetch("/api/tags");
@@ -293,8 +293,8 @@ export default function InboxPage() {
         params.set("groupId", groupKey);
         params.set("page", String(page));
         params.set("limit", String(DEFAULT_MAILBOXES_PAGE_SIZE));
-        if (showAllMailboxes) {
-          params.set("archived", "include");
+        if (showArchivedMailboxes) {
+          params.set("archived", "only");
         }
 
         const res = await fetch(`/api/mailboxes/paginated?${params.toString()}`);
@@ -323,7 +323,7 @@ export default function InboxPage() {
         setLoadingMailboxesByGroupKey((prev) => ({ ...prev, [groupKey]: false }));
       }
     },
-    [DEFAULT_MAILBOXES_PAGE_SIZE, showAllMailboxes, t]
+    [DEFAULT_MAILBOXES_PAGE_SIZE, showArchivedMailboxes, t]
   );
 
   const loadMailboxSearchPage = useCallback(
@@ -336,8 +336,8 @@ export default function InboxPage() {
         params.set("search", search);
         params.set("page", String(page));
         params.set("limit", String(DEFAULT_MAILBOXES_PAGE_SIZE));
-        if (showAllMailboxes) {
-          params.set("archived", "include");
+        if (showArchivedMailboxes) {
+          params.set("archived", "only");
         }
 
         const res = await fetch(`/api/mailboxes/paginated?${params.toString()}`);
@@ -368,7 +368,7 @@ export default function InboxPage() {
         setLoadingMailboxSearch(false);
       }
     },
-    [DEFAULT_MAILBOXES_PAGE_SIZE, showAllMailboxes, t]
+    [DEFAULT_MAILBOXES_PAGE_SIZE, showArchivedMailboxes, t]
   );
 
   useEffect(() => {
@@ -522,6 +522,9 @@ export default function InboxPage() {
       params.set("limit", String(emailsPageSize));
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
       if (selectedTagId) params.set("tagId", selectedTagId);
+      if (!selectedMailboxId && showArchivedMailboxes) {
+        params.set("mailboxArchived", "only");
+      }
 
       // Apply status filter
       if (statusFilter === "unread") {
@@ -546,7 +549,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, selectedTagId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter, emailsRefreshKey]);
+  }, [selectedMailboxId, selectedTagId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter, emailsRefreshKey, showArchivedMailboxes]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -605,8 +608,9 @@ export default function InboxPage() {
               // ignore
             }
           }
+          const allowListUpdate = !showArchivedMailboxes || Boolean(selectedMailboxId);
           const matchesMailbox =
-            !selectedMailboxId || event.data.email.mailboxId === selectedMailboxId;
+            allowListUpdate && (!selectedMailboxId || event.data.email.mailboxId === selectedMailboxId);
           const hasSearch = Boolean(emailSearch);
           const isFirstPage = emailsPage === 1;
           if (matchesMailbox && !hasSearch && isFirstPage) {
@@ -718,7 +722,7 @@ export default function InboxPage() {
 	    });
 
 	    return disconnect;
-	  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize, t, updateMailboxById, vercelMode]);
+		  }, [notificationsEnabled, notificationPermission, selectedMailboxId, emailSearch, emailsPage, emailsPageSize, showArchivedMailboxes, t, updateMailboxById, vercelMode]);
 
   useEffect(() => {
     if (!vercelMode) return;
@@ -1162,11 +1166,12 @@ export default function InboxPage() {
     setMailboxSearchPage(1);
   };
 
-  const handleToggleAllMailboxes = () => {
-    const next = !showAllMailboxes;
-    if (!next && selectedMailboxId) {
+  const handleToggleArchivedMailboxes = () => {
+    const next = !showArchivedMailboxes;
+    if (selectedMailboxId) {
       const selectedMailbox = mailboxes.find((m) => m.id === selectedMailboxId) || null;
-      if (selectedMailbox?.archivedAt) {
+      const selectedIsArchived = Boolean(selectedMailbox?.archivedAt);
+      if ((next && !selectedIsArchived) || (!next && selectedIsArchived)) {
         handleSelectMailbox(null);
       }
     }
@@ -1181,7 +1186,7 @@ export default function InboxPage() {
     setMailboxSearchPages(1);
     setMailboxSearchPage(1);
 
-    setShowAllMailboxes(next);
+    setShowArchivedMailboxes(next);
   };
 
   const goPrevMailboxSearchPage = () => {
@@ -1486,7 +1491,10 @@ export default function InboxPage() {
     }
 
     toast.success(archived ? t("toast.mailboxes.archived") : t("toast.mailboxes.unarchived"));
-    if (archived && !showAllMailboxes && selectedMailboxId === mailboxId) {
+    if (archived && !showArchivedMailboxes && selectedMailboxId === mailboxId) {
+      handleSelectMailbox(null);
+    }
+    if (!archived && showArchivedMailboxes && selectedMailboxId === mailboxId) {
       handleSelectMailbox(null);
     }
 
@@ -1726,7 +1734,7 @@ export default function InboxPage() {
 	              mailboxSearchTotal={mailboxSearchTotal}
 	              loadingMailboxSearch={loadingMailboxSearch}
 	              selectedMailboxId={selectedMailboxId}
-	              showAllMailboxes={showAllMailboxes}
+	              showArchivedMailboxes={showArchivedMailboxes}
 	              notificationsEnabled={notificationsEnabled}
 	              mailboxDialogOpen={mailboxDialogOpen}
 	              groupDialogOpen={groupDialogOpen}
@@ -1751,7 +1759,7 @@ export default function InboxPage() {
 	                handleSelectMailbox(id);
 	                setMobileTab("emails");
 	              }}
-	              onToggleAllMailboxes={handleToggleAllMailboxes}
+	              onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
 	              onMailboxDialogOpenChange={setMailboxDialogOpen}
 	              onGroupDialogOpenChange={setGroupDialogOpen}
 	              onRenameDialogOpenChange={setRenameDialogOpen}
@@ -1863,7 +1871,7 @@ export default function InboxPage() {
 	            mailboxSearchTotal={mailboxSearchTotal}
 	            loadingMailboxSearch={loadingMailboxSearch}
 	            selectedMailboxId={selectedMailboxId}
-	            showAllMailboxes={showAllMailboxes}
+	            showArchivedMailboxes={showArchivedMailboxes}
 	            notificationsEnabled={notificationsEnabled}
 	            mailboxDialogOpen={mailboxDialogOpen}
 	            groupDialogOpen={groupDialogOpen}
@@ -1885,7 +1893,7 @@ export default function InboxPage() {
 	            onNextGroupMailboxesPage={goNextGroupMailboxesPage}
 	            onRetryGroupMailboxes={retryGroupMailboxes}
 	            onSelectMailbox={handleSelectMailbox}
-	            onToggleAllMailboxes={handleToggleAllMailboxes}
+	            onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
 	            onMailboxDialogOpenChange={setMailboxDialogOpen}
 	            onGroupDialogOpenChange={setGroupDialogOpen}
 	            onRenameDialogOpenChange={setRenameDialogOpen}

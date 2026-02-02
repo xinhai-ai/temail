@@ -52,7 +52,6 @@ import {
   FolderInput,
   FolderMinus,
   Inbox,
-  Mail,
   MailOpen,
   MoreHorizontal,
   Pencil,
@@ -90,7 +89,7 @@ type MailboxesPanelProps = {
   mailboxSearchTotal: number;
   loadingMailboxSearch: boolean;
   selectedMailboxId: string | null;
-  showAllMailboxes: boolean;
+  showArchivedMailboxes: boolean;
   notificationsEnabled: boolean;
   mailboxDialogOpen: boolean;
   groupDialogOpen: boolean;
@@ -112,7 +111,7 @@ type MailboxesPanelProps = {
   onNextGroupMailboxesPage: (key: string) => void;
   onRetryGroupMailboxes: (key: string) => void;
   onSelectMailbox: (id: string | null) => void;
-  onToggleAllMailboxes: () => void;
+  onToggleArchivedMailboxes: () => void;
   onMailboxDialogOpenChange: (open: boolean) => void;
   onGroupDialogOpenChange: (open: boolean) => void;
   onRenameDialogOpenChange: (open: boolean) => void;
@@ -161,7 +160,7 @@ export function MailboxesPanel({
   mailboxSearchTotal,
   loadingMailboxSearch,
   selectedMailboxId,
-  showAllMailboxes,
+  showArchivedMailboxes,
   notificationsEnabled,
   mailboxDialogOpen,
   groupDialogOpen,
@@ -183,7 +182,7 @@ export function MailboxesPanel({
   onNextGroupMailboxesPage,
   onRetryGroupMailboxes,
   onSelectMailbox,
-  onToggleAllMailboxes,
+  onToggleArchivedMailboxes,
   onMailboxDialogOpenChange,
   onGroupDialogOpenChange,
   onRenameDialogOpenChange,
@@ -218,6 +217,9 @@ export function MailboxesPanel({
   const mailboxSearchQuery = mailboxSearch.trim();
   const isSearchMode = mailboxSearchQuery.length > 0;
   const [openContextMenuMailboxId, setOpenContextMenuMailboxId] = useState<string | null>(null);
+  const displayGroupCount = showArchivedMailboxes
+    ? groups.filter((group) => (group._count?.mailboxes ?? 0) > 0).length
+    : groups.length;
 
   const groupNameById = new Map<string, string>();
   for (const group of groups) {
@@ -471,25 +473,26 @@ export function MailboxesPanel({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             size="sm"
             variant={selectedMailboxId === null ? "default" : "outline"}
             onClick={() => onSelectMailbox(null)}
-            className="flex-1 min-w-[140px]"
           >
             <Inbox className="mr-2 h-4 w-4" />
             {t("mailboxes.allEmails")}
           </Button>
           <Button
             size="sm"
-            variant={showAllMailboxes ? "default" : "outline"}
-            onClick={onToggleAllMailboxes}
-            className="flex-1 min-w-[140px]"
+            variant={showArchivedMailboxes ? "default" : "outline"}
+            onClick={onToggleArchivedMailboxes}
           >
-            <Mail className="mr-2 h-4 w-4" />
-            {t("mailboxes.allMailboxes")}
+            <Archive className="mr-2 h-4 w-4" />
+            {t("mailboxes.archivedMailboxes")}
           </Button>
+        </div>
+
+        <div className="flex items-center justify-end gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">
@@ -637,7 +640,7 @@ export function MailboxesPanel({
         <span className="text-xs text-muted-foreground">
           {loadingGroups
             ? tCommon("loading")
-            : t("mailboxes.summary", { mailboxCount, groupCount: groups.length })}
+            : t("mailboxes.summary", { mailboxCount, groupCount: displayGroupCount })}
         </span>
 
         {isSearchMode ? (
@@ -708,6 +711,10 @@ export function MailboxesPanel({
 
               const countLabel = String(total);
               const showPager = pages > 1;
+
+              if (showArchivedMailboxes && total <= 0 && groupItem.key !== ungroupedSelectValue) {
+                return null;
+              }
 
               return (
                 <div key={groupItem.key} className="space-y-1">
