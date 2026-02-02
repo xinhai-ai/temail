@@ -20,6 +20,16 @@ export async function triggerEmailWorkflows(
       return;
     }
 
+    const mailbox = await prisma.mailbox.findFirst({
+      where: { id: mailboxId, userId },
+      select: { archivedAt: true, group: { select: { name: true } } },
+    });
+
+    if (mailbox?.archivedAt) {
+      console.log(`[workflow-trigger] Skipping workflows for archived mailbox ${mailboxId}`);
+      return;
+    }
+
     console.log(`[workflow-trigger] Looking for workflows for user ${userId}, mailbox ${mailboxId}`);
 
     // Find all active workflows for this user
@@ -38,11 +48,6 @@ export async function triggerEmailWorkflows(
     if (workflows.length === 0) {
       return;
     }
-
-    const mailbox = await prisma.mailbox.findFirst({
-      where: { id: mailboxId, userId },
-      select: { group: { select: { name: true } } },
-    });
 
     // Create email context
     const emailContext: EmailContext = {

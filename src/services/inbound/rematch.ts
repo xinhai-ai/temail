@@ -18,7 +18,7 @@ export async function rematchUnmatchedInboundEmailsForUser(
 
   const mailboxes = await prisma.mailbox.findMany({
     where: { userId, status: "ACTIVE" },
-    select: { id: true, address: true, userId: true },
+    select: { id: true, address: true, userId: true, archivedAt: true },
   });
 
   const addressToMailbox = new Map(mailboxes.map((mailbox) => [mailbox.address.toLowerCase(), mailbox]));
@@ -102,24 +102,27 @@ export async function rematchUnmatchedInboundEmailsForUser(
 
     const email = result.email;
 
-    publishRealtimeEvent(mailbox.userId, {
-      type: "email.created",
-      data: {
-        email: {
-          id: email.id,
-          mailboxId: email.mailboxId,
-          mailboxAddress: mailbox.address,
-          subject: email.subject,
-          fromAddress: email.fromAddress,
-          fromName: email.fromName,
-          status: email.status,
-          isStarred: email.isStarred,
-          receivedAt: email.receivedAt.toISOString(),
+    const isArchivedMailbox = mailbox.archivedAt !== null;
+    if (!isArchivedMailbox) {
+      publishRealtimeEvent(mailbox.userId, {
+        type: "email.created",
+        data: {
+          email: {
+            id: email.id,
+            mailboxId: email.mailboxId,
+            mailboxAddress: mailbox.address,
+            subject: email.subject,
+            fromAddress: email.fromAddress,
+            fromName: email.fromName,
+            status: email.status,
+            isStarred: email.isStarred,
+            receivedAt: email.receivedAt.toISOString(),
+          },
         },
-      },
-    });
+      });
 
-    triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch(console.error);
+      triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch(console.error);
+    }
   }
 
   return {

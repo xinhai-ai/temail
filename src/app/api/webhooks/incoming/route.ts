@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         domainId: webhookConfig.domainId,
         status: "ACTIVE",
       },
-      select: { id: true, userId: true, address: true },
+      select: { id: true, userId: true, address: true, archivedAt: true },
     });
 
     if (!mailbox && webhookConfig.domain.inboundPolicy === "KNOWN_ONLY") {
@@ -346,25 +346,28 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    publishRealtimeEvent(mailbox.userId, {
-      type: "email.created",
-      data: {
-        email: {
-          id: email.id,
-          mailboxId: email.mailboxId,
-          mailboxAddress: mailbox.address,
-          subject: email.subject,
-          fromAddress: email.fromAddress,
-          fromName: email.fromName,
-          status: email.status,
-          isStarred: email.isStarred,
-          receivedAt: email.receivedAt.toISOString(),
+    const isArchivedMailbox = mailbox.archivedAt !== null;
+    if (!isArchivedMailbox) {
+      publishRealtimeEvent(mailbox.userId, {
+        type: "email.created",
+        data: {
+          email: {
+            id: email.id,
+            mailboxId: email.mailboxId,
+            mailboxAddress: mailbox.address,
+            subject: email.subject,
+            fromAddress: email.fromAddress,
+            fromName: email.fromName,
+            status: email.status,
+            isStarred: email.isStarred,
+            receivedAt: email.receivedAt.toISOString(),
+          },
         },
-      },
-    });
+      });
 
-    // Trigger workflow executions
-    triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch(console.error);
+      // Trigger workflow executions
+      triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch(console.error);
+    }
 
     return NextResponse.json({ success: true, emailId: email.id, matched: true });
   } catch (error) {

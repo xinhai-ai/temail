@@ -233,7 +233,7 @@ async function processMessage(
   for (const toAddress of recipients) {
     const mailbox = await prisma.mailbox.findFirst({
       where: { address: toAddress, domainId: domain.id, status: "ACTIVE" },
-      select: { id: true, userId: true, address: true },
+      select: { id: true, userId: true, address: true, archivedAt: true },
     });
 
     if (!mailbox && domain.inboundPolicy === "KNOWN_ONLY") {
@@ -316,7 +316,8 @@ async function processMessage(
 
     processedAny = true;
 
-    if (options.publishRealtimeEvent) {
+    const isArchivedMailbox = mailbox.archivedAt !== null;
+    if (options.publishRealtimeEvent && !isArchivedMailbox) {
       options.publishRealtimeEvent(mailbox.userId, {
         type: "email.created",
         data: {
@@ -335,11 +336,13 @@ async function processMessage(
       });
     }
 
-    triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch((err) => {
-      if (options.debug) {
-        console.error(`[imap-sync] workflow trigger error for ${email.id}:`, err);
-      }
-    });
+    if (!isArchivedMailbox) {
+      triggerEmailWorkflows(email, mailbox.id, mailbox.userId).catch((err) => {
+        if (options.debug) {
+          console.error(`[imap-sync] workflow trigger error for ${email.id}:`, err);
+        }
+      });
+    }
   }
 
   return { processed: processedAny };
