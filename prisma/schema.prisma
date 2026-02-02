@@ -79,6 +79,7 @@ model User {
   sessions      Session[]
   tags          Tag[]
   apiKeys       ApiKey[]
+  linuxDoUserLink LinuxDoUserLink?
   authChallenges AuthChallenge[]
   passkeyCredentials PasskeyCredential[]
   loginTokens    LoginToken[]
@@ -803,6 +804,31 @@ model WorkflowDispatchLog {
   @@index([emailId])
   @@index([createdAt])
   @@map("workflow_dispatch_logs")
+}
+
+// ==================== LinuxDO Connect ====================
+
+model LinuxDoUserLink {
+  id             String   @id @default(cuid())
+
+  linuxdoId      String   @unique
+  email          String?
+  username       String
+  name           String?
+  avatarTemplate String?
+  trustLevel     Int
+  active         Boolean
+  silenced       Boolean
+  raw            String?  // JSON string
+  lastSyncedAt   DateTime?
+
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("linuxdo_user_links")
 }
 
 // ==================== Telegram Integration ====================
