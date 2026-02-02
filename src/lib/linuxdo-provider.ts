@@ -50,9 +50,9 @@ export default function LinuxDo(options: OAuthUserConfig<LinuxDoProfile>): OAuth
         email: email ?? fallbackEmail ?? undefined,
         name: username ?? null,
         image: linuxDoAvatarUrl(profile.avatar_template, 120),
+        role: "USER",
       };
     },
     options,
   };
 }
-
