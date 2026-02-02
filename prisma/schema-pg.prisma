@@ -437,6 +437,7 @@ model Mailbox {
   note        String?
   isStarred   Boolean       @default(false)
   expiresAt   DateTime?
+  archivedAt  DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -457,6 +458,7 @@ model Mailbox {
 
   @@unique([prefix, domainId])
   @@index([userId])
+  @@index([userId, archivedAt])
   @@index([domainId])
   @@map("mailboxes")
 }
