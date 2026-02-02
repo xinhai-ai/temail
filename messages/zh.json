@@ -47,7 +47,8 @@
     "back": "返回",
     "oauth": {
       "or": "或",
-      "continueWithGithub": "使用 GitHub 继续"
+      "continueWithGithub": "使用 GitHub 继续",
+      "continueWithLinuxDO": "使用 LinuxDO 继续"
     },
     "placeholders": {
       "email": "name@example.com",

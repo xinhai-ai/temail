@@ -26,6 +26,7 @@ export default async function LoginPage() {
       showRegisterLink={mode !== "closed"}
       turnstile={turnstile}
       githubEnabled={providers.githubLoginEnabled}
+      linuxdoEnabled={providers.linuxdoLoginEnabled}
       passkeyEnabled={flags.passkeyEnabled}
       passwordResetEnabled={flags.passwordResetEnabled}
     />

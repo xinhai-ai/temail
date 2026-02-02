@@ -8,17 +8,13 @@ import { consumeLoginToken } from "@/lib/auth-tokens";
 import { getRegistrationMode } from "@/lib/registration";
 import { getOrCreateDefaultUserGroupId } from "@/services/usergroups/default-group";
 import { getAuthProviderConfig } from "@/lib/auth-providers";
+import LinuxDo from "@/lib/linuxdo-provider";
 
 const adapterBase = PrismaAdapter(prisma);
 
 const adapter = {
   ...adapterBase,
   async createUser(data: AdapterUser) {
-    const providers = await getAuthProviderConfig();
-    if (!providers.github.registrationEnabled) {
-      throw new Error("Registration is disabled");
-    }
-
     const mode = await getRegistrationMode();
     if (mode !== "open") {
       throw new Error("Registration is disabled");
@@ -45,6 +41,7 @@ const adapter = {
 export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
   const providersConfig = await getAuthProviderConfig();
   const githubConfigured = Boolean(providersConfig.github.clientId && providersConfig.github.clientSecret);
+  const linuxdoConfigured = Boolean(providersConfig.linuxdo.clientId && providersConfig.linuxdo.clientSecret);
 
   return {
     adapter: adapter as Adapter,
@@ -58,6 +55,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
             GitHub({
               clientId: providersConfig.github.clientId as string,
               clientSecret: providersConfig.github.clientSecret as string,
+              allowDangerousEmailAccountLinking: true,
+            }),
+          ]
+        : []),
+      ...(providersConfig.linuxdo.enabled && linuxdoConfigured
+        ? [
+            LinuxDo({
+              clientId: providersConfig.linuxdo.clientId as string,
+              clientSecret: providersConfig.linuxdo.clientSecret as string,
               allowDangerousEmailAccountLinking: true,
             }),
           ]
@@ -129,6 +135,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
         if (account?.provider === "github") {
           const providers = await getAuthProviderConfig();
           if (!providers.github.registrationEnabled) return false;
+
+          const mode = await getRegistrationMode();
+          if (mode !== "open") return false;
+        }
+        if (account?.provider === "linuxdo") {
+          const providers = await getAuthProviderConfig();
+          if (!providers.linuxdo.registrationEnabled) return false;
 
           const mode = await getRegistrationMode();
           if (mode !== "open") return false;

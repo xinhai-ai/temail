@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Github, KeyRound, Loader2, Lock, Mail } from "lucide-react";
+import { Github, Globe, KeyRound, Loader2, Lock, Mail } from "lucide-react";
 
 type TurnstileConfig = {
   enabled: boolean;
@@ -33,12 +33,14 @@ export default function LoginForm({
   showRegisterLink = true,
   turnstile,
   githubEnabled = false,
+  linuxdoEnabled = false,
   passkeyEnabled = false,
   passwordResetEnabled = false,
 }: {
   showRegisterLink?: boolean;
   turnstile: TurnstileConfig;
   githubEnabled?: boolean;
+  linuxdoEnabled?: boolean;
   passkeyEnabled?: boolean;
   passwordResetEnabled?: boolean;
 }) {
@@ -148,6 +150,13 @@ export default function LoginForm({
     if (step !== "primary") return;
     setError("");
     await signIn("github", { callbackUrl: "/dashboard" });
+  };
+
+  const handleLinuxDoSignIn = async () => {
+    if (!linuxdoEnabled) return;
+    if (step !== "primary") return;
+    setError("");
+    await signIn("linuxdo", { callbackUrl: "/dashboard" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -273,18 +282,32 @@ export default function LoginForm({
                 {error}
               </div>
             )}
-            {step === "primary" && githubEnabled && (
+            {step === "primary" && (githubEnabled || linuxdoEnabled) && (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-11 font-medium"
-                  onClick={handleGitHubSignIn}
-                  disabled={loading}
-                >
-                  <Github className="mr-2 h-4 w-4" aria-hidden="true" />
-                  {t("oauth.continueWithGithub")}
-                </Button>
+                {linuxdoEnabled && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-11 font-medium"
+                    onClick={handleLinuxDoSignIn}
+                    disabled={loading}
+                  >
+                    <Globe className="mr-2 h-4 w-4" aria-hidden="true" />
+                    {t("oauth.continueWithLinuxDO")}
+                  </Button>
+                )}
+                {githubEnabled && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-11 font-medium"
+                    onClick={handleGitHubSignIn}
+                    disabled={loading}
+                  >
+                    <Github className="mr-2 h-4 w-4" aria-hidden="true" />
+                    {t("oauth.continueWithGithub")}
+                  </Button>
+                )}
                 <div className="flex items-center gap-3">
                   <Separator className="flex-1" />
                   <span className="text-xs text-muted-foreground">{t("oauth.or")}</span>

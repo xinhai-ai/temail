@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { TurnstileWidget } from "@/components/security/TurnstileWidget";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Github, KeyRound, Lock, Mail, User, Loader2, MailCheck } from "lucide-react";
+import { Github, Globe, KeyRound, Lock, Mail, User, Loader2, MailCheck } from "lucide-react";
 import type { RegistrationMode } from "@/lib/registration";
 
 type TurnstileConfig = {
@@ -25,11 +25,13 @@ export default function RegisterForm({
   mode,
   turnstile,
   githubRegistrationEnabled = false,
+  linuxdoRegistrationEnabled = false,
   emailRegistrationEnabled = true,
 }: {
   mode: RegistrationMode;
   turnstile: TurnstileConfig;
   githubRegistrationEnabled?: boolean;
+  linuxdoRegistrationEnabled?: boolean;
   emailRegistrationEnabled?: boolean;
 }) {
   const router = useRouter();
@@ -209,6 +211,12 @@ export default function RegisterForm({
     await signIn("github", { callbackUrl: "/dashboard" });
   };
 
+  const handleLinuxDoSignIn = async () => {
+    if (!linuxdoRegistrationEnabled) return;
+    setError("");
+    await signIn("linuxdo", { callbackUrl: "/dashboard" });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
       {/* 装饰背景 */}
@@ -287,6 +295,18 @@ export default function RegisterForm({
         ) : !emailRegistrationEnabled ? (
           <>
             <CardContent className="space-y-4">
+              {linuxdoRegistrationEnabled && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 font-medium"
+                  onClick={handleLinuxDoSignIn}
+                  disabled={loading}
+                >
+                  <Globe className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("oauth.continueWithLinuxDO")}
+                </Button>
+              )}
               {githubRegistrationEnabled && (
                 <Button
                   type="button"
@@ -317,18 +337,32 @@ export default function RegisterForm({
                   {error}
                 </div>
               )}
-              {githubRegistrationEnabled && (
+              {(githubRegistrationEnabled || linuxdoRegistrationEnabled) && (
                 <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-11 font-medium"
-                    onClick={handleGitHubSignIn}
-                    disabled={loading}
-                  >
-                    <Github className="mr-2 h-4 w-4" aria-hidden="true" />
-                    {t("oauth.continueWithGithub")}
-                  </Button>
+                  {linuxdoRegistrationEnabled && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-11 font-medium"
+                      onClick={handleLinuxDoSignIn}
+                      disabled={loading}
+                    >
+                      <Globe className="mr-2 h-4 w-4" aria-hidden="true" />
+                      {t("oauth.continueWithLinuxDO")}
+                    </Button>
+                  )}
+                  {githubRegistrationEnabled && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-11 font-medium"
+                      onClick={handleGitHubSignIn}
+                      disabled={loading}
+                    >
+                      <Github className="mr-2 h-4 w-4" aria-hidden="true" />
+                      {t("oauth.continueWithGithub")}
+                    </Button>
+                  )}
                   <div className="flex items-center gap-3">
                     <Separator className="flex-1" />
                     <span className="text-xs text-muted-foreground">{t("oauth.or")}</span>

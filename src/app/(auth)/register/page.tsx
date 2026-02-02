@@ -22,6 +22,7 @@ export default async function RegisterPage() {
   const mode = await getRegistrationMode();
   const providers = await getAuthProviderFlags();
   const githubRegistrationEnabled = providers.githubRegistrationEnabled && mode === "open";
+  const linuxdoRegistrationEnabled = providers.linuxdoRegistrationEnabled && mode === "open";
 
   if (mode === "closed") {
     return (
@@ -61,7 +62,7 @@ export default async function RegisterPage() {
   }
 
   const turnstile = await getTurnstileClientConfig();
-  if (!providers.emailRegistrationEnabled && !githubRegistrationEnabled) {
+  if (!providers.emailRegistrationEnabled && !githubRegistrationEnabled && !linuxdoRegistrationEnabled) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
@@ -104,6 +105,7 @@ export default async function RegisterPage() {
       turnstile={turnstile}
       emailRegistrationEnabled={providers.emailRegistrationEnabled}
       githubRegistrationEnabled={githubRegistrationEnabled}
+      linuxdoRegistrationEnabled={linuxdoRegistrationEnabled}
     />
   );
 }

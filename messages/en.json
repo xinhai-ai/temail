@@ -47,7 +47,8 @@
     "back": "Back",
     "oauth": {
       "or": "or",
-      "continueWithGithub": "Continue with GitHub"
+      "continueWithGithub": "Continue with GitHub",
+      "continueWithLinuxDO": "Continue with LinuxDO"
     },
     "placeholders": {
       "email": "name@example.com",
