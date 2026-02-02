@@ -1149,6 +1149,7 @@
       },
       "searchPlaceholder": "Search mailboxes...",
       "allEmails": "All Emails",
+      "allMailboxes": "All Mailboxes",
       "new": "New",
       "newMailbox": "New Mailbox",
       "newGroup": "New Group",
@@ -1195,6 +1196,8 @@
         "star": "Star",
         "unstar": "Unstar",
         "markAllAsRead": "Mark all as Read",
+        "archive": "Archive",
+        "unarchive": "Unarchive",
         "moveToGroup": "Move to Group",
         "noGroups": "No groups"
       }
@@ -1406,6 +1409,10 @@
         "loadFailed": "Failed to load mailboxes",
         "createFailed": "Failed to create mailbox",
         "created": "Mailbox created",
+        "archiveFailed": "Failed to archive mailbox",
+        "archived": "Mailbox archived",
+        "unarchiveFailed": "Failed to unarchive mailbox",
+        "unarchived": "Mailbox unarchived",
         "updateFailed": "Failed to update mailbox",
         "updated": "Mailbox updated",
         "markReadFailed": "Failed to mark mailbox as read",

@@ -42,6 +42,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import {
+  Archive,
+  ArchiveRestore,
   Bell,
   BellOff,
   ChevronDown,
@@ -50,6 +52,7 @@ import {
   FolderInput,
   FolderMinus,
   Inbox,
+  Mail,
   MailOpen,
   MoreHorizontal,
   Pencil,
@@ -87,6 +90,7 @@ type MailboxesPanelProps = {
   mailboxSearchTotal: number;
   loadingMailboxSearch: boolean;
   selectedMailboxId: string | null;
+  showAllMailboxes: boolean;
   notificationsEnabled: boolean;
   mailboxDialogOpen: boolean;
   groupDialogOpen: boolean;
@@ -108,6 +112,7 @@ type MailboxesPanelProps = {
   onNextGroupMailboxesPage: (key: string) => void;
   onRetryGroupMailboxes: (key: string) => void;
   onSelectMailbox: (id: string | null) => void;
+  onToggleAllMailboxes: () => void;
   onMailboxDialogOpenChange: (open: boolean) => void;
   onGroupDialogOpenChange: (open: boolean) => void;
   onRenameDialogOpenChange: (open: boolean) => void;
@@ -125,6 +130,8 @@ type MailboxesPanelProps = {
   onOpenRenameGroup: (group: MailboxGroup) => void;
   onRequestDeleteGroup: (group: MailboxGroup) => void;
   onStarMailbox: (mailboxId: string, isStarred: boolean) => void;
+  onArchiveMailbox: (mailboxId: string) => void;
+  onUnarchiveMailbox: (mailboxId: string) => void;
   onRequestEditMailboxNote: (mailbox: Mailbox) => void;
   onMoveMailboxToGroup: (mailboxId: string, groupId: string | null) => void;
   onMarkMailboxRead: (mailboxId: string) => void;
@@ -154,6 +161,7 @@ export function MailboxesPanel({
   mailboxSearchTotal,
   loadingMailboxSearch,
   selectedMailboxId,
+  showAllMailboxes,
   notificationsEnabled,
   mailboxDialogOpen,
   groupDialogOpen,
@@ -175,6 +183,7 @@ export function MailboxesPanel({
   onNextGroupMailboxesPage,
   onRetryGroupMailboxes,
   onSelectMailbox,
+  onToggleAllMailboxes,
   onMailboxDialogOpenChange,
   onGroupDialogOpenChange,
   onRenameDialogOpenChange,
@@ -192,6 +201,8 @@ export function MailboxesPanel({
   onOpenRenameGroup,
   onRequestDeleteGroup,
   onStarMailbox,
+  onArchiveMailbox,
+  onUnarchiveMailbox,
   onRequestEditMailboxNote,
   onMoveMailboxToGroup,
   onMarkMailboxRead,
@@ -236,6 +247,7 @@ export function MailboxesPanel({
   const renderMailboxItem = (mailbox: Mailbox, options?: { showGroupLabel?: boolean }) => {
     const selected = selectedMailboxId === mailbox.id;
     const contextOpen = openContextMenuMailboxId === mailbox.id;
+    const isArchived = Boolean(mailbox.archivedAt);
     const showGroupLabel = options?.showGroupLabel === true;
     const groupLabel = showGroupLabel ? getMailboxGroupLabel(mailbox) : "";
     const meta = showGroupLabel
@@ -328,6 +340,21 @@ export function MailboxesPanel({
           >
             <MailOpen />
             {t("mailboxes.context.markAllAsRead")}
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => (isArchived ? onUnarchiveMailbox(mailbox.id) : onArchiveMailbox(mailbox.id))}
+          >
+            {isArchived ? (
+              <>
+                <ArchiveRestore />
+                {t("mailboxes.context.unarchive")}
+              </>
+            ) : (
+              <>
+                <Archive />
+                {t("mailboxes.context.archive")}
+              </>
+            )}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuSub>
@@ -453,6 +480,15 @@ export function MailboxesPanel({
           >
             <Inbox className="mr-2 h-4 w-4" />
             {t("mailboxes.allEmails")}
+          </Button>
+          <Button
+            size="sm"
+            variant={showAllMailboxes ? "default" : "outline"}
+            onClick={onToggleAllMailboxes}
+            className="flex-1 min-w-[140px]"
+          >
+            <Mail className="mr-2 h-4 w-4" />
+            {t("mailboxes.allMailboxes")}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

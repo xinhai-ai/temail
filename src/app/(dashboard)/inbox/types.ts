@@ -16,6 +16,7 @@ export type Mailbox = {
   note?: string | null;
   isStarred: boolean;
   status: string;
+  archivedAt?: string | null;
   group?: MailboxGroup | null;
   _count: { emails: number }; // unread count
 };

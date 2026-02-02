@@ -28,6 +28,7 @@ export default function InboxPage() {
   const t = useTranslations("inbox");
   const tPolicy = useTranslations("policy") as unknown as Translator;
   const [mailboxSearch, setMailboxSearch] = useState("");
+  const [showAllMailboxes, setShowAllMailboxes] = useState(false);
   const [emailSearch, setEmailSearch] = useState("");
   const mailboxSearchQuery = mailboxSearch.trim();
   const isMailboxSearchMode = mailboxSearchQuery.length > 0;
@@ -168,11 +169,16 @@ export default function InboxPage() {
 
   const loadGroups = useCallback(async () => {
     setLoadingGroups(true);
-    const res = await fetch("/api/mailbox-groups");
+    const params = new URLSearchParams();
+    if (showAllMailboxes) {
+      params.set("archived", "include");
+    }
+    const url = params.size ? `/api/mailbox-groups?${params.toString()}` : "/api/mailbox-groups";
+    const res = await fetch(url);
     const data = await res.json();
     setGroups(Array.isArray(data) ? data : []);
     setLoadingGroups(false);
-  }, []);
+  }, [showAllMailboxes]);
 
   const loadTags = useCallback(async () => {
     const res = await fetch("/api/tags");
@@ -287,6 +293,9 @@ export default function InboxPage() {
         params.set("groupId", groupKey);
         params.set("page", String(page));
         params.set("limit", String(DEFAULT_MAILBOXES_PAGE_SIZE));
+        if (showAllMailboxes) {
+          params.set("archived", "include");
+        }
 
         const res = await fetch(`/api/mailboxes/paginated?${params.toString()}`);
         const data = await res.json().catch(() => null);
@@ -314,7 +323,7 @@ export default function InboxPage() {
         setLoadingMailboxesByGroupKey((prev) => ({ ...prev, [groupKey]: false }));
       }
     },
-    [DEFAULT_MAILBOXES_PAGE_SIZE, t]
+    [DEFAULT_MAILBOXES_PAGE_SIZE, showAllMailboxes, t]
   );
 
   const loadMailboxSearchPage = useCallback(
@@ -327,6 +336,9 @@ export default function InboxPage() {
         params.set("search", search);
         params.set("page", String(page));
         params.set("limit", String(DEFAULT_MAILBOXES_PAGE_SIZE));
+        if (showAllMailboxes) {
+          params.set("archived", "include");
+        }
 
         const res = await fetch(`/api/mailboxes/paginated?${params.toString()}`);
         const data = await res.json().catch(() => null);
@@ -356,7 +368,7 @@ export default function InboxPage() {
         setLoadingMailboxSearch(false);
       }
     },
-    [DEFAULT_MAILBOXES_PAGE_SIZE, t]
+    [DEFAULT_MAILBOXES_PAGE_SIZE, showAllMailboxes, t]
   );
 
   useEffect(() => {
@@ -1150,6 +1162,28 @@ export default function InboxPage() {
     setMailboxSearchPage(1);
   };
 
+  const handleToggleAllMailboxes = () => {
+    const next = !showAllMailboxes;
+    if (!next && selectedMailboxId) {
+      const selectedMailbox = mailboxes.find((m) => m.id === selectedMailboxId) || null;
+      if (selectedMailbox?.archivedAt) {
+        handleSelectMailbox(null);
+      }
+    }
+
+    mailboxPrefetchScheduledRef.current.clear();
+    setMailboxesByGroupKey({});
+    setMailboxPaginationByGroupKey({});
+    setMailboxErrorsByGroupKey({});
+    setLoadingMailboxesByGroupKey({});
+    setMailboxSearchResults([]);
+    setMailboxSearchTotal(0);
+    setMailboxSearchPages(1);
+    setMailboxSearchPage(1);
+
+    setShowAllMailboxes(next);
+  };
+
   const goPrevMailboxSearchPage = () => {
     setMailboxSearchPage((prev) => Math.max(1, prev - 1));
   };
@@ -1431,6 +1465,46 @@ export default function InboxPage() {
     updateMailboxById(mailboxId, (mailbox) => ({ ...mailbox, isStarred: !isStarred }));
   };
 
+  const setMailboxArchived = async (mailboxId: string, archived: boolean) => {
+    const mailbox = mailboxes.find((m) => m.id === mailboxId) || null;
+    const groupKey = mailbox?.group?.id || UNGROUPED_SELECT_VALUE;
+    const currentPage = mailboxPaginationByGroupKey[groupKey]?.page || 1;
+
+    const res = await fetch(`/api/mailboxes/${mailboxId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived }),
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(
+        data?.error ||
+          (archived ? t("toast.mailboxes.archiveFailed") : t("toast.mailboxes.unarchiveFailed"))
+      );
+      return;
+    }
+
+    toast.success(archived ? t("toast.mailboxes.archived") : t("toast.mailboxes.unarchived"));
+    if (archived && !showAllMailboxes && selectedMailboxId === mailboxId) {
+      handleSelectMailbox(null);
+    }
+
+    await loadGroups();
+    await loadMailboxGroupPage(groupKey, currentPage, { replace: true });
+    if (isMailboxSearchMode) {
+      await loadMailboxSearchPage(mailboxSearchQuery, mailboxSearchPage);
+    }
+  };
+
+  const handleArchiveMailbox = (mailboxId: string) => {
+    void setMailboxArchived(mailboxId, true);
+  };
+
+  const handleUnarchiveMailbox = (mailboxId: string) => {
+    void setMailboxArchived(mailboxId, false);
+  };
+
   const handleDeleteMailbox = (mailboxId: string) => {
     setDeleteMailboxId(mailboxId);
   };
@@ -1648,14 +1722,15 @@ export default function InboxPage() {
               mailboxSearch={mailboxSearch}
               mailboxSearchResults={mailboxSearchResults}
               mailboxSearchPage={mailboxSearchPage}
-              mailboxSearchPages={mailboxSearchPages}
-              mailboxSearchTotal={mailboxSearchTotal}
-              loadingMailboxSearch={loadingMailboxSearch}
-              selectedMailboxId={selectedMailboxId}
-              notificationsEnabled={notificationsEnabled}
-              mailboxDialogOpen={mailboxDialogOpen}
-              groupDialogOpen={groupDialogOpen}
-              renameDialogOpen={renameDialogOpen}
+	              mailboxSearchPages={mailboxSearchPages}
+	              mailboxSearchTotal={mailboxSearchTotal}
+	              loadingMailboxSearch={loadingMailboxSearch}
+	              selectedMailboxId={selectedMailboxId}
+	              showAllMailboxes={showAllMailboxes}
+	              notificationsEnabled={notificationsEnabled}
+	              mailboxDialogOpen={mailboxDialogOpen}
+	              groupDialogOpen={groupDialogOpen}
+	              renameDialogOpen={renameDialogOpen}
               newMailboxPrefix={newMailboxPrefix}
               newMailboxDomainId={newMailboxDomainId}
               newMailboxGroupId={newMailboxGroupId}
@@ -1669,16 +1744,17 @@ export default function InboxPage() {
               onMailboxSearchChange={handleMailboxSearchChange}
               onPrevMailboxSearchPage={goPrevMailboxSearchPage}
               onNextMailboxSearchPage={goNextMailboxSearchPage}
-              onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
-              onNextGroupMailboxesPage={goNextGroupMailboxesPage}
-              onRetryGroupMailboxes={retryGroupMailboxes}
-              onSelectMailbox={(id) => {
-                handleSelectMailbox(id);
-                setMobileTab("emails");
-              }}
-              onMailboxDialogOpenChange={setMailboxDialogOpen}
-              onGroupDialogOpenChange={setGroupDialogOpen}
-              onRenameDialogOpenChange={setRenameDialogOpen}
+	              onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
+	              onNextGroupMailboxesPage={goNextGroupMailboxesPage}
+	              onRetryGroupMailboxes={retryGroupMailboxes}
+	              onSelectMailbox={(id) => {
+	                handleSelectMailbox(id);
+	                setMobileTab("emails");
+	              }}
+	              onToggleAllMailboxes={handleToggleAllMailboxes}
+	              onMailboxDialogOpenChange={setMailboxDialogOpen}
+	              onGroupDialogOpenChange={setGroupDialogOpen}
+	              onRenameDialogOpenChange={setRenameDialogOpen}
               onNewMailboxDomainIdChange={setNewMailboxDomainId}
               onNewMailboxPrefixChange={setNewMailboxPrefix}
               onGenerateRandomPrefix={generateRandomPrefix}
@@ -1689,14 +1765,16 @@ export default function InboxPage() {
               onCreateGroup={handleCreateGroup}
               onRenameGroupNameChange={setRenameGroupName}
               onRenameGroupSave={handleRenameGroup}
-              onToggleGroupCollapse={toggleGroup}
-              onOpenRenameGroup={openRenameGroup}
-              onRequestDeleteGroup={handleDeleteGroup}
-              onStarMailbox={handleStarMailbox}
-              onRequestEditMailboxNote={handleOpenEditMailboxNote}
-              onMoveMailboxToGroup={handleMoveMailboxToGroup}
-              onMarkMailboxRead={handleMarkMailboxRead}
-              onRequestDeleteMailbox={handleDeleteMailbox}
+	              onToggleGroupCollapse={toggleGroup}
+	              onOpenRenameGroup={openRenameGroup}
+	              onRequestDeleteGroup={handleDeleteGroup}
+	              onStarMailbox={handleStarMailbox}
+	              onArchiveMailbox={handleArchiveMailbox}
+	              onUnarchiveMailbox={handleUnarchiveMailbox}
+	              onRequestEditMailboxNote={handleOpenEditMailboxNote}
+	              onMoveMailboxToGroup={handleMoveMailboxToGroup}
+	              onMarkMailboxRead={handleMarkMailboxRead}
+	              onRequestDeleteMailbox={handleDeleteMailbox}
               onCopyMailboxAddress={handleCopyMailboxAddress}
               onRefreshImap={handleRefreshImap}
               refreshingImap={refreshingImap}
@@ -1781,14 +1859,15 @@ export default function InboxPage() {
             mailboxSearch={mailboxSearch}
             mailboxSearchResults={mailboxSearchResults}
             mailboxSearchPage={mailboxSearchPage}
-            mailboxSearchPages={mailboxSearchPages}
-            mailboxSearchTotal={mailboxSearchTotal}
-            loadingMailboxSearch={loadingMailboxSearch}
-            selectedMailboxId={selectedMailboxId}
-            notificationsEnabled={notificationsEnabled}
-            mailboxDialogOpen={mailboxDialogOpen}
-            groupDialogOpen={groupDialogOpen}
-            renameDialogOpen={renameDialogOpen}
+	            mailboxSearchPages={mailboxSearchPages}
+	            mailboxSearchTotal={mailboxSearchTotal}
+	            loadingMailboxSearch={loadingMailboxSearch}
+	            selectedMailboxId={selectedMailboxId}
+	            showAllMailboxes={showAllMailboxes}
+	            notificationsEnabled={notificationsEnabled}
+	            mailboxDialogOpen={mailboxDialogOpen}
+	            groupDialogOpen={groupDialogOpen}
+	            renameDialogOpen={renameDialogOpen}
             newMailboxPrefix={newMailboxPrefix}
             newMailboxDomainId={newMailboxDomainId}
             newMailboxGroupId={newMailboxGroupId}
@@ -1802,13 +1881,14 @@ export default function InboxPage() {
             onMailboxSearchChange={handleMailboxSearchChange}
             onPrevMailboxSearchPage={goPrevMailboxSearchPage}
             onNextMailboxSearchPage={goNextMailboxSearchPage}
-            onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
-            onNextGroupMailboxesPage={goNextGroupMailboxesPage}
-            onRetryGroupMailboxes={retryGroupMailboxes}
-            onSelectMailbox={handleSelectMailbox}
-            onMailboxDialogOpenChange={setMailboxDialogOpen}
-            onGroupDialogOpenChange={setGroupDialogOpen}
-            onRenameDialogOpenChange={setRenameDialogOpen}
+	            onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
+	            onNextGroupMailboxesPage={goNextGroupMailboxesPage}
+	            onRetryGroupMailboxes={retryGroupMailboxes}
+	            onSelectMailbox={handleSelectMailbox}
+	            onToggleAllMailboxes={handleToggleAllMailboxes}
+	            onMailboxDialogOpenChange={setMailboxDialogOpen}
+	            onGroupDialogOpenChange={setGroupDialogOpen}
+	            onRenameDialogOpenChange={setRenameDialogOpen}
             onNewMailboxDomainIdChange={setNewMailboxDomainId}
             onNewMailboxPrefixChange={setNewMailboxPrefix}
             onGenerateRandomPrefix={generateRandomPrefix}
@@ -1819,14 +1899,16 @@ export default function InboxPage() {
             onCreateGroup={handleCreateGroup}
             onRenameGroupNameChange={setRenameGroupName}
             onRenameGroupSave={handleRenameGroup}
-            onToggleGroupCollapse={toggleGroup}
-            onOpenRenameGroup={openRenameGroup}
-            onRequestDeleteGroup={handleDeleteGroup}
-            onStarMailbox={handleStarMailbox}
-            onRequestEditMailboxNote={handleOpenEditMailboxNote}
-            onMoveMailboxToGroup={handleMoveMailboxToGroup}
-            onMarkMailboxRead={handleMarkMailboxRead}
-            onRequestDeleteMailbox={handleDeleteMailbox}
+	            onToggleGroupCollapse={toggleGroup}
+	            onOpenRenameGroup={openRenameGroup}
+	            onRequestDeleteGroup={handleDeleteGroup}
+	            onStarMailbox={handleStarMailbox}
+	            onArchiveMailbox={handleArchiveMailbox}
+	            onUnarchiveMailbox={handleUnarchiveMailbox}
+	            onRequestEditMailboxNote={handleOpenEditMailboxNote}
+	            onMoveMailboxToGroup={handleMoveMailboxToGroup}
+	            onMarkMailboxRead={handleMarkMailboxRead}
+	            onRequestDeleteMailbox={handleDeleteMailbox}
             onCopyMailboxAddress={handleCopyMailboxAddress}
             onRefreshImap={handleRefreshImap}
             refreshingImap={refreshingImap}
