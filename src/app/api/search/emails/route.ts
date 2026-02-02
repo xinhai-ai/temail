@@ -13,6 +13,7 @@ const querySchema = z.object({
   tagId: z.string().trim().min(1).optional(),
   status: z.enum(["UNREAD", "READ", "ARCHIVED", "DELETED"]).optional(),
   excludeArchived: z.coerce.boolean().optional(),
+  mailboxArchived: z.enum(["exclude", "include", "only"]).default("exclude"),
   cursor: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -141,6 +142,7 @@ export async function GET(request: NextRequest) {
       tagId: searchParams.get("tagId") || undefined,
       status: searchParams.get("status") || undefined,
       excludeArchived: searchParams.get("excludeArchived") || undefined,
+      mailboxArchived: searchParams.get("mailboxArchived") || undefined,
       cursor: searchParams.get("cursor") || undefined,
       page: searchParams.get("page") || undefined,
       limit: searchParams.get("limit") || searchParams.get("take") || undefined,
@@ -159,12 +161,26 @@ export async function GET(request: NextRequest) {
     const useCursor = mode === "cursor" || typeof parsed.cursor === "string";
     const usePage = !useCursor && (mode === "page" || typeof parsed.page === "number");
 
+    const mailboxArchivedWhere =
+      parsed.mailboxId || parsed.mailboxArchived === "include"
+        ? {}
+        : parsed.mailboxArchived === "only"
+          ? { archivedAt: { not: null } }
+          : { archivedAt: null };
+
+    const mailboxArchivedSql =
+      parsed.mailboxId || parsed.mailboxArchived === "include"
+        ? Prisma.empty
+        : parsed.mailboxArchived === "only"
+          ? Prisma.sql`AND m.archivedAt IS NOT NULL`
+          : Prisma.sql`AND m.archivedAt IS NULL`;
+
     const cursorEmail = useCursor
       ? await prisma.email.findFirst({
           where: {
             id: parsed.cursor,
             ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
-            mailbox: { userId: session.user.id },
+            mailbox: { userId: session.user.id, ...mailboxArchivedWhere },
             ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
           },
           select: { id: true, receivedAt: true },
@@ -215,6 +231,7 @@ export async function GET(request: NextRequest) {
               JOIN emails e ON e.id = emails_fts.emailId
               JOIN mailboxes m ON m.id = e.mailboxId
               WHERE m.userId = ${session.user.id}
+                ${mailboxArchivedSql}
                 AND emails_fts MATCH ${ftsQuery}
                 ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
                 ${
@@ -240,6 +257,7 @@ export async function GET(request: NextRequest) {
               JOIN emails e ON e.id = emails_fts.emailId
               JOIN mailboxes m ON m.id = e.mailboxId
               WHERE m.userId = ${session.user.id}
+                ${mailboxArchivedSql}
                 AND emails_fts MATCH ${ftsQuery}
                 ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
                 ${
@@ -301,7 +319,7 @@ export async function GET(request: NextRequest) {
       const fallbackWhere = {
         AND: [
           {
-            mailbox: { userId: session.user.id },
+            mailbox: { userId: session.user.id, ...mailboxArchivedWhere },
             ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
             ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
             ...(parsed.status
@@ -409,6 +427,7 @@ export async function GET(request: NextRequest) {
           JOIN emails e ON e.id = emails_fts.emailId
           JOIN mailboxes m ON m.id = e.mailboxId
           WHERE m.userId = ${session.user.id}
+            ${mailboxArchivedSql}
             AND emails_fts MATCH ${ftsQuery}
             ${parsed.mailboxId ? Prisma.sql`AND e.mailboxId = ${parsed.mailboxId}` : Prisma.empty}
             ${
@@ -468,7 +487,7 @@ export async function GET(request: NextRequest) {
     const fallbackWhere = {
       AND: [
         {
-          mailbox: { userId: session.user.id },
+          mailbox: { userId: session.user.id, ...mailboxArchivedWhere },
           ...(parsed.mailboxId ? { mailboxId: parsed.mailboxId } : {}),
           ...(parsed.tagId ? { emailTags: { some: { tagId: parsed.tagId } } } : {}),
           ...(parsed.status

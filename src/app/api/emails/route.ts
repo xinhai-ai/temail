@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const excludeArchived = searchParams.get("excludeArchived") === "true";
   const mailboxId = searchParams.get("mailboxId");
+  const mailboxArchived = searchParams.get("mailboxArchived") || "exclude";
   const tagId = searchParams.get("tagId");
   const mode = searchParams.get("mode");
   const cursor = searchParams.get("cursor");
@@ -27,8 +28,18 @@ export async function GET(request: NextRequest) {
     if (excludeArchived) excludedStatuses.push("ARCHIVED");
   }
 
+  const mailboxWhere = {
+    userId: session.user.id,
+    ...(!mailboxId &&
+      (mailboxArchived === "include"
+        ? {}
+        : mailboxArchived === "only"
+          ? { archivedAt: { not: null } }
+          : { archivedAt: null })),
+  };
+
   const where = {
-    mailbox: { userId: session.user.id },
+    mailbox: mailboxWhere,
     ...(search && {
       OR: [
         { subject: { contains: search } },
