@@ -420,6 +420,7 @@ model MailboxGroup {
   name        String
   color       String?
   description String?
+  sortOrder   Int       @default(0)
   userId      String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -427,6 +428,7 @@ model MailboxGroup {
   mailboxes   Mailbox[]
 
   @@unique([userId, name])
+  @@index([userId, sortOrder])
   @@map("mailbox_groups")
 }
 
