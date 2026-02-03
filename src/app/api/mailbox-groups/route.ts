@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const groups = await prisma.mailboxGroup.findMany({
     where: { userId: session.user.id },
     include: { _count: { select: { mailboxes: mailboxCountSelect } } },
-    orderBy: { name: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
 
   return NextResponse.json(groups);
@@ -52,14 +52,25 @@ export async function POST(request: NextRequest) {
   try {
     const data = createSchema.parse(bodyResult.data);
 
-    const created = await prisma.mailboxGroup.create({
-      data: {
-        name: data.name,
-        color: data.color,
-        description: data.description,
-        userId: session.user.id,
-      },
-      include: { _count: { select: { mailboxes: true } } },
+    const created = await prisma.$transaction(async (tx) => {
+      const last = await tx.mailboxGroup.findFirst({
+        where: { userId: session.user.id },
+        orderBy: [{ sortOrder: "desc" }, { createdAt: "desc" }],
+        select: { sortOrder: true },
+      });
+
+      const nextSortOrder = (last?.sortOrder ?? -1) + 1;
+
+      return tx.mailboxGroup.create({
+        data: {
+          name: data.name,
+          color: data.color,
+          description: data.description,
+          sortOrder: nextSortOrder,
+          userId: session.user.id,
+        },
+        include: { _count: { select: { mailboxes: true } } },
+      });
     });
 
     return NextResponse.json(created);
