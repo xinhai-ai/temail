@@ -82,6 +82,7 @@ export default function InboxPage() {
   const [renamingGroup, setRenamingGroup] = useState(false);
   const [renameGroupId, setRenameGroupId] = useState<string | null>(null);
   const [renameGroupName, setRenameGroupName] = useState("");
+  const [reorderingGroups, setReorderingGroups] = useState(false);
 
   const [editMailboxNoteDialogOpen, setEditMailboxNoteDialogOpen] = useState(false);
   const [editMailboxNoteMailboxId, setEditMailboxNoteMailboxId] = useState<string | null>(null);
@@ -107,34 +108,29 @@ export default function InboxPage() {
   const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
 
   const groupedMailboxes = useMemo(() => {
-    const grouped: Record<string, { group: MailboxGroup | null; mailboxes: Mailbox[] }> = {};
+    const items: Array<{ key: string; group: MailboxGroup | null; mailboxes: Mailbox[] }> = [];
+    const groupIdSet = new Set<string>();
 
     for (const group of groups) {
-      grouped[group.id] = { group, mailboxes: mailboxesByGroupKey[group.id] || [] };
+      groupIdSet.add(group.id);
+      items.push({
+        key: group.id,
+        group,
+        mailboxes: mailboxesByGroupKey[group.id] || [],
+      });
     }
 
-    grouped[UNGROUPED_SELECT_VALUE] = {
+    items.push({
+      key: UNGROUPED_SELECT_VALUE,
       group: null,
       mailboxes: mailboxesByGroupKey[UNGROUPED_SELECT_VALUE] || [],
-    };
+    });
 
     for (const [key, value] of Object.entries(mailboxesByGroupKey)) {
       if (key === UNGROUPED_SELECT_VALUE) continue;
-      if (grouped[key]) continue;
-      grouped[key] = { group: null, mailboxes: value };
+      if (groupIdSet.has(key)) continue;
+      items.push({ key, group: null, mailboxes: value });
     }
-
-    const items = Object.entries(grouped).map(([key, value]) => ({
-      key,
-      group: value.group,
-      mailboxes: value.mailboxes,
-    }));
-
-    items.sort((a, b) => {
-      if (a.key === UNGROUPED_SELECT_VALUE) return 1;
-      if (b.key === UNGROUPED_SELECT_VALUE) return -1;
-      return (a.group?.name || "").localeCompare(b.group?.name || "");
-    });
 
     return items;
   }, [groups, mailboxesByGroupKey, UNGROUPED_SELECT_VALUE]);
@@ -1263,7 +1259,7 @@ export default function InboxPage() {
 	        return;
 	      }
 
-	      setGroups((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+	      setGroups((prev) => [...prev, data]);
 	      toast.success(t("toast.groups.created"));
 	      setNewGroupName("");
 	      setGroupDialogOpen(false);
@@ -1352,22 +1348,69 @@ export default function InboxPage() {
         body: JSON.stringify({ name }),
       });
 	      const data = await res.json();
-	      if (!res.ok) {
-	        toast.error(data?.error || t("toast.groups.renameFailed"));
-	        return;
-	      }
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.groups.renameFailed"));
+        return;
+      }
 
       setGroups((prev) =>
-        prev.map((g) => (g.id === groupId ? { ...g, name } : g)).sort((a, b) => a.name.localeCompare(b.name))
+        prev.map((g) => (g.id === groupId ? { ...g, name } : g))
       );
       toast.success(t("toast.groups.renamed"));
       setRenameDialogOpen(false);
 	    } catch {
 	      toast.error(t("toast.groups.renameFailed"));
 	    } finally {
-	      setRenamingGroup(false);
-	    }
+      setRenamingGroup(false);
+    }
 	  };
+
+  const handleReorderGroups = async (orderedGroupIds: string[]) => {
+    if (reorderingGroups) return;
+    if (showArchivedMailboxes) return;
+    if (orderedGroupIds.length <= 1) return;
+
+    const prevGroups = groups;
+    if (prevGroups.length <= 1) return;
+
+    const groupById = new Map(prevGroups.map((group) => [group.id, group]));
+    const nextGroups: MailboxGroup[] = [];
+
+    for (const id of orderedGroupIds) {
+      const group = groupById.get(id);
+      if (!group) continue;
+      nextGroups.push(group);
+    }
+
+    const nextIdSet = new Set(nextGroups.map((group) => group.id));
+    for (const group of prevGroups) {
+      if (!nextIdSet.has(group.id)) {
+        nextGroups.push(group);
+      }
+    }
+
+    if (nextGroups.length !== prevGroups.length) return;
+
+    setGroups(nextGroups);
+    setReorderingGroups(true);
+    try {
+      const res = await fetch("/api/mailbox-groups/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds: nextGroups.map((group) => group.id) }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.groups.reorderFailed"));
+        setGroups(prevGroups);
+      }
+    } catch {
+      toast.error(t("toast.groups.reorderFailed"));
+      setGroups(prevGroups);
+    } finally {
+      setReorderingGroups(false);
+    }
+  };
 
   const handleDeleteGroup = (group: MailboxGroup) => {
     setDeleteGroup(group);
@@ -1719,6 +1762,7 @@ export default function InboxPage() {
               ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
               domains={domains}
               groups={groups}
+              reorderingGroups={reorderingGroups}
               groupedMailboxes={groupedMailboxes}
               collapsedGroups={collapsedGroups}
               mailboxCount={mailboxCount}
@@ -1752,14 +1796,15 @@ export default function InboxPage() {
               onMailboxSearchChange={handleMailboxSearchChange}
               onPrevMailboxSearchPage={goPrevMailboxSearchPage}
               onNextMailboxSearchPage={goNextMailboxSearchPage}
-	              onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
-	              onNextGroupMailboxesPage={goNextGroupMailboxesPage}
-	              onRetryGroupMailboxes={retryGroupMailboxes}
-	              onSelectMailbox={(id) => {
-	                handleSelectMailbox(id);
-	                setMobileTab("emails");
-	              }}
-	              onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
+              onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
+              onNextGroupMailboxesPage={goNextGroupMailboxesPage}
+              onRetryGroupMailboxes={retryGroupMailboxes}
+              onReorderGroups={handleReorderGroups}
+              onSelectMailbox={(id) => {
+                handleSelectMailbox(id);
+                setMobileTab("emails");
+              }}
+              onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
 	              onMailboxDialogOpenChange={setMailboxDialogOpen}
 	              onGroupDialogOpenChange={setGroupDialogOpen}
 	              onRenameDialogOpenChange={setRenameDialogOpen}
@@ -1856,6 +1901,7 @@ export default function InboxPage() {
             ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
             domains={domains}
             groups={groups}
+            reorderingGroups={reorderingGroups}
             groupedMailboxes={groupedMailboxes}
             collapsedGroups={collapsedGroups}
             mailboxCount={mailboxCount}
@@ -1889,13 +1935,14 @@ export default function InboxPage() {
             onMailboxSearchChange={handleMailboxSearchChange}
             onPrevMailboxSearchPage={goPrevMailboxSearchPage}
             onNextMailboxSearchPage={goNextMailboxSearchPage}
-	            onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
-	            onNextGroupMailboxesPage={goNextGroupMailboxesPage}
-	            onRetryGroupMailboxes={retryGroupMailboxes}
-	            onSelectMailbox={handleSelectMailbox}
-	            onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
-	            onMailboxDialogOpenChange={setMailboxDialogOpen}
-	            onGroupDialogOpenChange={setGroupDialogOpen}
+            onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
+            onNextGroupMailboxesPage={goNextGroupMailboxesPage}
+            onRetryGroupMailboxes={retryGroupMailboxes}
+            onReorderGroups={handleReorderGroups}
+            onSelectMailbox={handleSelectMailbox}
+            onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
+            onMailboxDialogOpenChange={setMailboxDialogOpen}
+            onGroupDialogOpenChange={setGroupDialogOpen}
 	            onRenameDialogOpenChange={setRenameDialogOpen}
             onNewMailboxDomainIdChange={setNewMailboxDomainId}
             onNewMailboxPrefixChange={setNewMailboxPrefix}

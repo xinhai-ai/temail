@@ -1199,6 +1199,12 @@
       "newMailbox": "新建邮箱",
       "newGroup": "新建分组",
       "summary": "{mailboxCount} 个邮箱 • {groupCount} 个分组",
+      "groups": {
+        "reorder": {
+          "aria": "拖拽以调整分组顺序",
+          "tooltip": "拖拽排序"
+        }
+      },
       "pagination": {
         "loadMore": "加载更多",
         "loading": "加载中...",
@@ -1446,6 +1452,7 @@
         "created": "分组已创建",
         "renameFailed": "重命名分组失败",
         "renamed": "分组已重命名",
+        "reorderFailed": "调整分组顺序失败",
         "deleteFailed": "删除分组失败",
         "deleted": "分组已删除"
       },

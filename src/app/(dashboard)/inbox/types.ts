@@ -7,6 +7,7 @@ export type MailboxGroup = {
   id: string;
   name: string;
   color?: string | null;
+  sortOrder?: number;
   _count?: { mailboxes: number };
 };
 

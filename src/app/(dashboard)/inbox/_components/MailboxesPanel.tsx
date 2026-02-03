@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, type HTMLAttributes, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +40,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
 import {
   Archive,
@@ -51,6 +54,7 @@ import {
   Copy,
   FolderInput,
   FolderMinus,
+  GripVertical,
   Inbox,
   MailOpen,
   MoreHorizontal,
@@ -74,6 +78,7 @@ type MailboxesPanelProps = {
   ungroupedSelectValue: string;
   domains: Domain[];
   groups: MailboxGroup[];
+  reorderingGroups: boolean;
   groupedMailboxes: GroupedMailboxesItem[];
   collapsedGroups: Record<string, boolean>;
   mailboxCount: number;
@@ -110,6 +115,7 @@ type MailboxesPanelProps = {
   onPrevGroupMailboxesPage: (key: string) => void;
   onNextGroupMailboxesPage: (key: string) => void;
   onRetryGroupMailboxes: (key: string) => void;
+  onReorderGroups: (orderedGroupIds: string[]) => void;
   onSelectMailbox: (id: string | null) => void;
   onToggleArchivedMailboxes: () => void;
   onMailboxDialogOpenChange: (open: boolean) => void;
@@ -141,10 +147,43 @@ type MailboxesPanelProps = {
   refreshCooldown: number; // remaining seconds
 };
 
+type SortableGroupProps = {
+  id: string;
+  disabled: boolean;
+  children: (props: {
+    setActivatorNodeRef: (node: HTMLElement | null) => void;
+    listeners: HTMLAttributes<HTMLButtonElement>;
+    attributes: HTMLAttributes<HTMLButtonElement>;
+  }) => ReactNode;
+};
+
+function SortableGroup({ id, disabled, children }: SortableGroupProps) {
+  const { setNodeRef, setActivatorNodeRef, listeners, attributes, transform, transition, isDragging } = useSortable({
+    id,
+    disabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={cn("space-y-1", isDragging && "opacity-60")}>
+      {children({
+        setActivatorNodeRef,
+        listeners: (listeners || {}) as HTMLAttributes<HTMLButtonElement>,
+        attributes: (attributes || {}) as HTMLAttributes<HTMLButtonElement>,
+      })}
+    </div>
+  );
+}
+
 export function MailboxesPanel({
   ungroupedSelectValue,
   domains,
   groups,
+  reorderingGroups,
   groupedMailboxes,
   collapsedGroups,
   mailboxCount,
@@ -181,6 +220,7 @@ export function MailboxesPanel({
   onPrevGroupMailboxesPage,
   onNextGroupMailboxesPage,
   onRetryGroupMailboxes,
+  onReorderGroups,
   onSelectMailbox,
   onToggleArchivedMailboxes,
   onMailboxDialogOpenChange,
@@ -217,6 +257,20 @@ export function MailboxesPanel({
   const mailboxSearchQuery = mailboxSearch.trim();
   const isSearchMode = mailboxSearchQuery.length > 0;
   const [openContextMenuMailboxId, setOpenContextMenuMailboxId] = useState<string | null>(null);
+  const sortableGroupIds = useMemo(
+    () =>
+      groupedMailboxes
+        .filter((item) => item.key !== ungroupedSelectValue && item.group)
+        .map((item) => item.key),
+    [groupedMailboxes, ungroupedSelectValue]
+  );
+  const dragGroupsEnabled = !isSearchMode && !showArchivedMailboxes && sortableGroupIds.length > 1;
+  const dragGroupsDisabled = reorderingGroups || !dragGroupsEnabled;
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    })
+  );
   const displayGroupCount = showArchivedMailboxes
     ? groups.filter((group) => (group._count?.mailboxes ?? 0) > 0).length
     : groups.length;
@@ -402,6 +456,22 @@ export function MailboxesPanel({
         </ContextMenuContent>
       </ContextMenu>
     );
+  };
+
+  const handleGroupDragEnd = (event: DragEndEvent) => {
+    if (dragGroupsDisabled) return;
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    if (activeId === overId) return;
+
+    const oldIndex = sortableGroupIds.indexOf(activeId);
+    const newIndex = sortableGroupIds.indexOf(overId);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    onReorderGroups(arrayMove(sortableGroupIds, oldIndex, newIndex));
   };
 
   return (
@@ -643,8 +713,8 @@ export function MailboxesPanel({
             : t("mailboxes.summary", { mailboxCount, groupCount: displayGroupCount })}
         </span>
 
-        {isSearchMode ? (
-          <div className="space-y-2">
+	        {isSearchMode ? (
+	          <div className="space-y-2">
             {loadingMailboxSearch && mailboxSearchResults.length === 0 ? (
               renderMailboxSkeletonList(6)
             ) : mailboxSearchResults.length === 0 ? (
@@ -687,167 +757,221 @@ export function MailboxesPanel({
               </div>
             </div>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {groupedMailboxes.map((groupItem) => {
-              const label =
-                groupItem.key === ungroupedSelectValue
-                  ? t("mailboxes.dialog.ungrouped")
-                  : groupItem.group?.name || t("mailboxes.context.group");
-              const collapsed = Boolean(collapsedGroups[groupItem.key]);
-              const loading = Boolean(loadingMailboxesByGroupKey[groupItem.key]);
-              const error = mailboxErrorsByGroupKey[groupItem.key];
-              const pagination = mailboxPaginationByGroupKey[groupItem.key];
-              const page = pagination?.page || 1;
-              const pages = pagination?.pages || 1;
-              const loadedCount = groupItem.mailboxes.length;
-              const totalFromGroupCount = groupItem.key === ungroupedSelectValue ? undefined : groupItem.group?._count?.mailboxes;
-              const total =
-                typeof pagination?.total === "number"
-                  ? pagination.total
-                  : typeof totalFromGroupCount === "number"
-                    ? totalFromGroupCount
-                    : loadedCount;
+	        ) : (
+	          <div className="space-y-2">
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
+                <SortableContext items={dragGroupsEnabled ? sortableGroupIds : []} strategy={verticalListSortingStrategy}>
+                  {groupedMailboxes.map((groupItem) => {
+                    const label =
+                      groupItem.key === ungroupedSelectValue
+                        ? t("mailboxes.dialog.ungrouped")
+                        : groupItem.group?.name || t("mailboxes.context.group");
+                    const collapsed = Boolean(collapsedGroups[groupItem.key]);
+                    const loading = Boolean(loadingMailboxesByGroupKey[groupItem.key]);
+                    const error = mailboxErrorsByGroupKey[groupItem.key];
+                    const pagination = mailboxPaginationByGroupKey[groupItem.key];
+                    const page = pagination?.page || 1;
+                    const pages = pagination?.pages || 1;
+                    const loadedCount = groupItem.mailboxes.length;
+                    const totalFromGroupCount =
+                      groupItem.key === ungroupedSelectValue ? undefined : groupItem.group?._count?.mailboxes;
+                    const total =
+                      typeof pagination?.total === "number"
+                        ? pagination.total
+                        : typeof totalFromGroupCount === "number"
+                          ? totalFromGroupCount
+                          : loadedCount;
 
-              const countLabel = String(total);
-              const showPager = pages > 1;
+                    const countLabel = String(total);
+                    const showPager = pages > 1;
 
-              if (showArchivedMailboxes && total <= 0 && groupItem.key !== ungroupedSelectValue) {
-                return null;
-              }
+                    if (showArchivedMailboxes && total <= 0 && groupItem.key !== ungroupedSelectValue) {
+                      return null;
+                    }
 
-              return (
-                <div key={groupItem.key} className="space-y-1">
-                  <ContextMenu>
-                    <ContextMenuTrigger asChild>
-                      <div className="flex items-center justify-between px-1 py-1">
-                        <button
-                          type="button"
-                          onClick={() => onToggleGroupCollapse(groupItem.key)}
-                          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider hover:text-muted-foreground"
-                        >
-                          {collapsed ? (
-                            <ChevronRight className="h-3 w-3" />
-                          ) : (
-                            <ChevronDown className="h-3 w-3" />
-                          )}
-                          {label}
-                        </button>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[11px] text-muted-foreground tabular-nums">
-                            {countLabel}
-                          </span>
-                          {groupItem.group && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
+                    const isSortable =
+                      dragGroupsEnabled && groupItem.key !== ungroupedSelectValue && Boolean(groupItem.group);
+
+                    const renderGroup = (drag?: {
+                      setActivatorNodeRef: (node: HTMLElement | null) => void;
+                      listeners: HTMLAttributes<HTMLButtonElement>;
+                      attributes: HTMLAttributes<HTMLButtonElement>;
+                    }) => (
+                      <>
+                        <ContextMenu>
+                          <ContextMenuTrigger asChild>
+                            <div className="flex items-center justify-between px-1 py-1">
+                              <div className="flex items-center gap-1 min-w-0">
+                                {drag ? (
+                                  <button
+                                    type="button"
+                                    ref={drag.setActivatorNodeRef}
+                                    aria-label={t("mailboxes.groups.reorder.aria")}
+                                    title={t("mailboxes.groups.reorder.tooltip")}
+                                    className={cn(
+                                      "h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors cursor-grab active:cursor-grabbing",
+                                      "hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                                      dragGroupsDisabled && "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
+                                    )}
+                                    disabled={dragGroupsDisabled}
+                                    {...drag.attributes}
+                                    {...drag.listeners}
+                                  >
+                                    <GripVertical className="h-4 w-4" />
+                                  </button>
+                                ) : null}
+
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleGroupCollapse(groupItem.key)}
+                                  className="flex items-center gap-1 text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider hover:text-muted-foreground truncate"
+                                >
+                                  {collapsed ? (
+                                    <ChevronRight className="h-3 w-3" />
+                                  ) : (
+                                    <ChevronDown className="h-3 w-3" />
+                                  )}
+                                  {label}
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[11px] text-muted-foreground tabular-nums">
+                                  {countLabel}
+                                </span>
+                                {groupItem.group && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
+                                        <Pencil />
+                                        {t("mailboxes.context.rename")}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
+                                      >
+                                        <Trash2 />
+                                        {tCommon("delete")}
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </div>
+                            </div>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-48">
+                            <ContextMenuLabel>{label}</ContextMenuLabel>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem onClick={() => onToggleGroupCollapse(groupItem.key)}>
+                              {collapsed ? <ChevronDown /> : <ChevronRight />}
+                              {collapsed ? t("mailboxes.context.expand") : t("mailboxes.context.collapse")}
+                            </ContextMenuItem>
+                            {groupItem.group ? (
+                              <>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
                                   <Pencil />
                                   {t("mailboxes.context.rename")}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
+                                </ContextMenuItem>
+                                <ContextMenuItem
                                   variant="destructive"
                                   onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
                                 >
                                   <Trash2 />
                                   {tCommon("delete")}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
+                                </ContextMenuItem>
+                              </>
+                            ) : null}
+                          </ContextMenuContent>
+                        </ContextMenu>
+
+                        {!collapsed ? (
+                          <div className="space-y-1">
+                            {error ? (
+                              <div className="rounded-md border bg-muted/20 px-2 py-2 space-y-2">
+                                <div className="text-xs text-muted-foreground break-words">{error}</div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => onRetryGroupMailboxes(groupItem.key)}
+                                  disabled={loading}
+                                >
+                                  {t("mailboxes.pagination.retry")}
+                                </Button>
+                              </div>
+                            ) : loading && loadedCount === 0 ? (
+                              renderMailboxSkeletonList(3)
+                            ) : (
+                              <div className="space-y-1">
+                                {groupItem.mailboxes.map((mailbox) => renderMailboxItem(mailbox))}
+                              </div>
+                            )}
+
+                            {!error && showPager ? (
+                              <div className="flex items-center justify-between gap-2 pt-1">
+                                <div className="text-xs text-muted-foreground">
+                                  {t("mailboxes.pagination.page", { page, pages })}
+                                  {loading ? (
+                                    <span className="text-muted-foreground/50">
+                                      {" "}
+                                      · {t("mailboxes.pagination.loading")}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => onPrevGroupMailboxesPage(groupItem.key)}
+                                    disabled={loading || page <= 1}
+                                  >
+                                    {t("mailboxes.pagination.prev")}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => onNextGroupMailboxesPage(groupItem.key)}
+                                    disabled={loading || page >= pages}
+                                  >
+                                    {t("mailboxes.pagination.next")}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </>
+                    );
+
+                    if (isSortable) {
+                      return (
+                        <SortableGroup key={groupItem.key} id={groupItem.key} disabled={dragGroupsDisabled}>
+                          {({ setActivatorNodeRef, attributes, listeners }) =>
+                            renderGroup({ setActivatorNodeRef, attributes, listeners })
+                          }
+                        </SortableGroup>
+                      );
+                    }
+
+                    return (
+                      <div key={groupItem.key} className="space-y-1">
+                        {renderGroup()}
                       </div>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="w-48">
-                      <ContextMenuLabel>{label}</ContextMenuLabel>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onClick={() => onToggleGroupCollapse(groupItem.key)}>
-                        {collapsed ? <ChevronDown /> : <ChevronRight />}
-                        {collapsed ? t("mailboxes.context.expand") : t("mailboxes.context.collapse")}
-                      </ContextMenuItem>
-                      {groupItem.group ? (
-                        <>
-                          <ContextMenuSeparator />
-                          <ContextMenuItem onClick={() => onOpenRenameGroup(groupItem.group as MailboxGroup)}>
-                            <Pencil />
-                            {t("mailboxes.context.rename")}
-                          </ContextMenuItem>
-                          <ContextMenuItem
-                            variant="destructive"
-                            onClick={() => onRequestDeleteGroup(groupItem.group as MailboxGroup)}
-                          >
-                            <Trash2 />
-                            {tCommon("delete")}
-                          </ContextMenuItem>
-                        </>
-                      ) : null}
-                    </ContextMenuContent>
-                  </ContextMenu>
-
-                  {!collapsed ? (
-                    <div className="space-y-1">
-                      {error ? (
-                        <div className="rounded-md border bg-muted/20 px-2 py-2 space-y-2">
-                          <div className="text-xs text-muted-foreground break-words">{error}</div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onRetryGroupMailboxes(groupItem.key)}
-                            disabled={loading}
-                          >
-                            {t("mailboxes.pagination.retry")}
-                          </Button>
-                        </div>
-                      ) : loading && loadedCount === 0 ? (
-                        renderMailboxSkeletonList(3)
-                      ) : (
-                        <div className="space-y-1">
-                          {groupItem.mailboxes.map((mailbox) => renderMailboxItem(mailbox))}
-                        </div>
-                      )}
-
-                      {!error && showPager ? (
-                        <div className="flex items-center justify-between gap-2 pt-1">
-                          <div className="text-xs text-muted-foreground">
-                            {t("mailboxes.pagination.page", { page, pages })}
-                            {loading ? <span className="text-muted-foreground/50"> · {t("mailboxes.pagination.loading")}</span> : null}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onPrevGroupMailboxesPage(groupItem.key)}
-                              disabled={loading || page <= 1}
-                            >
-                              {t("mailboxes.pagination.prev")}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onNextGroupMailboxesPage(groupItem.key)}
-                              disabled={loading || page >= pages}
-                            >
-                              {t("mailboxes.pagination.next")}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+	          </div>
+	        )}
+	      </CardContent>
+	    </Card>
   );
 }

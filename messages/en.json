@@ -1199,6 +1199,12 @@
       "newMailbox": "New Mailbox",
       "newGroup": "New Group",
       "summary": "{mailboxCount} mailboxes • {groupCount} groups",
+      "groups": {
+        "reorder": {
+          "aria": "Drag to reorder groups",
+          "tooltip": "Drag to reorder"
+        }
+      },
       "pagination": {
         "loadMore": "Load more",
         "loading": "Loading...",
@@ -1446,6 +1452,7 @@
         "created": "Group created",
         "renameFailed": "Failed to rename group",
         "renamed": "Group renamed",
+        "reorderFailed": "Failed to reorder groups",
         "deleteFailed": "Failed to delete group",
         "deleted": "Group deleted"
       },
