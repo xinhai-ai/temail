@@ -49,7 +49,7 @@ export function RouteProgressBar() {
   const finishTimeoutIdRef = useRef<number | null>(null);
   const hideTimeoutIdRef = useRef<number | null>(null);
   const safetyTimeoutIdRef = useRef<number | null>(null);
-  const startRafIdRef = useRef<number | null>(null);
+  const startTimeoutIdRef = useRef<number | null>(null);
 
   const clearTimers = () => {
     if (incrementIntervalIdRef.current !== null) {
@@ -68,23 +68,23 @@ export function RouteProgressBar() {
       window.clearTimeout(safetyTimeoutIdRef.current);
       safetyTimeoutIdRef.current = null;
     }
-    if (startRafIdRef.current !== null) {
-      window.cancelAnimationFrame(startRafIdRef.current);
-      startRafIdRef.current = null;
+    if (startTimeoutIdRef.current !== null) {
+      window.clearTimeout(startTimeoutIdRef.current);
+      startTimeoutIdRef.current = null;
     }
   };
 
   const scheduleStart = () => {
     if (!mountedRef.current) return;
-    if (startRafIdRef.current !== null) return;
-    startRafIdRef.current = window.requestAnimationFrame(() => {
-      startRafIdRef.current = null;
+    if (startTimeoutIdRef.current !== null) return;
+    startTimeoutIdRef.current = window.setTimeout(() => {
+      startTimeoutIdRef.current = null;
       start();
-    });
+    }, 0);
   };
 
   const start = () => {
-    if (statusRef.current === "loading") return;
+    if (statusRef.current !== "idle") return;
 
     clearTimers();
     statusRef.current = "loading";
@@ -113,9 +113,9 @@ export function RouteProgressBar() {
 
   const finish = () => {
     if (statusRef.current === "idle") {
-      if (startRafIdRef.current !== null) {
-        window.cancelAnimationFrame(startRafIdRef.current);
-        startRafIdRef.current = null;
+      if (startTimeoutIdRef.current !== null) {
+        window.clearTimeout(startTimeoutIdRef.current);
+        startTimeoutIdRef.current = null;
       }
       return;
     }
@@ -185,7 +185,7 @@ export function RouteProgressBar() {
         if (nextUrl.pathname === currentUrl.pathname && nextUrl.search === currentUrl.search) return;
         scheduleStart();
       } catch {
-        scheduleStart();
+        return;
       }
     };
 
