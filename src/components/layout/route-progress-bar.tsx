@@ -49,6 +49,7 @@ export function RouteProgressBar() {
   const finishTimeoutIdRef = useRef<number | null>(null);
   const hideTimeoutIdRef = useRef<number | null>(null);
   const safetyTimeoutIdRef = useRef<number | null>(null);
+  const startRafIdRef = useRef<number | null>(null);
 
   const clearTimers = () => {
     if (incrementIntervalIdRef.current !== null) {
@@ -67,11 +68,19 @@ export function RouteProgressBar() {
       window.clearTimeout(safetyTimeoutIdRef.current);
       safetyTimeoutIdRef.current = null;
     }
+    if (startRafIdRef.current !== null) {
+      window.cancelAnimationFrame(startRafIdRef.current);
+      startRafIdRef.current = null;
+    }
   };
 
   const scheduleStart = () => {
     if (!mountedRef.current) return;
-    start();
+    if (startRafIdRef.current !== null) return;
+    startRafIdRef.current = window.requestAnimationFrame(() => {
+      startRafIdRef.current = null;
+      start();
+    });
   };
 
   const start = () => {
