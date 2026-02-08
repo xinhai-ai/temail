@@ -126,6 +126,7 @@ Perfect for building notification systems, customer support pipelines, email-to-
 | **Email Preview** | Shareable preview links with expiration |
 | **Full-Text Search** | Search emails by subject, sender, content |
 | **Tagging & Labeling** | Organize emails with custom tags |
+| **Installable PWA** | Install on desktop/mobile with offline app-shell fallback |
 
 ### Workflow Automation
 
