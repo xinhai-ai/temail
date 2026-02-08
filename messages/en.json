@@ -1562,7 +1562,42 @@
       "security": "Security",
       "api": "API",
       "data": "Data",
+      "pwa": "Install App",
       "about": "About"
+    },
+    "pwa": {
+      "title": "Install App",
+      "description": "Install TEmail for a faster, desktop-like experience on desktop and mobile.",
+      "status": {
+        "installed": "Installed",
+        "available": "Available to install",
+        "iosManual": "Install from Safari menu",
+        "unavailable": "Install not available now",
+        "unsupported": "Browser unsupported"
+      },
+      "actions": {
+        "install": "Install now"
+      },
+      "banner": {
+        "title": "Install TEmail",
+        "description": "Launch faster from your desktop or home screen.",
+        "install": "Install",
+        "installing": "Installing...",
+        "later": "Later",
+        "gotIt": "Got it",
+        "dismiss": "Dismiss"
+      },
+      "ios": {
+        "title": "On iPhone/iPad Safari",
+        "step1": "Tap the Share button in Safari.",
+        "step2": "Then choose “Add to Home Screen”."
+      },
+      "toasts": {
+        "installed": "App installed",
+        "dismissed": "Installation dismissed",
+        "unavailable": "Install is currently unavailable",
+        "failed": "Failed to start installation"
+      }
     },
     "profile": {
       "title": "Profile",

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export function AppShell({
           <Header isAdmin={isAdmin} />
           <main className="p-4 md:p-6">{children}</main>
         </div>
+        <InstallPrompt />
       </div>
     </TooltipProvider>
   );

@@ -1562,7 +1562,42 @@
       "security": "安全",
       "api": "API",
       "data": "数据",
+      "pwa": "安装应用",
       "about": "关于"
+    },
+    "pwa": {
+      "title": "安装应用",
+      "description": "将 TEmail 安装到桌面或手机主屏，获得更快、更像原生应用的体验。",
+      "status": {
+        "installed": "已安装",
+        "available": "可安装",
+        "iosManual": "请在 Safari 菜单中安装",
+        "unavailable": "当前不可安装",
+        "unsupported": "浏览器不支持"
+      },
+      "actions": {
+        "install": "立即安装"
+      },
+      "banner": {
+        "title": "安装 TEmail",
+        "description": "安装后可从桌面或主屏快速打开。",
+        "install": "安装",
+        "installing": "安装中...",
+        "later": "稍后",
+        "gotIt": "知道了",
+        "dismiss": "关闭"
+      },
+      "ios": {
+        "title": "iPhone/iPad Safari 安装方式",
+        "step1": "在 Safari 点击“分享”按钮。",
+        "step2": "然后选择“添加到主屏幕”。"
+      },
+      "toasts": {
+        "installed": "应用已安装",
+        "dismissed": "已取消安装",
+        "unavailable": "当前无法安装",
+        "failed": "启动安装失败"
+      }
     },
     "profile": {
       "title": "个人资料",
