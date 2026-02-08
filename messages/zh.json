@@ -9,7 +9,8 @@
     "edit": "编辑",
     "create": "创建",
     "search": "搜索",
-    "actions": "操作"
+    "actions": "操作",
+    "none": "（无）"
   },
   "policy": {
     "featureDisabled": "你的用户组已禁用此功能。",

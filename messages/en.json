@@ -9,7 +9,8 @@
     "edit": "Edit",
     "create": "Create",
     "search": "Search",
-    "actions": "Actions"
+    "actions": "Actions",
+    "none": "(none)"
   },
   "policy": {
     "featureDisabled": "This feature is disabled for your group.",
