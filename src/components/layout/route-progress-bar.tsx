@@ -112,7 +112,13 @@ export function RouteProgressBar() {
   };
 
   const finish = () => {
-    if (statusRef.current === "idle") return;
+    if (statusRef.current === "idle") {
+      if (startRafIdRef.current !== null) {
+        window.cancelAnimationFrame(startRafIdRef.current);
+        startRafIdRef.current = null;
+      }
+      return;
+    }
     if (statusRef.current === "finishing") return;
 
     statusRef.current = "finishing";
