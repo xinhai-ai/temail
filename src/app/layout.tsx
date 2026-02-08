@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   title: "TEmail",
   description: "Self-hosted inbound email pipeline",
   manifest: "/manifest.webmanifest",
-  themeColor: "#ce8f35",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -38,6 +37,10 @@ export const metadata: Metadata = {
       { url: "/pwa-512.png", sizes: "512x512", type: "image/png" },
     ],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ce8f35",
 };
 
 export default async function RootLayout({
