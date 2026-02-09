@@ -5,8 +5,6 @@ export type NodeManualLoader = () => Promise<{ default: NodeManual }>;
 
 export const nodeManualLoaders: Record<NodeType, NodeManualLoader> = {
   "trigger:email": () => import("./trigger-email"),
-  "trigger:schedule": () => import("./trigger-schedule"),
-  "trigger:manual": () => import("./trigger-manual"),
 
   "condition:match": () => import("./condition-match"),
   "condition:keyword": () => import("./condition-keyword"),

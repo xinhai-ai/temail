@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateWorkflowSchema, validateWorkflowConfig } from "@/lib/workflow/schema";
+import { normalizeWorkflowConfigForPolicy } from "@/lib/workflow/normalize";
 import { validateWorkflow } from "@/lib/workflow/utils";
 import { readJsonBody } from "@/lib/request";
 import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
@@ -107,15 +108,40 @@ export async function PATCH(
 
     const { name, description, status, mailboxId, config } = parsed.data;
 
+    let normalizedConfig: ReturnType<typeof normalizeWorkflowConfigForPolicy>["config"] | undefined;
+    if (config !== undefined) {
+      const normalized = normalizeWorkflowConfigForPolicy(config);
+      normalizedConfig = normalized.config;
+
+      const cfgParse = validateWorkflowConfig(normalizedConfig);
+      if (!cfgParse.success) {
+        return NextResponse.json({ error: "Invalid workflow config" }, { status: 400 });
+      }
+
+      const checks = validateWorkflow(cfgParse.data);
+      const errors = checks.filter((e) => e.type === "error");
+      if (errors.length > 0) {
+        return NextResponse.json({ error: "Workflow config is not executable", details: errors }, { status: 400 });
+      }
+
+      normalizedConfig = cfgParse.data;
+    }
+
     const nextStatus = status ?? workflow.status;
     if (nextStatus === "ACTIVE") {
-      const configCandidate = config ?? (() => {
+      const configRaw = normalizedConfig ?? (() => {
         try {
           return JSON.parse(workflow.config) as unknown;
         } catch {
           return null;
         }
       })();
+
+      const normalizedExisting = normalizeWorkflowConfigForPolicy(configRaw);
+      const configCandidate = normalizedExisting.config;
+      if (normalizedConfig === undefined && normalizedExisting.removedNodeIds.length > 0) {
+        normalizedConfig = configCandidate;
+      }
 
       const cfgParse = validateWorkflowConfig(configCandidate);
       if (!cfgParse.success) {
@@ -127,6 +153,8 @@ export async function PATCH(
       if (errors.length > 0) {
         return NextResponse.json({ error: "Workflow config is not executable", details: errors }, { status: 400 });
       }
+
+      normalizedConfig = cfgParse.data;
     }
 
     // Validate mailbox ownership if provided
@@ -153,7 +181,7 @@ export async function PATCH(
         ...(description !== undefined && { description }),
         ...(status !== undefined && { status }),
         ...(mailboxId !== undefined && { mailboxId }),
-        ...(config !== undefined && { config: JSON.stringify(config) }),
+        ...(normalizedConfig !== undefined && { config: JSON.stringify(normalizedConfig) }),
       },
       include: {
         mailbox: {

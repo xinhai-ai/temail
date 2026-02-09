@@ -19,8 +19,6 @@ const createNodeComponent = (nodeType: NodeType): ComponentType<NodeProps> => {
 export const nodeTypes: NodeTypes = {
   // 触发器
   "trigger:email": createNodeComponent("trigger:email"),
-  "trigger:schedule": createNodeComponent("trigger:schedule"),
-  "trigger:manual": createNodeComponent("trigger:manual"),
 
   // 条件判断
   "condition:match": createNodeComponent("condition:match"),

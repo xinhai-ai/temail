@@ -13,13 +13,26 @@ export function validateWorkflow(config: WorkflowConfig): ValidationError[] {
   const errors: ValidationError[] = [];
   const nodeIds = new Set(config.nodes.map((n) => n.id));
 
-  // 检查是否有触发器节点
+  // 检查触发器节点约束：必须且仅能有 1 个 trigger:email
   const triggerNodes = config.nodes.filter((n) => n.type.startsWith("trigger:"));
   if (triggerNodes.length === 0) {
     errors.push({
-      message: "Workflow must have at least one trigger node",
+      message: "Workflow must have exactly one trigger node",
       type: "error",
     });
+  } else {
+    if (triggerNodes.length > 1) {
+      errors.push({
+        message: "Workflow can only contain one trigger node",
+        type: "error",
+      });
+    }
+    if (triggerNodes.some((node) => node.type !== "trigger:email")) {
+      errors.push({
+        message: "Workflow trigger must be Email Trigger",
+        type: "error",
+      });
+    }
   }
 
   // 检查边的有效性

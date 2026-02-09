@@ -401,7 +401,6 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
   const d = data as Record<string, unknown>;
   switch (type) {
     case "trigger:email":
-    case "trigger:manual":
     case "action:archive":
     case "action:markRead":
     case "action:markUnread":
@@ -410,8 +409,6 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
     case "action:delete":
     case "control:end":
       return true;
-    case "trigger:schedule":
-      return !!(d.cron as string);
     case "condition:match":
       return !!(d.value as string);
     case "condition:keyword":
@@ -468,18 +465,6 @@ function getNodePreview(type: NodeType, data: NodeData, t: Translator): React.Re
       ) : (
         t("baseNode.preview.trigger.email.allIncoming")
       );
-
-    case "trigger:schedule":
-      const cron = d.cron as string;
-      if (!cron) return t("baseNode.preview.trigger.schedule.none");
-      return (
-        <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[11px]">
-          {cron}
-        </span>
-      );
-
-    case "trigger:manual":
-      return t("baseNode.preview.trigger.manual");
 
     case "condition:match":
       const field = d.field as string;

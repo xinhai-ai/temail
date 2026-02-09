@@ -32,6 +32,7 @@ type UserGroupInfo = {
     telegramEnabled: boolean;
     workflowEnabled: boolean;
     workflowForwardEmailEnabled: boolean;
+    workflowForwardWebhookEnabled: boolean;
     openApiEnabled: boolean;
   } | null;
   usage: { mailboxes: number; workflows: number };

@@ -27,8 +27,6 @@ export interface WorkflowEdge {
 export type NodeType =
   // 触发器
   | "trigger:email"
-  | "trigger:schedule"
-  | "trigger:manual"
   // 条件判断
   | "condition:match"
   | "condition:keyword"
@@ -65,8 +63,6 @@ export type NodeType =
 
 export type NodeData =
   | TriggerEmailData
-  | TriggerScheduleData
-  | TriggerManualData
   | ConditionMatchData
   | ConditionKeywordData
   | ConditionAiClassifierData
@@ -100,16 +96,6 @@ export interface TriggerEmailData {
   label?: string;
   mailboxId?: string;
   conditions?: MatchCondition[];
-}
-
-export interface TriggerScheduleData {
-  label?: string;
-  cron: string;
-  timezone?: string;
-}
-
-export interface TriggerManualData {
-  label?: string;
 }
 
 // ==================== 条件判断数据 ====================
@@ -541,28 +527,6 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     label: "Email Trigger",
     description: "Triggered when a new email is received",
     icon: "Mail",
-    color: "#3b82f6",
-    inputs: 0,
-    outputs: 1,
-    defaultData: {},
-  },
-  "trigger:schedule": {
-    type: "trigger:schedule",
-    category: "trigger",
-    label: "Schedule Trigger",
-    description: "Triggered on a schedule (cron)",
-    icon: "Clock",
-    color: "#3b82f6",
-    inputs: 0,
-    outputs: 1,
-    defaultData: { cron: "0 * * * *" },
-  },
-  "trigger:manual": {
-    type: "trigger:manual",
-    category: "trigger",
-    label: "Manual Trigger",
-    description: "Triggered manually by user",
-    icon: "Hand",
     color: "#3b82f6",
     inputs: 0,
     outputs: 1,

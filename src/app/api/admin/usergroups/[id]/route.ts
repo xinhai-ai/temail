@@ -14,6 +14,7 @@ const patchSchema = z.object({
   telegramEnabled: z.boolean().optional(),
   workflowEnabled: z.boolean().optional(),
   workflowForwardEmailEnabled: z.boolean().optional(),
+  workflowForwardWebhookEnabled: z.boolean().optional(),
   openApiEnabled: z.boolean().optional(),
   domainIds: z.array(z.string().trim().min(1)).max(10_000).optional(),
 });
@@ -41,6 +42,7 @@ export async function GET(
       telegramEnabled: true,
       workflowEnabled: true,
       workflowForwardEmailEnabled: true,
+      workflowForwardWebhookEnabled: true,
       openApiEnabled: true,
       createdAt: true,
       updatedAt: true,
@@ -90,6 +92,7 @@ export async function PATCH(
           ...(data.telegramEnabled !== undefined && { telegramEnabled: data.telegramEnabled }),
           ...(data.workflowEnabled !== undefined && { workflowEnabled: data.workflowEnabled }),
           ...(data.workflowForwardEmailEnabled !== undefined && { workflowForwardEmailEnabled: data.workflowForwardEmailEnabled }),
+          ...(data.workflowForwardWebhookEnabled !== undefined && { workflowForwardWebhookEnabled: data.workflowForwardWebhookEnabled }),
           ...(data.openApiEnabled !== undefined && { openApiEnabled: data.openApiEnabled }),
         },
         select: {
@@ -102,6 +105,7 @@ export async function PATCH(
           telegramEnabled: true,
           workflowEnabled: true,
           workflowForwardEmailEnabled: true,
+          workflowForwardWebhookEnabled: true,
           openApiEnabled: true,
           createdAt: true,
           updatedAt: true,

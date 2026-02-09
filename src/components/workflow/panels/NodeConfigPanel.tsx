@@ -215,35 +215,6 @@ function renderNodeConfig(
         </div>
       );
 
-    case "trigger:schedule":
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="cron" className="text-xs font-medium">{t("nodeConfigPanel.triggerSchedule.cronExpression")}</Label>
-            <Input
-              id="cron"
-              value={(data.cron as string) || ""}
-              onChange={(e) => onChange("cron", e.target.value)}
-              placeholder="0 * * * *"
-              className="h-8 text-sm font-mono"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("nodeConfigPanel.triggerSchedule.examples")}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="timezone" className="text-xs font-medium">{t("nodeConfigPanel.triggerSchedule.timezone")}</Label>
-            <Input
-              id="timezone"
-              value={(data.timezone as string) || ""}
-              onChange={(e) => onChange("timezone", e.target.value)}
-              placeholder="UTC"
-              className="h-8 text-sm"
-            />
-          </div>
-        </div>
-      );
-
     case "condition:match":
       return (
         <SimpleConditionEditor

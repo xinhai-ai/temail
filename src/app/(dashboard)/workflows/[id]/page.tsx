@@ -15,6 +15,7 @@ import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { ExecutionLogsPanel } from "@/components/workflow/panels/ExecutionLogsPanel";
 import { WorkflowTestDialog } from "@/components/workflow/WorkflowTestDialog";
 import { useWorkflowStore } from "@/lib/workflow/store";
+import { normalizeTypedWorkflowConfigForPolicy } from "@/lib/workflow/normalize";
 import { validateWorkflow } from "@/lib/workflow/utils";
 import { useTranslations } from "next-intl";
 import type { NodeType, WorkflowConfig } from "@/lib/workflow/types";
@@ -25,6 +26,7 @@ type UserGroupInfo = {
   userGroup: {
     telegramEnabled: boolean;
     workflowForwardEmailEnabled: boolean;
+    workflowForwardWebhookEnabled: boolean;
   } | null;
 };
 
@@ -35,6 +37,7 @@ function getDisabledWorkflowNodeTypes(params: {
   const disabled = new Set<NodeType>();
   if (params.vercelMode) disabled.add("forward:email");
   if (params.userGroup && !params.userGroup.workflowForwardEmailEnabled) disabled.add("forward:email");
+  if (params.userGroup && !params.userGroup.workflowForwardWebhookEnabled) disabled.add("forward:webhook");
   if (params.userGroup && !params.userGroup.telegramEnabled) {
     disabled.add("forward:telegram");
     disabled.add("forward:telegram-bound");
@@ -43,19 +46,12 @@ function getDisabledWorkflowNodeTypes(params: {
 }
 
 function pruneWorkflowConfig(config: WorkflowConfig, disabledTypes: Set<NodeType>) {
-  const removedTypes = new Set<NodeType>();
-  const keptNodes = config.nodes.filter((node) => {
-    const blocked = disabledTypes.has(node.type);
-    if (blocked) removedTypes.add(node.type);
-    return !blocked;
+  const normalized = normalizeTypedWorkflowConfigForPolicy(config, {
+    disabledTypes,
   });
-
-  const keptNodeIds = new Set(keptNodes.map((n) => n.id));
-  const keptEdges = config.edges.filter((edge) => keptNodeIds.has(edge.source) && keptNodeIds.has(edge.target));
-
   return {
-    config: { ...config, nodes: keptNodes, edges: keptEdges },
-    removedTypes: Array.from(removedTypes).sort(),
+    config: normalized.config,
+    removedTypes: normalized.removedTypes,
   };
 }
 

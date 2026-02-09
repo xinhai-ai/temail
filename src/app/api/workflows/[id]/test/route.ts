@@ -6,6 +6,7 @@ import { logWorkflowDispatch, updateDispatchLogExecution, getExecutionSummary } 
 import type { WorkflowConfig, EmailContext } from "@/lib/workflow/types";
 import { readJsonBody } from "@/lib/request";
 import { validateWorkflowConfig } from "@/lib/workflow/schema";
+import { normalizeWorkflowConfigForPolicy } from "@/lib/workflow/normalize";
 import { validateWorkflow } from "@/lib/workflow/utils";
 
 function getOptionalString(data: Record<string, unknown>, key: string) {
@@ -77,7 +78,8 @@ export async function POST(
             }
           })();
 
-    const cfgParse = validateWorkflowConfig(config);
+    const normalized = normalizeWorkflowConfigForPolicy(config);
+    const cfgParse = validateWorkflowConfig(normalized.config);
     if (!cfgParse.success) {
       return NextResponse.json({ error: "Invalid workflow config" }, { status: 400 });
     }

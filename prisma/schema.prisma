@@ -32,6 +32,7 @@ model UserGroup {
   telegramEnabled Boolean              @default(true)
   workflowEnabled Boolean              @default(true)
   workflowForwardEmailEnabled Boolean  @default(false)
+  workflowForwardWebhookEnabled Boolean @default(true)
   openApiEnabled Boolean               @default(true)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt

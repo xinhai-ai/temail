@@ -41,16 +41,6 @@ const triggerEmailDataSchema = z.object({
   conditions: z.array(matchConditionSchema).optional(),
 });
 
-const triggerScheduleDataSchema = z.object({
-  label: z.string().optional(),
-  cron: z.string().min(1),
-  timezone: z.string().optional(),
-});
-
-const triggerManualDataSchema = z.object({
-  label: z.string().optional(),
-});
-
 // 条件判断
 const conditionMatchDataSchema = z.object({
   label: z.string().optional(),
@@ -253,8 +243,6 @@ const controlEndDataSchema = z.object({
 
 const nodeTypeToDataSchema: Record<string, z.ZodType> = {
   "trigger:email": triggerEmailDataSchema,
-  "trigger:schedule": triggerScheduleDataSchema,
-  "trigger:manual": triggerManualDataSchema,
   "condition:match": conditionMatchDataSchema,
   "condition:keyword": conditionKeywordDataSchema,
   "condition:ai-classifier": conditionAiClassifierDataSchema,
@@ -289,8 +277,6 @@ const nodeTypeToDataSchema: Record<string, z.ZodType> = {
 
 const nodeTypeSchema = z.enum([
   "trigger:email",
-  "trigger:schedule",
-  "trigger:manual",
   "condition:match",
   "condition:keyword",
   "condition:ai-classifier",

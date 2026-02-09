@@ -378,6 +378,8 @@
         "workflowDesc": "工作流系统",
         "workflowForwardEmail": "工作流发信",
         "workflowForwardEmailDesc": "允许使用 forward:email 节点（SMTP 转发）",
+        "workflowForwardWebhook": "工作流 Webhook 转发",
+        "workflowForwardWebhookDesc": "允许使用 forward:webhook 节点（自定义 Webhook 调用）",
         "openapi": "OpenAPI",
         "openapiDesc": "API Key 与 Open 接口"
       },

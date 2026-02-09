@@ -378,6 +378,8 @@
         "workflowDesc": "Workflow system",
         "workflowForwardEmail": "Workflow Email Forwarding",
         "workflowForwardEmailDesc": "Allow the forward:email node (SMTP forwarding)",
+        "workflowForwardWebhook": "Workflow Webhook Forwarding",
+        "workflowForwardWebhookDesc": "Allow the forward:webhook node (custom webhook call)",
         "openapi": "OpenAPI",
         "openapiDesc": "API keys and Open endpoints"
       },

@@ -24,7 +24,7 @@ import { getRestoreStatusForTrash } from "@/services/email-trash";
 import { getTelegramBotToken, getTelegramForumGeneralTopicName, telegramCreateForumTopic } from "@/services/telegram/bot-api";
 import { getSystemSettingValue } from "@/services/system-settings";
 import { sendSmtpMail } from "@/services/smtp/mailer";
-import { assertUserGroupWorkflowForwardEmailEnabled } from "@/services/usergroups/policy";
+import { assertUserGroupWorkflowForwardEmailEnabled, assertUserGroupWorkflowForwardWebhookEnabled } from "@/services/usergroups/policy";
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -66,11 +66,9 @@ export async function executeNode(
   const { type, data } = node;
 
   switch (type) {
-    // Triggers (no-op in execution, just pass through)
-    case "trigger:email":
-    case "trigger:schedule":
-    case "trigger:manual":
-      return true;
+  // Triggers (no-op in execution, just pass through)
+  case "trigger:email":
+    return true;
 
     // Conditions
     case "condition:match":
@@ -1289,6 +1287,14 @@ async function executeForwardWebhook(
   context: ExecutionContext
 ): Promise<boolean> {
   const templateCtx = buildTemplateContext(context);
+
+  if (context.userId) {
+    const allowed = await assertUserGroupWorkflowForwardWebhookEnabled({ userId: context.userId });
+    if (!allowed.ok) {
+      console.warn("[workflow] Webhook forwarding blocked by user group:", allowed.error);
+      return true;
+    }
+  }
 
   // 测试模式下跳过实际发送
   if (context.isTestMode) {

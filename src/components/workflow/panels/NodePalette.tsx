@@ -7,8 +7,6 @@ import { useTranslations } from "next-intl";
 import { isVercelDeployment } from "@/lib/deployment/public";
 import {
   Mail,
-  Clock,
-  Hand,
   Search,
   Tag,
   Brain,
@@ -34,8 +32,6 @@ import {
 // 图标映射
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Mail,
-  Clock,
-  Hand,
   Search,
   Tag,
   Brain,
@@ -61,7 +57,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 const categoryTypes = [
   {
     id: "trigger",
-    types: ["trigger:email", "trigger:schedule", "trigger:manual"] as NodeType[],
+    types: ["trigger:email"] as NodeType[],
   },
   {
     id: "condition",
@@ -103,6 +99,7 @@ type UserGroupInfo = {
   userGroup: {
     telegramEnabled: boolean;
     workflowForwardEmailEnabled: boolean;
+    workflowForwardWebhookEnabled: boolean;
   } | null;
 };
 
@@ -165,6 +162,7 @@ export function NodePalette({ collapsed = false }: NodePaletteProps) {
   const disabledNodeTypes = new Set<NodeType>();
   if (vercelMode) disabledNodeTypes.add("forward:email");
   if (userGroup && !userGroup.workflowForwardEmailEnabled) disabledNodeTypes.add("forward:email");
+  if (userGroup && !userGroup.workflowForwardWebhookEnabled) disabledNodeTypes.add("forward:webhook");
   if (userGroup && !userGroup.telegramEnabled) {
     disabledNodeTypes.add("forward:telegram");
     disabledNodeTypes.add("forward:telegram-bound");

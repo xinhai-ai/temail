@@ -167,7 +167,7 @@ export class WorkflowEngine {
 
     const node = this.config.nodes.find((n) => n.id === nodeId);
     if (!node) {
-      this.log(nodeId, "trigger:manual", "failed", `Node not found: ${nodeId}`);
+      this.log(nodeId, "trigger:email", "failed", `Node not found: ${nodeId}`);
       return;
     }
 

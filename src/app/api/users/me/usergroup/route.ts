@@ -20,6 +20,7 @@ export async function GET() {
           telegramEnabled: true,
           workflowEnabled: true,
           workflowForwardEmailEnabled: true,
+          workflowForwardWebhookEnabled: true,
           openApiEnabled: true,
         },
       },
@@ -42,4 +43,3 @@ export async function GET() {
     usage: { mailboxes, workflows },
   });
 }
-

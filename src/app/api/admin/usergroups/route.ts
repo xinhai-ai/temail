@@ -13,6 +13,7 @@ const createSchema = z.object({
   telegramEnabled: z.boolean().optional(),
   workflowEnabled: z.boolean().optional(),
   workflowForwardEmailEnabled: z.boolean().optional(),
+  workflowForwardWebhookEnabled: z.boolean().optional(),
   openApiEnabled: z.boolean().optional(),
   domainIds: z.array(z.string().trim().min(1)).max(10_000).optional(),
 });
@@ -35,6 +36,7 @@ export async function GET() {
       telegramEnabled: true,
       workflowEnabled: true,
       workflowForwardEmailEnabled: true,
+      workflowForwardWebhookEnabled: true,
       openApiEnabled: true,
       createdAt: true,
       updatedAt: true,
@@ -71,6 +73,7 @@ export async function POST(request: NextRequest) {
           telegramEnabled: data.telegramEnabled,
           workflowEnabled: data.workflowEnabled,
           workflowForwardEmailEnabled: data.workflowForwardEmailEnabled,
+          workflowForwardWebhookEnabled: data.workflowForwardWebhookEnabled,
           openApiEnabled: data.openApiEnabled,
         },
         select: {
@@ -83,6 +86,7 @@ export async function POST(request: NextRequest) {
           telegramEnabled: true,
           workflowEnabled: true,
           workflowForwardEmailEnabled: true,
+          workflowForwardWebhookEnabled: true,
           openApiEnabled: true,
           createdAt: true,
           updatedAt: true,

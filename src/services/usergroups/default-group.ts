@@ -19,6 +19,7 @@ export async function getOrCreateDefaultUserGroupId(): Promise<string> {
         telegramEnabled: true,
         workflowEnabled: true,
         workflowForwardEmailEnabled: false,
+        workflowForwardWebhookEnabled: true,
         openApiEnabled: true,
       },
       select: { id: true },

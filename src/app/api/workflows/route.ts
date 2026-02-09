@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createWorkflowSchema } from "@/lib/workflow/schema";
+import { createWorkflowSchema, validateWorkflowConfig } from "@/lib/workflow/schema";
 import { createEmptyWorkflowConfig } from "@/lib/workflow/types";
+import { normalizeWorkflowConfigForPolicy } from "@/lib/workflow/normalize";
 import { readJsonBody } from "@/lib/request";
 import { assertCanCreateWorkflow, assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
@@ -109,6 +110,13 @@ export async function POST(request: NextRequest) {
 
     const { name, description, mailboxId, config } = parsed.data;
 
+    const configCandidate = config || createEmptyWorkflowConfig();
+    const normalized = normalizeWorkflowConfigForPolicy(configCandidate);
+    const cfgParse = validateWorkflowConfig(normalized.config);
+    if (!cfgParse.success) {
+      return NextResponse.json({ error: "Invalid workflow config" }, { status: 400 });
+    }
+
     // Validate mailbox ownership if provided
     if (mailboxId) {
       const mailbox = await prisma.mailbox.findFirst({
@@ -132,7 +140,7 @@ export async function POST(request: NextRequest) {
         description: description || "",
         userId: session.user.id,
         mailboxId: mailboxId || null,
-        config: JSON.stringify(config || createEmptyWorkflowConfig()),
+        config: JSON.stringify(cfgParse.data),
         status: "DRAFT",
         version: 1,
       },
