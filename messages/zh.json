@@ -307,7 +307,37 @@
     "users": {
       "title": "用户管理",
       "subtitle": "管理系统用户",
-      "empty": "未找到用户"
+      "empty": "未找到用户",
+      "table": {
+        "group": "分组"
+      },
+      "filters": {
+        "namePlaceholder": "按名称搜索",
+        "emailPlaceholder": "按邮箱搜索",
+        "group": "分组",
+        "groupAll": "全部分组",
+        "groupNone": "未分组",
+        "status": "状态",
+        "statusAll": "全部状态",
+        "registrationEvent": "注册事件",
+        "registrationEventAll": "全部时间",
+        "registrationEventToday": "今天",
+        "registrationEventLast7d": "近 7 天",
+        "registrationEventLast30d": "近 30 天",
+        "authSource": "注册来源",
+        "authSourceAll": "全部来源"
+      },
+      "bulk": {
+        "selected": "已选择 {count} 项",
+        "activate": "批量启用",
+        "deactivate": "批量停用",
+        "assignGroup": "选择分组",
+        "applyGroup": "批量分组",
+        "toasts": {
+          "done": "已处理 {count} 个用户",
+          "partial": "部分未处理：跳过 {skipped}，未找到 {notFound}"
+        }
+      }
     },
     "usergroups": {
       "title": "用户组",

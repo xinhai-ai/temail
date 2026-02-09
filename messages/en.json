@@ -307,7 +307,37 @@
     "users": {
       "title": "User Management",
       "subtitle": "Manage system users",
-      "empty": "No users found"
+      "empty": "No users found",
+      "table": {
+        "group": "Group"
+      },
+      "filters": {
+        "namePlaceholder": "Search by name",
+        "emailPlaceholder": "Search by email",
+        "group": "Group",
+        "groupAll": "All groups",
+        "groupNone": "Ungrouped",
+        "status": "Status",
+        "statusAll": "All statuses",
+        "registrationEvent": "Registration event",
+        "registrationEventAll": "All time",
+        "registrationEventToday": "Today",
+        "registrationEventLast7d": "Last 7 days",
+        "registrationEventLast30d": "Last 30 days",
+        "authSource": "Registration source",
+        "authSourceAll": "All sources"
+      },
+      "bulk": {
+        "selected": "{count} selected",
+        "activate": "Bulk Activate",
+        "deactivate": "Bulk Deactivate",
+        "assignGroup": "Select group",
+        "applyGroup": "Apply Group",
+        "toasts": {
+          "done": "Processed {count} users",
+          "partial": "Partially skipped: {skipped}, not found: {notFound}"
+        }
+      }
     },
     "usergroups": {
       "title": "User Groups",
