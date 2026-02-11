@@ -1,8 +1,8 @@
 <div align="center">
   <img src="public/logo.svg" alt="TEmail Logo" width="120" height="120">
   <h1>TEmail</h1>
-  <p><strong>可自托管的邮件收件管道</strong></p>
-  <p>一个现代化的、可自托管的邮件接收和处理平台，支持多域名收件箱管理、工作流自动化和多渠道通知。</p>
+  <p><strong>可自托管的邮件自动化平台</strong></p>
+  <p>一个现代化、可自托管的平台，用于邮件接入、自动化处理、路由分发与多渠道送达，支持多域名统一管理。</p>
 
   <p>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
@@ -40,7 +40,7 @@
 
 ## 项目简介
 
-**TEmail** 是一个可自托管的**邮件收件管道**，帮助你：
+**TEmail** 是一个可自托管的**邮件运营与自动化平台**，帮助你：
 
 - **接收**来自多个域名的邮件（通过 Webhook 或 IMAP）
 - **处理**邮件（使用强大的可视化工作流编辑器）

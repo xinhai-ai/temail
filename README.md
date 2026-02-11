@@ -1,8 +1,8 @@
 <div align="center">
   <img src="public/logo.svg" alt="TEmail Logo" width="120" height="120">
   <h1>TEmail</h1>
-  <p><strong>Self-hosted Inbound Email Pipeline</strong></p>
-  <p>A modern, self-hostable email receiving and processing platform with multi-domain inbox management, workflow automation, and multi-channel notifications.</p>
+  <p><strong>Self-hosted Email Operations Platform</strong></p>
+  <p>A modern, self-hostable platform for inbound email ingestion, automation, routing, and multi-channel delivery across domains.</p>
 
   <p>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
@@ -40,7 +40,7 @@
 
 ## Overview
 
-**TEmail** is a self-hosted **inbound email pipeline** that helps you:
+**TEmail** is a self-hosted **email operations and automation platform** that helps you:
 
 - **Receive** emails from multiple domains via Webhook or IMAP
 - **Process** emails with powerful workflow automation (visual editor)
