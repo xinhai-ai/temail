@@ -6,6 +6,7 @@ import { isVercelDeployment } from "@/lib/deployment/server";
 
 // Maximum raw content size to return (1MB)
 const MAX_RAW_CONTENT_SIZE = 1 * 1024 * 1024;
+const SIGNED_URL_EXPIRES_SECONDS = 120;
 
 export async function GET(
   request: NextRequest,
@@ -19,6 +20,8 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const shouldDownload = request.nextUrl.searchParams.get("download") === "1";
 
   const { id } = await params;
 
@@ -37,6 +40,19 @@ export async function GET(
   if (email.rawContentPath) {
     try {
       const storage = getStorage();
+
+      if (shouldDownload) {
+        const signedUrl = await storage.getSignedDownloadUrl(email.rawContentPath, {
+          expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
+          responseContentType: "message/rfc822",
+          responseContentDisposition: `attachment; filename=\"${id}.eml\"`,
+        });
+
+        if (signedUrl) {
+          return NextResponse.redirect(signedUrl, { status: 302 });
+        }
+      }
+
       const buffer = await storage.read(email.rawContentPath);
       rawContent = buffer.toString("utf8");
     } catch (error) {
@@ -68,7 +84,9 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "message/rfc822",
-      "Content-Disposition": `inline; filename="${id}.eml"`,
+      "Content-Disposition": shouldDownload
+        ? `attachment; filename=\"${id}.eml\"`
+        : `inline; filename=\"${id}.eml\"`,
       "X-Content-Truncated": truncated ? "true" : "false",
       "X-Original-Size": String(contentSize),
     },

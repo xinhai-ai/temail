@@ -1,9 +1,9 @@
 import { LocalStorageProvider } from "./local";
 import { S3StorageProvider } from "./s3";
-import type { StorageProvider } from "./types";
+import type { StorageProvider, StorageSignedDownloadOptions } from "./types";
 import { getStorageConfig, isS3ConfigComplete, type StorageConfig } from "./config";
 
-export type { StorageProvider } from "./types";
+export type { StorageProvider, StorageSignedDownloadOptions } from "./types";
 export { LocalStorageProvider } from "./local";
 export { S3StorageProvider } from "./s3";
 export {
@@ -126,6 +126,14 @@ class DynamicStorageProvider implements StorageProvider {
   async delete(path: string): Promise<void> {
     const provider = await this.resolveProvider();
     await provider.delete(path);
+  }
+
+  async getSignedDownloadUrl(
+    path: string,
+    options?: StorageSignedDownloadOptions
+  ): Promise<string | null> {
+    const provider = await this.resolveProvider();
+    return provider.getSignedDownloadUrl(path, options);
   }
 }
 

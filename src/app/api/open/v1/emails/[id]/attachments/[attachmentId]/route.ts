@@ -3,6 +3,12 @@ import prisma from "@/lib/prisma";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
 import { getStorage } from "@/lib/storage";
 
+const SIGNED_URL_EXPIRES_SECONDS = 120;
+
+function sanitizeFilename(filename: string): string {
+  return filename.replace(/[^\w\s.-]/g, "_").replace(/\s+/g, "_");
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; attachmentId: string }> }
@@ -40,8 +46,21 @@ export async function GET(
     return NextResponse.json({ error: "Attachment not found" }, { status: 404 });
   }
 
+  const safeFilename = sanitizeFilename(attachment.filename);
+
   try {
     const storage = getStorage();
+
+    const signedUrl = await storage.getSignedDownloadUrl(attachment.path, {
+      expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
+      responseContentType: attachment.contentType || "application/octet-stream",
+      responseContentDisposition: `attachment; filename=\"${safeFilename}\"`,
+    });
+
+    if (signedUrl) {
+      return NextResponse.redirect(signedUrl, { status: 302 });
+    }
+
     const stream = await storage.readStream(attachment.path);
 
     const webStream = new ReadableStream({
@@ -57,10 +76,6 @@ export async function GET(
         });
       },
     });
-
-    const safeFilename = attachment.filename
-      .replace(/[^\w\s.-]/g, "_")
-      .replace(/\s+/g, "_");
 
     return new NextResponse(webStream, {
       status: 200,

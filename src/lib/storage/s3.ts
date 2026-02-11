@@ -6,7 +6,8 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import type { StorageProvider } from "./types";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { StorageProvider, StorageSignedDownloadOptions } from "./types";
 
 function normalizePrefix(prefix?: string | null): string {
   const value = (prefix || "").trim();
@@ -130,5 +131,20 @@ export class S3StorageProvider implements StorageProvider {
       })
     );
   }
-}
 
+  async getSignedDownloadUrl(
+    relativePath: string,
+    options?: StorageSignedDownloadOptions
+  ): Promise<string | null> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: this.toKey(relativePath),
+      ResponseContentType: options?.responseContentType,
+      ResponseContentDisposition: options?.responseContentDisposition,
+    });
+
+    return getSignedUrl(this.client, command, {
+      expiresIn: Math.max(30, options?.expiresInSeconds ?? 120),
+    });
+  }
+}

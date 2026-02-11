@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import { createReadStream } from "fs";
 import path from "path";
-import type { StorageProvider } from "./types";
+import type { StorageProvider, StorageSignedDownloadOptions } from "./types";
 import { getStoragePath } from "./utils";
 
 export class LocalStorageProvider implements StorageProvider {
@@ -68,5 +68,14 @@ export class LocalStorageProvider implements StorageProvider {
         throw error;
       }
     }
+  }
+
+  async getSignedDownloadUrl(
+    relativePath: string,
+    options?: StorageSignedDownloadOptions
+  ): Promise<string | null> {
+    void relativePath;
+    void options;
+    return null;
   }
 }

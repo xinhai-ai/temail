@@ -208,18 +208,18 @@ export function PreviewPanel({
       setLoadingRaw(true);
       try {
         const res = await fetch(`/api/emails/${selectedEmailId}/raw`);
-	        if (res.ok) {
-	          const text = await res.text();
-	          setRawContent(text);
-	        } else {
-	          toast.error(t("preview.raw.loadFailed"));
-	        }
-	      } catch (error) {
-	        console.error("Failed to load raw content:", error);
-	        toast.error(t("preview.raw.loadFailed"));
-	      } finally {
-	        setLoadingRaw(false);
-	      }
+        if (res.ok) {
+          const text = await res.text();
+          setRawContent(text);
+        } else {
+          toast.error(t("preview.raw.loadFailed"));
+        }
+      } catch (error) {
+        console.error("Failed to load raw content:", error);
+        toast.error(t("preview.raw.loadFailed"));
+      } finally {
+        setLoadingRaw(false);
+      }
     }
   };
 
@@ -271,38 +271,16 @@ export function PreviewPanel({
     }
   };
 
-  const downloadRawContent = async () => {
+  const downloadRawContent = () => {
     if (!selectedEmailId) return;
     const filename = `email-${selectedEmailId}.eml`;
-    const downloadText = async (text: string) => {
-      const blob = new Blob([text], { type: "message/rfc822" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
-
-    try {
-      if (displayRawContent) {
-        await downloadText(displayRawContent);
-        return;
-      }
-
-      const res = await fetch(`/api/emails/${selectedEmailId}/raw`);
-      if (!res.ok) {
-        toast.error(t("preview.raw.downloadFailed"));
-        return;
-      }
-      const text = await res.text();
-      await downloadText(text);
-    } catch (error) {
-      console.error("Failed to download raw content:", error);
-      toast.error(t("preview.raw.downloadFailed"));
-    }
+    const url = `/api/emails/${selectedEmailId}/raw?download=1`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
