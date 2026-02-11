@@ -13,6 +13,7 @@ import {
   validateApiRateLimitOverridesStrict,
 } from "@/lib/rate-limit-policies";
 import { isVercelDeployment } from "@/lib/deployment/server";
+import { resetStorageProviderCache } from "@/lib/storage";
 
 const settingSchema = z.object({
   key: z.string().min(1),
@@ -293,6 +294,11 @@ export async function PUT(request: NextRequest) {
 
     for (const item of data) {
       clearSystemSettingCache(item.key);
+    }
+
+    const hasStorageSettingUpdated = data.some((item) => item.key.startsWith("storage_"));
+    if (hasStorageSettingUpdated) {
+      resetStorageProviderCache();
     }
 
     return NextResponse.json(results);

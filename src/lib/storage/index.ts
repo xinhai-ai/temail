@@ -1,12 +1,19 @@
 import { LocalStorageProvider } from "./local";
 import { S3StorageProvider } from "./s3";
 import type { StorageProvider } from "./types";
-import { getStorageConfig, isS3ConfigComplete } from "./config";
+import { getStorageConfig, isS3ConfigComplete, type StorageConfig } from "./config";
 
 export type { StorageProvider } from "./types";
 export { LocalStorageProvider } from "./local";
 export { S3StorageProvider } from "./s3";
-export { getStorageConfig, getMergedS3Config, isS3ConfigComplete, type StorageBackend, type StorageConfig, type S3ConfigDraft } from "./config";
+export {
+  getStorageConfig,
+  getMergedS3Config,
+  isS3ConfigComplete,
+  type StorageBackend,
+  type StorageConfig,
+  type S3ConfigDraft,
+} from "./config";
 export {
   generateRawContentPath,
   generateAttachmentPath,
@@ -17,16 +24,40 @@ export {
 } from "./utils";
 
 type ProviderCache = {
-  local: LocalStorageProvider | null;
-  s3: S3StorageProvider | null;
+  local: {
+    provider: LocalStorageProvider | null;
+    basePath: string | null;
+  };
+  s3: {
+    provider: S3StorageProvider | null;
+    signature: string | null;
+  };
 };
 
 const cache: ProviderCache = {
-  local: null,
-  s3: null,
+  local: {
+    provider: null,
+    basePath: null,
+  },
+  s3: {
+    provider: null,
+    signature: null,
+  },
 };
 
 const CONFIG_TTL_MS = 30_000;
+
+function buildS3Signature(config: StorageConfig["s3"]): string {
+  return JSON.stringify({
+    endpoint: config.endpoint || "",
+    region: config.region,
+    bucket: config.bucket,
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    forcePathStyle: Boolean(config.forcePathStyle),
+    basePrefix: config.basePrefix || "",
+  });
+}
 
 class DynamicStorageProvider implements StorageProvider {
   private overrideProvider: StorageProvider | null = null;
@@ -43,8 +74,9 @@ class DynamicStorageProvider implements StorageProvider {
     const config = await getStorageConfig({ ttlMs: CONFIG_TTL_MS });
 
     if (config.backend === "s3" && isS3ConfigComplete(config.s3)) {
-      if (!cache.s3) {
-        cache.s3 = new S3StorageProvider({
+      const signature = buildS3Signature(config.s3);
+      if (!cache.s3.provider || cache.s3.signature !== signature) {
+        cache.s3.provider = new S3StorageProvider({
           endpoint: config.s3.endpoint || undefined,
           region: config.s3.region,
           bucket: config.s3.bucket,
@@ -53,14 +85,17 @@ class DynamicStorageProvider implements StorageProvider {
           forcePathStyle: config.s3.forcePathStyle,
           basePrefix: config.s3.basePrefix,
         });
+        cache.s3.signature = signature;
       }
-      return cache.s3;
+      return cache.s3.provider;
     }
 
-    if (!cache.local) {
-      cache.local = new LocalStorageProvider(config.localPath);
+    if (!cache.local.provider || cache.local.basePath !== config.localPath) {
+      cache.local.provider = new LocalStorageProvider(config.localPath);
+      cache.local.basePath = config.localPath;
     }
-    return cache.local;
+
+    return cache.local.provider;
   }
 
   async write(path: string, content: Buffer | string): Promise<void> {
@@ -111,7 +146,9 @@ export function setStorage(provider: StorageProvider): void {
 }
 
 export function resetStorageProviderCache(): void {
-  cache.local = null;
-  cache.s3 = null;
+  cache.local.provider = null;
+  cache.local.basePath = null;
+  cache.s3.provider = null;
+  cache.s3.signature = null;
   dynamicStorage.setOverride(null);
 }
