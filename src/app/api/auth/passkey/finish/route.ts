@@ -4,7 +4,8 @@ import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/types";
 import prisma from "@/lib/prisma";
 import { getAuthFeatureFlags, getWebAuthnConfig } from "@/lib/auth-features";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { parseAuthenticatorTransportsJson } from "@/lib/webauthn";
 import { readJsonBody } from "@/lib/request";
 import { issueLoginToken, issueMfaChallenge } from "@/lib/auth-tokens";
@@ -21,7 +22,7 @@ type FinishBody = {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`passkey:finish:${ip}`, { limit: 30, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("auth.passkey.finish", `passkey:finish:${ip}`, { limit: 30, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

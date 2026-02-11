@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isImapServiceEnabled, syncAllImapDomains } from "@/lib/imap-client";
 import { formatRemainingTime, tryAcquireSyncLock } from "@/lib/rate-limit";
+import { getImapSyncRateLimitConfig } from "@/services/rate-limit-settings";
 import { rematchUnmatchedInboundEmailsForUser } from "@/services/inbound/rematch";
 
 type ImapRefreshResult =
@@ -24,7 +25,8 @@ export async function POST(request: NextRequest) {
     };
 
     if (isImapServiceEnabled()) {
-      const lockResult = tryAcquireSyncLock(session.user.id);
+      const rateLimitConfig = await getImapSyncRateLimitConfig();
+      const lockResult = tryAcquireSyncLock(session.user.id, rateLimitConfig);
 
       if (!lockResult.allowed) {
         const remainingFormatted = formatRemainingTime(lockResult.remainingMs);
@@ -75,4 +77,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

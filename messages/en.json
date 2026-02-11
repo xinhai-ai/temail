@@ -187,15 +187,33 @@
     "zh": "中文"
   },
   "pages": {
-    "dashboard": { "description": "Overview of your email activity" },
-    "inbox": { "description": "Mailboxes, grouped — with instant email preview" },
-    "trash": { "description": "Deleted emails (recover or purge)" },
-    "domains": { "description": "Manage inbound email domains" },
-    "workflows": { "description": "Automate your email processing" },
-    "telegram": { "description": "Link Telegram and bind topics" },
-    "settings": { "description": "Manage your account settings" },
-    "admin": { "description": "System administration" },
-    "adminTelegram": { "description": "Manage the site-owned bot and webhooks" }
+    "dashboard": {
+      "description": "Overview of your email activity"
+    },
+    "inbox": {
+      "description": "Mailboxes, grouped — with instant email preview"
+    },
+    "trash": {
+      "description": "Deleted emails (recover or purge)"
+    },
+    "domains": {
+      "description": "Manage inbound email domains"
+    },
+    "workflows": {
+      "description": "Automate your email processing"
+    },
+    "telegram": {
+      "description": "Link Telegram and bind topics"
+    },
+    "settings": {
+      "description": "Manage your account settings"
+    },
+    "admin": {
+      "description": "System administration"
+    },
+    "adminTelegram": {
+      "description": "Manage the site-owned bot and webhooks"
+    }
   },
   "admin": {
     "common": {
@@ -721,6 +739,25 @@
             "label": "Enable Password Reset",
             "help": "Allow users to reset their password via email (requires Turnstile)."
           }
+        },
+        "rateLimit": {
+          "imap": {
+            "title": "IMAP Sync Rate Limit",
+            "help": "Configure cooldown and lock timeout for IMAP refresh operations.",
+            "cooldownMs": "Cooldown (ms)",
+            "maxDurationMs": "Max Sync Duration (ms)"
+          },
+          "api": {
+            "title": "API Rate Limit Policies",
+            "help": "Override per-policy limit/window values. Leave blank to use defaults.",
+            "reset": "Reset All Overrides",
+            "table": {
+              "policy": "Policy",
+              "default": "Default",
+              "limit": "Limit",
+              "windowMs": "Window (ms)"
+            }
+          }
         }
       },
       "emailTemplates": {
@@ -1075,8 +1112,12 @@
   "legal": {
     "backToHome": "Back to home",
     "lastUpdated": "Last updated: {date}",
-    "privacy": { "title": "Privacy Policy" },
-    "tos": { "title": "Terms of Service" }
+    "privacy": {
+      "title": "Privacy Policy"
+    },
+    "tos": {
+      "title": "Terms of Service"
+    }
   },
   "home": {
     "skipToContent": "Skip to content",
@@ -1106,10 +1147,22 @@
       "title": "Temporary inboxes, forwarding, and automation — in one platform.",
       "description": "Build an inbound email pipeline you can trust. Create multi-domain inboxes, ingest mail via Webhook or IMAP, forward to SMTP/Webhook targets, and run workflows on every message.",
       "bullets": {
-        "privacy": { "label": "Privacy-first", "text": "previews with remote images blocked." },
-        "operational": { "label": "Operational", "text": "logs for inbound events and automation." },
-        "flexible": { "label": "Flexible", "text": "inbound sources: Webhook or IMAP worker." },
-        "fast": { "label": "Fast", "text": "Docker Compose setup with SQLite persistence." }
+        "privacy": {
+          "label": "Privacy-first",
+          "text": "previews with remote images blocked."
+        },
+        "operational": {
+          "label": "Operational",
+          "text": "logs for inbound events and automation."
+        },
+        "flexible": {
+          "label": "Flexible",
+          "text": "inbound sources: Webhook or IMAP worker."
+        },
+        "fast": {
+          "label": "Fast",
+          "text": "Docker Compose setup with SQLite persistence."
+        }
       }
     },
     "preview": {

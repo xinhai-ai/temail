@@ -3,7 +3,8 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getAdminSession, isSuperAdminRole } from "@/lib/rbac";
 import { readJsonBody } from "@/lib/request";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 const bulkSchema = z
   .object({
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`admin:users:bulk:${session.user.id}`, { limit: 30, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("admin.users.bulk", `admin:users:bulk:${session.user.id}`, { limit: 30, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

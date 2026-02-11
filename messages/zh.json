@@ -187,15 +187,33 @@
     "zh": "中文"
   },
   "pages": {
-    "dashboard": { "description": "邮件活动总览" },
-    "inbox": { "description": "分组邮箱 + 即时邮件预览" },
-    "trash": { "description": "已删除邮件（恢复或清空）" },
-    "domains": { "description": "管理收件域名" },
-    "workflows": { "description": "自动化邮件处理" },
-    "telegram": { "description": "关联 Telegram 并绑定话题" },
-    "settings": { "description": "管理账户设置" },
-    "admin": { "description": "系统管理" },
-    "adminTelegram": { "description": "管理站点机器人与 Webhook" }
+    "dashboard": {
+      "description": "邮件活动总览"
+    },
+    "inbox": {
+      "description": "分组邮箱 + 即时邮件预览"
+    },
+    "trash": {
+      "description": "已删除邮件（恢复或清空）"
+    },
+    "domains": {
+      "description": "管理收件域名"
+    },
+    "workflows": {
+      "description": "自动化邮件处理"
+    },
+    "telegram": {
+      "description": "关联 Telegram 并绑定话题"
+    },
+    "settings": {
+      "description": "管理账户设置"
+    },
+    "admin": {
+      "description": "系统管理"
+    },
+    "adminTelegram": {
+      "description": "管理站点机器人与 Webhook"
+    }
   },
   "admin": {
     "common": {
@@ -721,6 +739,25 @@
             "label": "启用密码找回",
             "help": "允许用户通过邮件重置密码（需要启用 Turnstile）。"
           }
+        },
+        "rateLimit": {
+          "imap": {
+            "title": "IMAP 同步限流",
+            "help": "配置 IMAP 刷新操作的冷却时间与锁超时。",
+            "cooldownMs": "冷却时间（毫秒）",
+            "maxDurationMs": "最大同步时长（毫秒）"
+          },
+          "api": {
+            "title": "API 限流策略",
+            "help": "按策略覆盖 limit/window 值；留空则使用默认值。",
+            "reset": "重置全部覆盖",
+            "table": {
+              "policy": "策略",
+              "default": "默认值",
+              "limit": "Limit",
+              "windowMs": "时间窗（毫秒）"
+            }
+          }
         }
       },
       "emailTemplates": {
@@ -1075,8 +1112,12 @@
   "legal": {
     "backToHome": "返回首页",
     "lastUpdated": "最后更新：{date}",
-    "privacy": { "title": "隐私政策" },
-    "tos": { "title": "服务条款" }
+    "privacy": {
+      "title": "隐私政策"
+    },
+    "tos": {
+      "title": "服务条款"
+    }
   },
   "home": {
     "skipToContent": "跳到主要内容",
@@ -1106,10 +1147,22 @@
       "title": "临时收件箱、转发与自动化——一站式平台。",
       "description": "构建你可信赖的收件邮件管道：多域名收件箱，Webhook/IMAP 接入，转发到 SMTP/Webhook 目标，并对每封邮件运行工作流。",
       "bullets": {
-        "privacy": { "label": "隐私优先", "text": "默认屏蔽远程图片预览。" },
-        "operational": { "label": "可观测", "text": "记录收件事件与自动化日志。" },
-        "flexible": { "label": "灵活接入", "text": "支持 Webhook 或 IMAP Worker。" },
-        "fast": { "label": "快速部署", "text": "Docker Compose + SQLite 持久化。" }
+        "privacy": {
+          "label": "隐私优先",
+          "text": "默认屏蔽远程图片预览。"
+        },
+        "operational": {
+          "label": "可观测",
+          "text": "记录收件事件与自动化日志。"
+        },
+        "flexible": {
+          "label": "灵活接入",
+          "text": "支持 Webhook 或 IMAP Worker。"
+        },
+        "fast": {
+          "label": "快速部署",
+          "text": "Docker Compose + SQLite 持久化。"
+        }
       }
     },
     "preview": {

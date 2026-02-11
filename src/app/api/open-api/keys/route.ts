@@ -3,7 +3,8 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
-import { rateLimit } from "@/lib/api-rate-limit";
+
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import {
   generateOpenApiKeyToken,
   parseOpenApiScopes,
@@ -23,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`open-api:keys:list:${session.user.id}`, { limit: 120, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("openApi.keys.list", `open-api:keys:list:${session.user.id}`, { limit: 120, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`open-api:keys:create:${session.user.id}`, { limit: 30, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("openApi.keys.create", `open-api:keys:create:${session.user.id}`, { limit: 30, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

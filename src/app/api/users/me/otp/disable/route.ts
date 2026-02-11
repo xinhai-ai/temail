@@ -4,7 +4,8 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 const schema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`otp:disable:${session.user.id}:${ip}`, { limit: 10, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("users.otp.disable", `otp:disable:${session.user.id}:${ip}`, { limit: 10, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

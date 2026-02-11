@@ -7,6 +7,7 @@ import {
   formatRemainingTime,
 } from "@/lib/rate-limit";
 import { isVercelDeployment } from "@/lib/deployment/server";
+import { getImapSyncRateLimitConfig } from "@/services/rate-limit-settings";
 
 // GET: Check sync status (cooldown, running state)
 export async function GET(request: NextRequest) {
@@ -19,7 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const status = getSyncStatus();
+  const rateLimitConfig = await getImapSyncRateLimitConfig();
+  const status = getSyncStatus(rateLimitConfig);
 
   return NextResponse.json({
     isRunning: status.isRunning,
@@ -48,7 +50,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Try to acquire global sync lock
-  const lockResult = tryAcquireSyncLock(session.user.id);
+  const rateLimitConfig = await getImapSyncRateLimitConfig();
+
+  const lockResult = tryAcquireSyncLock(session.user.id, rateLimitConfig);
 
   if (!lockResult.allowed) {
     const remainingFormatted = formatRemainingTime(lockResult.remainingMs);

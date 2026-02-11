@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateAuthenticationOptions } from "@simplewebauthn/server";
 import prisma from "@/lib/prisma";
 import { getAuthFeatureFlags, getWebAuthnConfig } from "@/lib/auth-features";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`passkey:begin:${ip}`, { limit: 30, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("auth.passkey.begin", `passkey:begin:${ip}`, { limit: 30, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/rbac";
 import prisma from "@/lib/prisma";
 import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
-import { rateLimit } from "@/lib/api-rate-limit";
+
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`admin:users:list:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("admin.users.list", `admin:users:list:${session.user.id}`, { limit: 60, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

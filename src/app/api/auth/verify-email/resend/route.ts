@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getAuthFeatureFlags } from "@/lib/auth-features";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { issueEmailVerificationToken, sha256Hex } from "@/lib/auth-tokens";
 import { readJsonBody } from "@/lib/request";
 import { getTurnstileClientConfig, verifyTurnstileToken } from "@/lib/turnstile";
@@ -15,7 +16,7 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request) || "unknown";
-  const limitedIp = rateLimit(`verify-email:resend:ip:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+  const limitedIp = await rateLimitByPolicy("auth.verifyEmail.resend.ip", `verify-email:resend:ip:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limitedIp.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limitedIp.retryAfterMs / 1000));
     return NextResponse.json(
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = data.email.trim();
     const emailKey = sha256Hex(normalizedEmail.toLowerCase());
 
-    const limitedEmail = rateLimit(`verify-email:resend:email:${emailKey}`, { limit: 1, windowMs: 60_000 });
+    const limitedEmail = await rateLimitByPolicy("auth.verifyEmail.resend.email", `verify-email:resend:email:${emailKey}`, { limit: 1, windowMs: 60_000 });
     if (!limitedEmail.allowed) {
       const retryAfterSeconds = Math.max(1, Math.ceil(limitedEmail.retryAfterMs / 1000));
       return NextResponse.json(

@@ -6,6 +6,12 @@ import { readJsonBody } from "@/lib/request";
 import { isTurnstileDevBypassEnabled } from "@/lib/turnstile";
 import { clearSystemSettingCache } from "@/services/system-settings";
 import { LINUXDO_TRUST_LEVEL_MAPPING_KEY, parseLinuxDoTrustLevelMapping } from "@/lib/linuxdo";
+import {
+  RATE_LIMIT_SETTING_KEYS,
+  RATE_LIMIT_VALIDATION,
+  normalizeRateLimitInteger,
+  validateApiRateLimitOverridesStrict,
+} from "@/lib/rate-limit-policies";
 
 const settingSchema = z.object({
   key: z.string().min(1),
@@ -78,6 +84,9 @@ export async function PUT(request: NextRequest) {
       "auth_provider_linuxdo_client_id",
       "auth_provider_linuxdo_client_secret",
       LINUXDO_TRUST_LEVEL_MAPPING_KEY,
+      RATE_LIMIT_SETTING_KEYS.imapSyncCooldownMs,
+      RATE_LIMIT_SETTING_KEYS.imapSyncMaxDurationMs,
+      RATE_LIMIT_SETTING_KEYS.apiOverrides,
     ]);
 
     const wantsValidation = data.some((item) => keysToValidate.has(item.key));
@@ -171,6 +180,45 @@ export async function PUT(request: NextRequest) {
             );
           }
         }
+      }
+
+      const cooldownRaw = next[RATE_LIMIT_SETTING_KEYS.imapSyncCooldownMs];
+      if (typeof cooldownRaw === "string" && cooldownRaw.trim() !== "") {
+        const parsed = normalizeRateLimitInteger(cooldownRaw, RATE_LIMIT_VALIDATION.imapSyncCooldownMs);
+        if (parsed === null) {
+          return NextResponse.json(
+            {
+              error:
+                `IMAP sync cooldown must be an integer between ` +
+                `${RATE_LIMIT_VALIDATION.imapSyncCooldownMs.min} and ${RATE_LIMIT_VALIDATION.imapSyncCooldownMs.max} ms`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      const maxDurationRaw = next[RATE_LIMIT_SETTING_KEYS.imapSyncMaxDurationMs];
+      if (typeof maxDurationRaw === "string" && maxDurationRaw.trim() !== "") {
+        const parsed = normalizeRateLimitInteger(maxDurationRaw, RATE_LIMIT_VALIDATION.imapSyncMaxDurationMs);
+        if (parsed === null) {
+          return NextResponse.json(
+            {
+              error:
+                `IMAP sync max duration must be an integer between ` +
+                `${RATE_LIMIT_VALIDATION.imapSyncMaxDurationMs.min} and ${RATE_LIMIT_VALIDATION.imapSyncMaxDurationMs.max} ms`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      const overridesRaw = next[RATE_LIMIT_SETTING_KEYS.apiOverrides];
+      const overridesValidation = validateApiRateLimitOverridesStrict(overridesRaw);
+      if (!overridesValidation.ok) {
+        return NextResponse.json(
+          { error: overridesValidation.error },
+          { status: 400 }
+        );
       }
     }
 

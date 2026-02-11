@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { issueEmailChangeToken, sha256Hex } from "@/lib/auth-tokens";
 import { readJsonBody } from "@/lib/request";
 import { sendEmailChangeConfirmationEmail } from "@/services/auth/email-change";
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
 
   const ip = getClientIp(request) || "unknown";
 
-  const limitedUser = rateLimit(`email-change:request:user:${session.user.id}`, { limit: 5, windowMs: 10 * 60_000 });
+  const limitedUser = await rateLimitByPolicy("emailChange.request.user", `email-change:request:user:${session.user.id}`, { limit: 5, windowMs: 10 * 60_000 });
   if (!limitedUser.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limitedUser.retryAfterMs / 1000));
     return NextResponse.json(
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const limitedIp = rateLimit(`email-change:request:ip:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+  const limitedIp = await rateLimitByPolicy("emailChange.request.ip", `email-change:request:ip:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limitedIp.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limitedIp.retryAfterMs / 1000));
     return NextResponse.json(
@@ -46,10 +47,7 @@ export async function POST(request: NextRequest) {
     const data = schema.parse(bodyResult.data);
     const newEmail = data.newEmail.trim();
 
-    const limitedEmail = rateLimit(`email-change:request:email:${sha256Hex(newEmail.toLowerCase())}`, {
-      limit: 1,
-      windowMs: 60_000,
-    });
+    const limitedEmail = await rateLimitByPolicy("emailChange.request.email", `email-change:request:email:${sha256Hex(newEmail.toLowerCase())}`, { limit: 1, windowMs: 60_000 });
     if (!limitedEmail.allowed) {
       const retryAfterSeconds = Math.max(1, Math.ceil(limitedEmail.retryAfterMs / 1000));
       return NextResponse.json(

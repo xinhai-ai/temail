@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createTelegramBindCode } from "@/services/telegram/bind-codes";
 import { getTelegramBotUsername } from "@/services/telegram/bot-api";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { isTelegramBotEnabled } from "@/lib/telegram-features";
 import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`telegram:link-code:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("telegram.linkCode", `telegram:link-code:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

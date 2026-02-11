@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { Prisma, type TelegramBindPurpose, type TelegramBindingMode } from "@prisma/client";
 import { isImapServiceEnabled, syncAllImapDomains } from "@/lib/imap-client";
 import { formatRemainingTime, tryAcquireSyncLock } from "@/lib/rate-limit";
+import { getImapSyncRateLimitConfig } from "@/services/rate-limit-settings";
 import { getOrCreateEmailPreviewLink } from "@/services/email-preview-links";
 import { moveOwnedEmailToTrash, purgeOwnedEmail, restoreOwnedEmailFromTrash } from "@/services/email-trash";
 import { rematchUnmatchedInboundEmailsForUser } from "@/services/inbound/rematch";
@@ -1013,7 +1014,8 @@ async function handleRefresh(message: TelegramMessage) {
 
   let imapMessage = "IMAP sync skipped (service disabled)";
   if (isImapServiceEnabled()) {
-    const lock = tryAcquireSyncLock(userId);
+    const rateLimitConfig = await getImapSyncRateLimitConfig();
+    const lock = tryAcquireSyncLock(userId, rateLimitConfig);
     if (!lock.allowed) {
       const remaining = formatRemainingTime(lock.remainingMs);
       imapMessage =

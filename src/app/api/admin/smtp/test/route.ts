@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/rbac";
-import { rateLimit } from "@/lib/api-rate-limit";
+
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { readJsonBody } from "@/lib/request";
 import { isVercelDeployment } from "@/lib/deployment/server";
 import { sendSmtpMail, verifySmtpTransport, SmtpConfigError } from "@/services/smtp/mailer";
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "SMTP is disabled in this deployment" }, { status: 404 });
   }
 
-  const limited = rateLimit(`admin:smtp:test:${session.user.id}`, { limit: 10, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("admin.smtp.test", `admin:smtp:test:${session.user.id}`, { limit: 10, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

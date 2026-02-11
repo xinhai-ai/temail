@@ -5,7 +5,8 @@ import { publishRealtimeEvent } from "@/lib/realtime/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { getStorage, generateAttachmentPath, generateRawContentPath, getMaxAttachmentSize } from "@/lib/storage";
 import { simpleParser, type Attachment } from "mailparser";
 import { isVercelDeployment } from "@/lib/deployment/server";
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
   try {
     const vercelMode = isVercelDeployment();
     const ip = getClientIp(request) || "unknown";
-    const limited = rateLimit(`webhook-incoming:${ip}`, { limit: 600, windowMs: 60_000 });
+    const limited = await rateLimitByPolicy("webhook.incoming.ip", `webhook-incoming:${ip}`, { limit: 600, windowMs: 60_000 });
     if (!limited.allowed) {
       const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
       return NextResponse.json(
@@ -167,7 +168,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const domainLimited = rateLimit(`webhook-incoming:domain:${webhookConfig.domainId}`, { limit: 3_000, windowMs: 60_000 });
+    const domainLimited = await rateLimitByPolicy("webhook.incoming.domain", `webhook-incoming:domain:${webhookConfig.domainId}`, { limit: 3_000, windowMs: 60_000 });
     if (!domainLimited.allowed) {
       const retryAfterSeconds = Math.max(1, Math.ceil(domainLimited.retryAfterMs / 1000));
       return NextResponse.json(

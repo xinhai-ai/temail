@@ -3,7 +3,8 @@ import { generateRegistrationOptions } from "@simplewebauthn/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getAuthFeatureFlags, getWebAuthnConfig } from "@/lib/auth-features";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { parseAuthenticatorTransportsJson } from "@/lib/webauthn";
 
 export async function POST(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`passkey:register:begin:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("users.passkey.registration.begin", `passkey:register:begin:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

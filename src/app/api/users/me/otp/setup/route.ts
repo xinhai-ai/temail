@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma";
 import { getAuthFeatureFlags } from "@/lib/auth-features";
 import { encryptString } from "@/lib/secret-encryption";
 import { buildOtpAuthUrl, generateTotpSecretBase32 } from "@/lib/otp";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`otp:setup:${session.user.id}:${ip}`, { limit: 10, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("users.otp.setup", `otp:setup:${session.user.id}:${ip}`, { limit: 10, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

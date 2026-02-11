@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Shield, Info } from "lucide-react";
 import { SettingSection } from "@/components/settings/SettingSection";
@@ -7,6 +8,12 @@ import { SettingRow } from "@/components/settings/SettingRow";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  API_RATE_LIMIT_POLICIES,
+  RATE_LIMIT_SETTING_KEYS,
+} from "@/lib/rate-limit-policies";
 
 type SecuritySectionProps = {
   values: Record<string, string>;
@@ -23,6 +30,58 @@ type SecuritySectionProps = {
   passwordResetEnabled: boolean;
   setPasswordResetEnabled: (value: boolean) => void;
 };
+
+type ApiOverrideItem = {
+  limit?: number;
+  windowMs?: number;
+};
+
+type ApiOverrideMap = Record<string, ApiOverrideItem>;
+
+function parseApiOverrides(raw: string | undefined): ApiOverrideMap {
+  if (!raw || !raw.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    const result: ApiOverrideMap = {};
+    for (const [policyId, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const source = value as Record<string, unknown>;
+      const item: ApiOverrideItem = {};
+
+      if (typeof source.limit === "number" && Number.isFinite(source.limit) && source.limit > 0) {
+        item.limit = Math.floor(source.limit);
+      }
+      if (typeof source.windowMs === "number" && Number.isFinite(source.windowMs) && source.windowMs > 0) {
+        item.windowMs = Math.floor(source.windowMs);
+      }
+      if (Object.keys(item).length > 0) {
+        result[policyId] = item;
+      }
+    }
+
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function toIntOrUndefined(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function compactApiOverrides(overrides: ApiOverrideMap): string {
+  if (Object.keys(overrides).length === 0) {
+    return "";
+  }
+  return JSON.stringify(overrides);
+}
 
 export function SecuritySection({
   values,
@@ -63,6 +122,52 @@ export function SecuritySection({
       placeholder: "example.com",
     },
   ];
+
+  const apiOverrides = useMemo(
+    () => parseApiOverrides(values[RATE_LIMIT_SETTING_KEYS.apiOverrides]),
+    [values]
+  );
+
+  const persistApiOverrides = useCallback(
+    (next: ApiOverrideMap) => {
+      setValue(RATE_LIMIT_SETTING_KEYS.apiOverrides, compactApiOverrides(next));
+    },
+    [setValue]
+  );
+
+  const setImapNumber = (key: string, value: string) => {
+    const trimmed = value.trim();
+    setValue(key, trimmed);
+  };
+
+  const updateApiOverride = (
+    policyId: string,
+    field: keyof ApiOverrideItem,
+    value: string,
+    defaults: { limit: number; windowMs: number }
+  ) => {
+    const parsed = toIntOrUndefined(value);
+    const next: ApiOverrideMap = { ...apiOverrides };
+    const current = next[policyId] ? { ...next[policyId] } : {};
+
+    if (parsed === undefined || parsed === defaults[field]) {
+      delete current[field];
+    } else {
+      current[field] = parsed;
+    }
+
+    if (!current.limit && !current.windowMs) {
+      delete next[policyId];
+    } else {
+      next[policyId] = current;
+    }
+
+    persistApiOverrides(next);
+  };
+
+  const resetApiOverrides = () => {
+    persistApiOverrides({});
+  };
 
   return (
     <SettingSection
@@ -158,6 +263,108 @@ export function SecuritySection({
           />
         </div>
       ))}
+
+      <Separator />
+
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium">{t("settings.security.rateLimit.imap.title")}</h4>
+          <p className="text-xs text-muted-foreground">{t("settings.security.rateLimit.imap.help")}</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>{t("settings.security.rateLimit.imap.cooldownMs")}</Label>
+            <Input
+              type="number"
+              min="1000"
+              value={values[RATE_LIMIT_SETTING_KEYS.imapSyncCooldownMs] || String(30_000)}
+              placeholder="30000"
+              onChange={(e) => setImapNumber(RATE_LIMIT_SETTING_KEYS.imapSyncCooldownMs, e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("settings.security.rateLimit.imap.maxDurationMs")}</Label>
+            <Input
+              type="number"
+              min="10000"
+              value={values[RATE_LIMIT_SETTING_KEYS.imapSyncMaxDurationMs] || String(300_000)}
+              placeholder="300000"
+              onChange={(e) => setImapNumber(RATE_LIMIT_SETTING_KEYS.imapSyncMaxDurationMs, e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-medium">{t("settings.security.rateLimit.api.title")}</h4>
+            <p className="text-xs text-muted-foreground">{t("settings.security.rateLimit.api.help")}</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={resetApiOverrides}>
+            {t("settings.security.rateLimit.api.reset")}
+          </Button>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("settings.security.rateLimit.api.table.policy")}</TableHead>
+              <TableHead>{t("settings.security.rateLimit.api.table.default")}</TableHead>
+              <TableHead>{t("settings.security.rateLimit.api.table.limit")}</TableHead>
+              <TableHead>{t("settings.security.rateLimit.api.table.windowMs")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {API_RATE_LIMIT_POLICIES.map((policy) => {
+              const override = apiOverrides[policy.id] || {};
+              const limitValue = typeof override.limit === "number" ? String(override.limit) : "";
+              const windowValue = typeof override.windowMs === "number" ? String(override.windowMs) : "";
+
+              return (
+                <TableRow key={policy.id}>
+                  <TableCell className="font-mono text-xs">{policy.id}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {policy.defaultLimit} / {policy.defaultWindowMs}ms
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={limitValue}
+                      placeholder={String(policy.defaultLimit)}
+                      onChange={(e) =>
+                        updateApiOverride(policy.id, "limit", e.target.value, {
+                          limit: policy.defaultLimit,
+                          windowMs: policy.defaultWindowMs,
+                        })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min="1000"
+                      value={windowValue}
+                      placeholder={String(policy.defaultWindowMs)}
+                      onChange={(e) =>
+                        updateApiOverride(policy.id, "windowMs", e.target.value, {
+                          limit: policy.defaultLimit,
+                          windowMs: policy.defaultWindowMs,
+                        })
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
 
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
         <div className="flex items-start gap-2">

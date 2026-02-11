@@ -13,6 +13,11 @@ type SyncState = {
   lastSyncBy: string | null;
 };
 
+export type SyncRateLimitConfig = {
+  cooldownMs: number;
+  maxSyncDurationMs: number;
+};
+
 // Global state - shared across all requests in this process
 // For multi-instance deployments, consider using Redis or database
 const globalSyncState: SyncState = {
@@ -21,9 +26,10 @@ const globalSyncState: SyncState = {
   lastSyncBy: null,
 };
 
-// Configuration
-const COOLDOWN_MS = 30 * 1000; // 30 seconds between syncs
-const MAX_SYNC_DURATION_MS = 5 * 60 * 1000; // Auto-release lock after 5 minutes
+const DEFAULT_SYNC_RATE_LIMIT_CONFIG: SyncRateLimitConfig = {
+  cooldownMs: 30 * 1000,
+  maxSyncDurationMs: 5 * 60 * 1000,
+};
 
 export type RateLimitResult =
   | { allowed: true; release: () => void }
@@ -34,18 +40,21 @@ export type RateLimitResult =
  * Try to acquire the global sync lock
  * Returns a release function if successful, or error info if rate limited
  */
-export function tryAcquireSyncLock(userId: string): RateLimitResult {
+export function tryAcquireSyncLock(userId: string, config?: SyncRateLimitConfig): RateLimitResult {
+  const effectiveConfig = config || DEFAULT_SYNC_RATE_LIMIT_CONFIG;
+  const cooldownMs = effectiveConfig.cooldownMs;
+  const maxSyncDurationMs = effectiveConfig.maxSyncDurationMs;
   const now = Date.now();
 
   // Check if a sync is currently running
   if (globalSyncState.isRunning) {
     // Auto-release stale locks (in case of crashes)
     const elapsed = now - globalSyncState.lastSyncAt;
-    if (elapsed < MAX_SYNC_DURATION_MS) {
+    if (elapsed < maxSyncDurationMs) {
       return {
         allowed: false,
         reason: "running",
-        remainingMs: Math.max(0, MAX_SYNC_DURATION_MS - elapsed),
+        remainingMs: Math.max(0, maxSyncDurationMs - elapsed),
       };
     }
     // Stale lock - release it
@@ -54,11 +63,11 @@ export function tryAcquireSyncLock(userId: string): RateLimitResult {
 
   // Check cooldown
   const timeSinceLastSync = now - globalSyncState.lastSyncAt;
-  if (timeSinceLastSync < COOLDOWN_MS) {
+  if (timeSinceLastSync < cooldownMs) {
     return {
       allowed: false,
       reason: "cooldown",
-      remainingMs: COOLDOWN_MS - timeSinceLastSync,
+      remainingMs: cooldownMs - timeSinceLastSync,
     };
   }
 
@@ -79,21 +88,24 @@ export function tryAcquireSyncLock(userId: string): RateLimitResult {
 /**
  * Get current sync status for display
  */
-export function getSyncStatus(): {
+export function getSyncStatus(config?: SyncRateLimitConfig): {
   isRunning: boolean;
   cooldownRemainingMs: number;
   lastSyncAt: number | null;
 } {
   const now = Date.now();
+  const effectiveConfig = config || DEFAULT_SYNC_RATE_LIMIT_CONFIG;
+  const cooldownMs = effectiveConfig.cooldownMs;
+  const maxSyncDurationMs = effectiveConfig.maxSyncDurationMs;
   const timeSinceLastSync = now - globalSyncState.lastSyncAt;
 
   // Check for stale running state
   const isActuallyRunning = globalSyncState.isRunning &&
-    (now - globalSyncState.lastSyncAt) < MAX_SYNC_DURATION_MS;
+    (now - globalSyncState.lastSyncAt) < maxSyncDurationMs;
 
   const cooldownRemainingMs = isActuallyRunning
-    ? MAX_SYNC_DURATION_MS - (now - globalSyncState.lastSyncAt)
-    : Math.max(0, COOLDOWN_MS - timeSinceLastSync);
+    ? maxSyncDurationMs - (now - globalSyncState.lastSyncAt)
+    : Math.max(0, cooldownMs - timeSinceLastSync);
 
   return {
     isRunning: isActuallyRunning,

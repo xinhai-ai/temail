@@ -7,7 +7,8 @@ import { decryptString } from "@/lib/secret-encryption";
 import { verifyTotpCode } from "@/lib/otp";
 import { generateBackupCode, hashBackupCode } from "@/lib/backup-codes";
 import { readJsonBody } from "@/lib/request";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 const schema = z.object({
   code: z.string().trim().min(1),
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`otp:confirm:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("users.otp.confirm", `otp:confirm:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

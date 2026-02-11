@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { issueLoginToken, sha256Hex } from "@/lib/auth-tokens";
 import { readJsonBody } from "@/lib/request";
 
@@ -11,7 +12,7 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`verify-email:${ip}`, { limit: 60, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("auth.verifyEmail", `verify-email:${ip}`, { limit: 60, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

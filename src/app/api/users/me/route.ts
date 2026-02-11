@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { readJsonBody } from "@/lib/request";
 import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 const patchSchema = z.object({
   name: z
@@ -55,7 +56,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`users:me:update:${session.user.id}`, { limit: 30, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("users.me.update", `users:me:update:${session.user.id}`, { limit: 30, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

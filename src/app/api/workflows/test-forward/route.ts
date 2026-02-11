@@ -5,7 +5,8 @@ import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { readJsonBody } from "@/lib/request";
 import { isVercelDeployment } from "@/lib/deployment/server";
 import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
-import { rateLimit } from "@/lib/api-rate-limit";
+
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { getTelegramBotToken } from "@/services/telegram/bot-api";
 import { getSystemSettingValue } from "@/services/system-settings";
 import { assertUserGroupFeatureEnabled, assertUserGroupWorkflowForwardEmailEnabled, assertUserGroupWorkflowForwardWebhookEnabled } from "@/services/usergroups/policy";
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const limited = rateLimit(`workflows:test-forward:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("workflows.testForward", `workflows:test-forward:${session.user.id}`, { limit: 60, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

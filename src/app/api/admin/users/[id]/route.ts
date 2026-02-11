@@ -4,7 +4,8 @@ import { getAdminSession, isSuperAdminRole } from "@/lib/rbac";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 
 const updateSchema = z.object({
   email: z.string().trim().email().max(320).optional(),
@@ -45,7 +46,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`admin:users:read:${session.user.id}`, { limit: 120, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("admin.users.read", `admin:users:read:${session.user.id}`, { limit: 120, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(
@@ -116,7 +117,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`admin:users:update:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("admin.users.update", `admin:users:update:${session.user.id}`, { limit: 60, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(
@@ -249,7 +250,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`admin:users:delete:${session.user.id}`, { limit: 10, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("admin.users.delete", `admin:users:delete:${session.user.id}`, { limit: 10, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

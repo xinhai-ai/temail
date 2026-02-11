@@ -4,7 +4,8 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
-import { rateLimit } from "@/lib/api-rate-limit";
+
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { parseOpenApiScopes, serializeOpenApiScopes } from "@/lib/open-api/api-keys";
 import { OPEN_API_SCOPES_ZOD } from "@/lib/open-api/scopes";
 import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
@@ -24,7 +25,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`open-api:keys:update:${session.user.id}`, { limit: 60, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("openApi.keys.update", `open-api:keys:update:${session.user.id}`, { limit: 60, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(
@@ -108,7 +109,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = rateLimit(`open-api:keys:delete:${session.user.id}`, { limit: 30, windowMs: 60_000 });
+  const limited = await rateLimitByPolicy("openApi.keys.delete", `open-api:keys:delete:${session.user.id}`, { limit: 30, windowMs: 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(

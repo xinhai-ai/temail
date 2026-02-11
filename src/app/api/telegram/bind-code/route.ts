@@ -3,7 +3,8 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { readJsonBody } from "@/lib/request";
 import { createTelegramBindCode } from "@/services/telegram/bind-codes";
-import { getClientIp, rateLimit } from "@/lib/api-rate-limit";
+import { getClientIp } from "@/lib/api-rate-limit";
+import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { isTelegramBotEnabled } from "@/lib/telegram-features";
 import { assertUserGroupFeatureEnabled } from "@/services/usergroups/policy";
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request) || "unknown";
-  const limited = rateLimit(`telegram:bind-code:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
+  const limited = await rateLimitByPolicy("telegram.bindCode", `telegram:bind-code:${session.user.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limited.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil(limited.retryAfterMs / 1000));
     return NextResponse.json(
