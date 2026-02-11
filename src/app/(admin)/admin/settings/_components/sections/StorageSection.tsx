@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 type StorageSectionProps = {
   values: Record<string, string>;
@@ -53,9 +52,6 @@ export function StorageSection({ values, maskedValues, setValue }: StorageSectio
 
   const backend = (values.storage_backend || "local").trim() || "local";
   const s3Visible = backend === "s3";
-  const s3PersistedPassed = values.storage_s3_last_test_ok === "true";
-  const s3TestPassed = testResult ? testResult.ok : s3PersistedPassed;
-  const s3LastTestAt = values.storage_s3_last_test_at || "";
 
   const s3Draft = useMemo(
     () => ({
@@ -205,16 +201,10 @@ export function StorageSection({ values, maskedValues, setValue }: StorageSectio
               <Button onClick={handleTestS3} disabled={testing}>
                 {testing ? t("settings.storage.test.testing") : t("settings.storage.test.testNow")}
               </Button>
-              <Badge variant={s3TestPassed ? "default" : "secondary"}>
-                {s3TestPassed ? t("settings.storage.test.success") : t("settings.storage.test.failed")}
-              </Badge>
               {testResult?.message ? (
                 <span className={`text-xs ${testResult.ok ? "text-muted-foreground" : "text-destructive"}`}>
                   {testResult.message}
                 </span>
-              ) : null}
-              {s3LastTestAt ? (
-                <span className="text-xs text-muted-foreground">{new Date(s3LastTestAt).toLocaleString()}</span>
               ) : null}
             </div>
           </div>
