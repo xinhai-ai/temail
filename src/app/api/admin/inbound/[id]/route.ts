@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { getStorage } from "@/lib/storage";
+import { deleteByRecordStorage } from "@/lib/storage/record-storage";
 import { isVercelDeployment } from "@/lib/deployment/server";
 
 export async function GET(
@@ -30,11 +30,11 @@ export async function GET(
   const vercelMode = isVercelDeployment();
 
   // Exclude rawContent from response, but indicate if it's available
-  const { rawContent, rawContentPath, ...emailWithoutRawContent } = inboundEmail;
+  const { rawContent, rawContentPath, rawStorageBackend, ...emailWithoutRawContent } = inboundEmail;
   const response = {
     ...emailWithoutRawContent,
     // Set rawContent to true if available (either in DB or file)
-    ...(vercelMode ? {} : { rawContentPath }),
+    ...(vercelMode ? {} : { rawContentPath, rawStorageBackend }),
     rawContent: vercelMode ? undefined : rawContent || rawContentPath ? true : undefined,
   };
 
@@ -54,7 +54,7 @@ export async function DELETE(
 
   const inboundEmail = await prisma.inboundEmail.findUnique({
     where: { id },
-    select: { id: true, rawContentPath: true },
+    select: { id: true, rawContentPath: true, rawStorageBackend: true },
   });
 
   if (!inboundEmail) {
@@ -62,8 +62,7 @@ export async function DELETE(
   }
 
   if (inboundEmail.rawContentPath) {
-    const storage = getStorage();
-    await storage.delete(inboundEmail.rawContentPath);
+    await deleteByRecordStorage(inboundEmail.rawContentPath, inboundEmail.rawStorageBackend);
   }
 
   await prisma.inboundEmail.delete({ where: { id } });

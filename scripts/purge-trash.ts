@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { getStorage } from "@/lib/storage";
+import { deleteByRecordStorage } from "@/lib/storage/record-storage";
 
 type Args = {
   dryRun: boolean;
@@ -40,7 +40,6 @@ function parseArgs(argv: string[]): Args {
 async function main() {
   const { dryRun, limit, userId } = parseArgs(process.argv.slice(2));
   const now = new Date();
-  const storage = getStorage();
 
   const users = await prisma.user.findMany({
     select: { id: true, trashRetentionDays: true },
@@ -76,7 +75,8 @@ async function main() {
         mailboxId: true,
         deletedAt: true,
         rawContentPath: true,
-        attachments: { select: { path: true } },
+        rawStorageBackend: true,
+        attachments: { select: { path: true, storageBackend: true } },
       },
       orderBy: [{ deletedAt: "asc" }, { id: "asc" }],
       ...(typeof limit === "number" ? { take: limit } : {}),
@@ -98,11 +98,11 @@ async function main() {
 
       try {
         if (email.rawContentPath) {
-          await storage.delete(email.rawContentPath);
+          await deleteByRecordStorage(email.rawContentPath, email.rawStorageBackend);
         }
 
         for (const attachment of email.attachments) {
-          await storage.delete(attachment.path);
+          await deleteByRecordStorage(attachment.path, attachment.storageBackend);
         }
 
         await prisma.email.delete({ where: { id: email.id } });
@@ -133,4 +133,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

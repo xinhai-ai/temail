@@ -76,6 +76,7 @@ export async function rematchUnmatchedInboundEmailsForUser(
             htmlBody: inbound.htmlBody || undefined,
             rawContent: inbound.rawContent || undefined,
             rawContentPath: inbound.rawContentPath || undefined,
+            rawStorageBackend: inbound.rawStorageBackend || undefined,
             storageBytes: 0,
             storageFiles: 0,
             storageTruncated: true,

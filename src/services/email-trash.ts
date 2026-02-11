@@ -1,6 +1,6 @@
 import type { EmailRestoreStatus, EmailStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { getStorage } from "@/lib/storage";
+import { deleteByRecordStorage } from "@/lib/storage/record-storage";
 
 export function getRestoreStatusForTrash(status: EmailStatus): EmailRestoreStatus {
   return status === "UNREAD" ? "UNREAD" : "READ";
@@ -72,24 +72,22 @@ export async function purgeOwnedEmail(params: {
       id: true,
       mailboxId: true,
       rawContentPath: true,
-      attachments: { select: { path: true } },
+      rawStorageBackend: true,
+      attachments: { select: { path: true, storageBackend: true } },
     },
   });
 
   if (!existing) return null;
 
-  const storage = getStorage();
-
   if (existing.rawContentPath) {
-    await storage.delete(existing.rawContentPath);
+    await deleteByRecordStorage(existing.rawContentPath, existing.rawStorageBackend);
   }
 
   for (const attachment of existing.attachments) {
-    await storage.delete(attachment.path);
+    await deleteByRecordStorage(attachment.path, attachment.storageBackend);
   }
 
   await prisma.email.delete({ where: { id: existing.id } });
 
   return { id: existing.id, mailboxId: existing.mailboxId };
 }
-

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { dkimVerify } from "mailauth";
-import { getStorage } from "@/lib/storage";
+import { readBufferByRecordStorage } from "@/lib/storage/record-storage";
 
 export type DkimUiStatus = "correct" | "error" | "unknown";
 
@@ -48,14 +48,14 @@ function getStatusFromResults(results: DkimUiSignature[]): DkimUiStatus {
 export async function verifyDkim(email: {
   rawContent?: string | null;
   rawContentPath?: string | null;
+  rawStorageBackend?: string | null;
 }): Promise<DkimUiResult> {
   let rawContent: string | null = null;
 
   // Try to read from file first if path is provided
   if (email.rawContentPath) {
     try {
-      const storage = getStorage();
-      const buffer = await storage.read(email.rawContentPath);
+      const buffer = await readBufferByRecordStorage(email.rawContentPath, email.rawStorageBackend);
       rawContent = buffer.toString("utf8");
     } catch (error) {
       // File not found or read error, fall back to database content
@@ -117,4 +117,3 @@ export async function verifyDkim(email: {
     };
   }
 }
-

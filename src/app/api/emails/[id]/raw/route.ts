@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { getStorage } from "@/lib/storage";
+import {
+  getSignedDownloadUrlByRecordStorage,
+  readBufferByRecordStorage,
+} from "@/lib/storage/record-storage";
 import { isVercelDeployment } from "@/lib/deployment/server";
 
 // Maximum raw content size to return (1MB)
@@ -27,7 +30,7 @@ export async function GET(
 
   const email = await prisma.email.findFirst({
     where: { id, mailbox: { userId: session.user.id } },
-    select: { id: true, rawContent: true, rawContentPath: true },
+    select: { id: true, rawContent: true, rawContentPath: true, rawStorageBackend: true },
   });
 
   if (!email) {
@@ -39,21 +42,23 @@ export async function GET(
   // Try to read from file first if path is provided
   if (email.rawContentPath) {
     try {
-      const storage = getStorage();
-
       if (shouldDownload) {
-        const signedUrl = await storage.getSignedDownloadUrl(email.rawContentPath, {
-          expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
-          responseContentType: "message/rfc822",
-          responseContentDisposition: `attachment; filename=\"${id}.eml\"`,
-        });
+        const signedUrl = await getSignedDownloadUrlByRecordStorage(
+          email.rawContentPath,
+          email.rawStorageBackend,
+          {
+            expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
+            responseContentType: "message/rfc822",
+            responseContentDisposition: `attachment; filename=\"${id}.eml\"`,
+          }
+        );
 
         if (signedUrl) {
           return NextResponse.redirect(signedUrl, { status: 302 });
         }
       }
 
-      const buffer = await storage.read(email.rawContentPath);
+      const buffer = await readBufferByRecordStorage(email.rawContentPath, email.rawStorageBackend);
       rawContent = buffer.toString("utf8");
     } catch (error) {
       console.error("[api/emails/raw] failed to read raw content from file:", error);

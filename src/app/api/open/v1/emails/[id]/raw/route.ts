@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
-import { getStorage } from "@/lib/storage";
+import {
+  getSignedDownloadUrlByRecordStorage,
+  readBufferByRecordStorage,
+} from "@/lib/storage/record-storage";
 import { isVercelDeployment } from "@/lib/deployment/server";
 
 const MAX_RAW_CONTENT_SIZE = 1 * 1024 * 1024;
@@ -26,7 +29,7 @@ export async function GET(
 
   const email = await prisma.email.findFirst({
     where: { id, mailbox: { userId: authResult.apiKey.userId } },
-    select: { id: true, rawContent: true, rawContentPath: true },
+    select: { id: true, rawContent: true, rawContentPath: true, rawStorageBackend: true },
   });
 
   if (!email) {
@@ -37,21 +40,23 @@ export async function GET(
 
   if (email.rawContentPath) {
     try {
-      const storage = getStorage();
-
       if (shouldDownload) {
-        const signedUrl = await storage.getSignedDownloadUrl(email.rawContentPath, {
-          expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
-          responseContentType: "message/rfc822",
-          responseContentDisposition: `attachment; filename=\"${id}.eml\"`,
-        });
+        const signedUrl = await getSignedDownloadUrlByRecordStorage(
+          email.rawContentPath,
+          email.rawStorageBackend,
+          {
+            expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
+            responseContentType: "message/rfc822",
+            responseContentDisposition: `attachment; filename=\"${id}.eml\"`,
+          }
+        );
 
         if (signedUrl) {
           return NextResponse.redirect(signedUrl, { status: 302 });
         }
       }
 
-      const buffer = await storage.read(email.rawContentPath);
+      const buffer = await readBufferByRecordStorage(email.rawContentPath, email.rawStorageBackend);
       rawContent = buffer.toString("utf8");
     } catch (error) {
       console.error("[open/v1/emails/raw] failed to read raw content from file:", error);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { getStorage } from "@/lib/storage";
+import { readBufferByRecordStorage } from "@/lib/storage/record-storage";
 import { isVercelDeployment } from "@/lib/deployment/server";
 
 // Maximum raw content size to return (1MB)
@@ -24,7 +24,7 @@ export async function GET(
 
   const inboundEmail = await prisma.inboundEmail.findUnique({
     where: { id },
-    select: { id: true, rawContent: true, rawContentPath: true },
+    select: { id: true, rawContent: true, rawContentPath: true, rawStorageBackend: true },
   });
 
   if (!inboundEmail) {
@@ -36,8 +36,10 @@ export async function GET(
   // Try to read from file first if path is provided
   if (inboundEmail.rawContentPath) {
     try {
-      const storage = getStorage();
-      const buffer = await storage.read(inboundEmail.rawContentPath);
+      const buffer = await readBufferByRecordStorage(
+        inboundEmail.rawContentPath,
+        inboundEmail.rawStorageBackend
+      );
       rawContent = buffer.toString("utf8");
     } catch (error) {
       console.error("[api/admin/inbound/raw] failed to read raw content from file:", error);

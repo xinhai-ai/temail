@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { getStorage } from "@/lib/storage";
+import { getSizeByRecordStorage } from "@/lib/storage/record-storage";
 
 async function main() {
   const batchSize = 200;
@@ -7,13 +7,12 @@ async function main() {
   let processed = 0;
   let updated = 0;
 
-  const storage = getStorage();
-
   for (;;) {
     const emails: Array<{
       id: string;
       rawContent: string | null;
       rawContentPath: string | null;
+      rawStorageBackend: string | null;
       attachments: Array<{ size: number }>;
     }> = await prisma.email.findMany({
       ...(cursorId
@@ -28,6 +27,7 @@ async function main() {
         id: true,
         rawContent: true,
         rawContentPath: true,
+        rawStorageBackend: true,
         attachments: {
           select: {
             size: true,
@@ -46,7 +46,7 @@ async function main() {
 
       if (email.rawContentPath) {
         try {
-          rawBytes = await storage.getSize(email.rawContentPath);
+          rawBytes = await getSizeByRecordStorage(email.rawContentPath, email.rawStorageBackend);
           rawFiles = rawBytes > 0 ? 1 : 0;
         } catch {
           rawBytes = 0;

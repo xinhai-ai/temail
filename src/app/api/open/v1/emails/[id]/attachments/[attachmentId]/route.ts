@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
-import { getStorage } from "@/lib/storage";
+import {
+  getSignedDownloadUrlByRecordStorage,
+  readStreamByRecordStorage,
+} from "@/lib/storage/record-storage";
 
 const SIGNED_URL_EXPIRES_SECONDS = 120;
 
@@ -32,6 +35,7 @@ export async function GET(
           contentType: true,
           size: true,
           path: true,
+          storageBackend: true,
         },
       },
     },
@@ -49,19 +53,21 @@ export async function GET(
   const safeFilename = sanitizeFilename(attachment.filename);
 
   try {
-    const storage = getStorage();
-
-    const signedUrl = await storage.getSignedDownloadUrl(attachment.path, {
-      expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
-      responseContentType: attachment.contentType || "application/octet-stream",
-      responseContentDisposition: `attachment; filename=\"${safeFilename}\"`,
-    });
+    const signedUrl = await getSignedDownloadUrlByRecordStorage(
+      attachment.path,
+      attachment.storageBackend,
+      {
+        expiresInSeconds: SIGNED_URL_EXPIRES_SECONDS,
+        responseContentType: attachment.contentType || "application/octet-stream",
+        responseContentDisposition: `attachment; filename=\"${safeFilename}\"`,
+      }
+    );
 
     if (signedUrl) {
       return NextResponse.redirect(signedUrl, { status: 302 });
     }
 
-    const stream = await storage.readStream(attachment.path);
+    const stream = await readStreamByRecordStorage(attachment.path, attachment.storageBackend);
 
     const webStream = new ReadableStream({
       start(controller) {

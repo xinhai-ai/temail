@@ -485,6 +485,11 @@ enum EmailRestoreStatus {
   READ
 }
 
+enum StoredFileBackend {
+  LOCAL
+  S3
+}
+
 model Email {
   id          String      @id @default(cuid())
   messageId   String?
@@ -496,6 +501,7 @@ model Email {
   htmlBody    String?
   rawContent  String?
   rawContentPath String?   // File storage path for RFC822 content
+  rawStorageBackend StoredFileBackend?
   storageBytes Int         @default(0)
   storageFiles Int         @default(0)
   storageTruncated Boolean @default(false)
@@ -535,6 +541,7 @@ model InboundEmail {
   htmlBody    String?
   rawContent  String?
   rawContentPath String?       // File storage path for RFC822 content
+  rawStorageBackend StoredFileBackend?
   receivedAt  DateTime         @default(now())
   createdAt   DateTime         @default(now())
 
@@ -569,6 +576,7 @@ model Attachment {
   contentType String
   size        Int
   path        String
+  storageBackend StoredFileBackend?
   createdAt   DateTime @default(now())
 
   emailId     String

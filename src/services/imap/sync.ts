@@ -4,10 +4,14 @@ import { Prisma, type Domain, type ImapConfig } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { triggerEmailWorkflows } from "@/services/workflow/trigger";
 import {
-  getStorage,
   generateRawContentPath,
   generateAttachmentPath,
+  getActiveStorageBackend,
   getMaxAttachmentSize,
+  getStorageForBackend,
+  toStoredFileBackendMarker,
+  type StoredFileBackendMarker,
+  type StorageProvider,
 } from "@/lib/storage";
 import { canStoreForUser } from "@/services/storage-quota";
 
@@ -128,9 +132,9 @@ function chunkArray<T>(values: T[], chunkSize: number): T[][] {
 async function saveRawContent(
   emailId: string,
   raw: string,
-  date: Date
+  date: Date,
+  storage: StorageProvider
 ): Promise<string> {
-  const storage = getStorage();
   const path = generateRawContentPath(emailId, date);
   await storage.write(path, raw);
   return path;
@@ -144,15 +148,16 @@ async function processAttachments(
   attachments: Attachment[],
   emailId: string,
   date: Date,
+  storage: StorageProvider,
+  storageBackend: StoredFileBackendMarker,
   debug?: boolean
-): Promise<Array<{ id: string; filename: string; contentType: string; size: number; path: string }>> {
+): Promise<Array<{ id: string; filename: string; contentType: string; size: number; path: string; storageBackend: StoredFileBackendMarker }>> {
   if (!attachments || attachments.length === 0) {
     return [];
   }
 
-  const storage = getStorage();
   const maxSize = getMaxAttachmentSize();
-  const records: Array<{ id: string; filename: string; contentType: string; size: number; path: string }> = [];
+  const records: Array<{ id: string; filename: string; contentType: string; size: number; path: string; storageBackend: StoredFileBackendMarker }> = [];
 
   for (const attachment of attachments) {
     // Skip attachments that are too large
@@ -183,6 +188,7 @@ async function processAttachments(
         contentType,
         size,
         path,
+        storageBackend,
       });
     } catch (error) {
       if (debug) {
@@ -268,11 +274,17 @@ async function processMessage(
       storageAllowed = check.allowed;
     }
 
+    const activeStorageBackend = await getActiveStorageBackend();
+    const storageBackend = toStoredFileBackendMarker(activeStorageBackend);
+    const storage = getStorageForBackend(activeStorageBackend);
+
     // Save raw content to file
     let rawContentPath: string | undefined;
+    let rawStorageBackend: StoredFileBackendMarker | undefined;
     if (raw && storageAllowed) {
       try {
-        rawContentPath = await saveRawContent(tempId, raw, receivedAt);
+        rawContentPath = await saveRawContent(tempId, raw, receivedAt, storage);
+        rawStorageBackend = storageBackend;
       } catch (error) {
         if (options.debug) {
           console.error(`[imap-sync] failed to save raw content:`, error);
@@ -293,6 +305,7 @@ async function processMessage(
           textBody,
           htmlBody,
           rawContentPath,
+          rawStorageBackend,
           receivedAt,
           domainId: domain.id,
           mailboxId: mailbox?.id,
@@ -320,6 +333,8 @@ async function processMessage(
           parsed.attachments || [],
           tempId,
           receivedAt,
+          storage,
+          storageBackend,
           options.debug
         )
       : [];
@@ -339,6 +354,7 @@ async function processMessage(
         textBody,
         htmlBody,
         rawContentPath,
+        rawStorageBackend,
         storageBytes,
         storageFiles,
         storageTruncated: !storageAllowed,

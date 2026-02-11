@@ -7,7 +7,16 @@ import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { getClientIp } from "@/lib/api-rate-limit";
 import { rateLimitByPolicy } from "@/services/rate-limit-settings";
-import { getStorage, generateAttachmentPath, generateRawContentPath, getMaxAttachmentSize } from "@/lib/storage";
+import {
+  generateAttachmentPath,
+  generateRawContentPath,
+  getActiveStorageBackend,
+  getMaxAttachmentSize,
+  getStorageForBackend,
+  toStoredFileBackendMarker,
+  type StoredFileBackendMarker,
+  type StorageProvider,
+} from "@/lib/storage";
 import { simpleParser, type Attachment } from "mailparser";
 import { isVercelDeployment } from "@/lib/deployment/server";
 import { canStoreForUser } from "@/services/storage-quota";
@@ -72,15 +81,16 @@ function extractWebhookHeaders(value: unknown): Array<{ name: string; value: str
 async function processAttachments(
   attachments: Attachment[],
   emailId: string,
-  date: Date
-): Promise<Array<{ id: string; filename: string; contentType: string; size: number; path: string }>> {
+  date: Date,
+  storage: StorageProvider,
+  storageBackend: StoredFileBackendMarker
+): Promise<Array<{ id: string; filename: string; contentType: string; size: number; path: string; storageBackend: StoredFileBackendMarker }>> {
   if (!attachments || attachments.length === 0) {
     return [];
   }
 
-  const storage = getStorage();
   const maxSize = getMaxAttachmentSize();
-  const records: Array<{ id: string; filename: string; contentType: string; size: number; path: string }> = [];
+  const records: Array<{ id: string; filename: string; contentType: string; size: number; path: string; storageBackend: StoredFileBackendMarker }> = [];
 
   for (const attachment of attachments) {
     const size = attachment.size || 0;
@@ -113,6 +123,7 @@ async function processAttachments(
         contentType,
         size: resolvedSize,
         path,
+        storageBackend,
       });
     } catch (error) {
       console.error("[webhook] failed to save attachment:", error);
@@ -296,13 +307,18 @@ export async function POST(request: NextRequest) {
       storageAllowed = check.allowed;
     }
 
+    const activeStorageBackend = vercelMode ? "local" : await getActiveStorageBackend();
+    const storageBackend = toStoredFileBackendMarker(activeStorageBackend);
+    const storage = getStorageForBackend(activeStorageBackend);
+
     // Save raw content to file
     let rawContentPath: string | undefined;
+    let rawStorageBackend: StoredFileBackendMarker | undefined;
     if (storageAllowed && rawContent && !vercelMode) {
       try {
-        const storage = getStorage();
         rawContentPath = generateRawContentPath(tempId, receivedAt);
         await storage.write(rawContentPath, rawContent);
+        rawStorageBackend = storageBackend;
       } catch (error) {
         console.error("[webhook] failed to save raw content:", error);
         // Fall back to not storing raw content if file storage fails
@@ -321,6 +337,7 @@ export async function POST(request: NextRequest) {
           textBody,
           htmlBody,
           rawContentPath,
+          rawStorageBackend,
           receivedAt,
           domainId: webhookConfig.domainId,
           mailboxId: mailbox?.id,
@@ -355,7 +372,7 @@ export async function POST(request: NextRequest) {
       ? parsedRaw
         ? vercelMode
           ? []
-          : await processAttachments(parsedRaw.attachments || [], tempId, receivedAt)
+          : await processAttachments(parsedRaw.attachments || [], tempId, receivedAt, storage, storageBackend)
         : []
       : [];
 
@@ -374,6 +391,7 @@ export async function POST(request: NextRequest) {
         textBody,
         htmlBody,
         rawContentPath,
+        rawStorageBackend,
         storageBytes,
         storageFiles,
         storageTruncated: !storageAllowed,

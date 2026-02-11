@@ -82,7 +82,7 @@ export async function GET(
   const promise = (async () => {
     const email = await prisma.email.findFirst({
       where: { id, mailbox: { userId: session.user.id } },
-      select: { id: true, rawContent: true, rawContentPath: true },
+      select: { id: true, rawContent: true, rawContentPath: true, rawStorageBackend: true },
     });
 
     if (!email) {
