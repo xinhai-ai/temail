@@ -5,6 +5,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "predev": "prisma generate",
+    "predev:all": "prisma generate",
     "dev": "next dev",
     "dev:all": "concurrently -n next,imap -c blue,green \"cross-env IMAP_SERVICE_ENABLED=1 next dev\" \"npm run imap:service\"",
     "prebuild": "prisma generate",
