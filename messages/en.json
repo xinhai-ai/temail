@@ -959,7 +959,7 @@
           "label": "S3 Secret Access Key"
         },
         "storage_s3_base_prefix": {
-          "label": "S3 Base Prefix"
+          "label": "Storage Folder Path"
         },
         "storage_s3_force_path_style": {
           "label": "Force Path-Style",
