@@ -365,6 +365,8 @@
         "policy": "域名策略",
         "mailboxes": "邮箱数",
         "workflows": "工作流数",
+        "storageMb": "存储（MB）",
+        "storageFiles": "存储文件数",
         "features": "功能",
         "users": "用户",
         "domains": "域名"
@@ -380,7 +382,9 @@
       "fields": {
         "domainPolicy": "域名策略",
         "maxMailboxes": "最大邮箱数",
-        "maxWorkflows": "最大工作流数"
+        "maxWorkflows": "最大工作流数",
+        "maxStorageMb": "最大存储（MB）",
+        "maxStorageFiles": "最大存储文件数"
       },
       "placeholders": {
         "unlimited": "不限"
@@ -450,6 +454,10 @@
         "authSource": "注册来源",
         "verifyEmail": "通过验证",
         "verifyingEmail": "验证中...",
+        "maxStorageMb": "最大存储（MB）",
+        "maxStorageFiles": "最大存储文件数",
+        "storageBytes": "已用存储（字节）",
+        "storageFiles": "已用存储（文件）",
         "active": "启用",
         "activeHelp": "禁用用户登录"
       },
@@ -564,6 +572,7 @@
         "security": "安全",
         "emailTemplates": "邮件模板",
         "smtp": "SMTP",
+        "storage": "存储",
         "ai": "AI",
         "workflow": "工作流",
         "telegram": "Telegram"
@@ -815,6 +824,26 @@
           "toRequired": "请填写收件人邮箱"
         }
       },
+      "storage": {
+        "cardTitle": "存储设置",
+        "subtitle": "配置存储后端并查看占用情况",
+        "backend": {
+          "label": "存储后端",
+          "help": "使用本地文件系统或兼容 S3 的对象存储"
+        },
+        "test": {
+          "testNow": "测试 S3 连接",
+          "testing": "测试中...",
+          "success": "S3 连接成功",
+          "failed": "S3 连接失败"
+        },
+        "usage": {
+          "title": "存储占用",
+          "help": "查看系统与每个用户的存储使用情况",
+          "summary": "用户：{users} · 文件：{files} · 已用：{bytes}",
+          "empty": "暂无占用数据"
+        }
+      },
       "ai": {
         "templateVariables": {
           "title": "模板变量",
@@ -913,6 +942,28 @@
         },
         "smtp_from": {
           "label": "SMTP 发件人"
+        },
+        "storage_s3_endpoint": {
+          "label": "S3 Endpoint"
+        },
+        "storage_s3_region": {
+          "label": "S3 区域"
+        },
+        "storage_s3_bucket": {
+          "label": "S3 Bucket"
+        },
+        "storage_s3_access_key_id": {
+          "label": "S3 Access Key ID"
+        },
+        "storage_s3_secret_access_key": {
+          "label": "S3 Secret Access Key"
+        },
+        "storage_s3_base_prefix": {
+          "label": "S3 基础前缀"
+        },
+        "storage_s3_force_path_style": {
+          "label": "强制 Path-Style",
+          "description": "用于 MinIO 或部分 S3 兼容服务"
         },
         "turnstile_site_key": {
           "label": "Site Key"
@@ -1873,6 +1924,14 @@
         "saving": "保存中...",
         "save": "保存回收站设置"
       }
+    },
+    "storage": {
+      "title": "存储",
+      "description": "查看当前邮件存储占用与上限。",
+      "usedSpace": "已用空间",
+      "usedFiles": "已用文件数",
+      "quotaSpace": "空间上限",
+      "quotaFiles": "文件上限"
     },
     "about": {
       "title": "关于",

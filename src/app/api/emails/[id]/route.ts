@@ -54,10 +54,13 @@ export async function GET(
   // For lazy loading: exclude rawContent from response, but indicate if it's available
   // - If rawContentPath exists: raw content is in file storage
   // - If only rawContent exists (legacy): keep a flag so frontend knows raw is available
-  const { rawContent, rawContentPath, emailTags, ...emailWithoutRawContent } = email;
+  const { rawContent, rawContentPath, emailTags, storageBytes, storageFiles, storageTruncated, ...emailWithoutRawContent } = email;
   const response = {
     ...emailWithoutRawContent,
     tags: emailTags.map((et) => et.tag),
+    storageBytes,
+    storageFiles,
+    storageTruncated,
     ...(vercelMode ? {} : { rawContentPath }),
     // For backward compatibility: if no rawContentPath but rawContent exists,
     // set rawContent to true (as a flag) so frontend knows to fetch from /raw

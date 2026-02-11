@@ -32,6 +32,8 @@ type UserGroupRow = {
   domainPolicy: "ALL_PUBLIC" | "ALLOWLIST";
   maxMailboxes: number | null;
   maxWorkflows: number | null;
+  maxStorageMb: number | null;
+  maxStorageFiles: number | null;
   telegramEnabled: boolean;
   workflowEnabled: boolean;
   workflowForwardEmailEnabled: boolean;
@@ -169,6 +171,8 @@ export default function AdminUserGroupsPage() {
                 <TableHead>{t("usergroups.table.policy")}</TableHead>
                 <TableHead>{t("usergroups.table.mailboxes")}</TableHead>
                 <TableHead>{t("usergroups.table.workflows")}</TableHead>
+                <TableHead>{t("usergroups.table.storageMb")}</TableHead>
+                <TableHead>{t("usergroups.table.storageFiles")}</TableHead>
                 <TableHead>{t("usergroups.table.features")}</TableHead>
                 <TableHead>{t("usergroups.table.users")}</TableHead>
                 <TableHead>{t("usergroups.table.domains")}</TableHead>
@@ -189,6 +193,8 @@ export default function AdminUserGroupsPage() {
                   <TableCell>{g.domainPolicy}</TableCell>
                   <TableCell>{formatQuota(g.maxMailboxes)}</TableCell>
                   <TableCell>{formatQuota(g.maxWorkflows)}</TableCell>
+                  <TableCell>{formatQuota(g.maxStorageMb)}</TableCell>
+                  <TableCell>{formatQuota(g.maxStorageFiles)}</TableCell>
                   <TableCell>
                     {[
                       g.telegramEnabled ? "TG" : null,

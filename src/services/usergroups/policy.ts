@@ -28,6 +28,8 @@ type UserGroupRow = {
   domainPolicy: "ALL_PUBLIC" | "ALLOWLIST";
   maxMailboxes: number | null;
   maxWorkflows: number | null;
+  maxStorageMb: number | null;
+  maxStorageFiles: number | null;
   telegramEnabled: boolean;
   workflowEnabled: boolean;
   workflowForwardEmailEnabled: boolean;
@@ -53,6 +55,8 @@ async function getUserPolicyContext(userId: string): Promise<
           domainPolicy: true,
           maxMailboxes: true,
           maxWorkflows: true,
+          maxStorageMb: true,
+          maxStorageFiles: true,
           telegramEnabled: true,
           workflowEnabled: true,
           workflowForwardEmailEnabled: true,

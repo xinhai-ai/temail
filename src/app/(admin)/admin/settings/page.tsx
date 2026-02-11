@@ -13,6 +13,7 @@ import {
   Bot,
   Workflow,
   Send,
+  Database,
 } from "lucide-react";
 import { isVercelDeployment } from "@/lib/deployment/public";
 import { SettingsLayout, type SettingsNavItem } from "@/components/settings/SettingsLayout";
@@ -28,6 +29,7 @@ import { SmtpSection } from "./_components/sections/SmtpSection";
 import { AiSection } from "./_components/sections/AiSection";
 import { WorkflowSection } from "./_components/sections/WorkflowSection";
 import { TelegramSection } from "./_components/sections/TelegramSection";
+import { StorageSection } from "./_components/sections/StorageSection";
 
 function parseAiProviderModels(raw: string | undefined): string[] {
   if (!raw) return [];
@@ -326,6 +328,10 @@ export default function AdminSettingsPage() {
       items.push({ id: "smtp", label: t("settings.tabs.smtp"), icon: Mail });
     }
 
+    if (!vercelMode) {
+      items.push({ id: "storage", label: t("settings.tabs.storage"), icon: Database });
+    }
+
     items.push(
       { id: "ai", label: t("settings.tabs.ai"), icon: Bot },
       { id: "workflow", label: t("settings.tabs.workflow"), icon: Workflow },
@@ -419,6 +425,10 @@ export default function AdminSettingsPage() {
           smtpTesting={smtpTest.testing}
           handleSmtpTest={smtpTest.handleSmtpTest}
         />
+      )}
+
+      {activeSection === "storage" && !vercelMode && (
+        <StorageSection values={values} maskedValues={maskedValues} setValue={setValue} />
       )}
 
       {activeSection === "ai" && (

@@ -9,6 +9,7 @@ import {
   generateAttachmentPath,
   getMaxAttachmentSize,
 } from "@/lib/storage";
+import { canStoreForUser } from "@/services/storage-quota";
 
 export type ImapDomain = Domain & { imapConfig: ImapConfig };
 
@@ -243,9 +244,33 @@ async function processMessage(
     // Generate a unique ID for file storage (used for both InboundEmail and Email)
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
+    const maxAttachmentSize = getMaxAttachmentSize();
+    const predictedRawBytes = raw ? Buffer.byteLength(raw, "utf8") : 0;
+    const predictedAttachmentStats = (parsed.attachments || []).reduce(
+      (acc, attachment) => {
+        if (!attachment.content) return acc;
+        const size = Math.max(0, attachment.size || attachment.content.length || 0);
+        if (size > maxAttachmentSize) return acc;
+        acc.bytes += size;
+        acc.files += 1;
+        return acc;
+      },
+      { bytes: 0, files: 0 }
+    );
+
+    let storageAllowed = true;
+    if (mailbox && (predictedRawBytes > 0 || predictedAttachmentStats.files > 0)) {
+      const check = await canStoreForUser({
+        userId: mailbox.userId,
+        additionalBytes: predictedRawBytes + predictedAttachmentStats.bytes,
+        additionalFiles: (predictedRawBytes > 0 ? 1 : 0) + predictedAttachmentStats.files,
+      });
+      storageAllowed = check.allowed;
+    }
+
     // Save raw content to file
     let rawContentPath: string | undefined;
-    if (raw) {
+    if (raw && storageAllowed) {
       try {
         rawContentPath = await saveRawContent(tempId, raw, receivedAt);
       } catch (error) {
@@ -290,12 +315,19 @@ async function processMessage(
     }
 
     // Process attachments
-    const attachmentRecords = await processAttachments(
-      parsed.attachments || [],
-      tempId,
-      receivedAt,
-      options.debug
-    );
+    const attachmentRecords = storageAllowed
+      ? await processAttachments(
+          parsed.attachments || [],
+          tempId,
+          receivedAt,
+          options.debug
+        )
+      : [];
+
+    const storageBytes =
+      (rawContentPath ? predictedRawBytes : 0) +
+      attachmentRecords.reduce((sum, item) => sum + Math.max(0, item.size || 0), 0);
+    const storageFiles = (rawContentPath ? 1 : 0) + attachmentRecords.length;
 
     const email = await prisma.email.create({
       data: {
@@ -307,6 +339,9 @@ async function processMessage(
         textBody,
         htmlBody,
         rawContentPath,
+        storageBytes,
+        storageFiles,
+        storageTruncated: !storageAllowed,
         mailboxId: mailbox.id,
         receivedAt,
         ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),

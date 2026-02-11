@@ -10,6 +10,7 @@ import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { getStorage, generateAttachmentPath, generateRawContentPath, getMaxAttachmentSize } from "@/lib/storage";
 import { simpleParser, type Attachment } from "mailparser";
 import { isVercelDeployment } from "@/lib/deployment/server";
+import { canStoreForUser } from "@/services/storage-quota";
 
 function extractEmailAddress(value: unknown) {
   if (typeof value !== "string") return null;
@@ -269,9 +270,35 @@ export async function POST(request: NextRequest) {
     // Generate a unique ID for file storage
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
+    const maxAttachmentSize = getMaxAttachmentSize();
+    const predictedRawBytes = rawContent ? Buffer.byteLength(rawContent, "utf8") : 0;
+    const predictedAttachmentStats = parsedRaw
+      ? (parsedRaw.attachments || []).reduce(
+          (acc, attachment) => {
+            if (!attachment.content) return acc;
+            const size = Math.max(0, attachment.size || attachment.content.length || 0);
+            if (size > maxAttachmentSize) return acc;
+            acc.bytes += size;
+            acc.files += 1;
+            return acc;
+          },
+          { bytes: 0, files: 0 }
+        )
+      : { bytes: 0, files: 0 };
+
+    let storageAllowed = true;
+    if (mailbox && !vercelMode && (predictedRawBytes > 0 || predictedAttachmentStats.files > 0)) {
+      const check = await canStoreForUser({
+        userId: mailbox.userId,
+        additionalBytes: predictedRawBytes + predictedAttachmentStats.bytes,
+        additionalFiles: (predictedRawBytes > 0 ? 1 : 0) + predictedAttachmentStats.files,
+      });
+      storageAllowed = check.allowed;
+    }
+
     // Save raw content to file
     let rawContentPath: string | undefined;
-    if (rawContent && !vercelMode) {
+    if (storageAllowed && rawContent && !vercelMode) {
       try {
         const storage = getStorage();
         rawContentPath = generateRawContentPath(tempId, receivedAt);
@@ -324,11 +351,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const attachmentRecords = parsedRaw
-      ? vercelMode
-        ? []
-        : await processAttachments(parsedRaw.attachments || [], tempId, receivedAt)
+    const attachmentRecords = storageAllowed
+      ? parsedRaw
+        ? vercelMode
+          ? []
+          : await processAttachments(parsedRaw.attachments || [], tempId, receivedAt)
+        : []
       : [];
+
+    const storageBytes =
+      (rawContentPath ? predictedRawBytes : 0) +
+      attachmentRecords.reduce((sum, attachment) => sum + Math.max(0, attachment.size || 0), 0);
+    const storageFiles = (rawContentPath ? 1 : 0) + attachmentRecords.length;
 
     const email = await prisma.email.create({
       data: {
@@ -340,6 +374,9 @@ export async function POST(request: NextRequest) {
         textBody,
         htmlBody,
         rawContentPath,
+        storageBytes,
+        storageFiles,
+        storageTruncated: !storageAllowed,
         mailboxId: mailbox.id,
         receivedAt,
         ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),

@@ -10,6 +10,7 @@ import { useOtp } from "./_hooks/useOtp";
 import { usePasskeys } from "./_hooks/usePasskeys";
 import { useApiKeys } from "./_hooks/useApiKeys";
 import { useTrash } from "./_hooks/useTrash";
+import { useStorageUsage } from "./_hooks/useStorageUsage";
 import { AccountSection } from "./_components/sections/AccountSection";
 import { SecuritySection } from "./_components/sections/SecuritySection";
 import { ApiSection } from "./_components/sections/ApiSection";
@@ -30,6 +31,7 @@ export default function SettingsPage() {
   const passkeys = usePasskeys();
   const apiKeys = useApiKeys();
   const trash = useTrash();
+  const storageUsage = useStorageUsage();
 
   // Navigation items
   const navItems = useMemo<SettingsNavItem[]>(
@@ -59,7 +61,7 @@ export default function SettingsPage() {
 
         {activeSection === "api" && <ApiSection apiKeys={apiKeys} />}
 
-        {activeSection === "data" && <DataSection trash={trash} />}
+        {activeSection === "data" && <DataSection trash={trash} storageUsage={storageUsage} />}
 
         {activeSection === "pwa" && <PwaSection />}
 

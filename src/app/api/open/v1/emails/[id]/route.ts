@@ -50,13 +50,16 @@ export async function GET(
 
   const vercelMode = isVercelDeployment();
   const rawAvailable = !vercelMode && Boolean(email.rawContentPath || email.rawContent);
-  const { rawContent, rawContentPath, emailTags, ...rest } = email;
+  const { rawContent, rawContentPath, emailTags, storageBytes, storageFiles, storageTruncated, ...rest } = email;
 
   return NextResponse.json({
     email: {
       ...rest,
       tags: emailTags.map((et) => et.tag),
       rawAvailable,
+      storageBytes,
+      storageFiles,
+      storageTruncated,
       rawContentPath: vercelMode ? undefined : rawContentPath,
     },
   });

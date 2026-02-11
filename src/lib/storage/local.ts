@@ -52,6 +52,12 @@ export class LocalStorageProvider implements StorageProvider {
     }
   }
 
+  async getSize(relativePath: string): Promise<number> {
+    const fullPath = this.resolvePath(relativePath);
+    const stat = await fs.stat(fullPath);
+    return stat.size;
+  }
+
   async delete(relativePath: string): Promise<void> {
     const fullPath = this.resolvePath(relativePath);
     try {

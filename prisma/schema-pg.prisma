@@ -29,6 +29,8 @@ model UserGroup {
   domainPolicy    UserGroupDomainPolicy @default(ALL_PUBLIC)
   maxMailboxes    Int?
   maxWorkflows    Int?
+  maxStorageMb    Int?
+  maxStorageFiles Int?
   telegramEnabled Boolean               @default(true)
   workflowEnabled Boolean               @default(true)
   workflowForwardEmailEnabled Boolean   @default(false)
@@ -66,6 +68,8 @@ model User {
   isActive      Boolean   @default(true)
   emailVerified DateTime?
   trashRetentionDays Int   @default(30) // 0 = never auto purge
+  maxStorageMb  Int?
+  maxStorageFiles Int?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -492,6 +496,9 @@ model Email {
   htmlBody    String?
   rawContent  String?
   rawContentPath String?   // File storage path for RFC822 content
+  storageBytes Int         @default(0)
+  storageFiles Int         @default(0)
+  storageTruncated Boolean @default(false)
   status      EmailStatus @default(UNREAD)
   deletedAt   DateTime?
   restoreStatus EmailRestoreStatus?

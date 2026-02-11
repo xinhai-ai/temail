@@ -17,6 +17,8 @@ export async function GET() {
           name: true,
           maxMailboxes: true,
           maxWorkflows: true,
+          maxStorageMb: true,
+          maxStorageFiles: true,
           telegramEnabled: true,
           workflowEnabled: true,
           workflowForwardEmailEnabled: true,

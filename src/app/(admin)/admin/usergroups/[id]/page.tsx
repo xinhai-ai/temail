@@ -26,6 +26,8 @@ type UserGroupDetail = {
   domainPolicy: "ALL_PUBLIC" | "ALLOWLIST";
   maxMailboxes: number | null;
   maxWorkflows: number | null;
+  maxStorageMb: number | null;
+  maxStorageFiles: number | null;
   telegramEnabled: boolean;
   workflowEnabled: boolean;
   workflowForwardEmailEnabled: boolean;
@@ -66,6 +68,8 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
   const [domainPolicy, setDomainPolicy] = useState<UserGroupDetail["domainPolicy"]>("ALL_PUBLIC");
   const [maxMailboxes, setMaxMailboxes] = useState<string>("");
   const [maxWorkflows, setMaxWorkflows] = useState<string>("");
+  const [maxStorageMb, setMaxStorageMb] = useState<string>("");
+  const [maxStorageFiles, setMaxStorageFiles] = useState<string>("");
   const [telegramEnabled, setTelegramEnabled] = useState(true);
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [workflowForwardEmailEnabled, setWorkflowForwardEmailEnabled] = useState(false);
@@ -96,6 +100,8 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
       setDomainPolicy(g.domainPolicy);
       setMaxMailboxes(g.maxMailboxes === null ? "" : String(g.maxMailboxes));
       setMaxWorkflows(g.maxWorkflows === null ? "" : String(g.maxWorkflows));
+      setMaxStorageMb(g.maxStorageMb === null ? "" : String(g.maxStorageMb));
+      setMaxStorageFiles(g.maxStorageFiles === null ? "" : String(g.maxStorageFiles));
       setTelegramEnabled(Boolean(g.telegramEnabled));
       setWorkflowEnabled(Boolean(g.workflowEnabled));
       setWorkflowForwardEmailEnabled(Boolean(g.workflowForwardEmailEnabled));
@@ -149,6 +155,8 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
         domainPolicy,
         maxMailboxes: parseNullableInt(maxMailboxes),
         maxWorkflows: parseNullableInt(maxWorkflows),
+        maxStorageMb: parseNullableInt(maxStorageMb),
+        maxStorageFiles: parseNullableInt(maxStorageFiles),
         telegramEnabled,
         workflowEnabled,
         workflowForwardEmailEnabled,
@@ -259,6 +267,29 @@ export default function AdminUserGroupDetailPage({ params }: { params: Promise<{
                   <SelectItem value="ALLOWLIST">{t("usergroups.domainPolicy.allowlist")}</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="maxStorageMb">{t("usergroups.fields.maxStorageMb")}</Label>
+              <Input
+                id="maxStorageMb"
+                value={maxStorageMb}
+                onChange={(e) => setMaxStorageMb(e.target.value)}
+                placeholder={t("usergroups.placeholders.unlimited")}
+                inputMode="numeric"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maxStorageFiles">{t("usergroups.fields.maxStorageFiles")}</Label>
+              <Input
+                id="maxStorageFiles"
+                value={maxStorageFiles}
+                onChange={(e) => setMaxStorageFiles(e.target.value)}
+                placeholder={t("usergroups.placeholders.unlimited")}
+                inputMode="numeric"
+              />
             </div>
           </div>
 

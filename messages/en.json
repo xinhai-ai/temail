@@ -365,6 +365,8 @@
         "policy": "Domain Policy",
         "mailboxes": "Mailboxes",
         "workflows": "Workflows",
+        "storageMb": "Storage (MB)",
+        "storageFiles": "Storage Files",
         "features": "Features",
         "users": "Users",
         "domains": "Domains"
@@ -380,7 +382,9 @@
       "fields": {
         "domainPolicy": "Domain policy",
         "maxMailboxes": "Max mailboxes",
-        "maxWorkflows": "Max workflows"
+        "maxWorkflows": "Max workflows",
+        "maxStorageMb": "Max storage (MB)",
+        "maxStorageFiles": "Max storage files"
       },
       "placeholders": {
         "unlimited": "Unlimited"
@@ -450,6 +454,10 @@
         "authSource": "Registration source",
         "verifyEmail": "Mark verified",
         "verifyingEmail": "Verifying...",
+        "maxStorageMb": "Max storage (MB)",
+        "maxStorageFiles": "Max storage files",
+        "storageBytes": "Storage used (bytes)",
+        "storageFiles": "Storage used (files)",
         "active": "Active",
         "activeHelp": "Disable user login"
       },
@@ -564,6 +572,7 @@
         "security": "Security",
         "emailTemplates": "Email Templates",
         "smtp": "SMTP",
+        "storage": "Storage",
         "ai": "AI",
         "workflow": "Workflow",
         "telegram": "Telegram"
@@ -815,6 +824,26 @@
           "toRequired": "Recipient email is required"
         }
       },
+      "storage": {
+        "cardTitle": "Storage Settings",
+        "subtitle": "Configure storage backend and inspect usage",
+        "backend": {
+          "label": "Storage Backend",
+          "help": "Use local filesystem or S3-compatible object storage"
+        },
+        "test": {
+          "testNow": "Test S3 Connection",
+          "testing": "Testing...",
+          "success": "S3 connection succeeded",
+          "failed": "S3 connection failed"
+        },
+        "usage": {
+          "title": "Storage Usage",
+          "help": "System and per-user storage usage overview",
+          "summary": "Users: {users} · Files: {files} · Used: {bytes}",
+          "empty": "No usage data yet"
+        }
+      },
       "ai": {
         "templateVariables": {
           "title": "Template Variables",
@@ -913,6 +942,28 @@
         },
         "smtp_from": {
           "label": "SMTP From"
+        },
+        "storage_s3_endpoint": {
+          "label": "S3 Endpoint"
+        },
+        "storage_s3_region": {
+          "label": "S3 Region"
+        },
+        "storage_s3_bucket": {
+          "label": "S3 Bucket"
+        },
+        "storage_s3_access_key_id": {
+          "label": "S3 Access Key ID"
+        },
+        "storage_s3_secret_access_key": {
+          "label": "S3 Secret Access Key"
+        },
+        "storage_s3_base_prefix": {
+          "label": "S3 Base Prefix"
+        },
+        "storage_s3_force_path_style": {
+          "label": "Force Path-Style",
+          "description": "Enable for MinIO or some S3-compatible services"
         },
         "turnstile_site_key": {
           "label": "Site Key"
@@ -1873,6 +1924,14 @@
         "saving": "Saving...",
         "save": "Save trash settings"
       }
+    },
+    "storage": {
+      "title": "Storage",
+      "description": "View your current mail storage usage and limits.",
+      "usedSpace": "Used space",
+      "usedFiles": "Used files",
+      "quotaSpace": "Space quota",
+      "quotaFiles": "File quota"
     },
     "about": {
       "title": "About",

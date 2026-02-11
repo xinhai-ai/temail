@@ -8,12 +8,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { useTrash } from "../../_hooks/useTrash";
+import type { useStorageUsage } from "../../_hooks/useStorageUsage";
 
 type DataSectionProps = {
   trash: ReturnType<typeof useTrash>;
+  storageUsage: ReturnType<typeof useStorageUsage>;
 };
 
-export function DataSection({ trash }: DataSectionProps) {
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const value = bytes / 1024 ** index;
+  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+export function DataSection({ trash, storageUsage }: DataSectionProps) {
   const t = useTranslations("settings");
 
   const {
@@ -25,21 +35,61 @@ export function DataSection({ trash }: DataSectionProps) {
     handleSaveTrash,
   } = trash;
 
+  const storage = storageUsage.data;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Trash2 className="h-5 w-5" />
-          {t("trash.title")}
-        </CardTitle>
-        <CardDescription>{t("trash.description")}</CardDescription>
-        <CardAction>
-          <Badge variant="outline" className="font-mono">
-            {loadingTrash ? "…" : `${trashRetentionDays || "0"}d`}
-          </Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("storage.title")}</CardTitle>
+          <CardDescription>{t("storage.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span>{t("storage.usedSpace")}</span>
+            <span className="font-medium">{storageUsage.loading ? "…" : formatBytes(storage?.usage.bytes || 0)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>{t("storage.usedFiles")}</span>
+            <span className="font-medium">{storageUsage.loading ? "…" : storage?.usage.files || 0}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>{t("storage.quotaSpace")}</span>
+            <span className="font-medium">
+              {storageUsage.loading
+                ? "…"
+                : storage?.quota.maxStorageMb === null || storage?.quota.maxStorageMb === undefined
+                  ? t("userGroup.unlimited")
+                  : `${storage.quota.maxStorageMb} MB`}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>{t("storage.quotaFiles")}</span>
+            <span className="font-medium">
+              {storageUsage.loading
+                ? "…"
+                : storage?.quota.maxStorageFiles === null || storage?.quota.maxStorageFiles === undefined
+                  ? t("userGroup.unlimited")
+                  : storage.quota.maxStorageFiles}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trash2 className="h-5 w-5" />
+            {t("trash.title")}
+          </CardTitle>
+          <CardDescription>{t("trash.description")}</CardDescription>
+          <CardAction>
+            <Badge variant="outline" className="font-mono">
+              {loadingTrash ? "…" : `${trashRetentionDays || "0"}d`}
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label>{t("trash.retentionLabel")}</Label>
           <Input
@@ -84,7 +134,8 @@ export function DataSection({ trash }: DataSectionProps) {
         <Button onClick={handleSaveTrash} disabled={loadingTrash || savingTrash || !trashDirty}>
           {savingTrash ? t("trash.actions.saving") : t("trash.actions.save")}
         </Button>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

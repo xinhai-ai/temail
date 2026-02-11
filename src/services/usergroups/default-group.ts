@@ -16,6 +16,8 @@ export async function getOrCreateDefaultUserGroupId(): Promise<string> {
         domainPolicy: "ALL_PUBLIC",
         maxMailboxes: 300,
         maxWorkflows: 10,
+        maxStorageMb: null,
+        maxStorageFiles: null,
         telegramEnabled: true,
         workflowEnabled: true,
         workflowForwardEmailEnabled: false,

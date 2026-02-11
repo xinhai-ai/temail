@@ -12,6 +12,7 @@ import {
   normalizeRateLimitInteger,
   validateApiRateLimitOverridesStrict,
 } from "@/lib/rate-limit-policies";
+import { isVercelDeployment } from "@/lib/deployment/server";
 
 const settingSchema = z.object({
   key: z.string().min(1),
@@ -23,6 +24,10 @@ const settingSchema = z.object({
 function parseBoolean(value: string | undefined | null): boolean {
   const raw = (value || "").trim().toLowerCase();
   return raw === "true" || raw === "1" || raw === "yes" || raw === "on";
+}
+
+function normalize(value: string | undefined | null): string {
+  return (value || "").trim();
 }
 
 export async function GET() {
@@ -45,6 +50,7 @@ export async function GET() {
     "telegram_webhook_secret",
     "auth_provider_github_client_secret",
     "auth_provider_linuxdo_client_secret",
+    "storage_s3_secret_access_key",
   ]);
   const safeSettings = settings.map((row) =>
     secretKeys.has(row.key)
@@ -87,6 +93,16 @@ export async function PUT(request: NextRequest) {
       RATE_LIMIT_SETTING_KEYS.imapSyncCooldownMs,
       RATE_LIMIT_SETTING_KEYS.imapSyncMaxDurationMs,
       RATE_LIMIT_SETTING_KEYS.apiOverrides,
+      "storage_backend",
+      "storage_s3_endpoint",
+      "storage_s3_region",
+      "storage_s3_bucket",
+      "storage_s3_access_key_id",
+      "storage_s3_secret_access_key",
+      "storage_s3_force_path_style",
+      "storage_s3_base_prefix",
+      "storage_s3_last_test_ok",
+      "storage_s3_last_test_at",
     ]);
 
     const wantsValidation = data.some((item) => keysToValidate.has(item.key));
@@ -219,6 +235,40 @@ export async function PUT(request: NextRequest) {
           { error: overridesValidation.error },
           { status: 400 }
         );
+      }
+
+      const deploymentIsVercel = isVercelDeployment();
+      const backend = normalize(next.storage_backend || "local").toLowerCase();
+      const currentBackend = normalize(current.storage_backend || "local").toLowerCase();
+      if (backend === "s3") {
+        if (deploymentIsVercel) {
+          return NextResponse.json(
+            { error: "S3 storage is unavailable in this deployment" },
+            { status: 400 }
+          );
+        }
+
+        const region = normalize(next.storage_s3_region);
+        const bucket = normalize(next.storage_s3_bucket);
+        const accessKeyId = normalize(next.storage_s3_access_key_id);
+        const secretAccessKey = normalize(next.storage_s3_secret_access_key);
+        if (!region || !bucket || !accessKeyId || !secretAccessKey) {
+          return NextResponse.json(
+            { error: "S3 configuration is incomplete" },
+            { status: 400 }
+          );
+        }
+
+        const enablingS3 = currentBackend !== "s3" || data.some((item) => item.key === "storage_backend");
+        if (enablingS3) {
+          const lastTestOk = parseBoolean(next.storage_s3_last_test_ok);
+          if (!lastTestOk) {
+            return NextResponse.json(
+              { error: "S3 must pass connection test before enabling" },
+              { status: 400 }
+            );
+          }
+        }
       }
     }
 

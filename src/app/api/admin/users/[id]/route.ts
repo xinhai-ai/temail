@@ -14,6 +14,8 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
   emailVerified: z.string().datetime().nullable().optional(),
   userGroupId: z.string().trim().min(1).max(80).nullable().optional(),
+  maxStorageMb: z.number().int().min(0).nullable().optional(),
+  maxStorageFiles: z.number().int().min(0).nullable().optional(),
 });
 
 async function logAdminAction(request: NextRequest, adminUserId: string, message: string, metadata?: unknown) {
@@ -57,7 +59,7 @@ export async function GET(
 
   const { id } = await params;
 
-  const [user, emailCount] = await Promise.all([
+  const [user, emailCount, storageAggregate] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
       select: {
@@ -67,6 +69,8 @@ export async function GET(
         role: true,
         isActive: true,
         emailVerified: true,
+        maxStorageMb: true,
+        maxStorageFiles: true,
         password: true,
         accounts: { select: { provider: true } },
         userGroupId: true,
@@ -83,6 +87,10 @@ export async function GET(
       },
     }),
     prisma.email.count({ where: { mailbox: { userId: id } } }),
+    prisma.email.aggregate({
+      where: { mailbox: { userId: id } },
+      _sum: { storageBytes: true, storageFiles: true },
+    }),
   ]);
 
   if (!user) {
@@ -99,11 +107,17 @@ export async function GET(
     role: user.role,
     isActive: user.isActive,
     emailVerified: user.emailVerified,
+    maxStorageMb: user.maxStorageMb,
+    maxStorageFiles: user.maxStorageFiles,
     userGroupId: user.userGroupId,
     userGroup: user.userGroup,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     _count: { ...user._count, emails: emailCount },
+    storageUsage: {
+      bytes: Number(storageAggregate._sum.storageBytes || 0),
+      files: Number(storageAggregate._sum.storageFiles || 0),
+    },
     authSources: computeAuthSources({ hasPassword, oauthProviders }),
   });
 }
@@ -184,6 +198,8 @@ export async function PATCH(
       isActive?: boolean;
       emailVerified?: Date | null;
       userGroupId?: string | null;
+      maxStorageMb?: number | null;
+      maxStorageFiles?: number | null;
     } = {};
 
     if (data.email !== undefined) updateData.email = data.email;
@@ -205,6 +221,12 @@ export async function PATCH(
       }
       updateData.userGroupId = data.userGroupId;
     }
+    if (data.maxStorageMb !== undefined) {
+      updateData.maxStorageMb = data.maxStorageMb;
+    }
+    if (data.maxStorageFiles !== undefined) {
+      updateData.maxStorageFiles = data.maxStorageFiles;
+    }
 
     const updated = await prisma.user.update({
       where: { id },
@@ -216,6 +238,8 @@ export async function PATCH(
         role: true,
         isActive: true,
         emailVerified: true,
+        maxStorageMb: true,
+        maxStorageFiles: true,
         userGroupId: true,
         userGroup: { select: { id: true, name: true } },
         createdAt: true,

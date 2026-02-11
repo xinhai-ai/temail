@@ -73,6 +73,9 @@ interface UserDetail {
   emailVerified: string | null;
   authSources?: string[];
   userGroupId: string | null;
+  maxStorageMb: number | null;
+  maxStorageFiles: number | null;
+  storageUsage?: { bytes: number; files: number };
   userGroup?: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -143,6 +146,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const [isActive, setIsActive] = useState(true);
   const [emailVerified, setEmailVerified] = useState<string>("");
   const [userGroupId, setUserGroupId] = useState<string>("");
+  const [maxStorageMb, setMaxStorageMb] = useState<string>("");
+  const [maxStorageFiles, setMaxStorageFiles] = useState<string>("");
   const [userGroups, setUserGroups] = useState<Array<{ id: string; name: string }>>([]);
 
   // Security
@@ -198,6 +203,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     setIsActive(data.isActive);
     setEmailVerified(data.emailVerified || "");
     setUserGroupId(data.userGroupId || "");
+    setMaxStorageMb(data.maxStorageMb === null ? "" : String(data.maxStorageMb));
+    setMaxStorageFiles(data.maxStorageFiles === null ? "" : String(data.maxStorageFiles));
   };
 
   const fetchUserGroups = async () => {
@@ -273,6 +280,25 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     }
     if ((userGroupId || null) !== (user.userGroupId || null)) {
       payload.userGroupId = userGroupId ? userGroupId : null;
+    }
+    const maxStorageMbInput = maxStorageMb.trim();
+    if (!maxStorageMbInput) {
+      if (user.maxStorageMb !== null) payload.maxStorageMb = null;
+    } else {
+      const parsedMaxStorageMb = Number(maxStorageMbInput);
+      if (Number.isInteger(parsedMaxStorageMb) && parsedMaxStorageMb >= 0 && parsedMaxStorageMb !== user.maxStorageMb) {
+        payload.maxStorageMb = parsedMaxStorageMb;
+      }
+    }
+
+    const maxStorageFilesInput = maxStorageFiles.trim();
+    if (!maxStorageFilesInput) {
+      if (user.maxStorageFiles !== null) payload.maxStorageFiles = null;
+    } else {
+      const parsedMaxStorageFiles = Number(maxStorageFilesInput);
+      if (Number.isInteger(parsedMaxStorageFiles) && parsedMaxStorageFiles >= 0 && parsedMaxStorageFiles !== user.maxStorageFiles) {
+        payload.maxStorageFiles = parsedMaxStorageFiles;
+      }
     }
 
     const res = await fetch(`/api/admin/users/${id}`, {
@@ -717,6 +743,38 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                     </Button>
                   </div>
 	              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t("userDetail.profile.maxStorageMb")}</Label>
+                  <Input
+                    value={maxStorageMb}
+                    onChange={(e) => setMaxStorageMb(e.target.value)}
+                    placeholder={t("usergroups.placeholders.unlimited")}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("userDetail.profile.maxStorageFiles")}</Label>
+                  <Input
+                    value={maxStorageFiles}
+                    onChange={(e) => setMaxStorageFiles(e.target.value)}
+                    placeholder={t("usergroups.placeholders.unlimited")}
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>{t("userDetail.profile.storageBytes")}</Label>
+                  <p className="text-sm text-muted-foreground">{user.storageUsage?.bytes || 0}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("userDetail.profile.storageFiles")}</Label>
+                  <p className="text-sm text-muted-foreground">{user.storageUsage?.files || 0}</p>
+                </div>
+              </div>
 
               <div className="flex items-center justify-between">
                 <div>

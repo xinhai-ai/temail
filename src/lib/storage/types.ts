@@ -3,5 +3,6 @@ export interface StorageProvider {
   read(path: string): Promise<Buffer>;
   readStream(path: string): Promise<NodeJS.ReadableStream>;
   exists(path: string): Promise<boolean>;
+  getSize(path: string): Promise<number>;
   delete(path: string): Promise<void>;
 }
