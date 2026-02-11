@@ -13,6 +13,7 @@
     "start": "next start",
     "start:all": "concurrently -n next,imap -c blue,green \"cross-env IMAP_SERVICE_ENABLED=1 next start\" \"npm run imap:service\"",
     "lint": "eslint",
+    "super-admin": "node scripts/super-admin.js",
     "release:patch": "npm version patch -m \"chore(release): v%s\"",
     "release:minor": "npm version minor -m \"chore(release): v%s\"",
     "release:major": "npm version major -m \"chore(release): v%s\"",
