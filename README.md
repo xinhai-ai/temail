@@ -316,108 +316,10 @@ TEmail features a modern, polished inbox experience designed for productivity an
 
 ## Quick Start
 
-### Option 1: Vercel + Cloudflare (Recommended)
+For most production scenarios, **Docker self-hosted is the recommended path** (full feature set and easier upgrades).
+Use Vercel + Cloudflare only when you specifically need a serverless architecture.
 
-The fastest way to deploy TEmail for serverless environments.
-
-#### Step 1: Create Neon PostgreSQL Database
-
-[Neon](https://neon.tech) provides serverless PostgreSQL that works perfectly with Vercel.
-
-1. **Create Neon Account**
-   - Go to [neon.tech](https://neon.tech) and sign up (free tier available)
-   - Click **"Create a project"**
-
-2. **Create Project**
-   - Project name: `temail` (or your preferred name)
-   - PostgreSQL version: **16** (recommended)
-   - Region: Choose closest to your Vercel deployment (e.g., `aws-us-east-1`)
-   - Click **"Create project"**
-
-3. **Get Connection String**
-   - After creation, you'll see the connection details
-   - Copy the **Connection string** (looks like):
-     ```
-     postgresql://username:password@ep-xxx-xxx-123456.us-east-1.aws.neon.tech/neondb?sslmode=require
-     ```
-   - **Important**: Make sure `?sslmode=require` is included (Neon requires SSL)
-
-4. **Configure Connection Pooling (Recommended)**
-   - In Neon Dashboard → **Connection pooling**
-   - Enable **Pooled connection**
-   - Copy the pooled connection string for better performance:
-     ```
-     postgresql://username:password@ep-xxx-xxx-123456-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
-     ```
-
-> **Tip**: Neon's free tier includes 0.5 GB storage and 190 compute hours/month - sufficient for most use cases.
-
-#### Step 2: Deploy to Vercel
-
-Click the "Deploy with Vercel" button above, then configure these environment variables:
-
-| Variable | Required | Description |
-|----------|:--------:|-------------|
-| `DATABASE_URL` | ✅ | Neon PostgreSQL connection string (with `?sslmode=require`) |
-| `AUTH_SECRET` | ✅ | NextAuth secret (`openssl rand -hex 32`) |
-| `AUTH_ENCRYPTION_KEY` | ✅ | Encryption key (`openssl rand -hex 32`) |
-| `AUTH_URL` | ✅ | Your app URL (e.g., `https://your-app.vercel.app`) |
-| `NEXT_PUBLIC_APP_URL` | ✅ | Same as AUTH_URL |
-| `TEMAIL_DEPLOYMENT_MODE` | ✅ | Set to `vercel` |
-| `NEXT_PUBLIC_TEMAIL_DEPLOYMENT_MODE` | ✅ | Set to `vercel` |
-| `BOOTSTRAP_SUPER_ADMIN_SECRET` | ✅ | Secret for first admin registration |
-| `BOOTSTRAP_SUPER_ADMIN_MAIL` | ➖ | (Optional) Lock first admin to specific email |
-
-> **Note**: After first deployment, Vercel will automatically run `prisma generate` during build. You need to run database migration manually (see below).
-
-**Run Database Migration** (Required for first deployment):
-
-```bash
-# Clone the repo locally
-git clone https://github.com/xinhai-ai/temail.git
-cd temail
-
-# Install dependencies
-npm ci
-
-# Set your Neon DATABASE_URL
-export DATABASE_URL="postgresql://username:password@ep-xxx.neon.tech/neondb?sslmode=require"
-
-# Run migration to create tables
-npx prisma migrate deploy
-```
-
-Alternatively, you can use Neon's SQL Editor to run migrations, or use `npx prisma db push` for quick setup.
-
-#### Step 3: Create Webhook Domain in TEmail
-
-1. Register as admin using `BOOTSTRAP_SUPER_ADMIN_SECRET`
-2. Go to **Domains** → **Add Domain**
-3. Set **Source Type** to `Webhook`
-4. Copy the generated **Webhook Secret**
-5. Create mailboxes under this domain
-
-#### Step 4: Deploy Cloudflare Worker
-
-Click the "Deploy to Cloudflare Workers" button, then set these variables in the Worker:
-
-| Variable | Required | Description |
-|----------|:--------:|-------------|
-| `TEMAIL_WEBHOOK_URL` | ✅ | `https://your-app.vercel.app/api/webhooks/incoming` |
-| `TEMAIL_WEBHOOK_SECRET` | ✅ | Webhook secret from Step 3 |
-| `TEMAIL_WEBHOOK_SECRETS` | ➖ | For multi-domain: `{"domain1.com":"secret1","domain2.com":"secret2"}` |
-| `TEMAIL_FALLBACK_FORWARD_TO` | ➖ | Fallback email if webhook fails |
-
-#### Step 5: Configure Email Routing
-
-1. In Cloudflare Dashboard → **Email Routing**
-2. Enable email routing for your domain
-3. Add a routing rule to forward emails to your Worker
-4. Send a test email and check TEmail inbox
-
----
-
-### Option 2: Docker Self-Hosted
+### Option 1: Docker Self-Hosted (Recommended)
 
 For full features including IMAP, SMTP forwarding, and file storage.
 
@@ -459,6 +361,130 @@ docker compose logs -f web | grep "\[bootstrap\]"
 BOOTSTRAP_ADMIN_EMAIL=admin@example.com
 BOOTSTRAP_ADMIN_PASSWORD=your-secure-password
 ```
+
+#### Super Admin CLI (Email Query / Password Reset)
+
+Use the CLI to query SUPER_ADMIN emails or reset SUPER_ADMIN password:
+
+```bash
+# List all SUPER_ADMIN emails
+npm run super-admin -- emails
+
+# Reset password for the only SUPER_ADMIN (or fail if multiple exist)
+npm run super-admin -- reset-password
+
+# Reset password for a specific SUPER_ADMIN email
+npm run super-admin -- reset-password --email admin@example.com
+
+# Set a custom password (otherwise auto-generate and print once)
+npm run super-admin -- reset-password --email admin@example.com --password "your-new-password"
+```
+
+---
+
+### Option 2: Vercel + Cloudflare (Serverless)
+
+The fastest path for webhook-based serverless deployment.
+
+#### Step 0: Fork to Your Own GitHub Repository (Required)
+
+Before deploying, fork `xinhai-ai/temail` to your own GitHub account and deploy from your fork.
+This makes future updates easier through upstream sync.
+
+#### Step 1: Create Neon PostgreSQL Database
+
+[Neon](https://neon.tech) provides serverless PostgreSQL that works perfectly with Vercel.
+
+1. **Create Neon Account**
+   - Go to [neon.tech](https://neon.tech) and sign up (free tier available)
+   - Click **"Create a project"**
+
+2. **Create Project**
+   - Project name: `temail` (or your preferred name)
+   - PostgreSQL version: **16** (recommended)
+   - Region: Choose closest to your Vercel deployment (e.g., `aws-us-east-1`)
+   - Click **"Create project"**
+
+3. **Get Connection String**
+   - After creation, you'll see the connection details
+   - Copy the **Connection string** (looks like):
+     ```
+     postgresql://username:password@ep-xxx-xxx-123456.us-east-1.aws.neon.tech/neondb?sslmode=require
+     ```
+   - **Important**: Make sure `?sslmode=require` is included (Neon requires SSL)
+
+4. **Configure Connection Pooling (Recommended)**
+   - In Neon Dashboard → **Connection pooling**
+   - Enable **Pooled connection**
+   - Copy the pooled connection string for better performance:
+     ```
+     postgresql://username:password@ep-xxx-xxx-123456-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+     ```
+
+> **Tip**: Neon's free tier includes 0.5 GB storage and 190 compute hours/month - sufficient for most use cases.
+
+#### Step 2: Deploy to Vercel
+
+Deploy your **forked repository** with Vercel, then configure these environment variables:
+
+| Variable | Required | Description |
+|----------|:--------:|-------------|
+| `DATABASE_URL` | ✅ | Neon PostgreSQL connection string (with `?sslmode=require`) |
+| `AUTH_SECRET` | ✅ | NextAuth secret (`openssl rand -hex 32`) |
+| `AUTH_ENCRYPTION_KEY` | ✅ | Encryption key (`openssl rand -hex 32`) |
+| `AUTH_URL` | ✅ | Your app URL (e.g., `https://your-app.vercel.app`) |
+| `NEXT_PUBLIC_APP_URL` | ✅ | Same as AUTH_URL |
+| `TEMAIL_DEPLOYMENT_MODE` | ✅ | Set to `vercel` |
+| `NEXT_PUBLIC_TEMAIL_DEPLOYMENT_MODE` | ✅ | Set to `vercel` |
+| `BOOTSTRAP_SUPER_ADMIN_SECRET` | ✅ | Secret for first admin registration |
+| `BOOTSTRAP_SUPER_ADMIN_MAIL` | ➖ | (Optional) Lock first admin to specific email |
+
+> **Note**: After first deployment, Vercel will automatically run `prisma generate` during build. You need to run database migration manually (see below).
+
+**Run Database Migration** (Required for first deployment):
+
+```bash
+# Clone your own fork locally
+git clone https://github.com/<your-github-username>/temail.git
+cd temail
+
+# Install dependencies
+npm ci
+
+# Set your Neon DATABASE_URL
+export DATABASE_URL="postgresql://username:password@ep-xxx.neon.tech/neondb?sslmode=require"
+
+# Run migration to create tables
+npx prisma migrate deploy
+```
+
+Alternatively, you can use Neon's SQL Editor to run migrations, or use `npx prisma db push` for quick setup.
+
+#### Step 3: Create Webhook Domain in TEmail
+
+1. Register as admin using `BOOTSTRAP_SUPER_ADMIN_SECRET`
+2. Go to **Domains** → **Add Domain**
+3. Set **Source Type** to `Webhook`
+4. Copy the generated **Webhook Secret**
+5. Create mailboxes under this domain
+
+#### Step 4: Deploy Cloudflare Worker
+
+Click the "Deploy to Cloudflare Workers" button, then set these variables in the Worker:
+
+| Variable | Required | Description |
+|----------|:--------:|-------------|
+| `TEMAIL_WEBHOOK_URL` | ✅ | `https://your-app.vercel.app/api/webhooks/incoming` |
+| `TEMAIL_WEBHOOK_SECRET` | ✅ | Webhook secret from Step 3 |
+| `TEMAIL_WEBHOOK_SECRETS` | ➖ | For multi-domain: `{"domain1.com":"secret1","domain2.com":"secret2"}` |
+| `TEMAIL_FALLBACK_FORWARD_TO` | ➖ | Fallback email if webhook fails |
+
+#### Step 5: Configure Email Routing
+
+1. In Cloudflare Dashboard → **Email Routing**
+2. Enable email routing for your domain
+3. Add a routing rule to forward emails to your Worker
+4. Send a test email and check TEmail inbox
 
 ---
 

@@ -316,108 +316,10 @@ TEmail 拥有现代化、精心打磨的收件箱体验，专为高效和易用�
 
 ## 快速开始
 
-### 方式一：Vercel + Cloudflare（推荐）
+对于大多数生产场景，**优先推荐 Docker 自托管**（功能完整、升级维护更可控）。
+只有在明确需要无服务器架构时，再选择 Vercel + Cloudflare。
 
-适合无服务器环境的最快部署方式。
-
-#### 第一步：创建 Neon PostgreSQL 数据库
-
-[Neon](https://neon.tech) 提供无服务器 PostgreSQL，与 Vercel 完美配合。
-
-1. **注册 Neon 账号**
-   - 访问 [neon.tech](https://neon.tech) 并注册（有免费套餐）
-   - 点击 **"Create a project"**
-
-2. **创建项目**
-   - 项目名称：`temail`（或你喜欢的名称）
-   - PostgreSQL 版本：**16**（推荐）
-   - 区域：选择离 Vercel 部署最近的区域（如 `aws-us-east-1`）
-   - 点击 **"Create project"**
-
-3. **获取连接字符串**
-   - 创建完成后，你会看到连接详情
-   - 复制 **Connection string**（格式如下）：
-     ```
-     postgresql://username:password@ep-xxx-xxx-123456.us-east-1.aws.neon.tech/neondb?sslmode=require
-     ```
-   - **重要**：确保包含 `?sslmode=require`（Neon 需要 SSL）
-
-4. **配置连接池（推荐）**
-   - 在 Neon 控制台 → **Connection pooling**
-   - 启用 **Pooled connection**
-   - 复制带连接池的连接字符串以获得更好性能：
-     ```
-     postgresql://username:password@ep-xxx-xxx-123456-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
-     ```
-
-> **提示**：Neon 免费套餐包含 0.5 GB 存储和每月 190 计算小时 - 足够大多数使用场景。
-
-#### 第二步：部署到 Vercel
-
-点击上方"部署到 Vercel"按钮，然后配置以下环境变量：
-
-| 变量 | 必需 | 说明 |
-|------|:----:|------|
-| `DATABASE_URL` | ✅ | Neon PostgreSQL 连接字符串（带 `?sslmode=require`） |
-| `AUTH_SECRET` | ✅ | NextAuth 密钥（`openssl rand -hex 32`） |
-| `AUTH_ENCRYPTION_KEY` | ✅ | 加密密钥（`openssl rand -hex 32`） |
-| `AUTH_URL` | ✅ | 你的应用 URL（如 `https://your-app.vercel.app`） |
-| `NEXT_PUBLIC_APP_URL` | ✅ | 同 AUTH_URL |
-| `TEMAIL_DEPLOYMENT_MODE` | ✅ | 设置为 `vercel` |
-| `NEXT_PUBLIC_TEMAIL_DEPLOYMENT_MODE` | ✅ | 设置为 `vercel` |
-| `BOOTSTRAP_SUPER_ADMIN_SECRET` | ✅ | 首个管理员注册密钥 |
-| `BOOTSTRAP_SUPER_ADMIN_MAIL` | ➖ | （可选）限定首个管理员邮箱 |
-
-> **注意**：首次部署后，Vercel 会在构建时自动运行 `prisma generate`。你需要手动运行数据库迁移（见下文）。
-
-**运行数据库迁移**（首次部署必需）：
-
-```bash
-# 在本地克隆仓库
-git clone https://github.com/xinhai-ai/temail.git
-cd temail
-
-# 安装依赖
-npm ci
-
-# 设置 Neon DATABASE_URL
-export DATABASE_URL="postgresql://username:password@ep-xxx.neon.tech/neondb?sslmode=require"
-
-# 运行迁移创建表结构
-npx prisma migrate deploy
-```
-
-或者，你可以使用 Neon 的 SQL 编辑器运行迁移，或使用 `npx prisma db push` 快速设置。
-
-#### 第三步：在 TEmail 中创建 Webhook 域名
-
-1. 使用 `BOOTSTRAP_SUPER_ADMIN_SECRET` 注册管理员账号
-2. 进入 **域名管理** → **添加域名**
-3. 将 **来源类型** 设置为 `Webhook`
-4. 复制生成的 **Webhook Secret**
-5. 在该域名下创建邮箱
-
-#### 第四步：部署 Cloudflare Worker
-
-点击"部署到 Cloudflare Workers"按钮，然后在 Worker 中设置以下变量：
-
-| 变量 | 必需 | 说明 |
-|------|:----:|------|
-| `TEMAIL_WEBHOOK_URL` | ✅ | `https://your-app.vercel.app/api/webhooks/incoming` |
-| `TEMAIL_WEBHOOK_SECRET` | ✅ | 第三步中复制的 Webhook Secret |
-| `TEMAIL_WEBHOOK_SECRETS` | ➖ | 多域名时使用：`{"domain1.com":"secret1","domain2.com":"secret2"}` |
-| `TEMAIL_FALLBACK_FORWARD_TO` | ➖ | Webhook 失败时的备用转发邮箱 |
-
-#### 第五步：配置邮件路由
-
-1. 在 Cloudflare 控制台 → **Email Routing**
-2. 为你的域名启用邮件路由
-3. 添加路由规则，将邮件转发到你的 Worker
-4. 发送测试邮件并在 TEmail 收件箱中查看
-
----
-
-### 方式二：Docker 自托管
+### 方式一：Docker 自托管（推荐）
 
 适合需要完整功能（包括 IMAP、SMTP 转发、文件存储）的场景。
 
@@ -459,6 +361,130 @@ docker compose logs -f web | grep "\[bootstrap\]"
 BOOTSTRAP_ADMIN_EMAIL=admin@example.com
 BOOTSTRAP_ADMIN_PASSWORD=your-secure-password
 ```
+
+#### 超级管理员 CLI（查询邮箱 / 重置密码）
+
+可使用命令行工具查询 SUPER_ADMIN 邮箱或重置 SUPER_ADMIN 密码：
+
+```bash
+# 查询所有 SUPER_ADMIN 邮箱
+npm run super-admin -- emails
+
+# 重置唯一 SUPER_ADMIN 的密码（若存在多个会报错）
+npm run super-admin -- reset-password
+
+# 为指定邮箱的 SUPER_ADMIN 重置密码
+npm run super-admin -- reset-password --email admin@example.com
+
+# 指定新密码（不指定则自动生成并仅输出一次）
+npm run super-admin -- reset-password --email admin@example.com --password "your-new-password"
+```
+
+---
+
+### 方式二：Vercel + Cloudflare（无服务器）
+
+适合基于 Webhook 的无服务器部署场景。
+
+#### 第零步：先 Fork 到你自己的 GitHub 仓库（必需）
+
+在部署前，先将 `xinhai-ai/temail` Fork 到你自己的 GitHub 账号，并从你自己的 Fork 仓库部署。
+这样后续同步上游更新会更方便。
+
+#### 第一步：创建 Neon PostgreSQL 数据库
+
+[Neon](https://neon.tech) 提供无服务器 PostgreSQL，与 Vercel 完美配合。
+
+1. **注册 Neon 账号**
+   - 访问 [neon.tech](https://neon.tech) 并注册（有免费套餐）
+   - 点击 **"Create a project"**
+
+2. **创建项目**
+   - 项目名称：`temail`（或你喜欢的名称）
+   - PostgreSQL 版本：**16**（推荐）
+   - 区域：选择离 Vercel 部署最近的区域（如 `aws-us-east-1`）
+   - 点击 **"Create project"**
+
+3. **获取连接字符串**
+   - 创建完成后，你会看到连接详情
+   - 复制 **Connection string**（格式如下）：
+     ```
+     postgresql://username:password@ep-xxx-xxx-123456.us-east-1.aws.neon.tech/neondb?sslmode=require
+     ```
+   - **重要**：确保包含 `?sslmode=require`（Neon 需要 SSL）
+
+4. **配置连接池（推荐）**
+   - 在 Neon 控制台 → **Connection pooling**
+   - 启用 **Pooled connection**
+   - 复制带连接池的连接字符串以获得更好性能：
+     ```
+     postgresql://username:password@ep-xxx-xxx-123456-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+     ```
+
+> **提示**：Neon 免费套餐包含 0.5 GB 存储和每月 190 计算小时 - 足够大多数使用场景。
+
+#### 第二步：部署到 Vercel
+
+使用 Vercel 部署你的**Fork 仓库**，然后配置以下环境变量：
+
+| 变量 | 必需 | 说明 |
+|------|:----:|------|
+| `DATABASE_URL` | ✅ | Neon PostgreSQL 连接字符串（带 `?sslmode=require`） |
+| `AUTH_SECRET` | ✅ | NextAuth 密钥（`openssl rand -hex 32`） |
+| `AUTH_ENCRYPTION_KEY` | ✅ | 加密密钥（`openssl rand -hex 32`） |
+| `AUTH_URL` | ✅ | 你的应用 URL（如 `https://your-app.vercel.app`） |
+| `NEXT_PUBLIC_APP_URL` | ✅ | 同 AUTH_URL |
+| `TEMAIL_DEPLOYMENT_MODE` | ✅ | 设置为 `vercel` |
+| `NEXT_PUBLIC_TEMAIL_DEPLOYMENT_MODE` | ✅ | 设置为 `vercel` |
+| `BOOTSTRAP_SUPER_ADMIN_SECRET` | ✅ | 首个管理员注册密钥 |
+| `BOOTSTRAP_SUPER_ADMIN_MAIL` | ➖ | （可选）限定首个管理员邮箱 |
+
+> **注意**：首次部署后，Vercel 会在构建时自动运行 `prisma generate`。你需要手动运行数据库迁移（见下文）。
+
+**运行数据库迁移**（首次部署必需）：
+
+```bash
+# 在本地克隆你自己的 Fork 仓库
+git clone https://github.com/<your-github-username>/temail.git
+cd temail
+
+# 安装依赖
+npm ci
+
+# 设置 Neon DATABASE_URL
+export DATABASE_URL="postgresql://username:password@ep-xxx.neon.tech/neondb?sslmode=require"
+
+# 运行迁移创建表结构
+npx prisma migrate deploy
+```
+
+或者，你可以使用 Neon 的 SQL 编辑器运行迁移，或使用 `npx prisma db push` 快速设置。
+
+#### 第三步：在 TEmail 中创建 Webhook 域名
+
+1. 使用 `BOOTSTRAP_SUPER_ADMIN_SECRET` 注册管理员账号
+2. 进入 **域名管理** → **添加域名**
+3. 将 **来源类型** 设置为 `Webhook`
+4. 复制生成的 **Webhook Secret**
+5. 在该域名下创建邮箱
+
+#### 第四步：部署 Cloudflare Worker
+
+点击"部署到 Cloudflare Workers"按钮，然后在 Worker 中设置以下变量：
+
+| 变量 | 必需 | 说明 |
+|------|:----:|------|
+| `TEMAIL_WEBHOOK_URL` | ✅ | `https://your-app.vercel.app/api/webhooks/incoming` |
+| `TEMAIL_WEBHOOK_SECRET` | ✅ | 第三步中复制的 Webhook Secret |
+| `TEMAIL_WEBHOOK_SECRETS` | ➖ | 多域名时使用：`{"domain1.com":"secret1","domain2.com":"secret2"}` |
+| `TEMAIL_FALLBACK_FORWARD_TO` | ➖ | Webhook 失败时的备用转发邮箱 |
+
+#### 第五步：配置邮件路由
+
+1. 在 Cloudflare 控制台 → **Email Routing**
+2. 为你的域名启用邮件路由
+3. 添加路由规则，将邮件转发到你的 Worker
+4. 发送测试邮件并在 TEmail 收件箱中查看
 
 ---
 
