@@ -1,12 +1,7 @@
 import { auth } from "@/lib/auth";
+import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 
-export function isAdminRole(role?: string | null) {
-  return role === "ADMIN" || role === "SUPER_ADMIN";
-}
-
-export function isSuperAdminRole(role?: string | null) {
-  return role === "SUPER_ADMIN";
-}
+export { isAdminRole, isSuperAdminRole };
 
 export async function getAdminSession() {
   const session = await auth();
@@ -19,4 +14,3 @@ export async function getSuperAdminSession() {
   if (!session || !isSuperAdminRole(session.user.role)) return null;
   return session;
 }
-

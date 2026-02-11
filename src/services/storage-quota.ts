@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { isAdminRole } from "@/lib/rbac";
+import { isAdminRole } from "@/lib/roles";
 
 export type EffectiveStorageQuota = {
   maxStorageMb: number | null;
