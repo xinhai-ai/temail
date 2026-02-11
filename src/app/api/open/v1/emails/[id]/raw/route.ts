@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
 import {
   getSignedDownloadUrlByRecordStorage,
+  isStorageFileNotFoundError,
   readBufferByRecordStorage,
 } from "@/lib/storage/record-storage";
 import { isVercelDeployment } from "@/lib/deployment/server";
@@ -59,7 +60,9 @@ export async function GET(
       const buffer = await readBufferByRecordStorage(email.rawContentPath, email.rawStorageBackend);
       rawContent = buffer.toString("utf8");
     } catch (error) {
-      console.error("[open/v1/emails/raw] failed to read raw content from file:", error);
+      if (!isStorageFileNotFoundError(error)) {
+        console.error("[open/v1/emails/raw] failed to read raw content from file:", error);
+      }
     }
   }
 

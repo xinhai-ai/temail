@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
 import {
   getSignedDownloadUrlByRecordStorage,
+  isStorageFileNotFoundError,
   readStreamByRecordStorage,
 } from "@/lib/storage/record-storage";
 
@@ -93,7 +94,9 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[open/v1/emails/attachments] failed to read attachment:", error);
+    if (!isStorageFileNotFoundError(error)) {
+      console.error("[open/v1/emails/attachments] failed to read attachment:", error);
+    }
     return NextResponse.json({ error: "Attachment file not found" }, { status: 404 });
   }
 }

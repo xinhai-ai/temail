@@ -1,7 +1,7 @@
 import "server-only";
 
 import { dkimVerify } from "mailauth";
-import { readBufferByRecordStorage } from "@/lib/storage/record-storage";
+import { isStorageFileNotFoundError, readBufferByRecordStorage } from "@/lib/storage/record-storage";
 
 export type DkimUiStatus = "correct" | "error" | "unknown";
 
@@ -58,8 +58,10 @@ export async function verifyDkim(email: {
       const buffer = await readBufferByRecordStorage(email.rawContentPath, email.rawStorageBackend);
       rawContent = buffer.toString("utf8");
     } catch (error) {
-      // File not found or read error, fall back to database content
-      console.error("[dkim] failed to read raw content from file:", error);
+      // File not found will gracefully fall back to database content
+      if (!isStorageFileNotFoundError(error)) {
+        console.error("[dkim] failed to read raw content from file:", error);
+      }
     }
   }
 

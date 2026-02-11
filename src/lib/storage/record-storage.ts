@@ -31,6 +31,43 @@ async function resolveBackends(storedBackend: string | null | undefined): Promis
   };
 }
 
+function isStorageFileNotFoundErrorInner(error: unknown, depth: number): boolean {
+  if (!error || depth > 2) return false;
+
+  const value = error as {
+    code?: unknown;
+    name?: unknown;
+    message?: unknown;
+    cause?: unknown;
+    $metadata?: { httpStatusCode?: unknown };
+  };
+
+  const code = String(value.code || value.name || "").toUpperCase();
+  if (code === "ENOENT" || code === "NOSUCHKEY" || code === "NOTFOUND" || code === "NO_SUCH_KEY") {
+    return true;
+  }
+
+  if (value.$metadata?.httpStatusCode === 404) {
+    return true;
+  }
+
+  const message = typeof value.message === "string" ? value.message.toLowerCase() : "";
+  if (
+    message.includes("no such file") ||
+    message.includes("no such key") ||
+    message.includes("file not found") ||
+    message.includes("not found")
+  ) {
+    return true;
+  }
+
+  return isStorageFileNotFoundErrorInner(value.cause, depth + 1);
+}
+
+export function isStorageFileNotFoundError(error: unknown): boolean {
+  return isStorageFileNotFoundErrorInner(error, 0);
+}
+
 export async function readBufferByRecordStorage(
   path: string,
   storedBackend: string | null | undefined

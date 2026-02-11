@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { readBufferByRecordStorage } from "@/lib/storage/record-storage";
+import { isStorageFileNotFoundError, readBufferByRecordStorage } from "@/lib/storage/record-storage";
 import { isVercelDeployment } from "@/lib/deployment/server";
 
 // Maximum raw content size to return (1MB)
@@ -42,7 +42,9 @@ export async function GET(
       );
       rawContent = buffer.toString("utf8");
     } catch (error) {
-      console.error("[api/admin/inbound/raw] failed to read raw content from file:", error);
+      if (!isStorageFileNotFoundError(error)) {
+        console.error("[api/admin/inbound/raw] failed to read raw content from file:", error);
+      }
     }
   }
 

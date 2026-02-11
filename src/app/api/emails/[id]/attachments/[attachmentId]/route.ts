@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import {
   getSignedDownloadUrlByRecordStorage,
+  isStorageFileNotFoundError,
   readStreamByRecordStorage,
 } from "@/lib/storage/record-storage";
 
@@ -97,7 +98,9 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[api/emails/attachments] failed to read attachment:", error);
+    if (!isStorageFileNotFoundError(error)) {
+      console.error("[api/emails/attachments] failed to read attachment:", error);
+    }
     return NextResponse.json({ error: "Attachment file not found" }, { status: 404 });
   }
 }
