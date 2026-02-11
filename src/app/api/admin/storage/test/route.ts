@@ -21,7 +21,7 @@ function generateTestPath(): string {
   return `_healthchecks/storage-test-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.txt`;
 }
 
-async function saveS3TestResult(ok: boolean) {
+async function saveS3TestResult(ok: boolean): Promise<string> {
   const testedAt = new Date().toISOString();
   await prisma.$transaction([
     prisma.systemSetting.upsert({
@@ -37,6 +37,7 @@ async function saveS3TestResult(ok: boolean) {
   ]);
   clearSystemSettingCache("storage_s3_last_test_ok");
   clearSystemSettingCache("storage_s3_last_test_at");
+  return testedAt;
 }
 
 export async function POST(request: NextRequest) {
@@ -95,16 +96,16 @@ export async function POST(request: NextRequest) {
 
       const contentOk = content.toString("utf8") === payload;
       if (!contentOk) {
-        await saveS3TestResult(false);
-        return NextResponse.json({ ok: false, error: "S3 read/write content mismatch" }, { status: 500 });
+        const testedAt = await saveS3TestResult(false);
+        return NextResponse.json({ ok: false, error: "S3 read/write content mismatch", testedAt }, { status: 500 });
       }
 
-      await saveS3TestResult(true);
-      return NextResponse.json({ ok: true, backend: "s3", latencyMs: nowMs() - start });
+      const testedAt = await saveS3TestResult(true);
+      return NextResponse.json({ ok: true, backend: "s3", latencyMs: nowMs() - start, testedAt });
     } catch (error) {
-      await saveS3TestResult(false);
+      const testedAt = await saveS3TestResult(false);
       return NextResponse.json(
-        { ok: false, backend: "s3", error: error instanceof Error ? error.message : "S3 test failed" },
+        { ok: false, backend: "s3", error: error instanceof Error ? error.message : "S3 test failed", testedAt },
         { status: 500 }
       );
     }

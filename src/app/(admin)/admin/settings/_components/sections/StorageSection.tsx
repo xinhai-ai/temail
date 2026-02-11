@@ -29,6 +29,12 @@ type UsageRow = {
   };
 };
 
+type S3TestResponse = {
+  ok?: boolean;
+  error?: string;
+  testedAt?: string;
+};
+
 function formatBytes(bytes: number): string {
   if (bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -47,7 +53,8 @@ export function StorageSection({ values, maskedValues, setValue }: StorageSectio
 
   const backend = (values.storage_backend || "local").trim() || "local";
   const s3Visible = backend === "s3";
-  const s3TestPassed = values.storage_s3_last_test_ok === "true";
+  const s3PersistedPassed = values.storage_s3_last_test_ok === "true";
+  const s3TestPassed = testResult ? testResult.ok : s3PersistedPassed;
   const s3LastTestAt = values.storage_s3_last_test_at || "";
 
   const s3Draft = useMemo(
@@ -90,26 +97,38 @@ export function StorageSection({ values, maskedValues, setValue }: StorageSectio
   const setS3Value = (key: string, value: string) => {
     setValue(key, value);
     setValue("storage_s3_last_test_ok", "false");
+    setTestResult(null);
   };
 
   const handleTestS3 = async () => {
     setTesting(true);
+    setTestResult(null);
+
     try {
       const res = await fetch("/api/admin/storage/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(s3Draft),
       });
-      const data = await res.json().catch(() => null);
+      const data = (await res.json().catch(() => null)) as S3TestResponse | null;
+      const testedAt = typeof data?.testedAt === "string" ? data.testedAt : new Date().toISOString();
+
       if (!res.ok || !data?.ok) {
+        setValue("storage_s3_last_test_ok", "false");
+        setValue("storage_s3_last_test_at", testedAt);
         setTestResult({ ok: false, message: data?.error || t("settings.storage.test.failed") });
         await loadUsage();
         return;
       }
 
+      setValue("storage_s3_last_test_ok", "true");
+      setValue("storage_s3_last_test_at", testedAt);
       setTestResult({ ok: true, message: t("settings.storage.test.success") });
       await loadUsage();
     } catch {
+      const testedAt = new Date().toISOString();
+      setValue("storage_s3_last_test_ok", "false");
+      setValue("storage_s3_last_test_at", testedAt);
       setTestResult({ ok: false, message: t("settings.storage.test.failed") });
     } finally {
       setTesting(false);
@@ -189,9 +208,11 @@ export function StorageSection({ values, maskedValues, setValue }: StorageSectio
               <Badge variant={s3TestPassed ? "default" : "secondary"}>
                 {s3TestPassed ? t("settings.storage.test.success") : t("settings.storage.test.failed")}
               </Badge>
-              {testResult && (
-                <Badge variant={testResult.ok ? "default" : "destructive"}>{testResult.message}</Badge>
-              )}
+              {testResult?.message ? (
+                <span className={`text-xs ${testResult.ok ? "text-muted-foreground" : "text-destructive"}`}>
+                  {testResult.message}
+                </span>
+              ) : null}
               {s3LastTestAt ? (
                 <span className="text-xs text-muted-foreground">{new Date(s3LastTestAt).toLocaleString()}</span>
               ) : null}
