@@ -175,6 +175,7 @@ export function SecuritySection({
       description={t("settings.security.subtitle")}
     >
       <div className="rounded-lg border p-4 space-y-4">
+        <h4 className="text-sm font-semibold">{t("settings.security.sections.turnstile")}</h4>
         <SettingRow
           type="switch"
           label={t("settings.security.turnstile.enable.label")}
@@ -232,6 +233,7 @@ export function SecuritySection({
       </div>
 
       <div className="rounded-lg border p-4 space-y-4">
+        <h4 className="text-sm font-semibold">{t("settings.security.sections.passkey")}</h4>
         <SettingRow
           type="switch"
           label={t("settings.security.passkey.enable.label")}
@@ -255,6 +257,7 @@ export function SecuritySection({
       </div>
 
       <div className="rounded-lg border p-4">
+        <h4 className="text-sm font-semibold mb-3">{t("settings.security.sections.otp")}</h4>
         <SettingRow
           type="switch"
           label={t("settings.security.otp.enable.label")}
@@ -265,6 +268,7 @@ export function SecuritySection({
       </div>
 
       <div className="rounded-lg border p-4">
+        <h4 className="text-sm font-semibold mb-3">{t("settings.security.sections.emailVerification")}</h4>
         <SettingRow
           type="switch"
           label={t("settings.security.emailVerification.enable.label")}
@@ -275,6 +279,7 @@ export function SecuritySection({
       </div>
 
       <div className="rounded-lg border p-4">
+        <h4 className="text-sm font-semibold mb-3">{t("settings.security.sections.passwordReset")}</h4>
         <SettingRow
           type="switch"
           label={t("settings.security.passwordReset.enable.label")}

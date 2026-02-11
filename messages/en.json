@@ -693,6 +693,13 @@
       "security": {
         "cardTitle": "Security Settings",
         "subtitle": "Configure bot protection for authentication flows.",
+        "sections": {
+          "turnstile": "Turnstile",
+          "passkey": "Passkey (WebAuthn)",
+          "otp": "OTP (2FA)",
+          "emailVerification": "Email Verification",
+          "passwordReset": "Password Reset"
+        },
         "turnstile": {
           "enable": {
             "label": "Enable Cloudflare Turnstile",

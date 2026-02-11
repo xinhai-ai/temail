@@ -693,6 +693,13 @@
       "security": {
         "cardTitle": "安全设置",
         "subtitle": "为认证流程配置机器人防护。",
+        "sections": {
+          "turnstile": "Turnstile",
+          "passkey": "Passkey（WebAuthn）",
+          "otp": "OTP（2FA）",
+          "emailVerification": "邮箱验证",
+          "passwordReset": "密码找回"
+        },
         "turnstile": {
           "enable": {
             "label": "启用 Cloudflare Turnstile",
