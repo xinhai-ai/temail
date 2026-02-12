@@ -2506,6 +2506,7 @@
         "telegram": "聊天 ID：{chatId}",
         "webhook": "Webhook：{status}",
         "webhookUrl": "URL：{url}",
+        "serverchan": "SendKey：{status}",
         "unknownType": "未知类型",
         "configured": "已配置",
         "notConfigured": "未配置"
@@ -2947,6 +2948,28 @@
           "minimal": "最小",
           "full": "完整数据"
         }
+      },
+      "forwardFeishu": {
+        "webhookUrl": "Webhook URL",
+        "webhookUrlPlaceholder": "https://open.feishu.cn/open-apis/bot/v2/hook/...",
+        "webhookUrlHelp": "飞书群机器人 → 添加自定义机器人后复制 Webhook URL",
+        "messageTemplate": "消息模板",
+        "templatePlaceholder": "模板",
+        "presets": {
+          "default": "默认",
+          "compact": "精简"
+        },
+        "messagePlaceholder": "📧 来自 {{email.fromAddress}} 的新邮件"
+      },
+      "forwardServerchan": {
+        "sendKey": "SendKey",
+        "sendKeyPlaceholder": "SCTxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "sendKeyHelp": "从 Server酱 SendKey 页面复制",
+        "titleTemplate": "标题模板",
+        "despTemplate": "正文模板",
+        "titlePlaceholder": "📧 {{email.subject}}",
+        "despPlaceholder": "From: {{email.fromAddress}}",
+        "useDefault": "默认"
       },
       "variableHelp": {
         "availableVariables": "可用变量"

@@ -264,6 +264,12 @@ function renderNodeConfig(
     case "forward:webhook":
       return <ForwardWebhookConfig data={data} onChange={onChange} />;
 
+    case "forward:feishu":
+      return <ForwardFeishuConfig data={data} onChange={onChange} />;
+
+    case "forward:serverchan":
+      return <ForwardServerchanConfig data={data} onChange={onChange} />;
+
 	    case "control:delay":
 	      return (
 	        <div className="space-y-4">
@@ -2299,6 +2305,145 @@ function ForwardWebhookConfig({
           value={(data.bodyTemplate as string) || ""}
           onChange={(e) => onChange("bodyTemplate", e.target.value)}
           placeholder='{"email": "{{email.subject}}"}'
+          rows={6}
+          className="text-xs font-mono"
+        />
+      </div>
+
+      <VariableHelpText />
+    </div>
+  );
+}
+
+function ForwardFeishuConfig({
+  data,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const t = useTranslations("workflows");
+  const [selectedPreset, setSelectedPreset] = useState<string>("");
+
+  const handlePresetSelect = (preset: string) => {
+    setSelectedPreset(preset);
+    const templates = DEFAULT_FORWARD_TEMPLATES.feishu;
+    const template = templates[preset as keyof typeof templates];
+    if (template) {
+      onChange("template", template);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="feishuWebhookUrl" className="text-xs font-medium">{t("nodeConfigPanel.forwardFeishu.webhookUrl")}</Label>
+        <Input
+          id="feishuWebhookUrl"
+          value={(data.webhookUrl as string) || ""}
+          onChange={(e) => onChange("webhookUrl", e.target.value)}
+          placeholder={t("nodeConfigPanel.forwardFeishu.webhookUrlPlaceholder")}
+          className="h-8 text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          {t("nodeConfigPanel.forwardFeishu.webhookUrlHelp")}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="feishuTemplate" className="text-xs font-medium">{t("nodeConfigPanel.forwardFeishu.messageTemplate")}</Label>
+          <Select value={selectedPreset} onValueChange={handlePresetSelect}>
+            <SelectTrigger className="w-[100px] h-6 text-xs">
+              <SelectValue placeholder={t("nodeConfigPanel.forwardFeishu.templatePlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">{t("nodeConfigPanel.forwardFeishu.presets.default")}</SelectItem>
+              <SelectItem value="compact">{t("nodeConfigPanel.forwardFeishu.presets.compact")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Textarea
+          id="feishuTemplate"
+          value={(data.template as string) || ""}
+          onChange={(e) => onChange("template", e.target.value)}
+          placeholder={t("nodeConfigPanel.forwardFeishu.messagePlaceholder")}
+          rows={5}
+          className="text-xs font-mono"
+        />
+      </div>
+
+      <VariableHelpText />
+    </div>
+  );
+}
+
+function ForwardServerchanConfig({
+  data,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const t = useTranslations("workflows");
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="serverchanSendKey" className="text-xs font-medium">{t("nodeConfigPanel.forwardServerchan.sendKey")}</Label>
+        <Input
+          id="serverchanSendKey"
+          type="password"
+          value={(data.sendKey as string) || ""}
+          onChange={(e) => onChange("sendKey", e.target.value)}
+          placeholder={t("nodeConfigPanel.forwardServerchan.sendKeyPlaceholder")}
+          className="h-8 text-sm font-mono"
+        />
+        <p className="text-xs text-muted-foreground">
+          {t("nodeConfigPanel.forwardServerchan.sendKeyHelp")}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="serverchanTitle" className="text-xs font-medium">{t("nodeConfigPanel.forwardServerchan.titleTemplate")}</Label>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => onChange("title", DEFAULT_FORWARD_TEMPLATES.serverchan.defaultTitle)}
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            {t("nodeConfigPanel.forwardServerchan.useDefault")}
+          </Button>
+        </div>
+        <Input
+          id="serverchanTitle"
+          value={(data.title as string) || ""}
+          onChange={(e) => onChange("title", e.target.value)}
+          placeholder={t("nodeConfigPanel.forwardServerchan.titlePlaceholder")}
+          className="h-8 text-sm"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="serverchanDesp" className="text-xs font-medium">{t("nodeConfigPanel.forwardServerchan.despTemplate")}</Label>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => onChange("desp", DEFAULT_FORWARD_TEMPLATES.serverchan.defaultDesp)}
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            {t("nodeConfigPanel.forwardServerchan.useDefault")}
+          </Button>
+        </div>
+        <Textarea
+          id="serverchanDesp"
+          value={(data.desp as string) || ""}
+          onChange={(e) => onChange("desp", e.target.value)}
+          placeholder={t("nodeConfigPanel.forwardServerchan.despPlaceholder")}
           rows={6}
           className="text-xs font-mono"
         />

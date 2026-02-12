@@ -54,6 +54,8 @@ export type NodeType =
   | "forward:discord"
   | "forward:slack"
   | "forward:webhook"
+  | "forward:feishu"
+  | "forward:serverchan"
   // 流程控制
   | "control:branch"
   | "control:delay"
@@ -86,6 +88,8 @@ export type NodeData =
   | ForwardDiscordData
   | ForwardSlackData
   | ForwardWebhookData
+  | ForwardFeishuData
+  | ForwardServerchanData
   | ControlBranchData
   | ControlDelayData
   | ControlEndData;
@@ -316,6 +320,19 @@ export interface ForwardWebhookData {
   contentType?: "application/json" | "application/x-www-form-urlencoded" | "text/plain";
 }
 
+export interface ForwardFeishuData {
+  label?: string;
+  webhookUrl: string;
+  template?: string;
+}
+
+export interface ForwardServerchanData {
+  label?: string;
+  sendKey: string;
+  title?: string;
+  desp?: string;
+}
+
 // ==================== 转发默认模板 ====================
 
 export const DEFAULT_FORWARD_TEMPLATES = {
@@ -452,6 +469,25 @@ _Forwarded by TEmail Workflow_`,
       mailboxId: "{{mailbox.id}}",
       mailboxAddress: "{{mailbox.address}}"
     }, null, 2),
+  },
+  feishu: {
+    default: `📧 New email
+From: {{email.fromAddress}}
+To: {{email.toAddress}}
+Subject: {{email.subject}}
+Time: {{email.receivedAt}}
+
+{{email.textBody}}`,
+    compact: `📧 {{email.subject}}
+From: {{email.fromAddress}}`,
+  },
+  serverchan: {
+    defaultTitle: "📧 {{email.subject}}",
+    defaultDesp: `From: {{email.fromName}} <{{email.fromAddress}}>
+To: {{email.toAddress}}
+Time: {{email.receivedAt}}
+
+{{email.textBody}}`,
   },
 } as const;
 
@@ -819,6 +855,28 @@ export const NODE_DEFINITIONS: Record<NodeType, NodeDefinition> = {
     inputs: 1,
     outputs: 1,
     defaultData: { url: "", method: "POST" },
+  },
+  "forward:feishu": {
+    type: "forward:feishu",
+    category: "forward",
+    label: "Send to Feishu",
+    description: "Send notification to Feishu group bot",
+    icon: "MessageSquare",
+    color: "#8b5cf6",
+    inputs: 1,
+    outputs: 1,
+    defaultData: { webhookUrl: "" },
+  },
+  "forward:serverchan": {
+    type: "forward:serverchan",
+    category: "forward",
+    label: "Send to ServerChan",
+    description: "Send notification via ServerChan v3",
+    icon: "Bell",
+    color: "#8b5cf6",
+    inputs: 1,
+    outputs: 1,
+    defaultData: { sendKey: "" },
   },
 
   // 流程控制

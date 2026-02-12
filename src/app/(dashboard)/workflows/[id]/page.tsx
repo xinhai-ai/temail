@@ -37,7 +37,11 @@ function getDisabledWorkflowNodeTypes(params: {
   const disabled = new Set<NodeType>();
   if (params.vercelMode) disabled.add("forward:email");
   if (params.userGroup && !params.userGroup.workflowForwardEmailEnabled) disabled.add("forward:email");
-  if (params.userGroup && !params.userGroup.workflowForwardWebhookEnabled) disabled.add("forward:webhook");
+  if (params.userGroup && !params.userGroup.workflowForwardWebhookEnabled) {
+    disabled.add("forward:webhook");
+    disabled.add("forward:feishu");
+    disabled.add("forward:serverchan");
+  }
   if (params.userGroup && !params.userGroup.telegramEnabled) {
     disabled.add("forward:telegram");
     disabled.add("forward:telegram-bound");

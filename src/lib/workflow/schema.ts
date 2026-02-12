@@ -224,6 +224,19 @@ const forwardWebhookDataSchema = z.object({
   bodyTemplate: z.string().optional(),
 });
 
+const forwardFeishuDataSchema = z.object({
+  label: z.string().optional(),
+  webhookUrl: z.string().url(),
+  template: z.string().optional(),
+});
+
+const forwardServerchanDataSchema = z.object({
+  label: z.string().optional(),
+  sendKey: z.string().min(1),
+  title: z.string().optional(),
+  desp: z.string().optional(),
+});
+
 // 流程控制
 const controlBranchDataSchema = z.object({
   label: z.string().optional(),
@@ -268,6 +281,8 @@ const nodeTypeToDataSchema: Record<string, z.ZodType> = {
   "forward:discord": forwardDiscordDataSchema,
   "forward:slack": forwardSlackDataSchema,
   "forward:webhook": forwardWebhookDataSchema,
+  "forward:feishu": forwardFeishuDataSchema,
+  "forward:serverchan": forwardServerchanDataSchema,
   "control:branch": controlBranchDataSchema,
   "control:delay": controlDelayDataSchema,
   "control:end": controlEndDataSchema,
@@ -301,6 +316,8 @@ const nodeTypeSchema = z.enum([
   "forward:discord",
   "forward:slack",
   "forward:webhook",
+  "forward:feishu",
+  "forward:serverchan",
   "control:branch",
   "control:delay",
   "control:end",

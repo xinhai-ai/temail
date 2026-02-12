@@ -17,6 +17,8 @@ import type {
   ForwardDiscordData,
   ForwardSlackData,
   ForwardWebhookData,
+  ForwardFeishuData,
+  ForwardServerchanData,
   NodeType,
 } from "@/lib/workflow/types";
 
@@ -83,7 +85,15 @@ export async function POST(req: NextRequest) {
     const body = bodyResult.data;
     const { type, config, email } = body as {
       type: NodeType;
-      config: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
+      config:
+        | ForwardEmailData
+        | ForwardTelegramBoundData
+        | ForwardTelegramData
+        | ForwardDiscordData
+        | ForwardSlackData
+        | ForwardWebhookData
+        | ForwardFeishuData
+        | ForwardServerchanData;
       email: TestEmailData;
     };
 
@@ -115,7 +125,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (type === "forward:webhook") {
+    if (type === "forward:webhook" || type === "forward:feishu" || type === "forward:serverchan") {
       const permission = await assertUserGroupWorkflowForwardWebhookEnabled({ userId: session.user.id });
       if (!permission.ok) {
         return NextResponse.json(
@@ -167,6 +177,12 @@ export async function POST(req: NextRequest) {
         break;
       case "forward:webhook":
         result = await testWebhookForward(config as ForwardWebhookData, vars);
+        break;
+      case "forward:feishu":
+        result = await testFeishuForward(config as ForwardFeishuData, vars);
+        break;
+      case "forward:serverchan":
+        result = await testServerchanForward(config as ForwardServerchanData, vars);
         break;
       default:
         return NextResponse.json({ error: "Unknown forward type" }, { status: 400 });
@@ -505,6 +521,117 @@ async function testWebhookForward(
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to connect to webhook",
+    };
+  }
+}
+
+async function testFeishuForward(
+  config: ForwardFeishuData,
+  vars: Record<string, unknown>
+): Promise<{ success: boolean; message: string; details?: string }> {
+  if (!config.webhookUrl) {
+    return { success: false, message: "Webhook URL is required" };
+  }
+
+  const validated = await validateEgressUrl(config.webhookUrl);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const template =
+    (config.template || "").trim() ||
+    "📧 Test Email\nFrom: {{email.fromAddress}}\nSubject: {{email.subject}}\n\n{{email.textBody}}";
+  const text = `[TEST] ${replaceTemplateVariables(template, vars)}`;
+
+  try {
+    const response = await fetch(validated.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+      body: JSON.stringify({
+        msg_type: "text",
+        content: { text },
+      }),
+    });
+
+    const data = await response.json().catch(() => null) as
+      | { code?: number; msg?: string }
+      | null;
+
+    if (response.ok && (!data || typeof data.code !== "number" || data.code === 0)) {
+      return {
+        success: true,
+        message: "Test message sent to Feishu",
+      };
+    }
+
+    return {
+      success: false,
+      message: data?.msg || "Feishu webhook error",
+      details: response.status ? `Status: ${response.status}` : undefined,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to connect to Feishu",
+    };
+  }
+}
+
+async function testServerchanForward(
+  config: ForwardServerchanData,
+  vars: Record<string, unknown>
+): Promise<{ success: boolean; message: string; details?: string }> {
+  const sendKey = (config.sendKey || "").trim();
+  if (!sendKey) {
+    return { success: false, message: "SendKey is required" };
+  }
+
+  const targetUrl = `https://sctapi.ftqq.com/${encodeURIComponent(sendKey)}.send`;
+  const validated = await validateEgressUrl(targetUrl);
+  if (!validated.ok) {
+    return { success: false, message: validated.error };
+  }
+
+  const titleTemplate = (config.title || "").trim() || "📧 {{email.subject}}";
+  const despTemplate =
+    (config.desp || "").trim() ||
+    "From: {{email.fromAddress}}\nSubject: {{email.subject}}\n\n{{email.textBody}}";
+
+  const body = new URLSearchParams();
+  body.set("title", `[TEST] ${replaceTemplateVariables(titleTemplate, vars)}`);
+  body.set("desp", replaceTemplateVariables(despTemplate, vars));
+
+  try {
+    const response = await fetch(validated.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+    });
+
+    const data = await response.json().catch(() => null) as
+      | { code?: number; message?: string }
+      | null;
+
+    if (response.ok && (!data || typeof data.code !== "number" || data.code === 0)) {
+      return {
+        success: true,
+        message: "Test message sent to ServerChan",
+      };
+    }
+
+    return {
+      success: false,
+      message: data?.message || "ServerChan API error",
+      details: response.status ? `Status: ${response.status}` : undefined,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to connect to ServerChan",
     };
   }
 }

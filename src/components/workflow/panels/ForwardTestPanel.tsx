@@ -21,7 +21,17 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Play, Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import type { NodeType, ForwardEmailData, ForwardTelegramBoundData, ForwardTelegramData, ForwardDiscordData, ForwardSlackData, ForwardWebhookData } from "@/lib/workflow/types";
+import type {
+  NodeType,
+  ForwardEmailData,
+  ForwardTelegramBoundData,
+  ForwardTelegramData,
+  ForwardDiscordData,
+  ForwardSlackData,
+  ForwardWebhookData,
+  ForwardFeishuData,
+  ForwardServerchanData,
+} from "@/lib/workflow/types";
 import { DEFAULT_FORWARD_TEMPLATES } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -31,7 +41,15 @@ interface ForwardTestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   nodeType: NodeType;
-  nodeData: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
+  nodeData:
+    | ForwardEmailData
+    | ForwardTelegramBoundData
+    | ForwardTelegramData
+    | ForwardDiscordData
+    | ForwardSlackData
+    | ForwardWebhookData
+    | ForwardFeishuData
+    | ForwardServerchanData;
 }
 
 export function ForwardTestDialog({
@@ -137,6 +155,18 @@ export function ForwardTestDialog({
         return t("forwardTest.configSummary.webhookUrl", {
           url: (nodeData as ForwardWebhookData).url || t("forwardTest.configSummary.notConfigured"),
         });
+      case "forward:feishu":
+        return t("forwardTest.configSummary.webhook", {
+          status: (nodeData as ForwardFeishuData).webhookUrl
+            ? t("forwardTest.configSummary.configured")
+            : t("forwardTest.configSummary.notConfigured"),
+        });
+      case "forward:serverchan":
+        return t("forwardTest.configSummary.serverchan", {
+          status: (nodeData as ForwardServerchanData).sendKey
+            ? t("forwardTest.configSummary.configured")
+            : t("forwardTest.configSummary.notConfigured"),
+        });
       default:
         return t("forwardTest.configSummary.unknownType");
     }
@@ -156,6 +186,10 @@ export function ForwardTestDialog({
         return !!(nodeData as ForwardSlackData).webhookUrl;
       case "forward:webhook":
         return !!(nodeData as ForwardWebhookData).url;
+      case "forward:feishu":
+        return !!(nodeData as ForwardFeishuData).webhookUrl;
+      case "forward:serverchan":
+        return !!(nodeData as ForwardServerchanData).sendKey;
       default:
         return false;
     }
@@ -300,7 +334,15 @@ export function TemplateSelector({ type, value, onChange }: TemplateSelectorProp
 // 测试按钮组件
 interface TestButtonProps {
   nodeType: NodeType;
-  nodeData: ForwardEmailData | ForwardTelegramBoundData | ForwardTelegramData | ForwardDiscordData | ForwardSlackData | ForwardWebhookData;
+  nodeData:
+    | ForwardEmailData
+    | ForwardTelegramBoundData
+    | ForwardTelegramData
+    | ForwardDiscordData
+    | ForwardSlackData
+    | ForwardWebhookData
+    | ForwardFeishuData
+    | ForwardServerchanData;
 }
 
 export function ForwardTestButton({ nodeType, nodeData }: TestButtonProps) {

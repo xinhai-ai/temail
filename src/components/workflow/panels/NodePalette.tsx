@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Hash,
   Webhook,
+  Bell,
   GitBranch,
   Timer,
   CircleStop,
@@ -48,6 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   MessageSquare,
   Hash,
   Webhook,
+  Bell,
   GitBranch,
   Timer,
   CircleStop,
@@ -83,7 +85,16 @@ const categoryTypes = [
   },
   {
     id: "forward",
-    types: ["forward:email", "forward:telegram-bound", "forward:telegram", "forward:discord", "forward:slack", "forward:webhook"] as NodeType[],
+    types: [
+      "forward:email",
+      "forward:telegram-bound",
+      "forward:telegram",
+      "forward:discord",
+      "forward:slack",
+      "forward:webhook",
+      "forward:feishu",
+      "forward:serverchan",
+    ] as NodeType[],
   },
   {
     id: "control",
@@ -162,7 +173,11 @@ export function NodePalette({ collapsed = false }: NodePaletteProps) {
   const disabledNodeTypes = new Set<NodeType>();
   if (vercelMode) disabledNodeTypes.add("forward:email");
   if (userGroup && !userGroup.workflowForwardEmailEnabled) disabledNodeTypes.add("forward:email");
-  if (userGroup && !userGroup.workflowForwardWebhookEnabled) disabledNodeTypes.add("forward:webhook");
+  if (userGroup && !userGroup.workflowForwardWebhookEnabled) {
+    disabledNodeTypes.add("forward:webhook");
+    disabledNodeTypes.add("forward:feishu");
+    disabledNodeTypes.add("forward:serverchan");
+  }
   if (userGroup && !userGroup.telegramEnabled) {
     disabledNodeTypes.add("forward:telegram");
     disabledNodeTypes.add("forward:telegram-bound");

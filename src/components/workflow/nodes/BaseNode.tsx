@@ -30,6 +30,7 @@ import {
   MessageSquare,
   Hash,
   Webhook,
+  Bell,
   GitBranch,
   Timer,
   CircleStop,
@@ -58,6 +59,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   MessageSquare,
   Hash,
   Webhook,
+  Bell,
   GitBranch,
   Timer,
   CircleStop,
@@ -428,9 +430,12 @@ function getIsConfigured(type: NodeType, data: NodeData): boolean {
       return !!(d.token as string) && !!(d.chatId as string);
     case "forward:discord":
     case "forward:slack":
+    case "forward:feishu":
       return !!(d.webhookUrl as string);
     case "forward:webhook":
       return !!(d.url as string);
+    case "forward:serverchan":
+      return !!(d.sendKey as string);
     case "control:delay":
       return (d.duration as number) > 0;
     case "action:setVariable":
@@ -582,6 +587,7 @@ function getNodePreview(type: NodeType, data: NodeData, t: Translator): React.Re
 
     case "forward:discord":
     case "forward:slack":
+    case "forward:feishu":
       const webhookUrl = d.webhookUrl as string;
       return webhookUrl ? (
         <span className="text-green-600 font-medium flex items-center gap-1">
@@ -604,6 +610,15 @@ function getNodePreview(type: NodeType, data: NodeData, t: Translator): React.Re
           </div>
         </div>
       );
+
+    case "forward:serverchan":
+      const sendKey = d.sendKey as string;
+      return sendKey ? (
+        <span className="text-green-600 font-medium flex items-center gap-1">
+          <CheckCircle className="w-3 h-3" />
+          {t("baseNode.preview.forward.webhookConfigured")}
+        </span>
+      ) : null;
 
     case "control:delay":
       const duration = (d.duration as number) || 0;

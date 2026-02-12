@@ -16,6 +16,8 @@ import type {
   ActionAiRewriteData,
   ForwardTelegramBoundData,
   ForwardTelegramData,
+  ForwardFeishuData,
+  ForwardServerchanData,
 } from "@/lib/workflow/types";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { evaluateAiClassifier } from "@/lib/workflow/ai-classifier";
@@ -163,6 +165,12 @@ export async function executeNode(
         data as { url: string; method: string; headers?: Record<string, string>; bodyTemplate?: string; contentType?: string },
         context
       );
+
+    case "forward:feishu":
+      return executeForwardFeishu(data as ForwardFeishuData, context);
+
+    case "forward:serverchan":
+      return executeForwardServerchan(data as ForwardServerchanData, context);
 
     // Control flow
     case "control:delay":
@@ -1347,6 +1355,141 @@ async function executeForwardWebhook(
     return response.ok;
   } catch (error) {
     console.error("Webhook forward error:", error);
+    return false;
+  }
+}
+
+async function executeForwardFeishu(
+  data: ForwardFeishuData,
+  context: ExecutionContext
+): Promise<boolean> {
+  if (!context.email) return false;
+
+  if (context.userId) {
+    const allowed = await assertUserGroupWorkflowForwardWebhookEnabled({ userId: context.userId });
+    if (!allowed.ok) {
+      console.warn("[workflow] Feishu forwarding blocked by user group:", allowed.error);
+      return true;
+    }
+  }
+
+  const templateCtx = buildTemplateContext(context);
+  const template =
+    (data.template || "").trim() || DEFAULT_FORWARD_FEISHU_TEMPLATE;
+  const text = replaceTemplateVariables(template, templateCtx);
+
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would send to Feishu:", text);
+    return true;
+  }
+
+  try {
+    const validated = await validateEgressUrl(data.webhookUrl);
+    if (!validated.ok) {
+      console.error("Feishu forward error:", validated.error);
+      return false;
+    }
+
+    const response = await fetch(validated.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+      body: JSON.stringify({
+        msg_type: "text",
+        content: { text },
+      }),
+    });
+
+    if (!response.ok) return false;
+
+    const payload = await response.json().catch(() => null) as { code?: number; msg?: string } | null;
+    if (payload && typeof payload.code === "number" && payload.code !== 0) {
+      console.error("Feishu forward error:", payload.msg || `code=${String(payload.code)}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Feishu forward error:", error);
+    return false;
+  }
+}
+
+const DEFAULT_FORWARD_FEISHU_TEMPLATE = `📧 New email
+From: {{email.fromAddress}}
+To: {{email.toAddress}}
+Subject: {{email.subject}}
+Time: {{email.receivedAt}}
+
+{{email.textBody}}`;
+
+async function executeForwardServerchan(
+  data: ForwardServerchanData,
+  context: ExecutionContext
+): Promise<boolean> {
+  if (!context.email) return false;
+
+  if (context.userId) {
+    const allowed = await assertUserGroupWorkflowForwardWebhookEnabled({ userId: context.userId });
+    if (!allowed.ok) {
+      console.warn("[workflow] ServerChan forwarding blocked by user group:", allowed.error);
+      return true;
+    }
+  }
+
+  const sendKey = (data.sendKey || "").trim();
+  if (!sendKey) return false;
+
+  const templateCtx = buildTemplateContext(context);
+  const titleTemplate = (data.title || "").trim() || "📧 {{email.subject}}";
+  const despTemplate =
+    (data.desp || "").trim() ||
+    `From: {{email.fromName}} <{{email.fromAddress}}>
+To: {{email.toAddress}}
+Time: {{email.receivedAt}}
+
+{{email.textBody}}`;
+
+  const title = replaceTemplateVariables(titleTemplate, templateCtx);
+  const desp = replaceTemplateVariables(despTemplate, templateCtx);
+  const targetUrl = `https://sctapi.ftqq.com/${encodeURIComponent(sendKey)}.send`;
+
+  if (context.isTestMode) {
+    console.log("[TEST MODE] Would send to ServerChan:", title);
+    return true;
+  }
+
+  try {
+    const validated = await validateEgressUrl(targetUrl);
+    if (!validated.ok) {
+      console.error("ServerChan forward error:", validated.error);
+      return false;
+    }
+
+    const body = new URLSearchParams();
+    body.set("title", title);
+    body.set("desp", desp);
+
+    const response = await fetch(validated.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      redirect: "error",
+      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
+      body: body.toString(),
+    });
+
+    if (!response.ok) return false;
+
+    const payload = await response.json().catch(() => null) as { code?: number; message?: string } | null;
+    if (payload && typeof payload.code === "number" && payload.code !== 0) {
+      console.error("ServerChan forward error:", payload.message || `code=${String(payload.code)}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("ServerChan forward error:", error);
     return false;
   }
 }

@@ -2506,6 +2506,7 @@
         "telegram": "Chat ID: {chatId}",
         "webhook": "Webhook: {status}",
         "webhookUrl": "URL: {url}",
+        "serverchan": "SendKey: {status}",
         "unknownType": "Unknown type",
         "configured": "Configured",
         "notConfigured": "Not configured"
@@ -2947,6 +2948,28 @@
           "minimal": "Minimal",
           "full": "Full Data"
         }
+      },
+      "forwardFeishu": {
+        "webhookUrl": "Webhook URL",
+        "webhookUrlPlaceholder": "https://open.feishu.cn/open-apis/bot/v2/hook/...",
+        "webhookUrlHelp": "Feishu Group Bot → Add custom bot and copy webhook URL",
+        "messageTemplate": "Message Template",
+        "templatePlaceholder": "Template",
+        "presets": {
+          "default": "Default",
+          "compact": "Compact"
+        },
+        "messagePlaceholder": "📧 New email from {{email.fromAddress}}"
+      },
+      "forwardServerchan": {
+        "sendKey": "SendKey",
+        "sendKeyPlaceholder": "SCTxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "sendKeyHelp": "Copy from your ServerChan SendKey page",
+        "titleTemplate": "Title Template",
+        "despTemplate": "Description Template",
+        "titlePlaceholder": "📧 {{email.subject}}",
+        "despPlaceholder": "From: {{email.fromAddress}}",
+        "useDefault": "Default"
       },
       "variableHelp": {
         "availableVariables": "Available Variables"

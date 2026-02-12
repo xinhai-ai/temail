@@ -32,6 +32,8 @@ export const nodeManualLoaders: Record<NodeType, NodeManualLoader> = {
   "forward:discord": () => import("./forward-discord"),
   "forward:slack": () => import("./forward-slack"),
   "forward:webhook": () => import("./forward-webhook"),
+  "forward:feishu": () => import("./forward-feishu"),
+  "forward:serverchan": () => import("./forward-serverchan"),
 
   "control:branch": () => import("./control-branch"),
   "control:delay": () => import("./control-delay"),

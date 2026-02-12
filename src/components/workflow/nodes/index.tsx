@@ -49,6 +49,8 @@ export const nodeTypes: NodeTypes = {
   "forward:discord": createNodeComponent("forward:discord"),
   "forward:slack": createNodeComponent("forward:slack"),
   "forward:webhook": createNodeComponent("forward:webhook"),
+  "forward:feishu": createNodeComponent("forward:feishu"),
+  "forward:serverchan": createNodeComponent("forward:serverchan"),
 
   // 流程控制
   "control:branch": createNodeComponent("control:branch"),
