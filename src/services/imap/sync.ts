@@ -59,6 +59,8 @@ export type SyncOptions = {
   debug?: boolean;
 };
 
+const PERSONAL_INITIAL_SYNC_LIMIT = 10;
+
 // Create a realtime publisher that calls the Next.js internal API
 export function createHttpRealtimePublisher(nextjsUrl: string): RealtimePublisher {
   const serviceKey = process.env.IMAP_SERVICE_KEY;
@@ -556,9 +558,10 @@ export async function syncByUidRange(
   // repeatedly re-fetch the same UID ranges on periodic sync (e.g. daily full sync).
   const state = await prisma.imapConfig.findUnique({
     where: { domainId: domain.id },
-    select: { lastSyncedUid: true, lastUidValidity: true },
+    select: { lastSyncedUid: true, lastUidValidity: true, lastFullSync: true },
   });
   const lastSyncedUid = state?.lastSyncedUid ?? 0;
+  const isPersonalDomain = domain.sourceType === "PERSONAL_IMAP";
 
   const currentUidValidity = mailbox.uidValidity ? BigInt(mailbox.uidValidity) : null;
   const storedUidValidity = state?.lastUidValidity ?? null;
@@ -586,6 +589,7 @@ export async function syncByUidRange(
   // Calculate UID range to fetch
   const startUid = uidValidityChanged ? 1 : lastSyncedUid + 1;
   const endUid = mailbox.uidNext ? Number(mailbox.uidNext) - 1 : "*";
+  let syncMode: "incremental" | "personal-initial-recent" | "personal-backfill-all" = "incremental";
 
   if (options.debug) {
     console.log(
@@ -606,7 +610,22 @@ export async function syncByUidRange(
     return { success: true, processed: 0, errors: 0, uidValidity: currentUidValidity ?? undefined };
   }
 
-  const uidRange = `${startUid}:${endUid === "*" ? "*" : endUid}`;
+  let effectiveStartUid = startUid;
+  if (isPersonalDomain && !uidValidityChanged) {
+    const hasPreviousSync = Boolean(state?.lastSyncedUid && state.lastSyncedUid > 0);
+    const hasCompletedBackfill = Boolean(state?.lastFullSync);
+    if (!hasPreviousSync) {
+      // First sync for personal mailbox: keep it responsive by syncing only latest messages.
+      syncMode = "personal-initial-recent";
+      effectiveStartUid = 1;
+    } else if (!hasCompletedBackfill) {
+      // Second refresh: backfill full history once.
+      syncMode = "personal-backfill-all";
+      effectiveStartUid = 1;
+    }
+  }
+
+  const uidRange = `${effectiveStartUid}:${endUid === "*" ? "*" : endUid}`;
 
   let uids: number[];
   try {
@@ -619,6 +638,10 @@ export async function syncByUidRange(
 
   if (uids.length === 0) {
     return { success: true, processed: 0, errors: 0, uidValidity: currentUidValidity ?? undefined };
+  }
+
+  if (syncMode === "personal-initial-recent" && uids.length > PERSONAL_INITIAL_SYNC_LIMIT) {
+    uids = uids.slice(-PERSONAL_INITIAL_SYNC_LIMIT);
   }
 
   const batches = chunkArray(uids, 200);
@@ -652,16 +675,18 @@ export async function syncByUidRange(
   }
 
   // Update sync state
+  const imapUpdateData: Prisma.ImapConfigUpdateInput = {
+    lastSync: now,
+    ...(syncMode !== "personal-initial-recent" ? { lastFullSync: now } : {}),
+    lastSyncedUid: highestUid > 0 ? highestUid : undefined,
+    lastUidValidity: currentUidValidity,
+    consecutiveErrors: 0,
+    lastError: null,
+  };
+
   await prisma.imapConfig.update({
     where: { domainId: domain.id },
-    data: {
-      lastSync: now,
-      lastFullSync: now,
-      lastSyncedUid: highestUid > 0 ? highestUid : undefined,
-      lastUidValidity: currentUidValidity,
-      consecutiveErrors: 0,
-      lastError: null,
-    },
+    data: imapUpdateData,
   });
 
   if (domain.sourceType === "PERSONAL_IMAP") {
@@ -686,7 +711,9 @@ export async function syncByUidRange(
   }
 
   if (options.debug) {
-    console.log(`[imap-sync] domain=${domain.name} uid-range sync processed=${processedCount} errors=${errorCount} highestUid=${highestUid}`);
+    console.log(
+      `[imap-sync] domain=${domain.name} uid-range sync mode=${syncMode} processed=${processedCount} errors=${errorCount} highestUid=${highestUid}`
+    );
   }
 
   return {
