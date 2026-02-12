@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
@@ -45,7 +45,21 @@ export default function TrashPage() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [actionInProgress, setActionInProgress] = useState(false);
+  const actionLockRef = useRef(false);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const beginAction = () => {
+    if (actionLockRef.current) return false;
+    actionLockRef.current = true;
+    setActionInProgress(true);
+    return true;
+  };
+
+  const endAction = () => {
+    actionLockRef.current = false;
+    setActionInProgress(false);
+  };
 
   const fetchEmails = async () => {
     setLoading(true);
@@ -105,83 +119,103 @@ export default function TrashPage() {
   };
 
   const restoreOne = async (id: string) => {
-    const res = await fetch(`/api/emails/${id}/restore`, { method: "POST" });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      toast.error(data?.error || t("toast.restoreFailed"));
-      return;
+    if (!beginAction()) return;
+    try {
+      const res = await fetch(`/api/emails/${id}/restore`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.restoreFailed"));
+        return;
+      }
+      toast.success(t("toast.restored"));
+      removeSelectedIds([id]);
+      await fetchEmails().catch(() => {
+        toast.error(t("toast.loadFailed"));
+        setLoading(false);
+      });
+    } finally {
+      endAction();
     }
-    toast.success(t("toast.restored"));
-    removeSelectedIds([id]);
-    await fetchEmails().catch(() => {
-      toast.error(t("toast.loadFailed"));
-      setLoading(false);
-    });
   };
 
   const purgeOne = async (id: string) => {
     if (!confirm(t("confirm.purgeOne"))) return;
-    const res = await fetch(`/api/emails/${id}/purge`, { method: "DELETE" });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      toast.error(data?.error || t("toast.purgeFailed"));
-      return;
+    if (!beginAction()) return;
+    try {
+      const res = await fetch(`/api/emails/${id}/purge`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.purgeFailed"));
+        return;
+      }
+      toast.success(t("toast.purged"));
+      removeSelectedIds([id]);
+      await fetchEmails().catch(() => {
+        toast.error(t("toast.loadFailed"));
+        setLoading(false);
+      });
+    } finally {
+      endAction();
     }
-    toast.success(t("toast.purged"));
-    removeSelectedIds([id]);
-    await fetchEmails().catch(() => {
-      toast.error(t("toast.loadFailed"));
-      setLoading(false);
-    });
   };
 
   const bulkRestore = async () => {
     const ids = selectedIds;
     if (ids.length === 0) return;
-    const res = await fetch("/api/emails/bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "restore", ids }),
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      toast.error(data?.error || t("toast.restoreFailed"));
-      return;
+    if (!beginAction()) return;
+    try {
+      const res = await fetch("/api/emails/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", ids }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.restoreFailed"));
+        return;
+      }
+      const processedIds = Array.isArray(data?.ids)
+        ? data.ids.filter((value: unknown): value is string => typeof value === "string")
+        : ids;
+      toast.success(t("toast.restored"));
+      removeSelectedIds(processedIds);
+      await fetchEmails().catch(() => {
+        toast.error(t("toast.loadFailed"));
+        setLoading(false);
+      });
+    } finally {
+      endAction();
     }
-    const processedIds = Array.isArray(data?.ids)
-      ? data.ids.filter((value: unknown): value is string => typeof value === "string")
-      : ids;
-    toast.success(t("toast.restored"));
-    removeSelectedIds(processedIds);
-    await fetchEmails().catch(() => {
-      toast.error(t("toast.loadFailed"));
-      setLoading(false);
-    });
   };
 
   const bulkPurge = async () => {
     const ids = selectedIds;
     if (ids.length === 0) return;
     if (!confirm(t("confirm.purgeBulk", { count: ids.length }))) return;
-    const res = await fetch("/api/emails/bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "purge", ids }),
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      toast.error(data?.error || t("toast.purgeFailed"));
-      return;
+    if (!beginAction()) return;
+    try {
+      const res = await fetch("/api/emails/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "purge", ids }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.purgeFailed"));
+        return;
+      }
+      const processedIds = Array.isArray(data?.ids)
+        ? data.ids.filter((value: unknown): value is string => typeof value === "string")
+        : ids;
+      toast.success(t("toast.purged"));
+      removeSelectedIds(processedIds);
+      await fetchEmails().catch(() => {
+        toast.error(t("toast.loadFailed"));
+        setLoading(false);
+      });
+    } finally {
+      endAction();
     }
-    const processedIds = Array.isArray(data?.ids)
-      ? data.ids.filter((value: unknown): value is string => typeof value === "string")
-      : ids;
-    toast.success(t("toast.purged"));
-    removeSelectedIds(processedIds);
-    await fetchEmails().catch(() => {
-      toast.error(t("toast.loadFailed"));
-      setLoading(false);
-    });
   };
 
   const allOnPageSelected = emails.length > 0 && emails.every((e) => selectedSet.has(e.id));
@@ -209,11 +243,11 @@ export default function TrashPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 justify-end">
-          <Button variant="outline" disabled={selectedIds.length === 0} onClick={bulkRestore}>
+          <Button variant="outline" disabled={selectedIds.length === 0 || actionInProgress} onClick={bulkRestore}>
             <RotateCcw className="h-4 w-4 mr-2" />
             {t("bulk.restore", { count: selectedIds.length })}
           </Button>
-          <Button variant="destructive" disabled={selectedIds.length === 0} onClick={bulkPurge}>
+          <Button variant="destructive" disabled={selectedIds.length === 0 || actionInProgress} onClick={bulkPurge}>
             <Trash2 className="h-4 w-4 mr-2" />
             {t("bulk.purge")}
           </Button>
@@ -245,6 +279,7 @@ export default function TrashPage() {
                   <Checkbox
                     checked={allOnPageSelected || (someOnPageSelected ? "indeterminate" : false)}
                     onCheckedChange={(v) => toggleSelectAllOnPage(Boolean(v))}
+                    disabled={actionInProgress}
                     aria-label={t("table.selectAll")}
                   />
                 </TableHead>
@@ -262,6 +297,7 @@ export default function TrashPage() {
                     <Checkbox
                       checked={selectedSet.has(email.id)}
                       onCheckedChange={(v) => toggleSelect(email.id, Boolean(v))}
+                      disabled={actionInProgress}
                       aria-label={t("table.selectEmail")}
                     />
                   </TableCell>
@@ -296,6 +332,7 @@ export default function TrashPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={actionInProgress}
                         onClick={() => restoreOne(email.id)}
                         className="hover:bg-primary/10"
                       >
@@ -304,6 +341,7 @@ export default function TrashPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={actionInProgress}
                         onClick={() => purgeOne(email.id)}
                         className="hover:bg-destructive/10"
                       >
