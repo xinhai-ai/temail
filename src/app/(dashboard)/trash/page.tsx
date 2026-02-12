@@ -57,8 +57,16 @@ export default function TrashPage() {
 
     const res = await fetch(`/api/emails?${params.toString()}`);
     const data = await res.json().catch(() => null);
-    setEmails(Array.isArray(data?.emails) ? data.emails : []);
-    setPages(Math.max(1, Number(data?.pagination?.pages || 1)));
+    const nextEmails = Array.isArray(data?.emails) ? data.emails : [];
+    const nextPages = Math.max(1, Number(data?.pagination?.pages || 1));
+
+    setPages(nextPages);
+    if (page > nextPages) {
+      setPage(nextPages);
+      return;
+    }
+
+    setEmails(nextEmails);
     setLoading(false);
   };
 
@@ -98,8 +106,11 @@ export default function TrashPage() {
       return;
     }
     toast.success(t("toast.restored"));
-    setEmails((prev) => prev.filter((e) => e.id !== id));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
+    await fetchEmails().catch(() => {
+      toast.error(t("toast.loadFailed"));
+      setLoading(false);
+    });
   };
 
   const purgeOne = async (id: string) => {
@@ -111,8 +122,11 @@ export default function TrashPage() {
       return;
     }
     toast.success(t("toast.purged"));
-    setEmails((prev) => prev.filter((e) => e.id !== id));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
+    await fetchEmails().catch(() => {
+      toast.error(t("toast.loadFailed"));
+      setLoading(false);
+    });
   };
 
   const bulkRestore = async () => {
@@ -130,7 +144,10 @@ export default function TrashPage() {
     }
     toast.success(t("toast.restored"));
     setSelectedIds([]);
-    setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
+    await fetchEmails().catch(() => {
+      toast.error(t("toast.loadFailed"));
+      setLoading(false);
+    });
   };
 
   const bulkPurge = async () => {
@@ -149,7 +166,10 @@ export default function TrashPage() {
     }
     toast.success(t("toast.purged"));
     setSelectedIds([]);
-    setEmails((prev) => prev.filter((e) => !ids.includes(e.id)));
+    await fetchEmails().catch(() => {
+      toast.error(t("toast.loadFailed"));
+      setLoading(false);
+    });
   };
 
   const allOnPageSelected = emails.length > 0 && emails.every((e) => selectedSet.has(e.id));
