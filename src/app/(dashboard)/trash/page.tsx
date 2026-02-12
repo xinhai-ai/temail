@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, zhCN } from "date-fns/locale";
-import { Mail, RotateCcw, Search, Trash2, Eye } from "lucide-react";
+import { Mail, RotateCcw, Search, Trash2, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +23,10 @@ type TrashEmail = {
   receivedAt: string;
   mailbox: { address: string };
 };
+
+type PendingTrashAction =
+  | { scope: "bulk"; type: "restore" | "purge" }
+  | { scope: "single"; id: string; type: "restore" | "purge" };
 
 export default function TrashPage() {
   const locale = useLocale();
@@ -46,18 +50,21 @@ export default function TrashPage() {
   const [pages, setPages] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingTrashAction | null>(null);
   const actionLockRef = useRef(false);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const beginAction = () => {
+  const beginAction = (nextAction: PendingTrashAction) => {
     if (actionLockRef.current) return false;
     actionLockRef.current = true;
+    setPendingAction(nextAction);
     setActionInProgress(true);
     return true;
   };
 
   const endAction = () => {
     actionLockRef.current = false;
+    setPendingAction(null);
     setActionInProgress(false);
   };
 
@@ -119,7 +126,7 @@ export default function TrashPage() {
   };
 
   const restoreOne = async (id: string) => {
-    if (!beginAction()) return;
+    if (!beginAction({ scope: "single", id, type: "restore" })) return;
     try {
       const res = await fetch(`/api/emails/${id}/restore`, { method: "POST" });
       const data = await res.json().catch(() => null);
@@ -140,7 +147,7 @@ export default function TrashPage() {
 
   const purgeOne = async (id: string) => {
     if (!confirm(t("confirm.purgeOne"))) return;
-    if (!beginAction()) return;
+    if (!beginAction({ scope: "single", id, type: "purge" })) return;
     try {
       const res = await fetch(`/api/emails/${id}/purge`, { method: "DELETE" });
       const data = await res.json().catch(() => null);
@@ -162,7 +169,7 @@ export default function TrashPage() {
   const bulkRestore = async () => {
     const ids = selectedIds;
     if (ids.length === 0) return;
-    if (!beginAction()) return;
+    if (!beginAction({ scope: "bulk", type: "restore" })) return;
     try {
       const res = await fetch("/api/emails/bulk", {
         method: "POST",
@@ -192,7 +199,7 @@ export default function TrashPage() {
     const ids = selectedIds;
     if (ids.length === 0) return;
     if (!confirm(t("confirm.purgeBulk", { count: ids.length }))) return;
-    if (!beginAction()) return;
+    if (!beginAction({ scope: "bulk", type: "purge" })) return;
     try {
       const res = await fetch("/api/emails/bulk", {
         method: "POST",
@@ -220,6 +227,12 @@ export default function TrashPage() {
 
   const allOnPageSelected = emails.length > 0 && emails.every((e) => selectedSet.has(e.id));
   const someOnPageSelected = emails.some((e) => selectedSet.has(e.id));
+  const bulkRestoreLoading = pendingAction?.scope === "bulk" && pendingAction.type === "restore";
+  const bulkPurgeLoading = pendingAction?.scope === "bulk" && pendingAction.type === "purge";
+
+  const isSingleLoading = (id: string, type: "restore" | "purge") => {
+    return pendingAction?.scope === "single" && pendingAction.id === id && pendingAction.type === type;
+  };
 
   return (
     <div className="space-y-8">
@@ -244,11 +257,11 @@ export default function TrashPage() {
 
         <div className="flex flex-wrap gap-2 justify-end">
           <Button variant="outline" disabled={selectedIds.length === 0 || actionInProgress} onClick={bulkRestore}>
-            <RotateCcw className="h-4 w-4 mr-2" />
+            {bulkRestoreLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
             {t("bulk.restore", { count: selectedIds.length })}
           </Button>
           <Button variant="destructive" disabled={selectedIds.length === 0 || actionInProgress} onClick={bulkPurge}>
-            <Trash2 className="h-4 w-4 mr-2" />
+            {bulkPurgeLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
             {t("bulk.purge")}
           </Button>
         </div>
@@ -336,7 +349,7 @@ export default function TrashPage() {
                         onClick={() => restoreOne(email.id)}
                         className="hover:bg-primary/10"
                       >
-                        <RotateCcw className="h-4 w-4" />
+                        {isSingleLoading(email.id, "restore") ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                       </Button>
                       <Button
                         variant="ghost"
@@ -345,7 +358,7 @@ export default function TrashPage() {
                         onClick={() => purgeOne(email.id)}
                         className="hover:bg-destructive/10"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        {isSingleLoading(email.id, "purge") ? <Loader2 className="h-4 w-4 text-destructive animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
                       </Button>
                     </div>
                   </TableCell>
