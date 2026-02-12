@@ -2959,7 +2959,7 @@
           "default": "默认",
           "compact": "精简"
         },
-        "messagePlaceholder": "📧 来自 {{email.fromAddress}} 的新邮件"
+        "messagePlaceholder": "📧 来自 {example} 的新邮件"
       },
       "forwardServerchan": {
         "sendKey": "SendKey",
@@ -2967,8 +2967,8 @@
         "sendKeyHelp": "从 Server酱 SendKey 页面复制",
         "titleTemplate": "标题模板",
         "despTemplate": "正文模板",
-        "titlePlaceholder": "📧 {{email.subject}}",
-        "despPlaceholder": "From: {{email.fromAddress}}",
+        "titlePlaceholder": "📧 {example}",
+        "despPlaceholder": "From: {example}",
         "useDefault": "默认"
       },
       "variableHelp": {

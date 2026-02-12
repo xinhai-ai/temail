@@ -2959,7 +2959,7 @@
           "default": "Default",
           "compact": "Compact"
         },
-        "messagePlaceholder": "📧 New email from {{email.fromAddress}}"
+        "messagePlaceholder": "📧 New email from {example}"
       },
       "forwardServerchan": {
         "sendKey": "SendKey",
@@ -2967,8 +2967,8 @@
         "sendKeyHelp": "Copy from your ServerChan SendKey page",
         "titleTemplate": "Title Template",
         "despTemplate": "Description Template",
-        "titlePlaceholder": "📧 {{email.subject}}",
-        "despPlaceholder": "From: {{email.fromAddress}}",
+        "titlePlaceholder": "📧 {example}",
+        "despPlaceholder": "From: {example}",
         "useDefault": "Default"
       },
       "variableHelp": {

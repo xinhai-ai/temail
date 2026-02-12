@@ -2367,7 +2367,7 @@ function ForwardFeishuConfig({
           id="feishuTemplate"
           value={(data.template as string) || ""}
           onChange={(e) => onChange("template", e.target.value)}
-          placeholder={t("nodeConfigPanel.forwardFeishu.messagePlaceholder")}
+          placeholder={t("nodeConfigPanel.forwardFeishu.messagePlaceholder", { example: "{{email.fromAddress}}" })}
           rows={5}
           className="text-xs font-mono"
         />
@@ -2421,7 +2421,7 @@ function ForwardServerchanConfig({
           id="serverchanTitle"
           value={(data.title as string) || ""}
           onChange={(e) => onChange("title", e.target.value)}
-          placeholder={t("nodeConfigPanel.forwardServerchan.titlePlaceholder")}
+          placeholder={t("nodeConfigPanel.forwardServerchan.titlePlaceholder", { example: "{{email.subject}}" })}
           className="h-8 text-sm"
         />
       </div>
@@ -2443,7 +2443,7 @@ function ForwardServerchanConfig({
           id="serverchanDesp"
           value={(data.desp as string) || ""}
           onChange={(e) => onChange("desp", e.target.value)}
-          placeholder={t("nodeConfigPanel.forwardServerchan.despPlaceholder")}
+          placeholder={t("nodeConfigPanel.forwardServerchan.despPlaceholder", { example: "{{email.fromAddress}}" })}
           rows={6}
           className="text-xs font-mono"
         />
