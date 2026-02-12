@@ -591,25 +591,6 @@ export async function syncByUidRange(
   const endUid = mailbox.uidNext ? Number(mailbox.uidNext) - 1 : "*";
   let syncMode: "incremental" | "personal-initial-recent" | "personal-backfill-all" = "incremental";
 
-  if (options.debug) {
-    console.log(
-      "[imap-sync] uid-range state",
-      JSON.stringify({
-        domain: domain.name,
-        lastSyncedUid,
-        startUid,
-        endUid,
-        uidValidity: currentUidValidity?.toString() ?? null,
-        storedUidValidity: storedUidValidity?.toString() ?? null,
-      }),
-    );
-  }
-
-  if (typeof endUid === "number" && startUid > endUid) {
-    // No new messages
-    return { success: true, processed: 0, errors: 0, uidValidity: currentUidValidity ?? undefined };
-  }
-
   let effectiveStartUid = startUid;
   if (isPersonalDomain && !uidValidityChanged) {
     const hasPreviousSync = Boolean(state?.lastSyncedUid && state.lastSyncedUid > 0);
@@ -623,6 +604,27 @@ export async function syncByUidRange(
       syncMode = "personal-backfill-all";
       effectiveStartUid = 1;
     }
+  }
+
+  if (options.debug) {
+    console.log(
+      "[imap-sync] uid-range state",
+      JSON.stringify({
+        domain: domain.name,
+        lastSyncedUid,
+        startUid,
+        effectiveStartUid,
+        endUid,
+        syncMode,
+        uidValidity: currentUidValidity?.toString() ?? null,
+        storedUidValidity: storedUidValidity?.toString() ?? null,
+      }),
+    );
+  }
+
+  if (typeof endUid === "number" && effectiveStartUid > endUid) {
+    // No messages in requested range.
+    return { success: true, processed: 0, errors: 0, uidValidity: currentUidValidity ?? undefined };
   }
 
   const uidRange = `${effectiveStartUid}:${endUid === "*" ? "*" : endUid}`;
