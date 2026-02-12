@@ -1832,6 +1832,21 @@ export default function InboxPage() {
         return;
       }
 
+      if (isMailboxSearchMode) {
+        await loadMailboxSearchPage(mailboxSearchQuery, mailboxSearchPage);
+      } else {
+        const keys = Array.from(
+          new Set([UNGROUPED_SELECT_VALUE, ...groups.map((group) => group.id)])
+        );
+        await Promise.all(
+          keys.map((key) => {
+            const currentPage = mailboxPaginationByGroupKey[key]?.page || 1;
+            return loadMailboxGroupPage(key, currentPage, { replace: true });
+          })
+        );
+      }
+
+      setEmailsRefreshKey((k) => k + 1);
       toast.success(data?.message || t("toast.refresh.triggered"));
     } catch {
       toast.error(t("toast.refresh.failed"));
