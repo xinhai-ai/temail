@@ -103,6 +103,10 @@ type MailboxesPanelProps = {
   newMailboxDomainId: string;
   newMailboxGroupId: string;
   newMailboxNote: string;
+  newMailboxExpireMailboxDaysOverride: string;
+  newMailboxExpireMailboxActionOverride: string;
+  newMailboxExpireEmailDaysOverride: string;
+  newMailboxExpireEmailActionOverride: string;
   creatingMailbox: boolean;
   newGroupName: string;
   creatingGroup: boolean;
@@ -126,6 +130,10 @@ type MailboxesPanelProps = {
   onGenerateRandomPrefix: () => void;
   onNewMailboxGroupIdChange: (value: string) => void;
   onNewMailboxNoteChange: (value: string) => void;
+  onNewMailboxExpireMailboxDaysOverrideChange: (value: string) => void;
+  onNewMailboxExpireMailboxActionOverrideChange: (value: string) => void;
+  onNewMailboxExpireEmailDaysOverrideChange: (value: string) => void;
+  onNewMailboxExpireEmailActionOverrideChange: (value: string) => void;
   onCreateMailbox: () => void;
   onNewGroupNameChange: (value: string) => void;
   onCreateGroup: () => void;
@@ -208,6 +216,10 @@ export function MailboxesPanel({
   newMailboxDomainId,
   newMailboxGroupId,
   newMailboxNote,
+  newMailboxExpireMailboxDaysOverride,
+  newMailboxExpireMailboxActionOverride,
+  newMailboxExpireEmailDaysOverride,
+  newMailboxExpireEmailActionOverride,
   creatingMailbox,
   newGroupName,
   creatingGroup,
@@ -231,6 +243,10 @@ export function MailboxesPanel({
   onGenerateRandomPrefix,
   onNewMailboxGroupIdChange,
   onNewMailboxNoteChange,
+  onNewMailboxExpireMailboxDaysOverrideChange,
+  onNewMailboxExpireMailboxActionOverrideChange,
+  onNewMailboxExpireEmailDaysOverrideChange,
+  onNewMailboxExpireEmailActionOverrideChange,
   onCreateMailbox,
   onNewGroupNameChange,
   onCreateGroup,
@@ -655,6 +671,71 @@ export function MailboxesPanel({
                   value={newMailboxNote}
                   onChange={(e) => onNewMailboxNoteChange(e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-3 rounded-md border border-dashed p-3">
+                <div className="text-sm font-medium">{t("mailboxes.dialog.retention.title")}</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>{t("mailboxes.dialog.retention.mailboxDays")}</Label>
+                    <Input
+                      type="number"
+                      min={-1}
+                      max={3650}
+                      placeholder={t("mailboxes.dialog.retention.inheritPlaceholder")}
+                      value={newMailboxExpireMailboxDaysOverride}
+                      onChange={(e) => onNewMailboxExpireMailboxDaysOverrideChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("mailboxes.dialog.retention.mailboxAction")}</Label>
+                    <Select
+                      value={newMailboxExpireMailboxActionOverride || ungroupedSelectValue}
+                      onValueChange={(value) =>
+                        onNewMailboxExpireMailboxActionOverrideChange(value === ungroupedSelectValue ? "" : value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("mailboxes.dialog.retention.inheritAction")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ungroupedSelectValue}>{t("mailboxes.dialog.retention.inheritAction")}</SelectItem>
+                        <SelectItem value="ARCHIVE">{t("mailboxes.dialog.retention.actionArchive")}</SelectItem>
+                        <SelectItem value="DELETE">{t("mailboxes.dialog.retention.actionDelete")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("mailboxes.dialog.retention.emailDays")}</Label>
+                    <Input
+                      type="number"
+                      min={-1}
+                      max={3650}
+                      placeholder={t("mailboxes.dialog.retention.inheritPlaceholder")}
+                      value={newMailboxExpireEmailDaysOverride}
+                      onChange={(e) => onNewMailboxExpireEmailDaysOverrideChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("mailboxes.dialog.retention.emailAction")}</Label>
+                    <Select
+                      value={newMailboxExpireEmailActionOverride || ungroupedSelectValue}
+                      onValueChange={(value) =>
+                        onNewMailboxExpireEmailActionOverrideChange(value === ungroupedSelectValue ? "" : value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("mailboxes.dialog.retention.inheritAction")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ungroupedSelectValue}>{t("mailboxes.dialog.retention.inheritAction")}</SelectItem>
+                        <SelectItem value="ARCHIVE">{t("mailboxes.dialog.retention.actionArchive")}</SelectItem>
+                        <SelectItem value="DELETE">{t("mailboxes.dialog.retention.actionDelete")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("mailboxes.dialog.retention.help")}</p>
               </div>
 
               <Button onClick={onCreateMailbox} className="w-full" disabled={creatingMailbox}>

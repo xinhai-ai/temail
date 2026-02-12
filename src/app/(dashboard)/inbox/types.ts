@@ -18,6 +18,11 @@ export type Mailbox = {
   isStarred: boolean;
   status: string;
   archivedAt?: string | null;
+  lastEmailReceivedAt?: string | null;
+  expireMailboxDaysOverride?: number | null;
+  expireMailboxActionOverride?: "ARCHIVE" | "DELETE" | null;
+  expireEmailDaysOverride?: number | null;
+  expireEmailActionOverride?: "ARCHIVE" | "DELETE" | null;
   group?: MailboxGroup | null;
   _count: { emails: number }; // unread count
 };

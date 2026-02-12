@@ -90,6 +90,10 @@ export default function InboxPage() {
   const [newMailboxDomainId, setNewMailboxDomainId] = useState("");
   const [newMailboxGroupId, setNewMailboxGroupId] = useState<string>("");
   const [newMailboxNote, setNewMailboxNote] = useState("");
+  const [newMailboxExpireMailboxDaysOverride, setNewMailboxExpireMailboxDaysOverride] = useState("");
+  const [newMailboxExpireMailboxActionOverride, setNewMailboxExpireMailboxActionOverride] = useState("");
+  const [newMailboxExpireEmailDaysOverride, setNewMailboxExpireEmailDaysOverride] = useState("");
+  const [newMailboxExpireEmailActionOverride, setNewMailboxExpireEmailActionOverride] = useState("");
 
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingGroup, setRenamingGroup] = useState(false);
@@ -1329,6 +1333,16 @@ export default function InboxPage() {
     setNewMailboxPrefix(result);
   };
 
+  const parseRetentionDaysOverride = (raw: string): number | undefined => {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || (parsed !== -1 && parsed <= 0) || parsed > 3650) {
+      return Number.NaN;
+    }
+    return parsed;
+  };
+
   const handleCreateMailbox = async () => {
 	    const prefix = newMailboxPrefix.trim();
 	    if (!prefix || !newMailboxDomainId) {
@@ -1337,6 +1351,16 @@ export default function InboxPage() {
 	    }
 
     const groupId = newMailboxGroupId || undefined;
+    const expireMailboxDaysOverride = parseRetentionDaysOverride(newMailboxExpireMailboxDaysOverride);
+    if (Number.isNaN(expireMailboxDaysOverride)) {
+      toast.error(t("toast.mailboxes.retentionDaysInvalid"));
+      return;
+    }
+    const expireEmailDaysOverride = parseRetentionDaysOverride(newMailboxExpireEmailDaysOverride);
+    if (Number.isNaN(expireEmailDaysOverride)) {
+      toast.error(t("toast.mailboxes.retentionDaysInvalid"));
+      return;
+    }
 
     setCreatingMailbox(true);
     try {
@@ -1348,6 +1372,10 @@ export default function InboxPage() {
           domainId: newMailboxDomainId,
           note: newMailboxNote.trim() || undefined,
           groupId,
+          expireMailboxDaysOverride,
+          expireMailboxActionOverride: newMailboxExpireMailboxActionOverride || undefined,
+          expireEmailDaysOverride,
+          expireEmailActionOverride: newMailboxExpireEmailActionOverride || undefined,
         }),
       });
 
@@ -1363,6 +1391,10 @@ export default function InboxPage() {
       setNewMailboxDomainId("");
       setNewMailboxGroupId("");
       setNewMailboxNote("");
+      setNewMailboxExpireMailboxDaysOverride("");
+      setNewMailboxExpireMailboxActionOverride("");
+      setNewMailboxExpireEmailDaysOverride("");
+      setNewMailboxExpireEmailActionOverride("");
       const groupKey = groupId || UNGROUPED_SELECT_VALUE;
       setMailboxSearchPage(1);
       setMailboxSearch("");
@@ -1837,6 +1869,10 @@ export default function InboxPage() {
               newMailboxDomainId={newMailboxDomainId}
               newMailboxGroupId={newMailboxGroupId}
               newMailboxNote={newMailboxNote}
+              newMailboxExpireMailboxDaysOverride={newMailboxExpireMailboxDaysOverride}
+              newMailboxExpireMailboxActionOverride={newMailboxExpireMailboxActionOverride}
+              newMailboxExpireEmailDaysOverride={newMailboxExpireEmailDaysOverride}
+              newMailboxExpireEmailActionOverride={newMailboxExpireEmailActionOverride}
               creatingMailbox={creatingMailbox}
               newGroupName={newGroupName}
               creatingGroup={creatingGroup}
@@ -1863,6 +1899,10 @@ export default function InboxPage() {
               onGenerateRandomPrefix={generateRandomPrefix}
               onNewMailboxGroupIdChange={setNewMailboxGroupId}
               onNewMailboxNoteChange={setNewMailboxNote}
+              onNewMailboxExpireMailboxDaysOverrideChange={setNewMailboxExpireMailboxDaysOverride}
+              onNewMailboxExpireMailboxActionOverrideChange={setNewMailboxExpireMailboxActionOverride}
+              onNewMailboxExpireEmailDaysOverrideChange={setNewMailboxExpireEmailDaysOverride}
+              onNewMailboxExpireEmailActionOverrideChange={setNewMailboxExpireEmailActionOverride}
               onCreateMailbox={handleCreateMailbox}
               onNewGroupNameChange={setNewGroupName}
               onCreateGroup={handleCreateGroup}
@@ -1977,6 +2017,10 @@ export default function InboxPage() {
               newMailboxDomainId={newMailboxDomainId}
               newMailboxGroupId={newMailboxGroupId}
               newMailboxNote={newMailboxNote}
+              newMailboxExpireMailboxDaysOverride={newMailboxExpireMailboxDaysOverride}
+              newMailboxExpireMailboxActionOverride={newMailboxExpireMailboxActionOverride}
+              newMailboxExpireEmailDaysOverride={newMailboxExpireEmailDaysOverride}
+              newMailboxExpireEmailActionOverride={newMailboxExpireEmailActionOverride}
               creatingMailbox={creatingMailbox}
               newGroupName={newGroupName}
               creatingGroup={creatingGroup}
@@ -2000,6 +2044,10 @@ export default function InboxPage() {
               onGenerateRandomPrefix={generateRandomPrefix}
               onNewMailboxGroupIdChange={setNewMailboxGroupId}
               onNewMailboxNoteChange={setNewMailboxNote}
+              onNewMailboxExpireMailboxDaysOverrideChange={setNewMailboxExpireMailboxDaysOverride}
+              onNewMailboxExpireMailboxActionOverrideChange={setNewMailboxExpireMailboxActionOverride}
+              onNewMailboxExpireEmailDaysOverrideChange={setNewMailboxExpireEmailDaysOverride}
+              onNewMailboxExpireEmailActionOverrideChange={setNewMailboxExpireEmailActionOverride}
               onCreateMailbox={handleCreateMailbox}
               onNewGroupNameChange={setNewGroupName}
               onCreateGroup={handleCreateGroup}

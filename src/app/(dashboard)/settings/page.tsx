@@ -10,6 +10,7 @@ import { useOtp } from "./_hooks/useOtp";
 import { usePasskeys } from "./_hooks/usePasskeys";
 import { useApiKeys } from "./_hooks/useApiKeys";
 import { useTrash } from "./_hooks/useTrash";
+import { useRetention } from "./_hooks/useRetention";
 import { useStorageUsage } from "./_hooks/useStorageUsage";
 import { AccountSection } from "./_components/sections/AccountSection";
 import { SecuritySection } from "./_components/sections/SecuritySection";
@@ -32,6 +33,7 @@ export default function SettingsPage() {
   const passkeys = usePasskeys();
   const apiKeys = useApiKeys();
   const trash = useTrash();
+  const retention = useRetention();
   const storageUsage = useStorageUsage();
 
   // Navigation items
@@ -63,7 +65,7 @@ export default function SettingsPage() {
 
         {activeSection === "api" && <ApiSection apiKeys={apiKeys} />}
 
-        {activeSection === "data" && <DataSection trash={trash} storageUsage={storageUsage} />}
+        {activeSection === "data" && <DataSection trash={trash} retention={retention} storageUsage={storageUsage} />}
 
         {activeSection === "appearance" && <AppearanceSection />}
 

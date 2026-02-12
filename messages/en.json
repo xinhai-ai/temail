@@ -1378,7 +1378,19 @@
         "name": "Name",
         "groupNamePlaceholder": "e.g. Shopping, Work",
         "renameGroup": "Rename Group",
-        "editNote": "Edit Note"
+        "editNote": "Edit Note",
+        "retention": {
+          "title": "Retention Overrides (Optional)",
+          "mailboxDays": "Mailbox inactivity days",
+          "mailboxAction": "Mailbox expiry action",
+          "emailDays": "Email age days",
+          "emailAction": "Email expiry action",
+          "inheritPlaceholder": "Inherit global setting",
+          "inheritAction": "Inherit global action",
+          "actionArchive": "Archive",
+          "actionDelete": "Delete to Trash",
+          "help": "Leave fields empty to inherit global policy. Use -1 for never expire."
+        }
       },
       "context": {
         "group": "Group",
@@ -1617,6 +1629,7 @@
       },
       "mailboxes": {
         "requiredFields": "Please fill in all required fields",
+        "retentionDaysInvalid": "Retention override days must be -1 or a positive number",
         "loadFailed": "Failed to load mailboxes",
         "createFailed": "Failed to create mailbox",
         "created": "Mailbox created",
@@ -1955,6 +1968,25 @@
         "save": "Save trash settings"
       }
     },
+    "retention": {
+      "title": "Lifecycle Retention",
+      "description": "Set global policies for mailbox inactivity and email aging. Mailbox-level overrides can supersede these defaults.",
+      "mailbox": {
+        "days": "Mailbox inactivity days",
+        "action": "Mailbox expiry action"
+      },
+      "email": {
+        "days": "Email age days",
+        "action": "Email expiry action"
+      },
+      "helpDays": "Use -1 for never expire; otherwise enter a positive day count.",
+      "actions": {
+        "archive": "Archive",
+        "delete": "Delete to Trash",
+        "saving": "Saving...",
+        "save": "Save retention settings"
+      }
+    },
     "storage": {
       "title": "Storage",
       "description": "View your current mail storage usage and limits.",
@@ -1990,6 +2022,8 @@
       "rateLimitedRetry": "Rate limited. Try again in {seconds}s",
       "trashRetentionInvalid": "Trash retention days must be 0 or a positive number",
       "trashRetentionTooLarge": "Trash retention days is too large",
+      "retentionInvalid": "Retention days must be -1 or a positive number",
+      "retentionSaved": "Retention settings saved",
       "saveFailed": "Failed to save",
       "trashSaved": "Trash settings saved",
       "otpSetupFailed": "Failed to set up OTP",

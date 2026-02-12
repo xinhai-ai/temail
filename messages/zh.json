@@ -1378,7 +1378,19 @@
         "name": "名称",
         "groupNamePlaceholder": "如：购物、工作",
         "renameGroup": "重命名分组",
-        "editNote": "编辑备注"
+        "editNote": "编辑备注",
+        "retention": {
+          "title": "过期策略覆盖（可选）",
+          "mailboxDays": "邮箱无新邮件天数",
+          "mailboxAction": "邮箱过期动作",
+          "emailDays": "邮件保存天数",
+          "emailAction": "邮件过期动作",
+          "inheritPlaceholder": "继承全局设置",
+          "inheritAction": "继承全局动作",
+          "actionArchive": "归档",
+          "actionDelete": "移入回收站",
+          "help": "留空表示继承全局策略。输入 -1 表示永不过期。"
+        }
       },
       "context": {
         "group": "分组",
@@ -1617,6 +1629,7 @@
       },
       "mailboxes": {
         "requiredFields": "请填写所有必填项",
+        "retentionDaysInvalid": "过期覆盖天数必须为 -1 或正整数",
         "loadFailed": "加载邮箱失败",
         "createFailed": "创建邮箱失败",
         "created": "邮箱已创建",
@@ -1955,6 +1968,25 @@
         "save": "保存回收站设置"
       }
     },
+    "retention": {
+      "title": "生命周期策略",
+      "description": "设置邮箱无新邮件和邮件保存期限的全局策略。邮箱级配置可覆盖这些默认值。",
+      "mailbox": {
+        "days": "邮箱无新邮件天数",
+        "action": "邮箱过期动作"
+      },
+      "email": {
+        "days": "邮件保存天数",
+        "action": "邮件过期动作"
+      },
+      "helpDays": "输入 -1 表示永不过期，否则请输入正整数天数。",
+      "actions": {
+        "archive": "归档",
+        "delete": "移入回收站",
+        "saving": "保存中...",
+        "save": "保存生命周期设置"
+      }
+    },
     "storage": {
       "title": "存储",
       "description": "查看当前邮件存储占用与上限。",
@@ -1990,6 +2022,8 @@
       "rateLimitedRetry": "请求过于频繁，请 {seconds} 秒后重试",
       "trashRetentionInvalid": "回收站保留天数必须为 0 或正数",
       "trashRetentionTooLarge": "回收站保留天数过大",
+      "retentionInvalid": "过期天数必须为 -1 或正整数",
+      "retentionSaved": "生命周期设置已保存",
       "saveFailed": "保存失败",
       "trashSaved": "回收站设置已保存",
       "otpSetupFailed": "设置 OTP 失败",

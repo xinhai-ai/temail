@@ -7,11 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { useTrash } from "../../_hooks/useTrash";
+import type { useRetention } from "../../_hooks/useRetention";
 import type { useStorageUsage } from "../../_hooks/useStorageUsage";
 
 type DataSectionProps = {
   trash: ReturnType<typeof useTrash>;
+  retention: ReturnType<typeof useRetention>;
   storageUsage: ReturnType<typeof useStorageUsage>;
 };
 
@@ -23,7 +26,7 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
-export function DataSection({ trash, storageUsage }: DataSectionProps) {
+export function DataSection({ trash, retention, storageUsage }: DataSectionProps) {
   const t = useTranslations("settings");
 
   const {
@@ -34,6 +37,21 @@ export function DataSection({ trash, storageUsage }: DataSectionProps) {
     savingTrash,
     handleSaveTrash,
   } = trash;
+
+  const {
+    mailboxExpireDays,
+    setMailboxExpireDays,
+    mailboxExpireAction,
+    setMailboxExpireAction,
+    emailExpireDays,
+    setEmailExpireDays,
+    emailExpireAction,
+    setEmailExpireAction,
+    retentionDirty,
+    loadingRetention,
+    savingRetention,
+    handleSaveRetention,
+  } = retention;
 
   const storage = storageUsage.data;
 
@@ -73,6 +91,76 @@ export function DataSection({ trash, storageUsage }: DataSectionProps) {
                   : storage.quota.maxStorageFiles}
             </span>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("retention.title")}</CardTitle>
+          <CardDescription>{t("retention.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t("retention.mailbox.days")}</Label>
+              <Input
+                type="number"
+                min={-1}
+                max={3650}
+                value={mailboxExpireDays}
+                onChange={(e) => setMailboxExpireDays(e.target.value)}
+                disabled={loadingRetention || savingRetention}
+              />
+              <p className="text-xs text-muted-foreground">{t("retention.helpDays")}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("retention.mailbox.action")}</Label>
+              <Select
+                value={mailboxExpireAction}
+                onValueChange={(value) => setMailboxExpireAction(value as "ARCHIVE" | "DELETE")}
+                disabled={loadingRetention || savingRetention}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ARCHIVE">{t("retention.actions.archive")}</SelectItem>
+                  <SelectItem value="DELETE">{t("retention.actions.delete")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("retention.email.days")}</Label>
+              <Input
+                type="number"
+                min={-1}
+                max={3650}
+                value={emailExpireDays}
+                onChange={(e) => setEmailExpireDays(e.target.value)}
+                disabled={loadingRetention || savingRetention}
+              />
+              <p className="text-xs text-muted-foreground">{t("retention.helpDays")}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("retention.email.action")}</Label>
+              <Select
+                value={emailExpireAction}
+                onValueChange={(value) => setEmailExpireAction(value as "ARCHIVE" | "DELETE")}
+                disabled={loadingRetention || savingRetention}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ARCHIVE">{t("retention.actions.archive")}</SelectItem>
+                  <SelectItem value="DELETE">{t("retention.actions.delete")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button onClick={handleSaveRetention} disabled={loadingRetention || savingRetention || !retentionDirty}>
+            {savingRetention ? t("retention.actions.saving") : t("retention.actions.save")}
+          </Button>
         </CardContent>
       </Card>
 
