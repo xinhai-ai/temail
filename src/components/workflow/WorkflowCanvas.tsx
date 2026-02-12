@@ -277,7 +277,7 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
             onClick={handleDeleteNode}
             className={cn(
               "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
-              "text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
+              "text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
             )}
           >
             <Trash2 className="mr-2 h-4 w-4" />
@@ -300,7 +300,7 @@ function WorkflowCanvasInner({ mailboxes, onTestClick, canTest }: WorkflowCanvas
             onClick={handleDeleteEdge}
             className={cn(
               "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
-              "text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
+              "text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
             )}
           >
             <Trash2 className="mr-2 h-4 w-4" />
