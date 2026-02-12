@@ -1,6 +1,28 @@
-import type { EmailRestoreStatus, EmailStatus } from "@prisma/client";
+import type { EmailRestoreStatus, EmailStatus, StoredFileBackend } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { deleteByRecordStorage } from "@/lib/storage/record-storage";
+
+type PurgeEmailRecord = {
+  id: string;
+  mailboxId: string;
+  rawContentPath: string | null;
+  rawStorageBackend: StoredFileBackend | null;
+  attachments: Array<{ path: string; storageBackend: StoredFileBackend | null }>;
+};
+
+async function purgeEmailRecord(record: PurgeEmailRecord): Promise<{ id: string; mailboxId: string }> {
+  if (record.rawContentPath) {
+    await deleteByRecordStorage(record.rawContentPath, record.rawStorageBackend);
+  }
+
+  for (const attachment of record.attachments) {
+    await deleteByRecordStorage(attachment.path, attachment.storageBackend);
+  }
+
+  await prisma.email.delete({ where: { id: record.id } });
+
+  return { id: record.id, mailboxId: record.mailboxId };
+}
 
 export function getRestoreStatusForTrash(status: EmailStatus): EmailRestoreStatus {
   return status === "UNREAD" ? "UNREAD" : "READ";
@@ -78,16 +100,23 @@ export async function purgeOwnedEmail(params: {
   });
 
   if (!existing) return null;
+  return purgeEmailRecord(existing);
+}
 
-  if (existing.rawContentPath) {
-    await deleteByRecordStorage(existing.rawContentPath, existing.rawStorageBackend);
-  }
+export async function purgeEmailById(params: {
+  emailId: string;
+}): Promise<{ id: string; mailboxId: string } | null> {
+  const existing = await prisma.email.findUnique({
+    where: { id: params.emailId },
+    select: {
+      id: true,
+      mailboxId: true,
+      rawContentPath: true,
+      rawStorageBackend: true,
+      attachments: { select: { path: true, storageBackend: true } },
+    },
+  });
 
-  for (const attachment of existing.attachments) {
-    await deleteByRecordStorage(attachment.path, attachment.storageBackend);
-  }
-
-  await prisma.email.delete({ where: { id: existing.id } });
-
-  return { id: existing.id, mailboxId: existing.mailboxId };
+  if (!existing) return null;
+  return purgeEmailRecord(existing);
 }

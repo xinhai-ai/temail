@@ -68,6 +68,10 @@ model User {
   isActive      Boolean   @default(true)
   emailVerified DateTime?
   trashRetentionDays Int   @default(30) // 0 = never auto purge
+  mailboxExpireDays Int    @default(-1) // -1 = never expire
+  mailboxExpireAction RetentionAction @default(ARCHIVE)
+  emailExpireDays Int      @default(-1) // -1 = never expire
+  emailExpireAction RetentionAction @default(ARCHIVE)
   maxStorageMb  Int?
   maxStorageFiles Int?
   createdAt     DateTime  @default(now())
@@ -420,6 +424,11 @@ enum MailboxStatus {
   DELETED
 }
 
+enum RetentionAction {
+  ARCHIVE
+  DELETE
+}
+
 model MailboxGroup {
   id          String    @id @default(cuid())
   name        String
@@ -446,6 +455,11 @@ model Mailbox {
   isStarred   Boolean       @default(false)
   expiresAt   DateTime?
   archivedAt  DateTime?
+  lastEmailReceivedAt DateTime?
+  expireMailboxDaysOverride Int?
+  expireMailboxActionOverride RetentionAction?
+  expireEmailDaysOverride Int?
+  expireEmailActionOverride RetentionAction?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -467,6 +481,7 @@ model Mailbox {
   @@unique([prefix, domainId])
   @@index([userId])
   @@index([userId, archivedAt])
+  @@index([lastEmailReceivedAt])
   @@index([domainId])
   @@map("mailboxes")
 }

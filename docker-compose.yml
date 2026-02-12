@@ -43,11 +43,6 @@ services:
       DATABASE_URL: file:/data/temail.db
       NEXTJS_URL: http://web:3000
       IMAP_SERVICE_PORT: "3001"
-      TRASH_PURGE_ENABLED: "${TRASH_PURGE_ENABLED:-1}"
-      TRASH_PURGE_CRON: "${TRASH_PURGE_CRON:-10 3 * * *}"
-      TRASH_PURGE_TIMEZONE: "${TRASH_PURGE_TIMEZONE:-}"
-      TRASH_PURGE_DRY_RUN: "${TRASH_PURGE_DRY_RUN:-0}"
-      TRASH_PURGE_LIMIT: "${TRASH_PURGE_LIMIT:-}"
     volumes:
       - temail-data:/data
     restart: unless-stopped

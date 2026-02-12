@@ -85,6 +85,14 @@ export async function rematchUnmatchedInboundEmailsForUser(
           },
         });
 
+        await tx.mailbox.updateMany({
+          where: {
+            id: mailbox.id,
+            OR: [{ lastEmailReceivedAt: null }, { lastEmailReceivedAt: { lt: inbound.receivedAt } }],
+          },
+          data: { lastEmailReceivedAt: inbound.receivedAt },
+        });
+
         return { status: "created" as const, email };
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

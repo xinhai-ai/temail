@@ -381,25 +381,37 @@ export async function POST(request: NextRequest) {
       attachmentRecords.reduce((sum, attachment) => sum + Math.max(0, attachment.size || 0), 0);
     const storageFiles = (rawContentPath ? 1 : 0) + attachmentRecords.length;
 
-    const email = await prisma.email.create({
-      data: {
-        messageId: effectiveMessageId || undefined,
-        fromAddress,
-        fromName: fromName || undefined,
-        toAddress,
-        subject: normalizedSubject,
-        textBody,
-        htmlBody,
-        rawContentPath,
-        rawStorageBackend,
-        storageBytes,
-        storageFiles,
-        storageTruncated: !storageAllowed,
-        mailboxId: mailbox.id,
-        receivedAt,
-        ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
-        ...(attachmentRecords.length ? { attachments: { create: attachmentRecords } } : {}),
-      },
+    const email = await prisma.$transaction(async (tx) => {
+      const created = await tx.email.create({
+        data: {
+          messageId: effectiveMessageId || undefined,
+          fromAddress,
+          fromName: fromName || undefined,
+          toAddress,
+          subject: normalizedSubject,
+          textBody,
+          htmlBody,
+          rawContentPath,
+          rawStorageBackend,
+          storageBytes,
+          storageFiles,
+          storageTruncated: !storageAllowed,
+          mailboxId: mailbox.id,
+          receivedAt,
+          ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),
+          ...(attachmentRecords.length ? { attachments: { create: attachmentRecords } } : {}),
+        },
+      });
+
+      await tx.mailbox.updateMany({
+        where: {
+          id: mailbox.id,
+          OR: [{ lastEmailReceivedAt: null }, { lastEmailReceivedAt: { lt: created.receivedAt } }],
+        },
+        data: { lastEmailReceivedAt: created.receivedAt },
+      });
+
+      return created;
     });
 
     const isArchivedMailbox = mailbox.archivedAt !== null;
