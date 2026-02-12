@@ -4,11 +4,26 @@ import prisma from "@/lib/prisma";
 import { readJsonBody } from "@/lib/request";
 import { authenticateOpenApiRequest } from "@/lib/open-api/auth";
 
+const overrideDaysSchema = z
+  .number()
+  .int()
+  .min(-1)
+  .max(3650)
+  .nullable()
+  .optional()
+  .refine((value) => value === undefined || value === null || value === -1 || value > 0, {
+    message: "Override days must be null (inherit), -1 (never), or a positive integer",
+  });
+
 const patchSchema = z.object({
   note: z.string().trim().max(500).nullable().optional(),
   isStarred: z.boolean().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "DELETED"]).optional(),
   groupId: z.string().trim().min(1).nullable().optional(),
+  expireMailboxDaysOverride: overrideDaysSchema,
+  expireMailboxActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
+  expireEmailDaysOverride: overrideDaysSchema,
+  expireEmailActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
 });
 
 export async function GET(
@@ -32,6 +47,11 @@ export async function GET(
       note: true,
       isStarred: true,
       expiresAt: true,
+      lastEmailReceivedAt: true,
+      expireMailboxDaysOverride: true,
+      expireMailboxActionOverride: true,
+      expireEmailDaysOverride: true,
+      expireEmailActionOverride: true,
       groupId: true,
       createdAt: true,
       updatedAt: true,
@@ -96,6 +116,11 @@ export async function PATCH(
         note: true,
         isStarred: true,
         expiresAt: true,
+        lastEmailReceivedAt: true,
+        expireMailboxDaysOverride: true,
+        expireMailboxActionOverride: true,
+        expireEmailDaysOverride: true,
+        expireEmailActionOverride: true,
         groupId: true,
         createdAt: true,
         updatedAt: true,

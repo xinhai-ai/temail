@@ -5,12 +5,27 @@ import { getAdminSession } from "@/lib/rbac";
 import { Prisma } from "@prisma/client";
 import { readJsonBody } from "@/lib/request";
 
+const overrideDaysSchema = z
+  .number()
+  .int()
+  .min(-1)
+  .max(3650)
+  .nullable()
+  .optional()
+  .refine((value) => value === undefined || value === null || value === -1 || value > 0, {
+    message: "Override days must be null (inherit), -1 (never), or a positive integer",
+  });
+
 const updateSchema = z.object({
   note: z.string().nullable().optional(),
   isStarred: z.boolean().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "DELETED"]).optional(),
   groupId: z.string().nullable().optional(),
   expiresAt: z.string().datetime().nullable().optional(),
+  expireMailboxDaysOverride: overrideDaysSchema,
+  expireMailboxActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
+  expireEmailDaysOverride: overrideDaysSchema,
+  expireEmailActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
 });
 
 export async function GET(
@@ -68,6 +83,14 @@ export async function PATCH(
         status: data.status,
         groupId: data.groupId,
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : data.expiresAt === null ? null : undefined,
+        expireMailboxDaysOverride:
+          data.expireMailboxDaysOverride === undefined ? undefined : data.expireMailboxDaysOverride,
+        expireMailboxActionOverride:
+          data.expireMailboxActionOverride === undefined ? undefined : data.expireMailboxActionOverride,
+        expireEmailDaysOverride:
+          data.expireEmailDaysOverride === undefined ? undefined : data.expireEmailDaysOverride,
+        expireEmailActionOverride:
+          data.expireEmailActionOverride === undefined ? undefined : data.expireEmailActionOverride,
       },
       include: { domain: true, group: true },
     });

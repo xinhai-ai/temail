@@ -5,12 +5,27 @@ import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import type { Prisma } from "@prisma/client";
 
+const overrideDaysSchema = z
+  .number()
+  .int()
+  .min(-1)
+  .max(3650)
+  .nullable()
+  .optional()
+  .refine((value) => value === undefined || value === null || value === -1 || value > 0, {
+    message: "Override days must be null (inherit), -1 (never), or a positive integer",
+  });
+
 const updateSchema = z.object({
   note: z.string().nullable().optional(),
   isStarred: z.boolean().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "DELETED"]).optional(),
   groupId: z.string().trim().min(1).nullable().optional(),
   archived: z.boolean().optional(),
+  expireMailboxDaysOverride: overrideDaysSchema,
+  expireMailboxActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
+  expireEmailDaysOverride: overrideDaysSchema,
+  expireEmailActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
 });
 
 export async function GET(
@@ -76,6 +91,18 @@ export async function PATCH(
     if (data.groupId !== undefined) updateData.groupId = data.groupId;
     if (typeof data.archived === "boolean") {
       updateData.archivedAt = data.archived ? new Date() : null;
+    }
+    if (data.expireMailboxDaysOverride !== undefined) {
+      updateData.expireMailboxDaysOverride = data.expireMailboxDaysOverride;
+    }
+    if (data.expireMailboxActionOverride !== undefined) {
+      updateData.expireMailboxActionOverride = data.expireMailboxActionOverride;
+    }
+    if (data.expireEmailDaysOverride !== undefined) {
+      updateData.expireEmailDaysOverride = data.expireEmailDaysOverride;
+    }
+    if (data.expireEmailActionOverride !== undefined) {
+      updateData.expireEmailActionOverride = data.expireEmailActionOverride;
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -7,11 +7,26 @@ import { z } from "zod";
 import { readJsonBody } from "@/lib/request";
 import { assertCanCreateMailbox, assertDomainAllowedForUser } from "@/services/usergroups/policy";
 
+const overrideDaysSchema = z
+  .number()
+  .int()
+  .min(-1)
+  .max(3650)
+  .nullable()
+  .optional()
+  .refine((value) => value === undefined || value === null || value === -1 || value > 0, {
+    message: "Override days must be null (inherit), -1 (never), or a positive integer",
+  });
+
 const mailboxSchema = z.object({
   prefix: z.string().min(1, "Prefix is required"),
   domainId: z.string().min(1, "Domain is required"),
   note: z.string().optional(),
   groupId: z.string().trim().min(1).optional(),
+  expireMailboxDaysOverride: overrideDaysSchema,
+  expireMailboxActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
+  expireEmailDaysOverride: overrideDaysSchema,
+  expireEmailActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -132,6 +147,14 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         domainId: data.domainId,
         groupId: data.groupId,
+        expireMailboxDaysOverride:
+          data.expireMailboxDaysOverride === undefined ? undefined : data.expireMailboxDaysOverride,
+        expireMailboxActionOverride:
+          data.expireMailboxActionOverride === undefined ? undefined : data.expireMailboxActionOverride,
+        expireEmailDaysOverride:
+          data.expireEmailDaysOverride === undefined ? undefined : data.expireEmailDaysOverride,
+        expireEmailActionOverride:
+          data.expireEmailActionOverride === undefined ? undefined : data.expireEmailActionOverride,
       },
       include: { domain: true },
     });

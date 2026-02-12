@@ -7,11 +7,26 @@ import { isAdminRole } from "@/lib/rbac";
 import { isReservedMailboxPrefix } from "@/lib/mailbox-prefix";
 import { assertCanCreateMailbox, assertDomainAllowedForUser } from "@/services/usergroups/policy";
 
+const overrideDaysSchema = z
+  .number()
+  .int()
+  .min(-1)
+  .max(3650)
+  .nullable()
+  .optional()
+  .refine((value) => value === undefined || value === null || value === -1 || value > 0, {
+    message: "Override days must be null (inherit), -1 (never), or a positive integer",
+  });
+
 const createSchema = z.object({
   prefix: z.string().trim().min(1, "Prefix is required").max(64),
   domainId: z.string().trim().min(1, "Domain is required"),
   note: z.string().trim().max(500).optional(),
   groupId: z.string().trim().min(1).optional(),
+  expireMailboxDaysOverride: overrideDaysSchema,
+  expireMailboxActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
+  expireEmailDaysOverride: overrideDaysSchema,
+  expireEmailActionOverride: z.enum(["ARCHIVE", "DELETE"]).nullable().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -41,6 +56,11 @@ export async function GET(request: NextRequest) {
       note: true,
       isStarred: true,
       expiresAt: true,
+      lastEmailReceivedAt: true,
+      expireMailboxDaysOverride: true,
+      expireMailboxActionOverride: true,
+      expireEmailDaysOverride: true,
+      expireEmailActionOverride: true,
       groupId: true,
       createdAt: true,
       updatedAt: true,
@@ -129,6 +149,14 @@ export async function POST(request: NextRequest) {
         userId: authResult.apiKey.userId,
         domainId: domain.id,
         groupId: data.groupId,
+        expireMailboxDaysOverride:
+          data.expireMailboxDaysOverride === undefined ? undefined : data.expireMailboxDaysOverride,
+        expireMailboxActionOverride:
+          data.expireMailboxActionOverride === undefined ? undefined : data.expireMailboxActionOverride,
+        expireEmailDaysOverride:
+          data.expireEmailDaysOverride === undefined ? undefined : data.expireEmailDaysOverride,
+        expireEmailActionOverride:
+          data.expireEmailActionOverride === undefined ? undefined : data.expireEmailActionOverride,
       },
       select: {
         id: true,
@@ -138,6 +166,11 @@ export async function POST(request: NextRequest) {
         note: true,
         isStarred: true,
         expiresAt: true,
+        lastEmailReceivedAt: true,
+        expireMailboxDaysOverride: true,
+        expireMailboxActionOverride: true,
+        expireEmailDaysOverride: true,
+        expireEmailActionOverride: true,
         groupId: true,
         createdAt: true,
         updatedAt: true,
