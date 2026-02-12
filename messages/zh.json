@@ -1342,6 +1342,8 @@
       "new": "新建",
       "newMailbox": "新建邮箱",
       "newGroup": "新建分组",
+      "connectPersonalImap": "连接个人 IMAP",
+      "personalBadge": "个人",
       "summary": "{mailboxCount} 个邮箱 • {groupCount} 个分组",
       "groups": {
         "reorder": {
@@ -1393,6 +1395,26 @@
           "actionDeleteEmail": "移入回收站",
           "help": "留空表示继承全局策略。输入 -1 表示永不过期。"
         }
+      },
+      "connectDialog": {
+        "title": "连接个人 IMAP",
+        "description": "通过 IMAP 登录连接你的个人邮箱（推荐使用应用专用密码）。",
+        "email": "邮箱",
+        "password": "IMAP 密码",
+        "passwordPlaceholder": "应用专用密码或邮箱密码",
+        "label": "标签（可选）",
+        "labelPlaceholder": "例如：个人 Gmail",
+        "advanced": "高级设置",
+        "advancedHelp": "高级项可留空，系统将尝试预设或自动发现。",
+        "showAdvanced": "显示",
+        "hideAdvanced": "隐藏",
+        "username": "IMAP 用户名",
+        "usernamePlaceholder": "默认为邮箱地址",
+        "host": "IMAP 主机",
+        "port": "端口",
+        "secure": "使用 SSL/TLS",
+        "connect": "连接",
+        "connecting": "连接中..."
       },
       "context": {
         "group": "分组",
@@ -1647,6 +1669,12 @@
         "deleteFailed": "删除邮箱失败",
         "deleted": "邮箱已删除"
       },
+      "personalImap": {
+        "required": "邮箱和密码不能为空",
+        "invalidPort": "端口必须在 1 到 65535 之间",
+        "connectFailed": "连接个人 IMAP 邮箱失败",
+        "connected": "个人 IMAP 邮箱连接成功"
+      },
       "clipboard": {
         "copied": "已复制到剪贴板",
         "senderCopied": "发件人地址已复制",
@@ -1698,6 +1726,7 @@
         "subtitle": "常用任务触手可及",
         "goToInbox": "前往收件箱",
         "newMailbox": "新建邮箱",
+        "connectImap": "连接 IMAP",
         "settings": "设置"
       },
       "topMailboxes": {
@@ -1848,6 +1877,19 @@
         "name": "用户名称",
         "trustLevel": "信任等级"
       }
+    },
+    "mailSources": {
+      "title": "已连接收件源",
+      "description": "管理个人 IMAP 邮箱连接。",
+      "empty": "还没有连接个人 IMAP 收件源。",
+      "syncNow": "立即同步",
+      "syncFailed": "触发同步失败",
+      "syncTriggered": "已触发同步",
+      "disconnect": "断开连接",
+      "disconnectFailed": "断开连接失败",
+      "disconnected": "已断开连接",
+      "lastSync": "上次同步：{time}",
+      "noSyncYet": "尚未同步"
     },
     "password": {
       "title": "密码",

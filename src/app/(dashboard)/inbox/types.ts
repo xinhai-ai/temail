@@ -14,6 +14,8 @@ export type MailboxGroup = {
 export type Mailbox = {
   id: string;
   address: string;
+  kind?: "ALIAS" | "PERSONAL_IMAP";
+  sourceLabel?: string | null;
   note?: string | null;
   isStarred: boolean;
   status: string;

@@ -135,6 +135,7 @@ type MailboxesPanelProps = {
   onNewMailboxExpireEmailDaysOverrideChange: (value: string) => void;
   onNewMailboxExpireEmailActionOverrideChange: (value: string) => void;
   onCreateMailbox: () => void;
+  onOpenPersonalImapDialog: () => void;
   onNewGroupNameChange: (value: string) => void;
   onCreateGroup: () => void;
   onRenameGroupNameChange: (value: string) => void;
@@ -248,6 +249,7 @@ export function MailboxesPanel({
   onNewMailboxExpireEmailDaysOverrideChange,
   onNewMailboxExpireEmailActionOverrideChange,
   onCreateMailbox,
+  onOpenPersonalImapDialog,
   onNewGroupNameChange,
   onCreateGroup,
   onRenameGroupNameChange,
@@ -364,6 +366,11 @@ export function MailboxesPanel({
               ) : null}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {mailbox.kind === "PERSONAL_IMAP" && (
+                <Badge variant="outline" className={cn("text-[10px]", selected && "border-white/40 text-white")}>
+                  {t("mailboxes.personalBadge")}
+                </Badge>
+              )}
               {mailbox.isStarred && (
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
               )}
@@ -596,6 +603,10 @@ export function MailboxesPanel({
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => onGroupDialogOpenChange(true)}>
                 {t("mailboxes.newGroup")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => onOpenPersonalImapDialog()}>
+                {t("mailboxes.connectPersonalImap")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

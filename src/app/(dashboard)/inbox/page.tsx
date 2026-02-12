@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Inbox, Mail, Eye } from "lucide-react";
 import { ConfirmDialogs } from "./_components/ConfirmDialogs";
+import { ConnectPersonalImapDialog } from "./_components/ConnectPersonalImapDialog";
 import { EditMailboxNoteDialog } from "./_components/EditMailboxNoteDialog";
 import { EmailsPanel, type EmailStatusFilter } from "./_components/EmailsPanel";
 import { MailboxesPanel } from "./_components/MailboxesPanel";
@@ -85,6 +86,7 @@ export default function InboxPage() {
   const [creatingGroup, setCreatingGroup] = useState(false);
 
   const [mailboxDialogOpen, setMailboxDialogOpen] = useState(false);
+  const [personalImapDialogOpen, setPersonalImapDialogOpen] = useState(false);
   const [creatingMailbox, setCreatingMailbox] = useState(false);
   const [newMailboxPrefix, setNewMailboxPrefix] = useState("");
   const [newMailboxDomainId, setNewMailboxDomainId] = useState("");
@@ -237,6 +239,25 @@ export default function InboxPage() {
   useEffect(() => {
     loadTags();
   }, [loadTags]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get("action");
+
+    if (action === "new-mailbox") {
+      setMailboxDialogOpen(true);
+    } else if (action === "connect-imap") {
+      setPersonalImapDialogOpen(true);
+    } else {
+      return;
+    }
+
+    params.delete("action");
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, []);
 
   const mailboxSearchLastQueryRef = useRef<string>("");
   const mailboxPrefetchScheduledRef = useRef<Set<string>>(new Set());
@@ -1271,6 +1292,13 @@ export default function InboxPage() {
     setEmailsPage(1);
   };
 
+  const handlePersonalImapConnected = useCallback(async () => {
+    setMailboxSearch("");
+    setMailboxSearchPage(1);
+    await loadGroups();
+    await loadMailboxGroupPage(UNGROUPED_SELECT_VALUE, 1, { replace: true });
+  }, [UNGROUPED_SELECT_VALUE, loadGroups, loadMailboxGroupPage]);
+
   const handleEmailsPageSizeChange = (value: number) => {
     const next = Math.min(100, Math.max(1, value));
     setEmailsPageSize(next);
@@ -1904,6 +1932,7 @@ export default function InboxPage() {
               onNewMailboxExpireEmailDaysOverrideChange={setNewMailboxExpireEmailDaysOverride}
               onNewMailboxExpireEmailActionOverrideChange={setNewMailboxExpireEmailActionOverride}
               onCreateMailbox={handleCreateMailbox}
+              onOpenPersonalImapDialog={() => setPersonalImapDialogOpen(true)}
               onNewGroupNameChange={setNewGroupName}
               onCreateGroup={handleCreateGroup}
               onRenameGroupNameChange={setRenameGroupName}
@@ -2049,6 +2078,7 @@ export default function InboxPage() {
               onNewMailboxExpireEmailDaysOverrideChange={setNewMailboxExpireEmailDaysOverride}
               onNewMailboxExpireEmailActionOverrideChange={setNewMailboxExpireEmailActionOverride}
               onCreateMailbox={handleCreateMailbox}
+              onOpenPersonalImapDialog={() => setPersonalImapDialogOpen(true)}
               onNewGroupNameChange={setNewGroupName}
               onCreateGroup={handleCreateGroup}
               onRenameGroupNameChange={setRenameGroupName}
@@ -2183,6 +2213,12 @@ export default function InboxPage() {
             />
           </div>
         )}
+
+        <ConnectPersonalImapDialog
+          open={personalImapDialogOpen}
+          onOpenChange={setPersonalImapDialogOpen}
+          onConnected={handlePersonalImapConnected}
+        />
 
         <ConfirmDialogs
           deleteEmailId={deleteEmailId}

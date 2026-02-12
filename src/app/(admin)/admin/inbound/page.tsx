@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { InboundEmailActions } from "./_components/InboundEmailActions";
 
 function parseSourceType(value: string | null) {
-  if (value === "IMAP" || value === "WEBHOOK") return value as DomainSourceType;
+  if (value === "IMAP" || value === "WEBHOOK" || value === "PERSONAL_IMAP") return value as DomainSourceType;
   return null;
 }
 

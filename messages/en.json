@@ -1342,6 +1342,8 @@
       "new": "New",
       "newMailbox": "New Mailbox",
       "newGroup": "New Group",
+      "connectPersonalImap": "Connect Personal IMAP",
+      "personalBadge": "Personal",
       "summary": "{mailboxCount} mailboxes • {groupCount} groups",
       "groups": {
         "reorder": {
@@ -1392,7 +1394,28 @@
           "actionDeleteMailbox": "Permanently Delete",
           "actionDeleteEmail": "Delete to Trash",
           "help": "Leave fields empty to inherit global policy. Use -1 for never expire."
-        }
+        },
+        "connect": "Connect"
+      },
+      "connectDialog": {
+        "title": "Connect Personal IMAP",
+        "description": "Link your personal mailbox using IMAP login (App Password recommended).",
+        "email": "Email",
+        "password": "IMAP Password",
+        "passwordPlaceholder": "App password or mailbox password",
+        "label": "Label (Optional)",
+        "labelPlaceholder": "e.g. Gmail Personal",
+        "advanced": "Advanced settings",
+        "advancedHelp": "Leave advanced fields empty to use preset or auto-discovery.",
+        "showAdvanced": "Show",
+        "hideAdvanced": "Hide",
+        "username": "IMAP Username",
+        "usernamePlaceholder": "Defaults to email",
+        "host": "IMAP Host",
+        "port": "Port",
+        "secure": "Use SSL/TLS",
+        "connect": "Connect",
+        "connecting": "Connecting..."
       },
       "context": {
         "group": "Group",
@@ -1647,6 +1670,12 @@
         "deleteFailed": "Failed to delete mailbox",
         "deleted": "Mailbox deleted"
       },
+      "personalImap": {
+        "required": "Email and password are required",
+        "invalidPort": "Port must be between 1 and 65535",
+        "connectFailed": "Failed to connect personal IMAP mailbox",
+        "connected": "Personal IMAP mailbox connected"
+      },
       "clipboard": {
         "copied": "Copied to clipboard",
         "senderCopied": "Sender address copied",
@@ -1698,6 +1727,7 @@
         "subtitle": "Common tasks at your fingertips",
         "goToInbox": "Go to Inbox",
         "newMailbox": "New Mailbox",
+        "connectImap": "Connect IMAP",
         "settings": "Settings"
       },
       "topMailboxes": {
@@ -1848,6 +1878,19 @@
         "name": "Name",
         "trustLevel": "Trust level"
       }
+    },
+    "mailSources": {
+      "title": "Connected Mail Sources",
+      "description": "Manage personal IMAP inbox connections.",
+      "empty": "No personal IMAP sources connected yet.",
+      "syncNow": "Sync now",
+      "syncFailed": "Failed to trigger sync",
+      "syncTriggered": "Sync triggered",
+      "disconnect": "Disconnect",
+      "disconnectFailed": "Failed to disconnect source",
+      "disconnected": "Source disconnected",
+      "lastSync": "Last sync: {time}",
+      "noSyncYet": "No sync yet"
     },
     "password": {
       "title": "Password",

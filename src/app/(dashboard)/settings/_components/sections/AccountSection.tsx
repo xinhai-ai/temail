@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { User, Info, Globe } from "lucide-react";
+import { User, Info, Globe, Mail, RefreshCw, Unplug } from "lucide-react";
+import { toast } from "sonner";
 import { SettingSection } from "@/components/settings/SettingSection";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +54,22 @@ type AccountSectionProps = {
   profile: ReturnType<typeof useProfile>;
 };
 
+type PersonalImapSource = {
+  id: string;
+  email: string;
+  emailMasked: string;
+  status: "ACTIVE" | "ERROR" | "DISABLED";
+  lastSync: string | null;
+  lastError: string | null;
+  mailbox: {
+    id: string;
+    address: string;
+    archivedAt: string | null;
+    sourceLabel: string | null;
+    _count: { emails: number };
+  };
+};
+
 export function AccountSection({ profile }: AccountSectionProps) {
   const { data: session } = useSession();
   const t = useTranslations("settings");
@@ -80,6 +97,9 @@ export function AccountSection({ profile }: AccountSectionProps) {
   const [userGroupLoading, setUserGroupLoading] = useState(true);
   const [linuxDoInfo, setLinuxDoInfo] = useState<LinuxDoInfo | null>(null);
   const [linuxDoLoading, setLinuxDoLoading] = useState(true);
+  const [mailSources, setMailSources] = useState<PersonalImapSource[]>([]);
+  const [mailSourcesLoading, setMailSourcesLoading] = useState(true);
+  const [mailSourcesBusyId, setMailSourcesBusyId] = useState<string | null>(null);
 
   const formatAuthSource = (source: string) => {
     if (source === "password") return t("profile.authSources.password");
@@ -117,6 +137,63 @@ export function AccountSection({ profile }: AccountSectionProps) {
     };
     load().catch(() => setLinuxDoLoading(false));
   }, []);
+
+  const loadMailSources = useCallback(async () => {
+    setMailSourcesLoading(true);
+    const res = await fetch("/api/personal-imap/accounts");
+    const data = await res.json().catch(() => null);
+    if (res.ok && Array.isArray(data)) {
+      setMailSources(data as PersonalImapSource[]);
+    } else {
+      setMailSources([]);
+    }
+    setMailSourcesLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadMailSources().catch(() => setMailSourcesLoading(false));
+  }, [loadMailSources]);
+
+  const handleSyncMailSource = useCallback(
+    async (id: string) => {
+      setMailSourcesBusyId(id);
+      try {
+        const res = await fetch(`/api/personal-imap/accounts/${id}/sync`, { method: "POST" });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          toast.error(data?.error || t("mailSources.syncFailed"));
+          return;
+        }
+        toast.success(t("mailSources.syncTriggered"));
+      } catch {
+        toast.error(t("mailSources.syncFailed"));
+      } finally {
+        setMailSourcesBusyId(null);
+      }
+    },
+    [t]
+  );
+
+  const handleDisconnectMailSource = useCallback(
+    async (id: string) => {
+      setMailSourcesBusyId(id);
+      try {
+        const res = await fetch(`/api/personal-imap/accounts/${id}`, { method: "DELETE" });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          toast.error(data?.error || t("mailSources.disconnectFailed"));
+          return;
+        }
+        toast.success(t("mailSources.disconnected"));
+        await loadMailSources();
+      } catch {
+        toast.error(t("mailSources.disconnectFailed"));
+      } finally {
+        setMailSourcesBusyId(null);
+      }
+    },
+    [loadMailSources, t]
+  );
 
   return (
     <div className="space-y-6">
@@ -294,6 +371,66 @@ export function AccountSection({ profile }: AccountSectionProps) {
             </>
           ) : (
             <div className="text-sm text-muted-foreground">{t("linuxdo.notLinked")}</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            {t("mailSources.title")}
+          </CardTitle>
+          <CardDescription>{t("mailSources.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {mailSourcesLoading ? (
+            <div className="text-sm text-muted-foreground">{tCommon("loading")}</div>
+          ) : mailSources.length === 0 ? (
+            <div className="text-sm text-muted-foreground">{t("mailSources.empty")}</div>
+          ) : (
+            mailSources.map((source) => {
+              const busy = mailSourcesBusyId === source.id;
+              return (
+                <div key={source.id} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">{source.mailbox.address}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {source.mailbox.sourceLabel || source.emailMasked}
+                      </div>
+                    </div>
+                    <Badge variant={source.status === "ACTIVE" ? "default" : "secondary"}>{source.status}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {source.lastSync ? t("mailSources.lastSync", { time: source.lastSync }) : t("mailSources.noSyncYet")}
+                  </div>
+                  {source.lastError ? <div className="text-xs text-destructive">{source.lastError}</div> : null}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSyncMailSource(source.id)}
+                      disabled={busy || source.status === "DISABLED"}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      {t("mailSources.syncNow")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDisconnectMailSource(source.id)}
+                      disabled={busy || source.status === "DISABLED"}
+                    >
+                      <Unplug className="h-4 w-4 mr-1" />
+                      {t("mailSources.disconnect")}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
           )}
         </CardContent>
       </Card>
