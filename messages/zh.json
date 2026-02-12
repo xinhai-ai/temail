@@ -1719,8 +1719,23 @@
       "security": "安全",
       "api": "API",
       "data": "数据",
+      "appearance": "外观",
       "pwa": "安装应用",
       "about": "关于"
+    },
+    "appearance": {
+      "title": "外观",
+      "description": "配置界面显示偏好。",
+      "inbox": {
+        "layout": {
+          "label": "Inbox 桌面排版",
+          "help": "仅影响宽屏桌面端的 Inbox 布局。",
+          "mode": {
+            "three": "三段式",
+            "two": "两段式"
+          }
+        }
+      }
     },
     "pwa": {
       "title": "安装应用",

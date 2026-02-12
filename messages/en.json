@@ -1719,8 +1719,23 @@
       "security": "Security",
       "api": "API",
       "data": "Data",
+      "appearance": "Appearance",
       "pwa": "Install App",
       "about": "About"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Configure interface display preferences.",
+      "inbox": {
+        "layout": {
+          "label": "Inbox desktop layout",
+          "help": "Only affects Inbox layout on wide desktop screens.",
+          "mode": {
+            "three": "Three-pane",
+            "two": "Two-pane"
+          }
+        }
+      }
     },
     "pwa": {
       "title": "Install App",

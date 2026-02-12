@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { User, Lock, Key, Trash2, Info, Smartphone } from "lucide-react";
+import { User, Lock, Key, Trash2, Info, Smartphone, Palette } from "lucide-react";
 import { SettingsLayout, type SettingsNavItem } from "@/components/settings/SettingsLayout";
 import { useProfile } from "./_hooks/useProfile";
 import { usePassword } from "./_hooks/usePassword";
@@ -17,6 +17,7 @@ import { ApiSection } from "./_components/sections/ApiSection";
 import { DataSection } from "./_components/sections/DataSection";
 import { AboutSection } from "./_components/sections/AboutSection";
 import { PwaSection } from "./_components/sections/PwaSection";
+import { AppearanceSection } from "./_components/sections/AppearanceSection";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
@@ -40,6 +41,7 @@ export default function SettingsPage() {
       { id: "security", label: t("tabs.security"), icon: Lock },
       { id: "api", label: t("tabs.api"), icon: Key },
       { id: "data", label: t("tabs.data"), icon: Trash2 },
+      { id: "appearance", label: t("tabs.appearance"), icon: Palette },
       { id: "pwa", label: t("tabs.pwa"), icon: Smartphone },
       { id: "about", label: t("tabs.about"), icon: Info },
     ],
@@ -62,6 +64,8 @@ export default function SettingsPage() {
         {activeSection === "api" && <ApiSection apiKeys={apiKeys} />}
 
         {activeSection === "data" && <DataSection trash={trash} storageUsage={storageUsage} />}
+
+        {activeSection === "appearance" && <AppearanceSection />}
 
         {activeSection === "pwa" && <PwaSection />}
 
