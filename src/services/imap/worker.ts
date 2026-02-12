@@ -170,6 +170,17 @@ export class EnhancedDomainWorker {
     }
   }
 
+  isReadyForManualSync(): boolean {
+    return (
+      this.status !== "stopped" &&
+      this.status !== "connecting" &&
+      this.status !== "error" &&
+      this.status !== "syncing" &&
+      this.client !== null &&
+      this.mailbox !== null
+    );
+  }
+
   private log(message: string, meta?: Record<string, unknown>): void {
     // Always log for now to debug IDLE issues
     const prefix = `[imap-worker] domain=${this.domain.name}`;

@@ -102,8 +102,17 @@ export class ImapServiceManager {
       return { success: false, message: "Mailbox source not found or not configured for IMAP sync" };
     }
 
+    if (!worker.isReadyForManualSync()) {
+      return {
+        success: false,
+        message: "Mailbox source worker is not ready yet. Please retry in a few seconds.",
+      };
+    }
+
     try {
-      await worker.triggerSync();
+      worker.triggerSync().catch((error) => {
+        this.log(`manual sync failed for ${worker.state.domainName}: ${error}`);
+      });
       return { success: true, message: "Sync triggered" };
     } catch (error) {
       return {
@@ -117,12 +126,11 @@ export class ImapServiceManager {
     let count = 0;
 
     for (const worker of this.workers.values()) {
-      try {
-        await worker.triggerSync();
-        count++;
-      } catch {
-        // continue to next worker
-      }
+      if (!worker.isReadyForManualSync()) continue;
+      count++;
+      worker.triggerSync().catch((error) => {
+        this.log(`manual sync failed for ${worker.state.domainName}: ${error}`);
+      });
     }
 
     return { success: true, count };

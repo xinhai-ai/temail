@@ -43,7 +43,14 @@ export async function POST(request: NextRequest) {
         try {
           const result = await syncAllImapDomains();
           imap = result.success
-            ? { ok: true, count: result.count || 0, message: `Synced ${result.count || 0} IMAP source(s)` }
+            ? {
+                ok: true,
+                count: result.count || 0,
+                message:
+                  (result.count || 0) > 0
+                    ? `Triggered sync for ${result.count || 0} IMAP source(s)`
+                    : "No IMAP workers are ready yet. Please retry in a few seconds.",
+              }
             : { ok: false, reason: "error", message: result.message || "Sync failed" };
         } finally {
           lockResult.release();
