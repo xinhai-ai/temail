@@ -1388,7 +1388,9 @@
           "inheritPlaceholder": "继承全局设置",
           "inheritAction": "继承全局动作",
           "actionArchive": "归档",
-          "actionDelete": "移入回收站",
+          "actionDelete": "删除",
+          "actionDeleteMailbox": "永久删除",
+          "actionDeleteEmail": "移入回收站",
           "help": "留空表示继承全局策略。输入 -1 表示永不过期。"
         }
       },
@@ -1982,7 +1984,9 @@
       "helpDays": "输入 -1 表示永不过期，否则请输入正整数天数。",
       "actions": {
         "archive": "归档",
-        "delete": "移入回收站",
+        "delete": "删除",
+        "mailboxDelete": "永久删除",
+        "emailDelete": "移入回收站",
         "saving": "保存中...",
         "save": "保存生命周期设置"
       }

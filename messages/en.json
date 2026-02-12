@@ -1388,7 +1388,9 @@
           "inheritPlaceholder": "Inherit global setting",
           "inheritAction": "Inherit global action",
           "actionArchive": "Archive",
-          "actionDelete": "Delete to Trash",
+          "actionDelete": "Delete",
+          "actionDeleteMailbox": "Permanently Delete",
+          "actionDeleteEmail": "Delete to Trash",
           "help": "Leave fields empty to inherit global policy. Use -1 for never expire."
         }
       },
@@ -1982,7 +1984,9 @@
       "helpDays": "Use -1 for never expire; otherwise enter a positive day count.",
       "actions": {
         "archive": "Archive",
-        "delete": "Delete to Trash",
+        "delete": "Delete",
+        "mailboxDelete": "Permanently Delete",
+        "emailDelete": "Delete to Trash",
         "saving": "Saving...",
         "save": "Save retention settings"
       }

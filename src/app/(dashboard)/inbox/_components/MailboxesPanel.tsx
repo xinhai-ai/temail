@@ -701,7 +701,7 @@ export function MailboxesPanel({
                       <SelectContent>
                         <SelectItem value={ungroupedSelectValue}>{t("mailboxes.dialog.retention.inheritAction")}</SelectItem>
                         <SelectItem value="ARCHIVE">{t("mailboxes.dialog.retention.actionArchive")}</SelectItem>
-                        <SelectItem value="DELETE">{t("mailboxes.dialog.retention.actionDelete")}</SelectItem>
+                        <SelectItem value="DELETE">{t("mailboxes.dialog.retention.actionDeleteMailbox")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -730,7 +730,7 @@ export function MailboxesPanel({
                       <SelectContent>
                         <SelectItem value={ungroupedSelectValue}>{t("mailboxes.dialog.retention.inheritAction")}</SelectItem>
                         <SelectItem value="ARCHIVE">{t("mailboxes.dialog.retention.actionArchive")}</SelectItem>
-                        <SelectItem value="DELETE">{t("mailboxes.dialog.retention.actionDelete")}</SelectItem>
+                        <SelectItem value="DELETE">{t("mailboxes.dialog.retention.actionDeleteEmail")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

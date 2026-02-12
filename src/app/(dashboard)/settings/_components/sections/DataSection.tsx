@@ -125,7 +125,7 @@ export function DataSection({ trash, retention, storageUsage }: DataSectionProps
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ARCHIVE">{t("retention.actions.archive")}</SelectItem>
-                  <SelectItem value="DELETE">{t("retention.actions.delete")}</SelectItem>
+                  <SelectItem value="DELETE">{t("retention.actions.mailboxDelete")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -153,7 +153,7 @@ export function DataSection({ trash, retention, storageUsage }: DataSectionProps
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ARCHIVE">{t("retention.actions.archive")}</SelectItem>
-                  <SelectItem value="DELETE">{t("retention.actions.delete")}</SelectItem>
+                  <SelectItem value="DELETE">{t("retention.actions.emailDelete")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
