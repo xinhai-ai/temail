@@ -1568,7 +1568,9 @@
       "allEmails": "All emails",
       "searchPlaceholder": "Search mailboxes...",
       "loading": "Searching...",
-      "empty": "No mailboxes found"
+      "empty": "No mailboxes found",
+      "ungrouped": "Ungrouped",
+      "selectMailbox": "Select mailbox"
     },
     "notifications": {
       "unsupported": "Desktop notifications are not supported in this browser",

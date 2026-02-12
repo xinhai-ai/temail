@@ -31,7 +31,7 @@ function getInboxDesktopLayoutMode(): "three" | "two" {
 
 export default function InboxPage() {
   const vercelMode = isVercelDeployment();
-  const [desktopLayoutMode, setDesktopLayoutMode] = useState<"three" | "two">(() => getInboxDesktopLayoutMode());
+  const [desktopLayoutMode, setDesktopLayoutMode] = useState<"three" | "two">("three");
   const UNGROUPED_SELECT_VALUE = "__ungrouped__";
   const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
@@ -117,12 +117,8 @@ export default function InboxPage() {
   const [mobileTab, setMobileTab] = useState<"mailboxes" | "emails" | "preview">("emails");
   const [statusFilter, setStatusFilter] = useState<EmailStatusFilter>("all");
   const [emailsRefreshKey, setEmailsRefreshKey] = useState(0);
-  const [desktopMailboxSearch, setDesktopMailboxSearch] = useState("");
-  const [desktopMailboxOptions, setDesktopMailboxOptions] = useState<Array<{ id: string; address: string }>>([]);
-  const [loadingDesktopMailboxOptions, setLoadingDesktopMailboxOptions] = useState(false);
 
   const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
-  const desktopMailboxSearchQuery = desktopMailboxSearch.trim();
 
   const groupedMailboxes = useMemo(() => {
     const items: Array<{ key: string; group: MailboxGroup | null; mailboxes: Mailbox[] }> = [];
@@ -167,32 +163,30 @@ export default function InboxPage() {
 
   const desktopMailboxBaseOptions = useMemo(() => {
     const seen = new Set<string>();
-    const options: Array<{ id: string; address: string }> = [];
+    const options: Array<{
+      id: string;
+      address: string;
+      note?: string | null;
+      isStarred: boolean;
+      group?: { id: string; name: string; color?: string | null } | null;
+      _count: { emails: number };
+    }> = [];
     for (const mailbox of mailboxes) {
       if (mailbox.archivedAt) continue;
       if (seen.has(mailbox.id)) continue;
       seen.add(mailbox.id);
-      options.push({ id: mailbox.id, address: mailbox.address });
+      options.push({
+        id: mailbox.id,
+        address: mailbox.address,
+        note: mailbox.note,
+        isStarred: mailbox.isStarred,
+        group: mailbox.group ? { id: mailbox.group.id, name: mailbox.group.name, color: mailbox.group.color } : null,
+        _count: mailbox._count,
+      });
     }
     options.sort((a, b) => a.address.localeCompare(b.address));
     return options;
   }, [mailboxes]);
-
-  const selectedDesktopMailboxOption = useMemo(() => {
-    if (!selectedMailboxId) return null;
-    const mailbox = mailboxes.find((item) => item.id === selectedMailboxId && !item.archivedAt) || null;
-    if (!mailbox) return null;
-    return { id: mailbox.id, address: mailbox.address };
-  }, [mailboxes, selectedMailboxId]);
-
-  const includeSelectedDesktopMailboxOption = useCallback(
-    (options: Array<{ id: string; address: string }>) => {
-      if (!selectedDesktopMailboxOption) return options;
-      if (options.some((option) => option.id === selectedDesktopMailboxOption.id)) return options;
-      return [selectedDesktopMailboxOption, ...options];
-    },
-    [selectedDesktopMailboxOption]
-  );
 
   const mailboxCount = useMemo(() => {
     const groupedCount = groups.reduce((sum, group) => sum + (group._count?.mailboxes ?? 0), 0);
@@ -505,6 +499,7 @@ export default function InboxPage() {
   }, []);
 
   useEffect(() => {
+    setDesktopLayoutMode(getInboxDesktopLayoutMode());
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== INBOX_DESKTOP_LAYOUT_MODE_KEY) return;
       setDesktopLayoutMode(getInboxDesktopLayoutMode());
@@ -820,55 +815,6 @@ export default function InboxPage() {
 
     fetchPreview();
   }, [selectedEmailId]);
-
-  useEffect(() => {
-    if (!desktopMailboxSearchQuery) {
-      setDesktopMailboxOptions(includeSelectedDesktopMailboxOption(desktopMailboxBaseOptions));
-      setLoadingDesktopMailboxOptions(false);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      setLoadingDesktopMailboxOptions(true);
-      try {
-        const params = new URLSearchParams();
-        params.set("search", desktopMailboxSearchQuery);
-        params.set("archived", "exclude");
-        const res = await fetch(`/api/mailboxes?${params.toString()}`);
-        const data = await res.json().catch(() => null);
-        if (!res.ok) {
-          throw new Error(data?.error || t("toast.mailboxes.loadFailed"));
-        }
-
-        if (cancelled) return;
-        const items = Array.isArray(data) ? data : [];
-        const options = items
-          .filter((mailbox): mailbox is { id: string; address: string; archivedAt?: string | null } => {
-            return typeof mailbox?.id === "string" && typeof mailbox?.address === "string";
-          })
-          .filter((mailbox) => !mailbox.archivedAt)
-          .map((mailbox) => ({ id: mailbox.id, address: mailbox.address }))
-          .sort((a, b) => a.address.localeCompare(b.address));
-
-        setDesktopMailboxOptions(includeSelectedDesktopMailboxOption(options));
-      } catch (error) {
-        if (cancelled) return;
-        const message = error instanceof Error ? error.message : t("toast.mailboxes.loadFailed");
-        toast.error(message);
-        setDesktopMailboxOptions(includeSelectedDesktopMailboxOption(desktopMailboxBaseOptions));
-      } finally {
-        if (!cancelled) {
-          setLoadingDesktopMailboxOptions(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [desktopMailboxSearchQuery, desktopMailboxBaseOptions, includeSelectedDesktopMailboxOption, t]);
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -2149,10 +2095,8 @@ export default function InboxPage() {
               statusFilter={statusFilter}
               unreadCount={unreadCount}
               showDesktopMailboxSwitcher
-              desktopMailboxSearch={desktopMailboxSearch}
-              onDesktopMailboxSearchChange={setDesktopMailboxSearch}
-              desktopMailboxOptions={desktopMailboxOptions}
-              desktopMailboxSearchLoading={loadingDesktopMailboxOptions}
+              desktopMailboxOptions={desktopMailboxBaseOptions}
+              desktopMailboxGroups={groups}
               selectedMailboxId={selectedMailboxId}
               onSelectMailbox={handleSelectMailbox}
               onEmailSearchChange={handleEmailSearchChange}

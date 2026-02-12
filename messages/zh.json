@@ -1568,7 +1568,9 @@
       "allEmails": "全部邮件",
       "searchPlaceholder": "搜索邮箱...",
       "loading": "搜索中...",
-      "empty": "未找到邮箱"
+      "empty": "未找到邮箱",
+      "ungrouped": "未分组",
+      "selectMailbox": "选择邮箱"
     },
     "notifications": {
       "unsupported": "此浏览器不支持桌面通知",

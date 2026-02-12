@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,14 +32,10 @@ import { Archive, ArchiveRestore, Copy, ExternalLink, Inbox, ListChecks, Mail, M
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { FaviconImage } from "@/components/email/FaviconImage";
-import type { EmailListItem, Tag } from "../types";
+import { MailboxSwitcherPopover, type DesktopMailboxOption } from "./MailboxSwitcherPopover";
+import type { EmailListItem, MailboxGroup, Tag } from "../types";
 
 export type EmailStatusFilter = "all" | "unread" | "archived";
-
-type DesktopMailboxOption = {
-  id: string;
-  address: string;
-};
 
 type EmailsPanelProps = {
   emailSearch: string;
@@ -59,10 +55,8 @@ type EmailsPanelProps = {
   statusFilter: EmailStatusFilter;
   unreadCount: number;
   showDesktopMailboxSwitcher?: boolean;
-  desktopMailboxSearch?: string;
-  onDesktopMailboxSearchChange?: (value: string) => void;
   desktopMailboxOptions?: DesktopMailboxOption[];
-  desktopMailboxSearchLoading?: boolean;
+  desktopMailboxGroups?: MailboxGroup[];
   selectedMailboxId?: string | null;
   onSelectMailbox?: (mailboxId: string | null) => void;
   onEmailSearchChange: (value: string) => void;
@@ -111,10 +105,8 @@ export function EmailsPanel({
   statusFilter,
   unreadCount,
   showDesktopMailboxSwitcher = false,
-  desktopMailboxSearch = "",
-  onDesktopMailboxSearchChange,
   desktopMailboxOptions = [],
-  desktopMailboxSearchLoading = false,
+  desktopMailboxGroups = [],
   selectedMailboxId = null,
   onSelectMailbox,
   onEmailSearchChange,
@@ -220,54 +212,19 @@ export function EmailsPanel({
       : t("emails.tabs.unread");
   const canShowDesktopMailboxSwitcher =
     showDesktopMailboxSwitcher &&
-    typeof onDesktopMailboxSearchChange === "function" &&
     typeof onSelectMailbox === "function";
-  const desktopMailboxOptionIdSet = useMemo(
-    () => new Set(desktopMailboxOptions.map((mailbox) => mailbox.id)),
-    [desktopMailboxOptions]
-  );
-  const desktopMailboxSelectValue =
-    selectedMailboxId && desktopMailboxOptionIdSet.has(selectedMailboxId) ? selectedMailboxId : "__all__";
 
   return (
     <Card className="border-border/50 overflow-hidden min-h-0 py-0 gap-0 h-full flex flex-col">
       <div className="p-4 space-y-3 border-b border-border/50 flex-shrink-0">
         {canShowDesktopMailboxSwitcher && (
-          <div className="hidden lg:flex flex-wrap items-center justify-end gap-3 rounded-md border border-border/50 bg-muted/20 px-3 py-2">
-            <div className="flex w-full items-center gap-2 xl:w-auto xl:min-w-[420px]">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={desktopMailboxSearch}
-                  onChange={(e) => onDesktopMailboxSearchChange(e.target.value)}
-                  placeholder={t("mailboxSwitcher.searchPlaceholder")}
-                  className="h-9 bg-background pl-9"
-                />
-              </div>
-              <Select
-                value={desktopMailboxSelectValue}
-                onValueChange={(value) => onSelectMailbox(value === "__all__" ? null : value)}
-              >
-                <SelectTrigger className="h-9 w-[220px] bg-background xl:w-[280px]">
-                  <SelectValue placeholder={t("mailboxSwitcher.allEmails")} />
-                </SelectTrigger>
-                <SelectContent align="end" className="max-h-72">
-                  <SelectItem value="__all__">{t("mailboxSwitcher.allEmails")}</SelectItem>
-                  <SelectSeparator />
-                  {desktopMailboxSearchLoading ? (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("mailboxSwitcher.loading")}</div>
-                  ) : desktopMailboxOptions.length > 0 ? (
-                    desktopMailboxOptions.map((mailbox) => (
-                      <SelectItem key={mailbox.id} value={mailbox.id} className="font-mono text-xs">
-                        {mailbox.address}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("mailboxSwitcher.empty")}</div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="hidden lg:block">
+            <MailboxSwitcherPopover
+              options={desktopMailboxOptions}
+              groups={desktopMailboxGroups}
+              selectedMailboxId={selectedMailboxId}
+              onSelectMailbox={onSelectMailbox}
+            />
           </div>
         )}
 
