@@ -1,6 +1,6 @@
 import { ImapFlow, type MailboxObject } from "imapflow";
 import { simpleParser, type ParsedMail, type Attachment } from "mailparser";
-import { Prisma, type Domain, type ImapConfig } from "@prisma/client";
+import { Prisma, type Domain, type ImapConfig, type PersonalImapAccount } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { triggerEmailWorkflows } from "@/services/workflow/trigger";
 import {
@@ -15,7 +15,15 @@ import {
 } from "@/lib/storage";
 import { canStoreForUser } from "@/services/storage-quota";
 
-export type ImapDomain = Domain & { imapConfig: ImapConfig };
+type PersonalImapAccountForSync = Pick<
+  PersonalImapAccount,
+  "id" | "email" | "username" | "passwordCiphertext" | "passwordIv" | "passwordTag" | "status"
+>;
+
+export type ImapDomain = Domain & {
+  imapConfig: ImapConfig;
+  personalImapAccount: PersonalImapAccountForSync | null;
+};
 
 export type SyncResult = {
   success: boolean;
@@ -207,6 +215,7 @@ async function processMessage(
   now: Date,
   options: SyncOptions
 ): Promise<{ processed: boolean; error?: string }> {
+  const isPersonalDomain = domain.sourceType === "PERSONAL_IMAP";
   const parsed = await simpleParser(raw);
   const parsedHeaders = extractEmailHeaders(parsed);
   const parsedMessageId =
@@ -216,13 +225,33 @@ async function processMessage(
         ? `imap:${domain.id}:${uid}`
         : null;
 
-  const recipients = uniqueStrings([
+  const parsedRecipients = uniqueStrings([
     ...extractAddresses(parsed.to),
     ...extractAddresses(parsed.cc),
     ...extractAddresses(parsed.bcc),
-  ]).filter((addr) => addr.endsWith(`@${domain.name.toLowerCase()}`));
+  ]);
+  const recipients = isPersonalDomain
+    ? []
+    : parsedRecipients.filter((addr) => addr.endsWith(`@${domain.name.toLowerCase()}`));
 
-  if (recipients.length === 0) {
+  let personalMailbox:
+    | { id: string; userId: string; address: string; archivedAt: Date | null }
+    | null = null;
+  if (isPersonalDomain) {
+    personalMailbox = await prisma.mailbox.findFirst({
+      where: {
+        domainId: domain.id,
+        kind: "PERSONAL_IMAP",
+        status: "ACTIVE",
+      },
+      select: { id: true, userId: true, address: true, archivedAt: true },
+    });
+    if (!personalMailbox) {
+      return { processed: false };
+    }
+  }
+
+  if (!isPersonalDomain && recipients.length === 0) {
     return { processed: false };
   }
 
@@ -237,13 +266,17 @@ async function processMessage(
 
   let processedAny = false;
 
-  for (const toAddress of recipients) {
-    const mailbox = await prisma.mailbox.findFirst({
-      where: { address: toAddress, domainId: domain.id, status: "ACTIVE" },
-      select: { id: true, userId: true, address: true, archivedAt: true },
-    });
+  const targetAddresses = isPersonalDomain ? [personalMailbox!.address] : recipients;
 
-    if (!mailbox && domain.inboundPolicy === "KNOWN_ONLY") {
+  for (const toAddress of targetAddresses) {
+    const mailbox = isPersonalDomain
+      ? personalMailbox
+      : await prisma.mailbox.findFirst({
+          where: { address: toAddress, domainId: domain.id, status: "ACTIVE" },
+          select: { id: true, userId: true, address: true, archivedAt: true },
+        });
+
+    if (!mailbox && !isPersonalDomain && domain.inboundPolicy === "KNOWN_ONLY") {
       continue;
     }
 
@@ -296,7 +329,7 @@ async function processMessage(
     try {
       await prisma.inboundEmail.create({
         data: {
-          sourceType: "IMAP",
+          sourceType: domain.sourceType,
           messageId: parsedMessageId || undefined,
           fromAddress,
           fromName,
@@ -479,6 +512,19 @@ export async function syncUnseenMessages(
     },
   });
 
+  if (domain.sourceType === "PERSONAL_IMAP") {
+    await prisma.personalImapAccount.updateMany({
+      where: { domainId: domain.id },
+      data: {
+        lastSync: now,
+        status: "ACTIVE",
+        consecutiveErrors: 0,
+        lastError: null,
+        ...(highestUid > currentLastSyncedUid ? { lastSyncedUid: highestUid } : {}),
+      },
+    });
+  }
+
   if (domain.status === "PENDING" || domain.status === "ERROR") {
     await prisma.domain.update({
       where: { id: domain.id },
@@ -618,6 +664,20 @@ export async function syncByUidRange(
     },
   });
 
+  if (domain.sourceType === "PERSONAL_IMAP") {
+    await prisma.personalImapAccount.updateMany({
+      where: { domainId: domain.id },
+      data: {
+        lastSync: now,
+        lastSyncedUid: highestUid > 0 ? highestUid : undefined,
+        lastUidValidity: currentUidValidity,
+        status: "ACTIVE",
+        consecutiveErrors: 0,
+        lastError: null,
+      },
+    });
+  }
+
   if (domain.status === "PENDING" || domain.status === "ERROR") {
     await prisma.domain.update({
       where: { id: domain.id },
@@ -647,6 +707,15 @@ export async function recordSyncError(domainId: string, error: unknown): Promise
       lastError: message.slice(0, 500),
     },
   });
+
+  await prisma.personalImapAccount.updateMany({
+    where: { domainId },
+    data: {
+      consecutiveErrors: { increment: 1 },
+      lastError: message.slice(0, 500),
+      status: "ERROR",
+    },
+  });
 }
 
 export async function resetSyncErrors(domainId: string): Promise<void> {
@@ -655,6 +724,15 @@ export async function resetSyncErrors(domainId: string): Promise<void> {
     data: {
       consecutiveErrors: 0,
       lastError: null,
+    },
+  });
+
+  await prisma.personalImapAccount.updateMany({
+    where: { domainId },
+    data: {
+      consecutiveErrors: 0,
+      lastError: null,
+      status: "ACTIVE",
     },
   });
 }

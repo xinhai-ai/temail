@@ -99,7 +99,7 @@ export class ImapServiceManager {
   async syncDomain(domainId: string): Promise<{ success: boolean; message: string }> {
     const worker = this.workers.get(domainId);
     if (!worker) {
-      return { success: false, message: "Domain not found or not configured for IMAP" };
+      return { success: false, message: "Mailbox source not found or not configured for IMAP sync" };
     }
 
     try {
@@ -147,8 +147,24 @@ export class ImapServiceManager {
       this.log("reconciling workers");
 
       const domains = await prisma.domain.findMany({
-        where: { sourceType: "IMAP", status: { not: "INACTIVE" } },
-        include: { imapConfig: true },
+        where: {
+          sourceType: { in: ["IMAP", "PERSONAL_IMAP"] },
+          status: { not: "INACTIVE" },
+        },
+        include: {
+          imapConfig: true,
+          personalImapAccount: {
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              passwordCiphertext: true,
+              passwordIv: true,
+              passwordTag: true,
+              status: true,
+            },
+          },
+        },
         orderBy: { createdAt: "asc" },
       });
 
@@ -167,7 +183,7 @@ export class ImapServiceManager {
         }
 
         // Restart worker if config changed (only connection-related fields)
-        if (!worker.matchesConfig(current.imapConfig)) {
+        if (!worker.matchesConfig(current)) {
           this.log(`restarting worker for domain ${current.name} (config changed)`);
           await worker.stop();
           this.workers.delete(domainId);

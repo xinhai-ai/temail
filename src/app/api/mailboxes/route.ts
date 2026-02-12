@@ -110,6 +110,9 @@ export async function POST(request: NextRequest) {
     if (!domain) {
       return NextResponse.json({ error: "Domain not found" }, { status: 404 });
     }
+    if (domain.sourceType === "PERSONAL_IMAP") {
+      return NextResponse.json({ error: "Personal IMAP domains cannot be used for alias mailboxes" }, { status: 400 });
+    }
 
     const allowed = await assertDomainAllowedForUser({ userId: session.user.id, domainId: domain.id });
     if (!allowed.ok) {

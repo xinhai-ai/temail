@@ -50,6 +50,9 @@ export async function POST(
     if (!domain) {
       return NextResponse.json({ error: "Domain not found" }, { status: 404 });
     }
+    if (domain.sourceType === "PERSONAL_IMAP") {
+      return NextResponse.json({ error: "Use personal IMAP account APIs for this mailbox source" }, { status: 400 });
+    }
 
     const existingConfig = await prisma.imapConfig.findUnique({
       where: { domainId: id },
@@ -149,6 +152,9 @@ export async function DELETE(
 
     if (!domain) {
       return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+    }
+    if (domain.sourceType === "PERSONAL_IMAP") {
+      return NextResponse.json({ error: "Use personal IMAP account APIs for this mailbox source" }, { status: 400 });
     }
 
     await prisma.imapConfig.deleteMany({

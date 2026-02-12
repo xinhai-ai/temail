@@ -82,6 +82,7 @@ model User {
 
   domains       Domain[]
   mailboxes     Mailbox[]
+  personalImapAccounts PersonalImapAccount[]
   workflows     Workflow[]
   logs          Log[]
   accounts      Account[]
@@ -338,6 +339,7 @@ model UserTotpBackupCode {
 enum DomainSourceType {
   IMAP
   WEBHOOK
+  PERSONAL_IMAP
 }
 
 enum DomainStatus {
@@ -345,6 +347,12 @@ enum DomainStatus {
   INACTIVE
   PENDING
   ERROR
+}
+
+enum PersonalImapStatus {
+  ACTIVE
+  ERROR
+  DISABLED
 }
 
 enum DomainInboundPolicy {
@@ -368,6 +376,7 @@ model Domain {
 
   imapConfig  ImapConfig?
   webhookConfig DomainWebhookConfig?
+  personalImapAccount PersonalImapAccount?
   mailboxes   Mailbox[]
   inboundEmails InboundEmail[]
   userGroupDomains UserGroupDomain[]
@@ -424,6 +433,11 @@ enum MailboxStatus {
   DELETED
 }
 
+enum MailboxKind {
+  ALIAS
+  PERSONAL_IMAP
+}
+
 enum RetentionAction {
   ARCHIVE
   DELETE
@@ -451,6 +465,8 @@ model Mailbox {
   prefix      String
   address     String        @unique
   status      MailboxStatus @default(ACTIVE)
+  kind        MailboxKind   @default(ALIAS)
+  sourceLabel String?
   note        String?
   isStarred   Boolean       @default(false)
   expiresAt   DateTime?
@@ -475,6 +491,7 @@ model Mailbox {
   emails      Email[]
   inboundEmails InboundEmail[]
   workflows   Workflow[]
+  personalImapAccount PersonalImapAccount?
   telegramChatBindings TelegramChatBinding[]
   telegramBindCodes TelegramBindCode[]
 
@@ -484,6 +501,40 @@ model Mailbox {
   @@index([lastEmailReceivedAt])
   @@index([domainId])
   @@map("mailboxes")
+}
+
+model PersonalImapAccount {
+  id                 String             @id @default(cuid())
+  email              String
+  host               String
+  port               Int                @default(993)
+  secure             Boolean            @default(true)
+  username           String
+  passwordCiphertext String
+  passwordIv         String
+  passwordTag        String
+  status             PersonalImapStatus @default(ACTIVE)
+  lastSync           DateTime?
+  syncInterval       Int                @default(60)
+  lastSyncedUid      Int?
+  lastUidValidity    BigInt?
+  consecutiveErrors  Int                @default(0)
+  lastError          String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  mailboxId          String             @unique
+  mailbox            Mailbox            @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  domainId           String             @unique
+  domain             Domain             @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("personal_imap_accounts")
 }
 
 // ==================== 邮件 ====================

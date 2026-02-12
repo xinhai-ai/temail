@@ -28,10 +28,11 @@ export async function GET() {
 
   const domains = await prisma.domain.findMany({
     where: isAdmin
-      ? {}
+      ? { sourceType: { not: "PERSONAL_IMAP" } }
       : {
           isPublic: true,
           status: "ACTIVE",
+          sourceType: { not: "PERSONAL_IMAP" },
           ...(allowed.domainIds ? { id: { in: allowed.domainIds } } : {}),
         },
     include: {

@@ -1,5 +1,6 @@
 import { ImapFlow, type MailboxObject } from "imapflow";
 import prisma from "@/lib/prisma";
+import { decryptString } from "@/lib/secret-encryption";
 import {
   type ImapDomain,
   type SyncOptions,
@@ -77,18 +78,26 @@ export class EnhancedDomainWorker {
     this.abortController = new AbortController();
     this.signal = this.abortController.signal;
     // Create hash of config values that matter for connection
-    this.configHash = this.computeConfigHash(domain.imapConfig);
+    this.configHash = this.computeConfigHash(domain);
   }
 
-  private computeConfigHash(config: ImapDomain["imapConfig"]): string {
+  private computeConfigHash(domain: ImapDomain): string {
+    const { imapConfig } = domain;
+    const personal = domain.personalImapAccount;
     // Only include fields that affect the connection
     return JSON.stringify({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      username: config.username,
-      password: config.password,
-      syncInterval: config.syncInterval,
+      sourceType: domain.sourceType,
+      host: imapConfig.host,
+      port: imapConfig.port,
+      secure: imapConfig.secure,
+      username: imapConfig.username,
+      password: imapConfig.password,
+      syncInterval: imapConfig.syncInterval,
+      personalStatus: personal?.status ?? null,
+      personalUsername: personal?.username ?? null,
+      personalPasswordCiphertext: personal?.passwordCiphertext ?? null,
+      personalPasswordIv: personal?.passwordIv ?? null,
+      personalPasswordTag: personal?.passwordTag ?? null,
     });
   }
 
@@ -108,8 +117,8 @@ export class EnhancedDomainWorker {
     return this.configHash;
   }
 
-  matchesConfig(config: ImapDomain["imapConfig"]): boolean {
-    return this.configHash === this.computeConfigHash(config);
+  matchesConfig(domain: ImapDomain): boolean {
+    return this.configHash === this.computeConfigHash(domain);
   }
 
   start(): void {
@@ -241,15 +250,19 @@ export class EnhancedDomainWorker {
     this.log("connecting");
 
     const { imapConfig } = this.domain;
+    const auth =
+      this.domain.sourceType === "PERSONAL_IMAP"
+        ? this.getPersonalImapAuth()
+        : {
+            user: imapConfig.username,
+            pass: imapConfig.password,
+          };
 
     this.client = new ImapFlow({
       host: imapConfig.host,
       port: imapConfig.port,
       secure: imapConfig.secure,
-      auth: {
-        user: imapConfig.username,
-        pass: imapConfig.password,
-      },
+      auth,
       logger: false,
       emitLogs: this.debug,
       maxIdleTime: this.config.idleTimeoutMs,
@@ -380,5 +393,24 @@ export class EnhancedDomainWorker {
       msg.includes("login failed") ||
       msg.includes("authenticationfailed")
     );
+  }
+
+  private getPersonalImapAuth(): { user: string; pass: string } {
+    const account = this.domain.personalImapAccount;
+    if (!account) {
+      throw new Error("Missing personal IMAP account configuration");
+    }
+    if (account.status === "DISABLED") {
+      throw new Error("Personal IMAP account is disabled");
+    }
+    const pass = decryptString({
+      ciphertext: account.passwordCiphertext,
+      iv: account.passwordIv,
+      tag: account.passwordTag,
+    });
+    return {
+      user: account.username,
+      pass,
+    };
   }
 }

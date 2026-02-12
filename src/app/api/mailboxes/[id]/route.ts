@@ -155,9 +155,38 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const mailbox = await prisma.mailbox.findFirst({
+    where: { id, userId: session.user.id },
+    select: { id: true, kind: true, domainId: true },
+  });
+
+  if (!mailbox) {
+    return NextResponse.json({ error: "Mailbox not found" }, { status: 404 });
+  }
+
+  if (mailbox.kind === "PERSONAL_IMAP") {
+    await prisma.$transaction(async (tx) => {
+      const domainDeleted = await tx.domain.deleteMany({
+        where: {
+          id: mailbox.domainId,
+          sourceType: "PERSONAL_IMAP",
+          userId: session.user.id,
+        },
+      });
+
+      // Safety fallback if the domain was already removed.
+      if (domainDeleted.count === 0) {
+        await tx.mailbox.deleteMany({
+          where: { id: mailbox.id, userId: session.user.id },
+        });
+      }
+    });
+
+    return NextResponse.json({ success: true });
+  }
 
   const result = await prisma.mailbox.deleteMany({
-    where: { id, userId: session.user.id },
+    where: { id: mailbox.id, userId: session.user.id },
   });
 
   if (result.count === 0) {
