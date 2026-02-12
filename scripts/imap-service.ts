@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import cron, { type ScheduledTask } from "node-cron";
 import { ImapServiceManager } from "../src/services/imap/manager";
 import { createHttpRealtimePublisher } from "../src/services/imap/sync";
 import prisma from "../src/lib/prisma";
@@ -27,8 +28,15 @@ const HEALTH_CHECK_MS = parseEnvInt("IMAP_HEALTH_CHECK_MS", 60 * 1000);
 const RECONNECT_MIN_MS = parseEnvInt("IMAP_RECONNECT_MIN_MS", 1000);
 const RECONNECT_MAX_MS = parseEnvInt("IMAP_RECONNECT_MAX_MS", 5 * 60 * 1000);
 const DEBUG = parseEnvBool("IMAP_SERVICE_DEBUG", false);
+const RETENTION_JOB_ENABLED = parseEnvBool("WORKER_RETENTION_JOB_ENABLED", true);
+const RETENTION_JOB_CRON = "0 * * * *"; // every hour
+const RETENTION_JOB_URL = `${NEXTJS_URL}/api/jobs/retention`;
+const RETENTION_JOB_TIMEZONE = process.env.TZ;
+const JOBS_TRIGGER_TOKEN = (process.env.JOBS_TRIGGER_TOKEN || "").trim();
 
 let manager: ImapServiceManager | null = null;
+let retentionTask: ScheduledTask | null = null;
+let retentionRunning = false;
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -115,6 +123,50 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   sendJson(res, 404, { error: "Not found" });
 }
 
+async function triggerRetentionJob(reason: "cron"): Promise<void> {
+  if (retentionRunning) {
+    console.log("[imap-service] [retention-job] already running; skipping this tick");
+    return;
+  }
+
+  if (!JOBS_TRIGGER_TOKEN) {
+    console.warn("[imap-service] [retention-job] JOBS_TRIGGER_TOKEN missing; skipping retention trigger");
+    return;
+  }
+
+  retentionRunning = true;
+  try {
+    const response = await fetch(RETENTION_JOB_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-job-token": JOBS_TRIGGER_TOKEN,
+      },
+      body: JSON.stringify({}),
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      console.error("[imap-service] [retention-job] trigger failed", {
+        reason,
+        status: response.status,
+        body: payload,
+      });
+      return;
+    }
+
+    console.log("[imap-service] [retention-job] trigger succeeded", {
+      reason,
+      status: response.status,
+      durationMs: payload?.result?.durationMs ?? null,
+    });
+  } catch (error) {
+    console.error("[imap-service] [retention-job] trigger error", { reason, error });
+  } finally {
+    retentionRunning = false;
+  }
+}
+
 async function main(): Promise<void> {
   console.log("[imap-service] Starting IMAP service...");
   console.log("[imap-service] Configuration:");
@@ -127,6 +179,13 @@ async function main(): Promise<void> {
   console.log(`  Health check interval: ${HEALTH_CHECK_MS}ms`);
   console.log(`  Reconnect: ${RECONNECT_MIN_MS}ms - ${RECONNECT_MAX_MS}ms`);
   console.log(`  Debug: ${DEBUG}`);
+  console.log(`  Retention cron: ${RETENTION_JOB_ENABLED ? RETENTION_JOB_CRON : "disabled"}`);
+  if (RETENTION_JOB_ENABLED) {
+    console.log(`  Retention endpoint: ${RETENTION_JOB_URL}`);
+    if (RETENTION_JOB_TIMEZONE) {
+      console.log(`  Retention timezone: ${RETENTION_JOB_TIMEZONE}`);
+    }
+  }
 
   // Create realtime publisher for Next.js
   const realtimePublisher = createHttpRealtimePublisher(NEXTJS_URL);
@@ -153,6 +212,23 @@ async function main(): Promise<void> {
   // Start the manager
   manager.start();
 
+  if (RETENTION_JOB_ENABLED) {
+    if (!cron.validate(RETENTION_JOB_CRON)) {
+      console.error(`[imap-service] Invalid retention cron: ${RETENTION_JOB_CRON}`);
+    } else {
+      retentionTask = cron.schedule(
+        RETENTION_JOB_CRON,
+        () => {
+          triggerRetentionJob("cron").catch((error) => {
+            console.error("[imap-service] [retention-job] unexpected error:", error);
+          });
+        },
+        { timezone: RETENTION_JOB_TIMEZONE },
+      );
+      console.log("[imap-service] Retention scheduler active");
+    }
+  }
+
   // Create HTTP server
   const server = createServer((req, res) => {
     handleRequest(req, res).catch((error) => {
@@ -176,6 +252,10 @@ async function main(): Promise<void> {
     console.log(`[imap-service] Received ${signal}, shutting down...`);
 
     server.close();
+    if (retentionTask) {
+      retentionTask.stop();
+      retentionTask = null;
+    }
 
     if (manager) {
       await manager.stop();
