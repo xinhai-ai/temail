@@ -1557,6 +1557,19 @@
       "emails": "Emails",
       "preview": "Preview"
     },
+    "layout": {
+      "switcherLabel": "Desktop layout",
+      "mode": {
+        "three": "Three-pane",
+        "two": "Two-pane"
+      }
+    },
+    "mailboxSwitcher": {
+      "allEmails": "All emails",
+      "searchPlaceholder": "Search mailboxes...",
+      "loading": "Searching...",
+      "empty": "No mailboxes found"
+    },
     "notifications": {
       "unsupported": "Desktop notifications are not supported in this browser",
       "disabled": "Desktop notifications disabled",

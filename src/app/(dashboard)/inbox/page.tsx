@@ -23,6 +23,7 @@ export default function InboxPage() {
   const NOTIFICATIONS_ENABLED_KEY = "temail.notificationsEnabled";
   const EMAILS_PAGE_SIZE_STORAGE_KEY = "temail.inbox.emailsPageSize";
   const SKIP_EMAIL_DELETE_CONFIRM_KEY = "temail.inbox.skipEmailDeleteConfirm";
+  const DESKTOP_LAYOUT_MODE_STORAGE_KEY = "temail.inbox.desktopLayoutMode";
   const DEFAULT_EMAILS_PAGE_SIZE = 15;
   const DEFAULT_MAILBOXES_PAGE_SIZE = 5;
   const t = useTranslations("inbox");
@@ -104,8 +105,14 @@ export default function InboxPage() {
   const [mobileTab, setMobileTab] = useState<"mailboxes" | "emails" | "preview">("emails");
   const [statusFilter, setStatusFilter] = useState<EmailStatusFilter>("all");
   const [emailsRefreshKey, setEmailsRefreshKey] = useState(0);
+  const [desktopLayoutMode, setDesktopLayoutMode] = useState<"three" | "two">("three");
+  const [desktopLayoutModeLoaded, setDesktopLayoutModeLoaded] = useState(false);
+  const [desktopMailboxSearch, setDesktopMailboxSearch] = useState("");
+  const [desktopMailboxOptions, setDesktopMailboxOptions] = useState<Array<{ id: string; address: string }>>([]);
+  const [loadingDesktopMailboxOptions, setLoadingDesktopMailboxOptions] = useState(false);
 
   const selectedEmailIdSet = useMemo(() => new Set(selectedEmailIds), [selectedEmailIds]);
+  const desktopMailboxSearchQuery = desktopMailboxSearch.trim();
 
   const groupedMailboxes = useMemo(() => {
     const items: Array<{ key: string; group: MailboxGroup | null; mailboxes: Mailbox[] }> = [];
@@ -147,6 +154,35 @@ export default function InboxPage() {
     }
     return Array.from(byId.values());
   }, [mailboxesByGroupKey, mailboxSearchResults]);
+
+  const desktopMailboxBaseOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: Array<{ id: string; address: string }> = [];
+    for (const mailbox of mailboxes) {
+      if (mailbox.archivedAt) continue;
+      if (seen.has(mailbox.id)) continue;
+      seen.add(mailbox.id);
+      options.push({ id: mailbox.id, address: mailbox.address });
+    }
+    options.sort((a, b) => a.address.localeCompare(b.address));
+    return options;
+  }, [mailboxes]);
+
+  const selectedDesktopMailboxOption = useMemo(() => {
+    if (!selectedMailboxId) return null;
+    const mailbox = mailboxes.find((item) => item.id === selectedMailboxId && !item.archivedAt) || null;
+    if (!mailbox) return null;
+    return { id: mailbox.id, address: mailbox.address };
+  }, [mailboxes, selectedMailboxId]);
+
+  const includeSelectedDesktopMailboxOption = useCallback(
+    (options: Array<{ id: string; address: string }>) => {
+      if (!selectedDesktopMailboxOption) return options;
+      if (options.some((option) => option.id === selectedDesktopMailboxOption.id)) return options;
+      return [selectedDesktopMailboxOption, ...options];
+    },
+    [selectedDesktopMailboxOption]
+  );
 
   const mailboxCount = useMemo(() => {
     const groupedCount = groups.reduce((sum, group) => sum + (group._count?.mailboxes ?? 0), 0);
@@ -461,6 +497,29 @@ export default function InboxPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      const raw = localStorage.getItem(DESKTOP_LAYOUT_MODE_STORAGE_KEY);
+      if (raw === "three" || raw === "two") {
+        setDesktopLayoutMode(raw);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDesktopLayoutModeLoaded(true);
+    }
+  }, [DESKTOP_LAYOUT_MODE_STORAGE_KEY]);
+
+  useEffect(() => {
+    if (!desktopLayoutModeLoaded) return;
+    try {
+      localStorage.setItem(DESKTOP_LAYOUT_MODE_STORAGE_KEY, desktopLayoutMode);
+    } catch {
+      // ignore
+    }
+  }, [desktopLayoutMode, desktopLayoutModeLoaded, DESKTOP_LAYOUT_MODE_STORAGE_KEY]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
       const raw = localStorage.getItem(EMAILS_PAGE_SIZE_STORAGE_KEY);
       if (raw) {
         const parsed = Number.parseInt(raw, 10);
@@ -518,7 +577,7 @@ export default function InboxPage() {
       params.set("limit", String(emailsPageSize));
       if (selectedMailboxId) params.set("mailboxId", selectedMailboxId);
       if (selectedTagId) params.set("tagId", selectedTagId);
-      if (!selectedMailboxId && showArchivedMailboxes) {
+      if (!selectedMailboxId && showArchivedMailboxes && desktopLayoutMode !== "two") {
         params.set("mailboxArchived", "only");
       }
 
@@ -545,7 +604,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [selectedMailboxId, selectedTagId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter, emailsRefreshKey, showArchivedMailboxes]);
+  }, [selectedMailboxId, selectedTagId, emailSearch, emailsPage, emailsPageSize, emailsPageSizeLoaded, statusFilter, emailsRefreshKey, showArchivedMailboxes, desktopLayoutMode]);
 
   const toggleNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -765,6 +824,61 @@ export default function InboxPage() {
 
     fetchPreview();
   }, [selectedEmailId]);
+
+  useEffect(() => {
+    if (desktopLayoutMode !== "two") {
+      setDesktopMailboxOptions([]);
+      setLoadingDesktopMailboxOptions(false);
+      return;
+    }
+
+    if (!desktopMailboxSearchQuery) {
+      setDesktopMailboxOptions(includeSelectedDesktopMailboxOption(desktopMailboxBaseOptions));
+      setLoadingDesktopMailboxOptions(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLoadingDesktopMailboxOptions(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("search", desktopMailboxSearchQuery);
+        params.set("archived", "exclude");
+        const res = await fetch(`/api/mailboxes?${params.toString()}`);
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(data?.error || t("toast.mailboxes.loadFailed"));
+        }
+
+        if (cancelled) return;
+        const items = Array.isArray(data) ? data : [];
+        const options = items
+          .filter((mailbox): mailbox is { id: string; address: string; archivedAt?: string | null } => {
+            return typeof mailbox?.id === "string" && typeof mailbox?.address === "string";
+          })
+          .filter((mailbox) => !mailbox.archivedAt)
+          .map((mailbox) => ({ id: mailbox.id, address: mailbox.address }))
+          .sort((a, b) => a.address.localeCompare(b.address));
+
+        setDesktopMailboxOptions(includeSelectedDesktopMailboxOption(options));
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : t("toast.mailboxes.loadFailed");
+        toast.error(message);
+        setDesktopMailboxOptions(includeSelectedDesktopMailboxOption(desktopMailboxBaseOptions));
+      } finally {
+        if (!cancelled) {
+          setLoadingDesktopMailboxOptions(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [desktopLayoutMode, desktopMailboxSearchQuery, desktopMailboxBaseOptions, includeSelectedDesktopMailboxOption, t]);
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -1237,6 +1351,15 @@ export default function InboxPage() {
     setEmailSearch("");
     setEmailsPage(1);
     setStatusFilter("all");
+  };
+
+  const handleDesktopLayoutModeChange = (mode: "three" | "two") => {
+    setDesktopLayoutMode(mode);
+    if (mode === "three") {
+      setDesktopMailboxSearch("");
+      setDesktopMailboxOptions([]);
+      setLoadingDesktopMailboxOptions(false);
+    }
   };
 
   const handleCreateGroup = async () => {
@@ -1896,132 +2019,202 @@ export default function InboxPage() {
         </Tabs>
 
         {/* Desktop Layout - Grid */}
-        <div className="hidden lg:grid gap-4 h-full grid-cols-[280px_minmax(320px,420px)_minmax(420px,1fr)]">
-          <MailboxesPanel
-            ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
-            domains={domains}
-            groups={groups}
-            reorderingGroups={reorderingGroups}
-            groupedMailboxes={groupedMailboxes}
-            collapsedGroups={collapsedGroups}
-            mailboxCount={mailboxCount}
-            mailboxPaginationByGroupKey={mailboxPaginationByGroupKey}
-            loadingMailboxesByGroupKey={loadingMailboxesByGroupKey}
-            mailboxErrorsByGroupKey={mailboxErrorsByGroupKey}
-            loadingDomains={loadingDomains}
-            loadingGroups={loadingGroups}
-            mailboxSearch={mailboxSearch}
-            mailboxSearchResults={mailboxSearchResults}
-            mailboxSearchPage={mailboxSearchPage}
-	            mailboxSearchPages={mailboxSearchPages}
-	            mailboxSearchTotal={mailboxSearchTotal}
-	            loadingMailboxSearch={loadingMailboxSearch}
-	            selectedMailboxId={selectedMailboxId}
-	            showArchivedMailboxes={showArchivedMailboxes}
-	            notificationsEnabled={notificationsEnabled}
-	            mailboxDialogOpen={mailboxDialogOpen}
-	            groupDialogOpen={groupDialogOpen}
-	            renameDialogOpen={renameDialogOpen}
-            newMailboxPrefix={newMailboxPrefix}
-            newMailboxDomainId={newMailboxDomainId}
-            newMailboxGroupId={newMailboxGroupId}
-            newMailboxNote={newMailboxNote}
-            creatingMailbox={creatingMailbox}
-            newGroupName={newGroupName}
-            creatingGroup={creatingGroup}
-            renameGroupName={renameGroupName}
-            renamingGroup={renamingGroup}
-            onToggleNotifications={toggleNotifications}
-            onMailboxSearchChange={handleMailboxSearchChange}
-            onPrevMailboxSearchPage={goPrevMailboxSearchPage}
-            onNextMailboxSearchPage={goNextMailboxSearchPage}
-            onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
-            onNextGroupMailboxesPage={goNextGroupMailboxesPage}
-            onRetryGroupMailboxes={retryGroupMailboxes}
-            onReorderGroups={handleReorderGroups}
-            onSelectMailbox={handleSelectMailbox}
-            onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
-            onMailboxDialogOpenChange={setMailboxDialogOpen}
-            onGroupDialogOpenChange={setGroupDialogOpen}
-	            onRenameDialogOpenChange={setRenameDialogOpen}
-            onNewMailboxDomainIdChange={setNewMailboxDomainId}
-            onNewMailboxPrefixChange={setNewMailboxPrefix}
-            onGenerateRandomPrefix={generateRandomPrefix}
-            onNewMailboxGroupIdChange={setNewMailboxGroupId}
-            onNewMailboxNoteChange={setNewMailboxNote}
-            onCreateMailbox={handleCreateMailbox}
-            onNewGroupNameChange={setNewGroupName}
-            onCreateGroup={handleCreateGroup}
-            onRenameGroupNameChange={setRenameGroupName}
-            onRenameGroupSave={handleRenameGroup}
-	            onToggleGroupCollapse={toggleGroup}
-	            onOpenRenameGroup={openRenameGroup}
-	            onRequestDeleteGroup={handleDeleteGroup}
-	            onStarMailbox={handleStarMailbox}
-	            onArchiveMailbox={handleArchiveMailbox}
-	            onUnarchiveMailbox={handleUnarchiveMailbox}
-	            onRequestEditMailboxNote={handleOpenEditMailboxNote}
-	            onMoveMailboxToGroup={handleMoveMailboxToGroup}
-	            onMarkMailboxRead={handleMarkMailboxRead}
-	            onRequestDeleteMailbox={handleDeleteMailbox}
-            onCopyMailboxAddress={handleCopyMailboxAddress}
-            onRefreshImap={handleRefreshImap}
-            refreshingImap={refreshingImap}
-            refreshCooldown={refreshCooldown}
-          />
+        {desktopLayoutMode === "three" ? (
+          <div className="hidden lg:grid gap-4 h-full grid-cols-[280px_minmax(320px,420px)_minmax(420px,1fr)]">
+            <MailboxesPanel
+              ungroupedSelectValue={UNGROUPED_SELECT_VALUE}
+              domains={domains}
+              groups={groups}
+              reorderingGroups={reorderingGroups}
+              groupedMailboxes={groupedMailboxes}
+              collapsedGroups={collapsedGroups}
+              mailboxCount={mailboxCount}
+              mailboxPaginationByGroupKey={mailboxPaginationByGroupKey}
+              loadingMailboxesByGroupKey={loadingMailboxesByGroupKey}
+              mailboxErrorsByGroupKey={mailboxErrorsByGroupKey}
+              loadingDomains={loadingDomains}
+              loadingGroups={loadingGroups}
+              mailboxSearch={mailboxSearch}
+              mailboxSearchResults={mailboxSearchResults}
+              mailboxSearchPage={mailboxSearchPage}
+              mailboxSearchPages={mailboxSearchPages}
+              mailboxSearchTotal={mailboxSearchTotal}
+              loadingMailboxSearch={loadingMailboxSearch}
+              selectedMailboxId={selectedMailboxId}
+              showArchivedMailboxes={showArchivedMailboxes}
+              notificationsEnabled={notificationsEnabled}
+              mailboxDialogOpen={mailboxDialogOpen}
+              groupDialogOpen={groupDialogOpen}
+              renameDialogOpen={renameDialogOpen}
+              newMailboxPrefix={newMailboxPrefix}
+              newMailboxDomainId={newMailboxDomainId}
+              newMailboxGroupId={newMailboxGroupId}
+              newMailboxNote={newMailboxNote}
+              creatingMailbox={creatingMailbox}
+              newGroupName={newGroupName}
+              creatingGroup={creatingGroup}
+              renameGroupName={renameGroupName}
+              renamingGroup={renamingGroup}
+              onToggleNotifications={toggleNotifications}
+              onMailboxSearchChange={handleMailboxSearchChange}
+              onPrevMailboxSearchPage={goPrevMailboxSearchPage}
+              onNextMailboxSearchPage={goNextMailboxSearchPage}
+              onPrevGroupMailboxesPage={goPrevGroupMailboxesPage}
+              onNextGroupMailboxesPage={goNextGroupMailboxesPage}
+              onRetryGroupMailboxes={retryGroupMailboxes}
+              onReorderGroups={handleReorderGroups}
+              onSelectMailbox={handleSelectMailbox}
+              onToggleArchivedMailboxes={handleToggleArchivedMailboxes}
+              onMailboxDialogOpenChange={setMailboxDialogOpen}
+              onGroupDialogOpenChange={setGroupDialogOpen}
+              onRenameDialogOpenChange={setRenameDialogOpen}
+              onNewMailboxDomainIdChange={setNewMailboxDomainId}
+              onNewMailboxPrefixChange={setNewMailboxPrefix}
+              onGenerateRandomPrefix={generateRandomPrefix}
+              onNewMailboxGroupIdChange={setNewMailboxGroupId}
+              onNewMailboxNoteChange={setNewMailboxNote}
+              onCreateMailbox={handleCreateMailbox}
+              onNewGroupNameChange={setNewGroupName}
+              onCreateGroup={handleCreateGroup}
+              onRenameGroupNameChange={setRenameGroupName}
+              onRenameGroupSave={handleRenameGroup}
+              onToggleGroupCollapse={toggleGroup}
+              onOpenRenameGroup={openRenameGroup}
+              onRequestDeleteGroup={handleDeleteGroup}
+              onStarMailbox={handleStarMailbox}
+              onArchiveMailbox={handleArchiveMailbox}
+              onUnarchiveMailbox={handleUnarchiveMailbox}
+              onRequestEditMailboxNote={handleOpenEditMailboxNote}
+              onMoveMailboxToGroup={handleMoveMailboxToGroup}
+              onMarkMailboxRead={handleMarkMailboxRead}
+              onRequestDeleteMailbox={handleDeleteMailbox}
+              onCopyMailboxAddress={handleCopyMailboxAddress}
+              onRefreshImap={handleRefreshImap}
+              refreshingImap={refreshingImap}
+              refreshCooldown={refreshCooldown}
+            />
 
-          <EmailsPanel
-            emailSearch={emailSearch}
-            tags={availableTags}
-            selectedTagId={selectedTagId}
-            emails={emails}
-            loadingEmails={loadingEmails}
-            page={emailsPage}
-            pages={emailsTotalPages}
-            pageSize={emailsPageSize}
-            selectedEmailId={selectedEmailId}
-            selectedEmailIds={selectedEmailIds}
-            selectedEmailIdSet={selectedEmailIdSet}
-            allSelectedOnPage={allSelectedOnPage}
-            someSelectedOnPage={someSelectedOnPage}
-            multiSelectMode={multiSelectMode}
-            statusFilter={statusFilter}
-            unreadCount={unreadCount}
-            onEmailSearchChange={handleEmailSearchChange}
-            onPageSizeChange={handleEmailsPageSizeChange}
-            onTagFilterChange={handleTagFilterChange}
-            onUpdateEmailTags={handleUpdateEmailTags}
-            onSelectEmail={handleSelectEmail}
-            onToggleSelectAllOnPage={toggleSelectAllOnPage}
-            onToggleEmailSelection={toggleEmailSelection}
-            onBulkMarkRead={handleBulkMarkRead}
-            onBulkArchive={handleBulkArchive}
-            onBulkUnarchive={handleBulkUnarchive}
-            onOpenBulkDelete={openBulkDelete}
-            onClearSelection={() => setSelectedEmailIds([])}
-            onMultiSelectModeChange={handleMultiSelectModeChange}
-            onStarEmail={handleStarEmail}
-            onDeleteEmail={handleDeleteEmail}
-            onMarkEmailRead={handleMarkEmailRead}
-            onMarkEmailUnread={handleMarkEmailUnread}
-            onArchiveEmail={handleArchiveEmail}
-            onUnarchiveEmail={handleUnarchiveEmail}
-            onMarkMailboxRead={handleMarkMailboxRead}
-            onCopySenderAddress={handleCopySenderAddress}
-            onCopyMailboxAddress={handleCopyMailboxAddress}
-            onCopyEmailSubject={handleCopyEmailSubject}
-            onPrevPage={goPrevEmailsPage}
-            onNextPage={goNextEmailsPage}
-            onStatusFilterChange={handleStatusFilterChange}
-          />
+            <EmailsPanel
+              emailSearch={emailSearch}
+              tags={availableTags}
+              selectedTagId={selectedTagId}
+              emails={emails}
+              loadingEmails={loadingEmails}
+              page={emailsPage}
+              pages={emailsTotalPages}
+              pageSize={emailsPageSize}
+              selectedEmailId={selectedEmailId}
+              selectedEmailIds={selectedEmailIds}
+              selectedEmailIdSet={selectedEmailIdSet}
+              allSelectedOnPage={allSelectedOnPage}
+              someSelectedOnPage={someSelectedOnPage}
+              multiSelectMode={multiSelectMode}
+              statusFilter={statusFilter}
+              unreadCount={unreadCount}
+              showDesktopLayoutControls
+              desktopLayoutMode={desktopLayoutMode}
+              onDesktopLayoutModeChange={handleDesktopLayoutModeChange}
+              selectedMailboxId={selectedMailboxId}
+              onSelectMailbox={handleSelectMailbox}
+              onEmailSearchChange={handleEmailSearchChange}
+              onPageSizeChange={handleEmailsPageSizeChange}
+              onTagFilterChange={handleTagFilterChange}
+              onUpdateEmailTags={handleUpdateEmailTags}
+              onSelectEmail={handleSelectEmail}
+              onToggleSelectAllOnPage={toggleSelectAllOnPage}
+              onToggleEmailSelection={toggleEmailSelection}
+              onBulkMarkRead={handleBulkMarkRead}
+              onBulkArchive={handleBulkArchive}
+              onBulkUnarchive={handleBulkUnarchive}
+              onOpenBulkDelete={openBulkDelete}
+              onClearSelection={() => setSelectedEmailIds([])}
+              onMultiSelectModeChange={handleMultiSelectModeChange}
+              onStarEmail={handleStarEmail}
+              onDeleteEmail={handleDeleteEmail}
+              onMarkEmailRead={handleMarkEmailRead}
+              onMarkEmailUnread={handleMarkEmailUnread}
+              onArchiveEmail={handleArchiveEmail}
+              onUnarchiveEmail={handleUnarchiveEmail}
+              onMarkMailboxRead={handleMarkMailboxRead}
+              onCopySenderAddress={handleCopySenderAddress}
+              onCopyMailboxAddress={handleCopyMailboxAddress}
+              onCopyEmailSubject={handleCopyEmailSubject}
+              onPrevPage={goPrevEmailsPage}
+              onNextPage={goNextEmailsPage}
+              onStatusFilterChange={handleStatusFilterChange}
+            />
 
-          <PreviewPanel
-            key={selectedEmailId ?? "none"}
-            selectedEmailId={selectedEmailId}
-            selectedEmail={selectedEmail}
-            loadingPreview={loadingPreview}
-          />
-        </div>
+            <PreviewPanel
+              key={selectedEmailId ?? "none"}
+              selectedEmailId={selectedEmailId}
+              selectedEmail={selectedEmail}
+              loadingPreview={loadingPreview}
+            />
+          </div>
+        ) : (
+          <div className="hidden lg:grid gap-4 h-full grid-cols-[minmax(420px,560px)_minmax(520px,1fr)]">
+            <EmailsPanel
+              emailSearch={emailSearch}
+              tags={availableTags}
+              selectedTagId={selectedTagId}
+              emails={emails}
+              loadingEmails={loadingEmails}
+              page={emailsPage}
+              pages={emailsTotalPages}
+              pageSize={emailsPageSize}
+              selectedEmailId={selectedEmailId}
+              selectedEmailIds={selectedEmailIds}
+              selectedEmailIdSet={selectedEmailIdSet}
+              allSelectedOnPage={allSelectedOnPage}
+              someSelectedOnPage={someSelectedOnPage}
+              multiSelectMode={multiSelectMode}
+              statusFilter={statusFilter}
+              unreadCount={unreadCount}
+              showDesktopLayoutControls
+              desktopLayoutMode={desktopLayoutMode}
+              onDesktopLayoutModeChange={handleDesktopLayoutModeChange}
+              desktopMailboxSearch={desktopMailboxSearch}
+              onDesktopMailboxSearchChange={setDesktopMailboxSearch}
+              desktopMailboxOptions={desktopMailboxOptions}
+              desktopMailboxSearchLoading={loadingDesktopMailboxOptions}
+              selectedMailboxId={selectedMailboxId}
+              onSelectMailbox={handleSelectMailbox}
+              onEmailSearchChange={handleEmailSearchChange}
+              onPageSizeChange={handleEmailsPageSizeChange}
+              onTagFilterChange={handleTagFilterChange}
+              onUpdateEmailTags={handleUpdateEmailTags}
+              onSelectEmail={handleSelectEmail}
+              onToggleSelectAllOnPage={toggleSelectAllOnPage}
+              onToggleEmailSelection={toggleEmailSelection}
+              onBulkMarkRead={handleBulkMarkRead}
+              onBulkArchive={handleBulkArchive}
+              onBulkUnarchive={handleBulkUnarchive}
+              onOpenBulkDelete={openBulkDelete}
+              onClearSelection={() => setSelectedEmailIds([])}
+              onMultiSelectModeChange={handleMultiSelectModeChange}
+              onStarEmail={handleStarEmail}
+              onDeleteEmail={handleDeleteEmail}
+              onMarkEmailRead={handleMarkEmailRead}
+              onMarkEmailUnread={handleMarkEmailUnread}
+              onArchiveEmail={handleArchiveEmail}
+              onUnarchiveEmail={handleUnarchiveEmail}
+              onMarkMailboxRead={handleMarkMailboxRead}
+              onCopySenderAddress={handleCopySenderAddress}
+              onCopyMailboxAddress={handleCopyMailboxAddress}
+              onCopyEmailSubject={handleCopyEmailSubject}
+              onPrevPage={goPrevEmailsPage}
+              onNextPage={goNextEmailsPage}
+              onStatusFilterChange={handleStatusFilterChange}
+            />
+
+            <PreviewPanel
+              key={selectedEmailId ?? "none"}
+              selectedEmailId={selectedEmailId}
+              selectedEmail={selectedEmail}
+              loadingPreview={loadingPreview}
+            />
+          </div>
+        )}
 
         <ConfirmDialogs
           deleteEmailId={deleteEmailId}
