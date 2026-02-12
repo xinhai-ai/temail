@@ -98,6 +98,12 @@ export default function TrashPage() {
     });
   };
 
+  const removeSelectedIds = (idsToRemove: string[]) => {
+    if (idsToRemove.length === 0) return;
+    const removeSet = new Set(idsToRemove);
+    setSelectedIds((prev) => prev.filter((id) => !removeSet.has(id)));
+  };
+
   const restoreOne = async (id: string) => {
     const res = await fetch(`/api/emails/${id}/restore`, { method: "POST" });
     const data = await res.json().catch(() => null);
@@ -106,7 +112,7 @@ export default function TrashPage() {
       return;
     }
     toast.success(t("toast.restored"));
-    setSelectedIds((prev) => prev.filter((x) => x !== id));
+    removeSelectedIds([id]);
     await fetchEmails().catch(() => {
       toast.error(t("toast.loadFailed"));
       setLoading(false);
@@ -122,7 +128,7 @@ export default function TrashPage() {
       return;
     }
     toast.success(t("toast.purged"));
-    setSelectedIds((prev) => prev.filter((x) => x !== id));
+    removeSelectedIds([id]);
     await fetchEmails().catch(() => {
       toast.error(t("toast.loadFailed"));
       setLoading(false);
@@ -142,8 +148,11 @@ export default function TrashPage() {
       toast.error(data?.error || t("toast.restoreFailed"));
       return;
     }
+    const processedIds = Array.isArray(data?.ids)
+      ? data.ids.filter((value: unknown): value is string => typeof value === "string")
+      : ids;
     toast.success(t("toast.restored"));
-    setSelectedIds([]);
+    removeSelectedIds(processedIds);
     await fetchEmails().catch(() => {
       toast.error(t("toast.loadFailed"));
       setLoading(false);
@@ -164,8 +173,11 @@ export default function TrashPage() {
       toast.error(data?.error || t("toast.purgeFailed"));
       return;
     }
+    const processedIds = Array.isArray(data?.ids)
+      ? data.ids.filter((value: unknown): value is string => typeof value === "string")
+      : ids;
     toast.success(t("toast.purged"));
-    setSelectedIds([]);
+    removeSelectedIds(processedIds);
     await fetchEmails().catch(() => {
       toast.error(t("toast.loadFailed"));
       setLoading(false);
