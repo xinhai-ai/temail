@@ -103,13 +103,16 @@ export function MailboxSwitcherPopover({
           aria-expanded={open}
           className="hidden lg:flex w-full justify-between h-9 bg-background font-normal"
         >
-          <span className="truncate">
+          <span className="min-w-0 flex-1 truncate text-left">
             {selectedOption ? selectedOption.address : t("mailboxSwitcher.allEmails")}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] max-h-[var(--radix-popover-content-available-height)] overflow-hidden p-0 flex flex-col"
+        align="start"
+      >
         <div className="flex items-center border-b px-3">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <Input
@@ -126,19 +129,19 @@ export function MailboxSwitcherPopover({
           role="option"
           aria-selected={!selectedMailboxId}
           className={cn(
-            "flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors",
+            "flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
             !selectedMailboxId && "bg-accent"
           )}
           onClick={() => handleSelect(null)}
         >
           <Inbox className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="text-sm font-medium flex-1">{t("mailboxSwitcher.allEmails")}</span>
+          <span className="text-sm font-medium flex-1 min-w-0 truncate">{t("mailboxSwitcher.allEmails")}</span>
           {!selectedMailboxId && <Check className="h-4 w-4 shrink-0 text-primary" />}
         </div>
 
         <Separator />
 
-        <ScrollArea className="max-h-80">
+        <ScrollArea className="flex-1 min-h-0">
           {groupedFiltered.length === 0 ? (
             <div className="px-3 py-4 text-center text-sm text-muted-foreground">
               {t("mailboxSwitcher.empty")}
@@ -158,12 +161,12 @@ export function MailboxSwitcherPopover({
                       role="option"
                       aria-selected={isSelected}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors",
+                        "flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors min-w-0",
                         isSelected && "bg-accent"
                       )}
                       onClick={() => handleSelect(option.id)}
                     >
-                      <span className="font-mono text-xs truncate flex-1">{option.address}</span>
+                      <span className="font-mono text-xs truncate flex-1 min-w-0">{option.address}</span>
                       {option.isStarred && (
                         <Star className="h-3.5 w-3.5 shrink-0 fill-yellow-400 text-yellow-400" />
                       )}
