@@ -1,21 +1,24 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import type { useTrash } from "../../_hooks/useTrash";
 import type { useRetention } from "../../_hooks/useRetention";
 import type { useStorageUsage } from "../../_hooks/useStorageUsage";
+import type { useMailContentStorage } from "../../_hooks/useMailContentStorage";
 
 type DataSectionProps = {
   trash: ReturnType<typeof useTrash>;
   retention: ReturnType<typeof useRetention>;
   storageUsage: ReturnType<typeof useStorageUsage>;
+  mailContentStorage: ReturnType<typeof useMailContentStorage>;
 };
 
 function formatBytes(bytes: number): string {
@@ -26,7 +29,7 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
-export function DataSection({ trash, retention, storageUsage }: DataSectionProps) {
+export function DataSection({ trash, retention, storageUsage, mailContentStorage }: DataSectionProps) {
   const t = useTranslations("settings");
 
   const {
@@ -52,6 +55,15 @@ export function DataSection({ trash, retention, storageUsage }: DataSectionProps
     savingRetention,
     handleSaveRetention,
   } = retention;
+
+  const {
+    storeRawAndAttachments,
+    setStoreRawAndAttachments,
+    loadingMailContentStorage,
+    savingMailContentStorage,
+    mailContentStorageDirty,
+    handleSaveMailContentStorage,
+  } = mailContentStorage;
 
   const storage = storageUsage.data;
 
@@ -91,6 +103,42 @@ export function DataSection({ trash, retention, storageUsage }: DataSectionProps
                   : storage.quota.maxStorageFiles}
             </span>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("mailContentStorage.title")}</CardTitle>
+          <CardDescription>{t("mailContentStorage.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-4 rounded-md border p-3">
+            <div className="space-y-1">
+              <Label htmlFor="mail-content-storage-toggle">{t("mailContentStorage.toggleLabel")}</Label>
+              <p className="text-xs text-muted-foreground">{t("mailContentStorage.help")}</p>
+            </div>
+            <Switch
+              id="mail-content-storage-toggle"
+              checked={storeRawAndAttachments}
+              onCheckedChange={setStoreRawAndAttachments}
+              disabled={loadingMailContentStorage || savingMailContentStorage}
+            />
+          </div>
+
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="h-4 w-4" />
+              <span>{t("mailContentStorage.warningTitle")}</span>
+            </div>
+            <p className="mt-1">{t("mailContentStorage.warningDescription")}</p>
+          </div>
+
+          <Button
+            onClick={handleSaveMailContentStorage}
+            disabled={loadingMailContentStorage || savingMailContentStorage || !mailContentStorageDirty}
+          >
+            {savingMailContentStorage ? t("mailContentStorage.actions.saving") : t("mailContentStorage.actions.save")}
+          </Button>
         </CardContent>
       </Card>
 

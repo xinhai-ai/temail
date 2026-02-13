@@ -237,7 +237,13 @@ async function processMessage(
     : parsedRecipients.filter((addr) => addr.endsWith(`@${domain.name.toLowerCase()}`));
 
   let personalMailbox:
-    | { id: string; userId: string; address: string; archivedAt: Date | null }
+    | {
+        id: string;
+        userId: string;
+        address: string;
+        archivedAt: Date | null;
+        user: { storeRawAndAttachments: boolean };
+      }
     | null = null;
   if (isPersonalDomain) {
     personalMailbox = await prisma.mailbox.findFirst({
@@ -246,7 +252,13 @@ async function processMessage(
         kind: "PERSONAL_IMAP",
         status: "ACTIVE",
       },
-      select: { id: true, userId: true, address: true, archivedAt: true },
+      select: {
+        id: true,
+        userId: true,
+        address: true,
+        archivedAt: true,
+        user: { select: { storeRawAndAttachments: true } },
+      },
     });
     if (!personalMailbox) {
       return { processed: false };
@@ -275,7 +287,13 @@ async function processMessage(
       ? personalMailbox
       : await prisma.mailbox.findFirst({
           where: { address: toAddress, domainId: domain.id, status: "ACTIVE" },
-          select: { id: true, userId: true, address: true, archivedAt: true },
+          select: {
+            id: true,
+            userId: true,
+            address: true,
+            archivedAt: true,
+            user: { select: { storeRawAndAttachments: true } },
+          },
         });
 
     if (!mailbox && !isPersonalDomain && domain.inboundPolicy === "KNOWN_ONLY") {
@@ -284,23 +302,31 @@ async function processMessage(
 
     // Generate a unique ID for file storage (used for both InboundEmail and Email)
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const shouldStoreRawAndAttachmentsForMailbox = mailbox?.user.storeRawAndAttachments ?? true;
 
     const maxAttachmentSize = getMaxAttachmentSize();
-    const predictedRawBytes = raw ? Buffer.byteLength(raw, "utf8") : 0;
-    const predictedAttachmentStats = (parsed.attachments || []).reduce(
-      (acc, attachment) => {
-        if (!attachment.content) return acc;
-        const size = Math.max(0, attachment.size || attachment.content.length || 0);
-        if (size > maxAttachmentSize) return acc;
-        acc.bytes += size;
-        acc.files += 1;
-        return acc;
-      },
-      { bytes: 0, files: 0 }
-    );
+    const predictedRawBytes =
+      shouldStoreRawAndAttachmentsForMailbox && raw ? Buffer.byteLength(raw, "utf8") : 0;
+    const predictedAttachmentStats = shouldStoreRawAndAttachmentsForMailbox
+      ? (parsed.attachments || []).reduce(
+          (acc, attachment) => {
+            if (!attachment.content) return acc;
+            const size = Math.max(0, attachment.size || attachment.content.length || 0);
+            if (size > maxAttachmentSize) return acc;
+            acc.bytes += size;
+            acc.files += 1;
+            return acc;
+          },
+          { bytes: 0, files: 0 }
+        )
+      : { bytes: 0, files: 0 };
 
     let storageAllowed = true;
-    if (mailbox && (predictedRawBytes > 0 || predictedAttachmentStats.files > 0)) {
+    if (
+      shouldStoreRawAndAttachmentsForMailbox &&
+      mailbox &&
+      (predictedRawBytes > 0 || predictedAttachmentStats.files > 0)
+    ) {
       const check = await canStoreForUser({
         userId: mailbox.userId,
         additionalBytes: predictedRawBytes + predictedAttachmentStats.bytes,
@@ -308,6 +334,7 @@ async function processMessage(
       });
       storageAllowed = check.allowed;
     }
+    const shouldPersistMailContent = shouldStoreRawAndAttachmentsForMailbox && storageAllowed;
 
     const activeStorageBackend = await getActiveStorageBackend();
     const storageBackend = toStoredFileBackendMarker(activeStorageBackend);
@@ -316,7 +343,7 @@ async function processMessage(
     // Save raw content to file
     let rawContentPath: string | undefined;
     let rawStorageBackend: StoredFileBackendMarker | undefined;
-    if (raw && storageAllowed) {
+    if (raw && shouldPersistMailContent) {
       try {
         rawContentPath = await saveRawContent(tempId, raw, receivedAt, storage);
         rawStorageBackend = storageBackend;
@@ -363,7 +390,7 @@ async function processMessage(
     }
 
     // Process attachments
-    const attachmentRecords = storageAllowed
+    const attachmentRecords = shouldPersistMailContent
       ? await processAttachments(
           parsed.attachments || [],
           tempId,
@@ -393,7 +420,7 @@ async function processMessage(
           rawStorageBackend,
           storageBytes,
           storageFiles,
-          storageTruncated: !storageAllowed,
+          storageTruncated: shouldStoreRawAndAttachmentsForMailbox && !storageAllowed,
           mailboxId: mailbox.id,
           receivedAt,
           ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),

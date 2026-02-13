@@ -12,6 +12,7 @@ import { useApiKeys } from "./_hooks/useApiKeys";
 import { useTrash } from "./_hooks/useTrash";
 import { useRetention } from "./_hooks/useRetention";
 import { useStorageUsage } from "./_hooks/useStorageUsage";
+import { useMailContentStorage } from "./_hooks/useMailContentStorage";
 import { AccountSection } from "./_components/sections/AccountSection";
 import { SecuritySection } from "./_components/sections/SecuritySection";
 import { ApiSection } from "./_components/sections/ApiSection";
@@ -35,6 +36,7 @@ export default function SettingsPage() {
   const trash = useTrash();
   const retention = useRetention();
   const storageUsage = useStorageUsage();
+  const mailContentStorage = useMailContentStorage();
 
   // Navigation items
   const navItems = useMemo<SettingsNavItem[]>(
@@ -65,7 +67,14 @@ export default function SettingsPage() {
 
         {activeSection === "api" && <ApiSection apiKeys={apiKeys} />}
 
-        {activeSection === "data" && <DataSection trash={trash} retention={retention} storageUsage={storageUsage} />}
+        {activeSection === "data" && (
+          <DataSection
+            trash={trash}
+            retention={retention}
+            storageUsage={storageUsage}
+            mailContentStorage={mailContentStorage}
+          />
+        )}
 
         {activeSection === "appearance" && <AppearanceSection />}
 

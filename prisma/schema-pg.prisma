@@ -74,6 +74,7 @@ model User {
   emailExpireAction RetentionAction @default(ARCHIVE)
   maxStorageMb  Int?
   maxStorageFiles Int?
+  storeRawAndAttachments Boolean @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

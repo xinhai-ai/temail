@@ -14,6 +14,7 @@ const patchSchema = z.object({
     .max(80, "Name is too long")
     .nullable()
     .optional(),
+  storeRawAndAttachments: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -27,6 +28,7 @@ export async function GET() {
     select: {
       email: true,
       name: true,
+      storeRawAndAttachments: true,
       role: true,
       createdAt: true,
       password: true,
@@ -44,6 +46,7 @@ export async function GET() {
   return NextResponse.json({
     email: user.email,
     name: user.name,
+    storeRawAndAttachments: user.storeRawAndAttachments,
     role: user.role,
     createdAt: user.createdAt,
     authSources: computeAuthSources({ hasPassword, oauthProviders }),
@@ -72,13 +75,26 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const data = patchSchema.parse(bodyResult.data);
-    const nextName = typeof data.name === "string" ? data.name.trim() : data.name;
-    const name = nextName ? nextName : null;
+    const updateData: {
+      name?: string | null;
+      storeRawAndAttachments?: boolean;
+    } = {};
+
+    if (data.name !== undefined) {
+      const nextName = typeof data.name === "string" ? data.name.trim() : data.name;
+      updateData.name = nextName ? nextName : null;
+    }
+    if (typeof data.storeRawAndAttachments === "boolean") {
+      updateData.storeRawAndAttachments = data.storeRawAndAttachments;
+    }
+    if (!("name" in updateData) && !("storeRawAndAttachments" in updateData)) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
 
     const updated = await prisma.user.update({
       where: { id: session.user.id },
-      data: { name },
-      select: { email: true, name: true },
+      data: updateData,
+      select: { email: true, name: true, storeRawAndAttachments: true },
     });
 
     try {
@@ -89,7 +105,10 @@ export async function PATCH(request: NextRequest) {
           level: "INFO",
           action: "USER_UPDATE",
           message: "User updated profile",
-          metadata: JSON.stringify({ userId: session.user.id }),
+          metadata: JSON.stringify({
+            userId: session.user.id,
+            updatedFields: Object.keys(updateData),
+          }),
           ip: ip || null,
           userAgent: userAgent || null,
           userId: session.user.id,

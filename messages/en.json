@@ -2042,6 +2042,18 @@
       "quotaSpace": "Space quota",
       "quotaFiles": "File quota"
     },
+    "mailContentStorage": {
+      "title": "Raw & Attachment Storage",
+      "description": "Control whether raw emails and attachments are stored on server or S3.",
+      "toggleLabel": "Store raw emails and attachments",
+      "help": "Enabled by default. When disabled, new mail keeps parsed fields like subject/body only.",
+      "warningTitle": "Features become unavailable when disabled",
+      "warningDescription": "You will not be able to view raw source, download attachments, or check DKIM (DMIK) status for new emails.",
+      "actions": {
+        "saving": "Saving...",
+        "save": "Save storage setting"
+      }
+    },
     "about": {
       "title": "About",
       "description": "Version information and project links.",
@@ -2073,6 +2085,7 @@
       "retentionSaved": "Retention settings saved",
       "saveFailed": "Failed to save",
       "trashSaved": "Trash settings saved",
+      "mailContentStorageSaved": "Raw and attachment storage setting saved",
       "otpSetupFailed": "Failed to set up OTP",
       "otpSetupCreated": "OTP setup created. Please confirm with a code.",
       "otpCodeRequired": "Please enter a code",

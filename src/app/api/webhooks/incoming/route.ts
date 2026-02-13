@@ -217,7 +217,13 @@ export async function POST(request: NextRequest) {
         domainId: webhookConfig.domainId,
         status: "ACTIVE",
       },
-      select: { id: true, userId: true, address: true, archivedAt: true },
+      select: {
+        id: true,
+        userId: true,
+        address: true,
+        archivedAt: true,
+        user: { select: { storeRawAndAttachments: true } },
+      },
     });
 
     if (!mailbox && webhookConfig.domain.inboundPolicy === "KNOWN_ONLY") {
@@ -280,25 +286,33 @@ export async function POST(request: NextRequest) {
 
     // Generate a unique ID for file storage
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const shouldStoreRawAndAttachmentsForMailbox = mailbox?.user.storeRawAndAttachments ?? true;
 
     const maxAttachmentSize = getMaxAttachmentSize();
-    const predictedRawBytes = rawContent ? Buffer.byteLength(rawContent, "utf8") : 0;
-    const predictedAttachmentStats = parsedRaw
-      ? (parsedRaw.attachments || []).reduce(
-          (acc, attachment) => {
-            if (!attachment.content) return acc;
-            const size = Math.max(0, attachment.size || attachment.content.length || 0);
-            if (size > maxAttachmentSize) return acc;
-            acc.bytes += size;
-            acc.files += 1;
-            return acc;
-          },
-          { bytes: 0, files: 0 }
-        )
-      : { bytes: 0, files: 0 };
+    const predictedRawBytes =
+      shouldStoreRawAndAttachmentsForMailbox && rawContent ? Buffer.byteLength(rawContent, "utf8") : 0;
+    const predictedAttachmentStats =
+      shouldStoreRawAndAttachmentsForMailbox && parsedRaw
+        ? (parsedRaw.attachments || []).reduce(
+            (acc, attachment) => {
+              if (!attachment.content) return acc;
+              const size = Math.max(0, attachment.size || attachment.content.length || 0);
+              if (size > maxAttachmentSize) return acc;
+              acc.bytes += size;
+              acc.files += 1;
+              return acc;
+            },
+            { bytes: 0, files: 0 }
+          )
+        : { bytes: 0, files: 0 };
 
     let storageAllowed = true;
-    if (mailbox && !vercelMode && (predictedRawBytes > 0 || predictedAttachmentStats.files > 0)) {
+    if (
+      shouldStoreRawAndAttachmentsForMailbox &&
+      mailbox &&
+      !vercelMode &&
+      (predictedRawBytes > 0 || predictedAttachmentStats.files > 0)
+    ) {
       const check = await canStoreForUser({
         userId: mailbox.userId,
         additionalBytes: predictedRawBytes + predictedAttachmentStats.bytes,
@@ -306,6 +320,7 @@ export async function POST(request: NextRequest) {
       });
       storageAllowed = check.allowed;
     }
+    const shouldPersistMailContent = shouldStoreRawAndAttachmentsForMailbox && storageAllowed;
 
     const activeStorageBackend = vercelMode ? "local" : await getActiveStorageBackend();
     const storageBackend = toStoredFileBackendMarker(activeStorageBackend);
@@ -314,7 +329,7 @@ export async function POST(request: NextRequest) {
     // Save raw content to file
     let rawContentPath: string | undefined;
     let rawStorageBackend: StoredFileBackendMarker | undefined;
-    if (storageAllowed && rawContent && !vercelMode) {
+    if (shouldPersistMailContent && rawContent && !vercelMode) {
       try {
         rawContentPath = generateRawContentPath(tempId, receivedAt);
         await storage.write(rawContentPath, rawContent);
@@ -368,7 +383,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const attachmentRecords = storageAllowed
+    const attachmentRecords = shouldPersistMailContent
       ? parsedRaw
         ? vercelMode
           ? []
@@ -395,7 +410,7 @@ export async function POST(request: NextRequest) {
           rawStorageBackend,
           storageBytes,
           storageFiles,
-          storageTruncated: !storageAllowed,
+          storageTruncated: shouldStoreRawAndAttachmentsForMailbox && !storageAllowed,
           mailboxId: mailbox.id,
           receivedAt,
           ...(parsedHeaders.length ? { headers: { create: parsedHeaders } } : {}),

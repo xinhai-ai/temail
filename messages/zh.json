@@ -2041,6 +2041,18 @@
       "quotaSpace": "空间上限",
       "quotaFiles": "文件上限"
     },
+    "mailContentStorage": {
+      "title": "原文与附件存储",
+      "description": "控制是否在服务器或 S3 中保存邮件原文与附件。",
+      "toggleLabel": "保存邮件原文与附件",
+      "help": "默认开启。关闭后新邮件将只保留解析后的主题和正文等字段。",
+      "warningTitle": "关闭后功能受限",
+      "warningDescription": "关闭后，你将无法查看邮件原文、下载附件、查看 DKIM（DMIK）校验结果等依赖原始内容的功能。",
+      "actions": {
+        "saving": "保存中...",
+        "save": "保存存储设置"
+      }
+    },
     "about": {
       "title": "关于",
       "description": "版本信息与项目链接。",
@@ -2072,6 +2084,7 @@
       "retentionSaved": "生命周期设置已保存",
       "saveFailed": "保存失败",
       "trashSaved": "回收站设置已保存",
+      "mailContentStorageSaved": "原文与附件存储设置已保存",
       "otpSetupFailed": "设置 OTP 失败",
       "otpSetupCreated": "OTP 设置已创建，请输入验证码确认。",
       "otpCodeRequired": "请输入验证码",
