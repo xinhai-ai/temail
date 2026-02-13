@@ -14,6 +14,7 @@ import {
   type StorageProvider,
 } from "@/lib/storage";
 import { canStoreForUser } from "@/services/storage-quota";
+import { getUserMailContentStoragePreference } from "@/services/user-mail-content-storage";
 
 type PersonalImapAccountForSync = Pick<
   PersonalImapAccount,
@@ -242,7 +243,6 @@ async function processMessage(
         userId: string;
         address: string;
         archivedAt: Date | null;
-        user: { storeRawAndAttachments: boolean };
       }
     | null = null;
   if (isPersonalDomain) {
@@ -257,7 +257,6 @@ async function processMessage(
         userId: true,
         address: true,
         archivedAt: true,
-        user: { select: { storeRawAndAttachments: true } },
       },
     });
     if (!personalMailbox) {
@@ -279,6 +278,7 @@ async function processMessage(
   const htmlBody = typeof parsed.html === "string" ? parsed.html : undefined;
 
   let processedAny = false;
+  const preferenceByUserId = new Map<string, boolean>();
 
   const targetAddresses = isPersonalDomain ? [personalMailbox!.address] : recipients;
 
@@ -292,7 +292,6 @@ async function processMessage(
             userId: true,
             address: true,
             archivedAt: true,
-            user: { select: { storeRawAndAttachments: true } },
           },
         });
 
@@ -302,7 +301,16 @@ async function processMessage(
 
     // Generate a unique ID for file storage (used for both InboundEmail and Email)
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const shouldStoreRawAndAttachmentsForMailbox = mailbox?.user.storeRawAndAttachments ?? true;
+    let shouldStoreRawAndAttachmentsForMailbox = true;
+    if (mailbox) {
+      const cachedPreference = preferenceByUserId.get(mailbox.userId);
+      if (typeof cachedPreference === "boolean") {
+        shouldStoreRawAndAttachmentsForMailbox = cachedPreference;
+      } else {
+        shouldStoreRawAndAttachmentsForMailbox = await getUserMailContentStoragePreference(mailbox.userId);
+        preferenceByUserId.set(mailbox.userId, shouldStoreRawAndAttachmentsForMailbox);
+      }
+    }
 
     const maxAttachmentSize = getMaxAttachmentSize();
     const predictedRawBytes =

@@ -20,6 +20,7 @@ import {
 import { simpleParser, type Attachment } from "mailparser";
 import { isVercelDeployment } from "@/lib/deployment/server";
 import { canStoreForUser } from "@/services/storage-quota";
+import { getUserMailContentStoragePreference } from "@/services/user-mail-content-storage";
 
 function extractEmailAddress(value: unknown) {
   if (typeof value !== "string") return null;
@@ -222,7 +223,6 @@ export async function POST(request: NextRequest) {
         userId: true,
         address: true,
         archivedAt: true,
-        user: { select: { storeRawAndAttachments: true } },
       },
     });
 
@@ -286,7 +286,9 @@ export async function POST(request: NextRequest) {
 
     // Generate a unique ID for file storage
     const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const shouldStoreRawAndAttachmentsForMailbox = mailbox?.user.storeRawAndAttachments ?? true;
+    const shouldStoreRawAndAttachmentsForMailbox = mailbox
+      ? await getUserMailContentStoragePreference(mailbox.userId)
+      : true;
 
     const maxAttachmentSize = getMaxAttachmentSize();
     const predictedRawBytes =

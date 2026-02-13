@@ -6,6 +6,7 @@ import { readJsonBody } from "@/lib/request";
 import { computeAuthSources, uniqueOAuthProviders } from "@/lib/auth-sources";
 import { getClientIp } from "@/lib/api-rate-limit";
 import { rateLimitByPolicy } from "@/services/rate-limit-settings";
+import { setUserMailContentStoragePreferenceCache } from "@/services/user-mail-content-storage";
 
 const patchSchema = z.object({
   name: z
@@ -96,6 +97,7 @@ export async function PATCH(request: NextRequest) {
       data: updateData,
       select: { email: true, name: true, storeRawAndAttachments: true },
     });
+    setUserMailContentStoragePreferenceCache(session.user.id, updated.storeRawAndAttachments);
 
     try {
       const ip = getClientIp(request);
