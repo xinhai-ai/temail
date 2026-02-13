@@ -2115,7 +2115,8 @@
     "searchPlaceholder": "Search trash...",
     "bulk": {
       "restore": "Restore ({count})",
-      "purge": "Delete Permanently"
+      "purge": "Delete Permanently",
+      "clearAll": "Clear Trash"
     },
     "empty": {
       "title": "Trash is empty",
@@ -2137,14 +2138,17 @@
     },
     "confirm": {
       "purgeOne": "Delete this email permanently? This cannot be undone.",
-      "purgeBulk": "Delete {count} email(s) permanently? This cannot be undone."
+      "purgeBulk": "Delete {count} email(s) permanently? This cannot be undone.",
+      "clearAll": "Clear all emails in trash permanently? This cannot be undone."
     },
     "toast": {
       "loadFailed": "Failed to load trash",
       "restoreFailed": "Failed to restore",
       "restored": "Restored",
       "purgeFailed": "Failed to delete permanently",
-      "purged": "Deleted permanently"
+      "purged": "Deleted permanently",
+      "clearFailed": "Failed to clear trash",
+      "cleared": "Cleared {count} email(s) from trash"
     }
   },
   "domains": {

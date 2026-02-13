@@ -2114,7 +2114,8 @@
     "searchPlaceholder": "搜索回收站...",
     "bulk": {
       "restore": "恢复（{count}）",
-      "purge": "永久删除"
+      "purge": "永久删除",
+      "clearAll": "清空回收站"
     },
     "empty": {
       "title": "回收站为空",
@@ -2136,14 +2137,17 @@
     },
     "confirm": {
       "purgeOne": "确定永久删除这封邮件吗？此操作无法撤销。",
-      "purgeBulk": "确定永久删除 {count} 封邮件吗？此操作无法撤销。"
+      "purgeBulk": "确定永久删除 {count} 封邮件吗？此操作无法撤销。",
+      "clearAll": "确定清空回收站中的全部邮件吗？此操作无法撤销。"
     },
     "toast": {
       "loadFailed": "加载回收站失败",
       "restoreFailed": "恢复失败",
       "restored": "已恢复",
       "purgeFailed": "永久删除失败",
-      "purged": "已永久删除"
+      "purged": "已永久删除",
+      "clearFailed": "清空回收站失败",
+      "cleared": "已清空 {count} 封回收站邮件"
     }
   },
   "domains": {

@@ -26,7 +26,8 @@ type TrashEmail = {
 
 type PendingTrashAction =
   | { scope: "bulk"; type: "restore" | "purge" }
-  | { scope: "single"; id: string; type: "restore" | "purge" };
+  | { scope: "single"; id: string; type: "restore" | "purge" }
+  | { scope: "trash"; type: "clear" };
 
 export default function TrashPage() {
   const locale = useLocale();
@@ -225,10 +226,38 @@ export default function TrashPage() {
     }
   };
 
+  const clearTrash = async () => {
+    if (!confirm(t("confirm.clearAll"))) return;
+    if (!beginAction({ scope: "trash", type: "clear" })) return;
+    try {
+      const res = await fetch("/api/trash/clear", { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || t("toast.clearFailed"));
+        return;
+      }
+
+      const count = Number(data?.count ?? 0);
+      toast.success(t("toast.cleared", { count }));
+      setSelectedIds([]);
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        await fetchEmails().catch(() => {
+          toast.error(t("toast.loadFailed"));
+          setLoading(false);
+        });
+      }
+    } finally {
+      endAction();
+    }
+  };
+
   const allOnPageSelected = emails.length > 0 && emails.every((e) => selectedSet.has(e.id));
   const someOnPageSelected = emails.some((e) => selectedSet.has(e.id));
   const bulkRestoreLoading = pendingAction?.scope === "bulk" && pendingAction.type === "restore";
   const bulkPurgeLoading = pendingAction?.scope === "bulk" && pendingAction.type === "purge";
+  const clearTrashLoading = pendingAction?.scope === "trash" && pendingAction.type === "clear";
 
   const isSingleLoading = (id: string, type: "restore" | "purge") => {
     return pendingAction?.scope === "single" && pendingAction.id === id && pendingAction.type === type;
@@ -256,6 +285,10 @@ export default function TrashPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 justify-end">
+          <Button variant="destructive" disabled={loading || emails.length === 0 || actionInProgress} onClick={clearTrash}>
+            {clearTrashLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            {t("bulk.clearAll")}
+          </Button>
           <Button variant="outline" disabled={selectedIds.length === 0 || actionInProgress} onClick={bulkRestore}>
             {bulkRestoreLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
             {t("bulk.restore", { count: selectedIds.length })}
