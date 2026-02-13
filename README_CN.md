@@ -584,6 +584,18 @@ TELEGRAM_BOT_USERNAME="your_bot_username"
 NEXT_PUBLIC_TELEGRAM_BOT_USERNAME="your_bot_username"
 ```
 
+#### 可选：统一缓存（memory / redis）
+
+```bash
+# 默认 memory
+CACHE_MODE="memory"
+CACHE_PREFIX="temail"
+CACHE_MEMORY_MAX_ENTRIES=10000
+
+# 当 CACHE_MODE=redis 时必填
+CACHE_REDIS_URL="redis://localhost:6379"
+```
+
 ---
 
 ## API 参考

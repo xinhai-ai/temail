@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { getCacheNamespace } from "@/lib/cache";
 
 export const runtime = "nodejs";
 
@@ -13,20 +14,24 @@ type CacheEntry =
       buffer: Buffer;
       contentType: string;
       provider: Provider;
-      expiresAt: number;
     }
-  | {
-      ok: false;
-      expiresAt: number;
-    };
+  | { ok: false };
 
-const CACHE_MAX_ENTRIES = 512;
+type CachedEntry =
+  | {
+      ok: true;
+      contentType: string;
+      provider: Provider;
+      bodyBase64: string;
+    }
+  | { ok: false };
+
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const NEGATIVE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_ICON_BYTES = 256 * 1024;
 const FETCH_TIMEOUT_MS = 5_000;
 
-const faviconCache = new Map<string, CacheEntry>();
+const faviconCache = getCacheNamespace("favicons");
 const inflight = new Map<string, Promise<CacheEntry>>();
 
 const querySchema = z.object({
@@ -44,26 +49,41 @@ function normalizeDomain(input: string): string | null {
   return value;
 }
 
-function getCache(key: string): CacheEntry | null {
-  const entry = faviconCache.get(key);
+async function getCache(key: string): Promise<CacheEntry | null> {
+  const entry = await faviconCache.getJson<CachedEntry>(key);
   if (!entry) return null;
-  if (entry.expiresAt <= Date.now()) {
-    faviconCache.delete(key);
+  if (!entry.ok) return { ok: false };
+
+  const buffer = Buffer.from(entry.bodyBase64, "base64");
+  if (buffer.length === 0 || buffer.length > MAX_ICON_BYTES) {
+    await faviconCache.del(key);
     return null;
   }
-  // LRU refresh
-  faviconCache.delete(key);
-  faviconCache.set(key, entry);
-  return entry;
+
+  return {
+    ok: true,
+    buffer,
+    contentType: entry.contentType,
+    provider: entry.provider,
+  };
 }
 
-function setCache(key: string, entry: CacheEntry) {
-  faviconCache.set(key, entry);
-  while (faviconCache.size > CACHE_MAX_ENTRIES) {
-    const oldestKey = faviconCache.keys().next().value as string | undefined;
-    if (!oldestKey) break;
-    faviconCache.delete(oldestKey);
+async function setCache(key: string, entry: CacheEntry) {
+  if (!entry.ok) {
+    await faviconCache.setJson(key, entry, { ttlMs: NEGATIVE_CACHE_TTL_MS });
+    return;
   }
+
+  await faviconCache.setJson<CachedEntry>(
+    key,
+    {
+      ok: true,
+      contentType: entry.contentType,
+      provider: entry.provider,
+      bodyBase64: entry.buffer.toString("base64"),
+    },
+    { ttlMs: CACHE_TTL_MS }
+  );
 }
 
 function buildCacheControl(maxAgeSeconds: number) {
@@ -111,7 +131,6 @@ async function fetchFromProvider(provider: Provider, domain: string, size: numbe
 }
 
 async function resolveFavicon(domain: string, size: number, mode: ProviderMode): Promise<CacheEntry> {
-  const now = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -132,32 +151,28 @@ async function resolveFavicon(domain: string, size: number, mode: ProviderMode):
           buffer: result.buffer,
           contentType: result.contentType,
           provider,
-          expiresAt: now + CACHE_TTL_MS,
         };
       } catch {
         // ignore and fall back
       }
     }
 
-    return {
-      ok: false,
-      expiresAt: now + NEGATIVE_CACHE_TTL_MS,
-    };
+    return { ok: false };
   } finally {
     clearTimeout(timeout);
   }
 }
 
 async function getOrFetch(key: string, fetcher: () => Promise<CacheEntry>) {
-  const cached = getCache(key);
+  const cached = await getCache(key);
   if (cached) return cached;
 
   const existing = inflight.get(key);
   if (existing) return existing;
 
   const promise = fetcher()
-    .then((entry) => {
-      setCache(key, entry);
+    .then(async (entry) => {
+      await setCache(key, entry);
       return entry;
     })
     .finally(() => {

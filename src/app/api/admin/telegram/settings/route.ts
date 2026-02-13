@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest) {
     )
   );
 
-  for (const item of updates) clearSystemSettingCache(item.key);
+  await Promise.all(updates.map((item) => clearSystemSettingCache(item.key)));
 
   return NextResponse.json({ success: true });
 }

@@ -1,12 +1,12 @@
 import prisma from "@/lib/prisma";
+import { getCacheNamespace } from "@/lib/cache";
 
 type CacheEntry = {
   value: boolean;
-  expiresAt: number;
 };
 
 const DEFAULT_TTL_MS = 60_000;
-const cache = new Map<string, CacheEntry>();
+const cache = getCacheNamespace("user-mail-content-storage");
 const inFlight = new Map<string, Promise<boolean>>();
 const versions = new Map<string, number>();
 
@@ -32,9 +32,8 @@ export async function getUserMailContentStoragePreference(userId: string, option
   if (!id) return true;
 
   const ttlMs = normalizeTtl(options?.ttlMs);
-  const now = Date.now();
-  const cached = cache.get(id);
-  if (cached && cached.expiresAt > now) {
+  const cached = await cache.getJson<CacheEntry>(id);
+  if (cached) {
     return cached.value;
   }
 
@@ -49,10 +48,10 @@ export async function getUserMailContentStoragePreference(userId: string, option
       where: { id },
       select: { storeRawAndAttachments: true },
     })
-    .then((row) => {
+    .then(async (row) => {
       const value = row?.storeRawAndAttachments ?? true;
       if (currentVersion(id) === requestVersion) {
-        cache.set(id, { value, expiresAt: Date.now() + ttlMs });
+        await cache.setJson(id, { value }, { ttlMs });
       }
       return value;
     })
@@ -66,18 +65,22 @@ export async function getUserMailContentStoragePreference(userId: string, option
   return promise;
 }
 
-export function setUserMailContentStoragePreferenceCache(userId: string, value: boolean, options?: { ttlMs?: number }) {
+export async function setUserMailContentStoragePreferenceCache(
+  userId: string,
+  value: boolean,
+  options?: { ttlMs?: number }
+) {
   const id = userId.trim();
   if (!id) return;
 
   nextVersion(id);
-  cache.set(id, { value, expiresAt: Date.now() + normalizeTtl(options?.ttlMs) });
+  await cache.setJson(id, { value }, { ttlMs: normalizeTtl(options?.ttlMs) });
   inFlight.delete(id);
 }
 
-export function clearUserMailContentStoragePreferenceCache(userId?: string) {
+export async function clearUserMailContentStoragePreferenceCache(userId?: string) {
   if (!userId) {
-    cache.clear();
+    await cache.clear();
     inFlight.clear();
     versions.clear();
     return;
@@ -87,6 +90,6 @@ export function clearUserMailContentStoragePreferenceCache(userId?: string) {
   if (!id) return;
 
   nextVersion(id);
-  cache.delete(id);
+  await cache.del(id);
   inFlight.delete(id);
 }

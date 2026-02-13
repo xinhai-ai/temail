@@ -292,9 +292,7 @@ export async function PUT(request: NextRequest) {
       )
     );
 
-    for (const item of data) {
-      clearSystemSettingCache(item.key);
-    }
+    await Promise.all(data.map((item) => clearSystemSettingCache(item.key)));
 
     const hasStorageSettingUpdated = data.some((item) => item.key.startsWith("storage_"));
     if (hasStorageSettingUpdated) {

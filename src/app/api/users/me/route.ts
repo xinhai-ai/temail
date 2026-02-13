@@ -97,7 +97,7 @@ export async function PATCH(request: NextRequest) {
       data: updateData,
       select: { email: true, name: true, storeRawAndAttachments: true },
     });
-    setUserMailContentStoragePreferenceCache(session.user.id, updated.storeRawAndAttachments);
+    await setUserMailContentStoragePreferenceCache(session.user.id, updated.storeRawAndAttachments);
 
     try {
       const ip = getClientIp(request);

@@ -35,8 +35,8 @@ async function saveS3TestResult(ok: boolean): Promise<string> {
       create: { key: "storage_s3_last_test_at", value: testedAt },
     }),
   ]);
-  clearSystemSettingCache("storage_s3_last_test_ok");
-  clearSystemSettingCache("storage_s3_last_test_at");
+  await clearSystemSettingCache("storage_s3_last_test_ok");
+  await clearSystemSettingCache("storage_s3_last_test_at");
   return testedAt;
 }
 

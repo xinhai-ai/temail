@@ -584,6 +584,18 @@ TELEGRAM_BOT_USERNAME="your_bot_username"
 NEXT_PUBLIC_TELEGRAM_BOT_USERNAME="your_bot_username"
 ```
 
+#### Optional: Unified Cache (memory / redis)
+
+```bash
+# Default is memory
+CACHE_MODE="memory"
+CACHE_PREFIX="temail"
+CACHE_MEMORY_MAX_ENTRIES=10000
+
+# Required when CACHE_MODE=redis
+CACHE_REDIS_URL="redis://localhost:6379"
+```
+
 ---
 
 ## API Reference

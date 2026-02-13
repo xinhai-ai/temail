@@ -2,6 +2,7 @@ import "server-only";
 
 import { lookup } from "node:dns/promises";
 import net from "node:net";
+import { getCacheNamespace } from "@/lib/cache";
 
 type EgressUrlValidationSuccess = { ok: true; url: URL };
 type EgressUrlValidationFailure = { ok: false; error: string };
@@ -10,10 +11,7 @@ export type EgressUrlValidationResult =
   | EgressUrlValidationFailure;
 
 const HOSTNAME_CACHE_TTL_MS = 5 * 60_000;
-const hostnameCache = new Map<
-  string,
-  { ok: boolean; reason?: string; expiresAt: number }
->();
+const hostnameCache = getCacheNamespace("egress-hostname");
 
 function isPrivateIpv4(ip: string) {
   const parts = ip.split(".").map((part) => Number(part));
@@ -80,44 +78,63 @@ function isPrivateIpAddress(ip: string) {
 }
 
 async function isAllowedHostname(hostname: string): Promise<{ ok: boolean; reason?: string }> {
-  const now = Date.now();
-  const cached = hostnameCache.get(hostname);
-  if (cached && cached.expiresAt > now) {
-    return { ok: cached.ok, reason: cached.reason };
+  const normalizedHostname = hostname.toLowerCase();
+  const cached = await hostnameCache.getJson<{ ok: boolean; reason?: string }>(normalizedHostname);
+  if (cached) {
+    return cached;
   }
 
-  const lowered = hostname.toLowerCase();
-  if (lowered === "localhost" || lowered.endsWith(".localhost") || lowered.endsWith(".local")) {
-    hostnameCache.set(hostname, { ok: false, reason: "Local hostnames are not allowed", expiresAt: now + HOSTNAME_CACHE_TTL_MS });
+  if (
+    normalizedHostname === "localhost" ||
+    normalizedHostname.endsWith(".localhost") ||
+    normalizedHostname.endsWith(".local")
+  ) {
+    await hostnameCache.setJson(
+      normalizedHostname,
+      { ok: false, reason: "Local hostnames are not allowed" },
+      { ttlMs: HOSTNAME_CACHE_TTL_MS }
+    );
     return { ok: false, reason: "Local hostnames are not allowed" };
   }
 
-  if (net.isIP(lowered)) {
-    const ok = !isPrivateIpAddress(lowered);
+  if (net.isIP(normalizedHostname)) {
+    const ok = !isPrivateIpAddress(normalizedHostname);
     const reason = ok ? undefined : "Private or loopback IPs are not allowed";
-    hostnameCache.set(hostname, { ok, reason, expiresAt: now + HOSTNAME_CACHE_TTL_MS });
+    await hostnameCache.setJson(normalizedHostname, { ok, reason }, { ttlMs: HOSTNAME_CACHE_TTL_MS });
     return { ok, reason };
   }
 
   try {
-    const addresses = await lookup(lowered, { all: true, verbatim: true });
+    const addresses = await lookup(normalizedHostname, { all: true, verbatim: true });
     if (!addresses.length) {
-      hostnameCache.set(hostname, { ok: false, reason: "Hostname did not resolve", expiresAt: now + HOSTNAME_CACHE_TTL_MS });
+      await hostnameCache.setJson(
+        normalizedHostname,
+        { ok: false, reason: "Hostname did not resolve" },
+        { ttlMs: HOSTNAME_CACHE_TTL_MS }
+      );
       return { ok: false, reason: "Hostname did not resolve" };
     }
 
     for (const entry of addresses) {
       if (isPrivateIpAddress(entry.address)) {
-        hostnameCache.set(hostname, { ok: false, reason: "Hostname resolves to a private IP", expiresAt: now + HOSTNAME_CACHE_TTL_MS });
+        await hostnameCache.setJson(
+          normalizedHostname,
+          { ok: false, reason: "Hostname resolves to a private IP" },
+          { ttlMs: HOSTNAME_CACHE_TTL_MS }
+        );
         return { ok: false, reason: "Hostname resolves to a private IP" };
       }
     }
   } catch {
-    hostnameCache.set(hostname, { ok: false, reason: "Hostname resolution failed", expiresAt: now + HOSTNAME_CACHE_TTL_MS });
+    await hostnameCache.setJson(
+      normalizedHostname,
+      { ok: false, reason: "Hostname resolution failed" },
+      { ttlMs: HOSTNAME_CACHE_TTL_MS }
+    );
     return { ok: false, reason: "Hostname resolution failed" };
   }
 
-  hostnameCache.set(hostname, { ok: true, expiresAt: now + HOSTNAME_CACHE_TTL_MS });
+  await hostnameCache.setJson(normalizedHostname, { ok: true }, { ttlMs: HOSTNAME_CACHE_TTL_MS });
   return { ok: true };
 }
 

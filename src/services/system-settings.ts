@@ -1,15 +1,15 @@
 import prisma from "@/lib/prisma";
+import { getCacheNamespace } from "@/lib/cache";
 
-type CacheEntry = { value: string | null; expiresAt: number };
+type CacheEntry = { value: string | null };
 
-const cache = new Map<string, CacheEntry>();
 const DEFAULT_TTL_MS = 30_000;
+const cache = getCacheNamespace("system-settings");
 
 export async function getSystemSettingValue(key: string, options?: { ttlMs?: number }): Promise<string | null> {
   const ttlMs = typeof options?.ttlMs === "number" && options.ttlMs > 0 ? options.ttlMs : DEFAULT_TTL_MS;
-  const now = Date.now();
-  const cached = cache.get(key);
-  if (cached && cached.expiresAt > now) return cached.value;
+  const cached = await cache.getJson<CacheEntry>(key);
+  if (cached) return cached.value;
 
   const row = await prisma.systemSetting.findUnique({
     where: { key },
@@ -17,15 +17,14 @@ export async function getSystemSettingValue(key: string, options?: { ttlMs?: num
   });
 
   const value = row?.value ?? null;
-  cache.set(key, { value, expiresAt: now + ttlMs });
+  await cache.setJson(key, { value }, { ttlMs });
   return value;
 }
 
-export function clearSystemSettingCache(key?: string) {
+export async function clearSystemSettingCache(key?: string) {
   if (!key) {
-    cache.clear();
+    await cache.clear();
     return;
   }
-  cache.delete(key);
+  await cache.del(key);
 }
-

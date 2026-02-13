@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getCacheNamespace } from "@/lib/cache";
 import { verifyDkim, type DkimUiResult } from "@/lib/email/dkim";
 import { isVercelDeployment } from "@/lib/deployment/server";
 
 const DKIM_CACHE_TTL_MS = 5 * 60_000;
-const DKIM_CACHE_MAX_ENTRIES = 500;
-const dkimCache = new Map<string, { expiresAt: number; value: DkimUiResult }>();
+const dkimCache = getCacheNamespace("dkim");
 const dkimInFlight = new Map<string, Promise<DkimUiResult>>();
 
 function buildCacheControl() {
@@ -15,32 +15,13 @@ function buildCacheControl() {
   return `private, max-age=${maxAge}, stale-while-revalidate=${stale}`;
 }
 
-function getCachedDkim(emailId: string): DkimUiResult | null {
-  const now = Date.now();
-  const cached = dkimCache.get(emailId);
-  if (!cached) return null;
-  if (cached.expiresAt <= now) {
-    dkimCache.delete(emailId);
-    return null;
-  }
-  return cached.value;
+async function getCachedDkim(emailId: string): Promise<DkimUiResult | null> {
+  const cached = await dkimCache.getJson<{ value: DkimUiResult }>(emailId);
+  return cached?.value ?? null;
 }
 
-function setCachedDkim(emailId: string, value: DkimUiResult) {
-  const now = Date.now();
-  dkimCache.set(emailId, { expiresAt: now + DKIM_CACHE_TTL_MS, value });
-
-  if (dkimCache.size <= DKIM_CACHE_MAX_ENTRIES) return;
-
-  // Best-effort prune: remove expired entries first, otherwise drop oldest.
-  for (const [key, entry] of dkimCache) {
-    if (entry.expiresAt <= now) dkimCache.delete(key);
-  }
-  while (dkimCache.size > DKIM_CACHE_MAX_ENTRIES) {
-    const firstKey = dkimCache.keys().next().value as string | undefined;
-    if (!firstKey) break;
-    dkimCache.delete(firstKey);
-  }
+async function setCachedDkim(emailId: string, value: DkimUiResult) {
+  await dkimCache.setJson(emailId, { value }, { ttlMs: DKIM_CACHE_TTL_MS });
 }
 
 export async function GET(
@@ -57,7 +38,7 @@ export async function GET(
   }
 
   const { id } = await params;
-  const cached = getCachedDkim(id);
+  const cached = await getCachedDkim(id);
   if (cached) {
     return NextResponse.json(cached, {
       headers: { "Cache-Control": buildCacheControl() },
@@ -90,7 +71,7 @@ export async function GET(
     }
 
     const value = await verifyDkim(email);
-    setCachedDkim(id, value);
+    await setCachedDkim(id, value);
     return value;
   })()
     .finally(() => {
