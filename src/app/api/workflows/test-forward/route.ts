@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { replaceTemplateVariables } from "@/lib/workflow/utils";
 import { readJsonBody } from "@/lib/request";
 import { isVercelDeployment } from "@/lib/deployment/server";
-import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
+import { DEFAULT_EGRESS_TIMEOUT_MS } from "@/lib/egress";
+import { egressFetch } from "@/lib/egress-client";
 
 import { rateLimitByPolicy } from "@/services/rate-limit-settings";
 import { getTelegramBotToken } from "@/services/telegram/bot-api";
@@ -370,11 +371,6 @@ async function testDiscordForward(
     return { success: false, message: "Invalid Discord webhook URL format" };
   }
 
-  const validated = await validateEgressUrl(config.webhookUrl);
-  if (!validated.ok) {
-    return { success: false, message: validated.error };
-  }
-
   const template = config.template || `📧 **Test Email**: ${email.subject}`;
   let body: Record<string, unknown>;
 
@@ -389,11 +385,9 @@ async function testDiscordForward(
   }
 
   try {
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(config.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -431,11 +425,6 @@ async function testSlackForward(
     return { success: false, message: "Invalid Slack webhook URL format" };
   }
 
-  const validated = await validateEgressUrl(config.webhookUrl);
-  if (!validated.ok) {
-    return { success: false, message: validated.error };
-  }
-
   const template = config.template || `📧 *Test Email*: ${email.subject}`;
   let body: Record<string, unknown>;
 
@@ -450,11 +439,9 @@ async function testSlackForward(
   }
 
   try {
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(config.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -487,11 +474,6 @@ async function testWebhookForward(
     return { success: false, message: "Webhook URL is required" };
   }
 
-  const validated = await validateEgressUrl(config.url);
-  if (!validated.ok) {
-    return { success: false, message: validated.error };
-  }
-
   const method = normalizeWebhookMethod(config.method);
   const contentType = config.contentType || "application/json";
   const body = config.bodyTemplate
@@ -504,12 +486,10 @@ async function testWebhookForward(
   };
 
   try {
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(config.url, {
       method,
       headers,
       body: method !== "GET" ? body : undefined,
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     });
 
     return {
@@ -533,22 +513,15 @@ async function testFeishuForward(
     return { success: false, message: "Webhook URL is required" };
   }
 
-  const validated = await validateEgressUrl(config.webhookUrl);
-  if (!validated.ok) {
-    return { success: false, message: validated.error };
-  }
-
   const template =
     (config.template || "").trim() ||
     "📧 Test Email\nFrom: {{email.fromAddress}}\nSubject: {{email.subject}}\n\n{{email.textBody}}";
   const text = `[TEST] ${replaceTemplateVariables(template, vars)}`;
 
   try {
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(config.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
         msg_type: "text",
         content: { text },
@@ -589,10 +562,6 @@ async function testServerchanForward(
   }
 
   const targetUrl = `https://sctapi.ftqq.com/${encodeURIComponent(sendKey)}.send`;
-  const validated = await validateEgressUrl(targetUrl);
-  if (!validated.ok) {
-    return { success: false, message: validated.error };
-  }
 
   const titleTemplate = (config.title || "").trim() || "📧 {{email.subject}}";
   const despTemplate =
@@ -604,12 +573,10 @@ async function testServerchanForward(
   body.set("desp", replaceTemplateVariables(despTemplate, vars));
 
   try {
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(targetUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     });
 
     const data = await response.json().catch(() => null) as

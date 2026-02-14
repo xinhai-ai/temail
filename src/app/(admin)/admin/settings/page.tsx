@@ -69,6 +69,11 @@ export default function AdminSettingsPage() {
   const [registrationInviteCodes, setRegistrationInviteCodes] = useState("");
   const [workflowMaxExecutionLogs, setWorkflowMaxExecutionLogs] = useState("100");
   const [workflowForwardEmailEnabled, setWorkflowForwardEmailEnabled] = useState(true);
+  const [workflowEgressMode, setWorkflowEgressMode] = useState("direct");
+  const [workflowEgressHttpProxyUrl, setWorkflowEgressHttpProxyUrl] = useState("");
+  const [workflowEgressSocksProxyUrl, setWorkflowEgressSocksProxyUrl] = useState("");
+  const [workflowEgressWorkerUrl, setWorkflowEgressWorkerUrl] = useState("");
+  const [workflowEgressWorkerToken, setWorkflowEgressWorkerToken] = useState("");
   const [aiProviderModels, setAiProviderModels] = useState<string[]>([]);
   const [aiProviderModelDraft, setAiProviderModelDraft] = useState("");
   const [aiProviderMigrating, setAiProviderMigrating] = useState(false);
@@ -102,6 +107,11 @@ export default function AdminSettingsPage() {
     setRegistrationInviteCodes(values.registration_invite_codes || "");
     setWorkflowMaxExecutionLogs(values.workflow_max_execution_logs || "100");
     setWorkflowForwardEmailEnabled(values.workflow_forward_email_enabled !== "false");
+    setWorkflowEgressMode((values.workflow_egress_mode || "direct").trim() || "direct");
+    setWorkflowEgressHttpProxyUrl(values.workflow_egress_http_proxy_url || "");
+    setWorkflowEgressSocksProxyUrl(values.workflow_egress_socks_proxy_url || "");
+    setWorkflowEgressWorkerUrl(values.workflow_egress_worker_url || "");
+    setWorkflowEgressWorkerToken(values.workflow_egress_worker_token || "");
     setAiProviderModels(parseAiProviderModels(values.ai_provider_models));
     setAiProviderModelDraft("");
   }, [loading, values]);
@@ -247,6 +257,46 @@ export default function AdminSettingsPage() {
     (v: boolean) => {
       setWorkflowForwardEmailEnabled(v);
       setValue("workflow_forward_email_enabled", v ? "true" : "false");
+    },
+    [setValue]
+  );
+
+  const handleSetWorkflowEgressMode = useCallback(
+    (v: string) => {
+      setWorkflowEgressMode(v);
+      setValue("workflow_egress_mode", v);
+    },
+    [setValue]
+  );
+
+  const handleSetWorkflowEgressHttpProxyUrl = useCallback(
+    (v: string) => {
+      setWorkflowEgressHttpProxyUrl(v);
+      setValue("workflow_egress_http_proxy_url", v);
+    },
+    [setValue]
+  );
+
+  const handleSetWorkflowEgressSocksProxyUrl = useCallback(
+    (v: string) => {
+      setWorkflowEgressSocksProxyUrl(v);
+      setValue("workflow_egress_socks_proxy_url", v);
+    },
+    [setValue]
+  );
+
+  const handleSetWorkflowEgressWorkerUrl = useCallback(
+    (v: string) => {
+      setWorkflowEgressWorkerUrl(v);
+      setValue("workflow_egress_worker_url", v);
+    },
+    [setValue]
+  );
+
+  const handleSetWorkflowEgressWorkerToken = useCallback(
+    (v: string) => {
+      setWorkflowEgressWorkerToken(v);
+      setValue("workflow_egress_worker_token", v);
     },
     [setValue]
   );
@@ -460,6 +510,17 @@ export default function AdminSettingsPage() {
           setWorkflowForwardEmailEnabled={handleSetWorkflowForwardEmailEnabled}
           workflowMaxExecutionLogs={workflowMaxExecutionLogs}
           setWorkflowMaxExecutionLogs={handleSetWorkflowMaxExecutionLogs}
+          workflowEgressMode={workflowEgressMode}
+          setWorkflowEgressMode={handleSetWorkflowEgressMode}
+          workflowEgressHttpProxyUrl={workflowEgressHttpProxyUrl}
+          setWorkflowEgressHttpProxyUrl={handleSetWorkflowEgressHttpProxyUrl}
+          workflowEgressSocksProxyUrl={workflowEgressSocksProxyUrl}
+          setWorkflowEgressSocksProxyUrl={handleSetWorkflowEgressSocksProxyUrl}
+          workflowEgressWorkerUrl={workflowEgressWorkerUrl}
+          setWorkflowEgressWorkerUrl={handleSetWorkflowEgressWorkerUrl}
+          workflowEgressWorkerToken={workflowEgressWorkerToken}
+          setWorkflowEgressWorkerToken={handleSetWorkflowEgressWorkerToken}
+          workflowEgressWorkerTokenMasked={Boolean(maskedValues.workflow_egress_worker_token)}
         />
       )}
 

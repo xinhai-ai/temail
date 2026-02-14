@@ -31,6 +31,50 @@ function normalize(value: string | undefined | null): string {
   return (value || "").trim();
 }
 
+const WORKFLOW_EGRESS_MODES = new Set(["direct", "http_proxy", "socks_proxy", "cloudflare_worker"]);
+
+function parseUrlWithProtocols(raw: string, allowed: Set<string>): URL | null {
+  try {
+    const url = new URL(raw);
+    if (!allowed.has(url.protocol)) return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function validateWorkflowEgressSettings(next: Record<string, string>): string | null {
+  const mode = normalize(next.workflow_egress_mode || "direct").toLowerCase();
+  if (!WORKFLOW_EGRESS_MODES.has(mode)) {
+    return "Invalid workflow egress mode";
+  }
+
+  if (mode === "http_proxy") {
+    const proxyUrl = normalize(next.workflow_egress_http_proxy_url);
+    if (!proxyUrl) return "HTTP proxy URL is required when workflow egress mode is http_proxy";
+    const parsed = parseUrlWithProtocols(proxyUrl, new Set(["http:", "https:"]));
+    if (!parsed) return "workflow_egress_http_proxy_url must be a valid HTTP/HTTPS URL";
+  }
+
+  if (mode === "socks_proxy") {
+    const proxyUrl = normalize(next.workflow_egress_socks_proxy_url);
+    if (!proxyUrl) return "SOCKS proxy URL is required when workflow egress mode is socks_proxy";
+    const parsed = parseUrlWithProtocols(proxyUrl, new Set(["socks:", "socks4:", "socks4a:", "socks5:", "socks5h:"]));
+    if (!parsed) return "workflow_egress_socks_proxy_url must be a valid SOCKS URL";
+  }
+
+  if (mode === "cloudflare_worker") {
+    const workerUrl = normalize(next.workflow_egress_worker_url);
+    const workerToken = normalize(next.workflow_egress_worker_token);
+    if (!workerUrl) return "Cloudflare Worker URL is required when workflow egress mode is cloudflare_worker";
+    if (!workerToken) return "Cloudflare Worker token is required when workflow egress mode is cloudflare_worker";
+    const parsed = parseUrlWithProtocols(workerUrl, new Set(["http:", "https:"]));
+    if (!parsed) return "workflow_egress_worker_url must be a valid HTTP/HTTPS URL";
+  }
+
+  return null;
+}
+
 export async function GET() {
   const session = await getAdminSession();
   if (!session) {
@@ -52,6 +96,7 @@ export async function GET() {
     "auth_provider_github_client_secret",
     "auth_provider_linuxdo_client_secret",
     "storage_s3_secret_access_key",
+    "workflow_egress_worker_token",
   ]);
   const safeSettings = settings.map((row) =>
     secretKeys.has(row.key)
@@ -104,6 +149,11 @@ export async function PUT(request: NextRequest) {
       "storage_s3_base_prefix",
       "storage_s3_last_test_ok",
       "storage_s3_last_test_at",
+      "workflow_egress_mode",
+      "workflow_egress_http_proxy_url",
+      "workflow_egress_socks_proxy_url",
+      "workflow_egress_worker_url",
+      "workflow_egress_worker_token",
     ]);
 
     const wantsValidation = data.some((item) => keysToValidate.has(item.key));
@@ -270,6 +320,14 @@ export async function PUT(request: NextRequest) {
             );
           }
         }
+      }
+
+      const egressError = validateWorkflowEgressSettings(next);
+      if (egressError) {
+        return NextResponse.json(
+          { error: egressError },
+          { status: 400 }
+        );
       }
     }
 

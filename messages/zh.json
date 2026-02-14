@@ -907,6 +907,38 @@
           "label": "启用工作流邮件转发",
           "help": "允许工作流通过 SMTP 转发邮件。"
         },
+        "egress": {
+          "mode": {
+            "label": "Webhook 出口模式",
+            "help": "控制工作流中各类 webhook 转发如何访问外部 URL。",
+            "options": {
+              "direct": "直连",
+              "httpProxy": "HTTP 代理",
+              "socksProxy": "SOCKS 代理",
+              "cloudflareWorker": "Cloudflare Worker"
+            }
+          },
+          "httpProxyUrl": {
+            "label": "HTTP 代理 URL",
+            "placeholder": "http://127.0.0.1:7890",
+            "help": "在 HTTP 代理模式下使用。"
+          },
+          "socksProxyUrl": {
+            "label": "SOCKS 代理 URL",
+            "placeholder": "socks5://127.0.0.1:7891",
+            "help": "在 SOCKS 代理模式下使用。"
+          },
+          "workerUrl": {
+            "label": "Worker 代理 URL",
+            "placeholder": "https://your-worker.example.workers.dev/proxy",
+            "help": "在 Cloudflare Worker 模式下使用。"
+          },
+          "workerToken": {
+            "label": "Worker Bearer Token",
+            "placeholder": "输入 bearer token",
+            "help": "调用 Worker 时会以 Authorization: Bearer <token> 发送。"
+          }
+        },
         "maxExecutionLogs": {
           "label": "每个工作流最大执行日志数",
           "help": "每个工作流保留的执行日志上限，超过后会自动删除更旧的日志。",

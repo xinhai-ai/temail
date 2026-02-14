@@ -907,6 +907,38 @@
           "label": "Enable Workflow Email Forwarding",
           "help": "Allow workflows to forward emails via SMTP."
         },
+        "egress": {
+          "mode": {
+            "label": "Webhook Egress Mode",
+            "help": "Controls how webhook-like workflow forwards access external URLs.",
+            "options": {
+              "direct": "Direct",
+              "httpProxy": "HTTP Proxy",
+              "socksProxy": "SOCKS Proxy",
+              "cloudflareWorker": "Cloudflare Worker"
+            }
+          },
+          "httpProxyUrl": {
+            "label": "HTTP Proxy URL",
+            "placeholder": "http://127.0.0.1:7890",
+            "help": "Used when mode is HTTP Proxy."
+          },
+          "socksProxyUrl": {
+            "label": "SOCKS Proxy URL",
+            "placeholder": "socks5://127.0.0.1:7891",
+            "help": "Used when mode is SOCKS Proxy."
+          },
+          "workerUrl": {
+            "label": "Worker Proxy URL",
+            "placeholder": "https://your-worker.example.workers.dev/proxy",
+            "help": "Used when mode is Cloudflare Worker."
+          },
+          "workerToken": {
+            "label": "Worker Bearer Token",
+            "placeholder": "Enter bearer token",
+            "help": "Sent as Authorization: Bearer <token> when calling Worker."
+          }
+        },
         "maxExecutionLogs": {
           "label": "Max Execution Logs per Workflow",
           "help": "Maximum number of execution logs to keep for each workflow. Older logs will be automatically deleted when this limit is exceeded.",

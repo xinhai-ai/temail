@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_EGRESS_TIMEOUT_MS, validateEgressUrl } from "@/lib/egress";
+import { DEFAULT_EGRESS_TIMEOUT_MS } from "@/lib/egress";
 import { isVercelDeployment } from "@/lib/deployment/server";
+import { egressFetch } from "@/lib/egress-client";
 import type {
   WorkflowNode,
   ExecutionContext,
@@ -1206,12 +1207,6 @@ async function executeForwardDiscord(
   }
 
   try {
-    const validated = await validateEgressUrl(data.webhookUrl);
-    if (!validated.ok) {
-      console.error("Discord forward error:", validated.error);
-      return false;
-    }
-
     let body: Record<string, unknown>;
 
     if (data.useEmbed && data.template) {
@@ -1225,11 +1220,9 @@ async function executeForwardDiscord(
       body = { content: replaceTemplateVariables(template, templateCtx) };
     }
 
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(data.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -1256,12 +1249,6 @@ async function executeForwardSlack(
   }
 
   try {
-    const validated = await validateEgressUrl(data.webhookUrl);
-    if (!validated.ok) {
-      console.error("Slack forward error:", validated.error);
-      return false;
-    }
-
     let body: Record<string, unknown>;
 
     if (data.useBlocks && data.template) {
@@ -1275,11 +1262,9 @@ async function executeForwardSlack(
       body = { text: replaceTemplateVariables(template, templateCtx) };
     }
 
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(data.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify(body),
     });
 
@@ -1311,12 +1296,6 @@ async function executeForwardWebhook(
   }
 
   try {
-    const validated = await validateEgressUrl(data.url);
-    if (!validated.ok) {
-      console.error("Webhook forward error:", validated.error);
-      return false;
-    }
-
     const contentType = data.contentType || "application/json";
 
     const headers: Record<string, string> = {
@@ -1328,8 +1307,6 @@ async function executeForwardWebhook(
     const options: RequestInit = {
       method,
       headers,
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
     };
 
     if (method !== "GET") {
@@ -1351,7 +1328,7 @@ async function executeForwardWebhook(
       }
     }
 
-    const response = await fetch(validated.url, options);
+    const response = await egressFetch(data.url, options);
     return response.ok;
   } catch (error) {
     console.error("Webhook forward error:", error);
@@ -1384,17 +1361,9 @@ async function executeForwardFeishu(
   }
 
   try {
-    const validated = await validateEgressUrl(data.webhookUrl);
-    if (!validated.ok) {
-      console.error("Feishu forward error:", validated.error);
-      return false;
-    }
-
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(data.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: JSON.stringify({
         msg_type: "text",
         content: { text },
@@ -1461,21 +1430,13 @@ Time: {{email.receivedAt}}
   }
 
   try {
-    const validated = await validateEgressUrl(targetUrl);
-    if (!validated.ok) {
-      console.error("ServerChan forward error:", validated.error);
-      return false;
-    }
-
     const body = new URLSearchParams();
     body.set("title", title);
     body.set("desp", desp);
 
-    const response = await fetch(validated.url, {
+    const response = await egressFetch(targetUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      redirect: "error",
-      signal: AbortSignal.timeout(DEFAULT_EGRESS_TIMEOUT_MS),
       body: body.toString(),
     });
 

@@ -219,7 +219,8 @@ const forwardSlackDataSchema = z.object({
 const forwardWebhookDataSchema = z.object({
   label: z.string().optional(),
   url: z.string().url(),
-  method: z.enum(["GET", "POST", "PUT"]),
+  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+  contentType: z.enum(["application/json", "application/x-www-form-urlencoded", "text/plain"]).optional(),
   headers: z.record(z.string(), z.string()).optional(),
   bodyTemplate: z.string().optional(),
 });
