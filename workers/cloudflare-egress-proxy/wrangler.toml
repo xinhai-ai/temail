@@ -1,0 +1,7 @@
+name = "temail-egress-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-02-14"
+
+# Set in Cloudflare dashboard (or via wrangler secret):
+# WORKER_AUTH_TOKEN = "replace-with-strong-token"
+# WORKER_PROXY_TIMEOUT_MS = "10000"
