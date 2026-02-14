@@ -2337,7 +2337,12 @@
     "topics": {
       "title": "邮箱话题",
       "description": "当工作流将邮件转发到 Telegram 时自动创建。",
-      "empty": "暂无邮箱话题。"
+      "empty": "暂无邮箱话题。",
+      "pagination": {
+        "page": "第 {page} / {pages} 页 • 共 {total} 条",
+        "prev": "上一页",
+        "next": "下一页"
+      }
     },
     "toasts": {
       "copied": "已复制到剪贴板",

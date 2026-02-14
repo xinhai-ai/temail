@@ -39,6 +39,8 @@ type TelegramMailboxTopic = {
   mailbox: { id: string; address: string } | null;
 };
 
+const MAILBOX_TOPICS_PAGE_SIZE = 10;
+
 export default function TelegramPage() {
   const t = useTranslations("telegram");
   const [loading, setLoading] = useState(true);
@@ -46,6 +48,7 @@ export default function TelegramPage() {
   const [link, setLink] = useState<TelegramLink | null>(null);
   const [forumBindings, setForumBindings] = useState<TelegramForumBinding[]>([]);
   const [mailboxTopics, setMailboxTopics] = useState<TelegramMailboxTopic[]>([]);
+  const [topicsPage, setTopicsPage] = useState(1);
 
   const [creatingLinkCode, setCreatingLinkCode] = useState(false);
   const [linkCode, setLinkCode] = useState("");
@@ -83,6 +86,7 @@ export default function TelegramPage() {
         setLink(bindingsData?.link || null);
         setForumBindings(Array.isArray(bindingsData?.forumBindings) ? (bindingsData.forumBindings as TelegramForumBinding[]) : []);
         setMailboxTopics(Array.isArray(bindingsData?.mailboxTopics) ? (bindingsData.mailboxTopics as TelegramMailboxTopic[]) : []);
+        setTopicsPage(1);
       } else {
         toast.error(bindingsData?.error || t("toasts.loadFailed"));
       }
@@ -102,6 +106,15 @@ export default function TelegramPage() {
     }
     return map;
   }, [forumBindings]);
+  const topicsPages = useMemo(() => Math.max(1, Math.ceil(mailboxTopics.length / MAILBOX_TOPICS_PAGE_SIZE)), [mailboxTopics.length]);
+  const pagedMailboxTopics = useMemo(() => {
+    const start = (topicsPage - 1) * MAILBOX_TOPICS_PAGE_SIZE;
+    return mailboxTopics.slice(start, start + MAILBOX_TOPICS_PAGE_SIZE);
+  }, [mailboxTopics, topicsPage]);
+
+  useEffect(() => {
+    setTopicsPage((current) => Math.min(Math.max(1, current), topicsPages));
+  }, [topicsPages]);
 
   const createLinkCode = async () => {
     setCreatingLinkCode(true);
@@ -328,15 +341,31 @@ export default function TelegramPage() {
           {mailboxTopics.length === 0 ? (
             <div className="text-sm text-muted-foreground">{t("topics.empty")}</div>
           ) : (
-            mailboxTopics.map((t) => (
-              <div key={t.id} className="rounded-lg border p-3 space-y-1">
-                <div className="text-sm font-medium">{t.mailbox?.address || t.id}</div>
+            pagedMailboxTopics.map((topic) => (
+              <div key={topic.id} className="rounded-lg border p-3 space-y-1">
+                <div className="text-sm font-medium">{topic.mailbox?.address || topic.id}</div>
                 <div className="text-xs text-muted-foreground font-mono">
-                  group={chatTitles.get(t.chatId) || t.chatId} • chat_id={t.chatId}{t.threadId ? ` • thread_id=${t.threadId}` : ""}
+                  group={chatTitles.get(topic.chatId) || topic.chatId} • chat_id={topic.chatId}
+                  {topic.threadId ? ` • thread_id=${topic.threadId}` : ""}
                 </div>
               </div>
             ))
           )}
+          {mailboxTopics.length > MAILBOX_TOPICS_PAGE_SIZE ? (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {t("topics.pagination.page", { page: topicsPage, pages: topicsPages, total: mailboxTopics.length })}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" disabled={topicsPage <= 1} onClick={() => setTopicsPage((p) => Math.max(1, p - 1))}>
+                  {t("topics.pagination.prev")}
+                </Button>
+                <Button variant="outline" disabled={topicsPage >= topicsPages} onClick={() => setTopicsPage((p) => Math.min(topicsPages, p + 1))}>
+                  {t("topics.pagination.next")}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
         </>

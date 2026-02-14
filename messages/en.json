@@ -2338,7 +2338,12 @@
     "topics": {
       "title": "Mailbox topics",
       "description": "Auto-created when workflows forward emails to Telegram.",
-      "empty": "No mailbox topics yet."
+      "empty": "No mailbox topics yet.",
+      "pagination": {
+        "page": "Page {page} / {pages} • Total {total}",
+        "prev": "Prev",
+        "next": "Next"
+      }
     },
     "toasts": {
       "copied": "Copied to clipboard",
