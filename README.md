@@ -486,6 +486,19 @@ Click the "Deploy to Cloudflare Workers" button, then set these variables in the
 3. Add a routing rule to forward emails to your Worker
 4. Send a test email and check TEmail inbox
 
+#### Step 6 (Optional): Hide Outbound IP for Workflow Webhooks
+
+If you also want to hide your server IP for outbound workflow webhook calls (`forward:webhook`, Discord, Slack, Feishu, ServerChan):
+
+1. Deploy `workers/cloudflare-egress-proxy`
+2. Set Worker env var `WORKER_AUTH_TOKEN`
+3. In TEmail Admin → Settings → Workflow:
+   - Set **Webhook Egress Mode** to `Cloudflare Worker`
+   - Set **Worker Proxy URL** to `https://<your-worker>/proxy`
+   - Set **Worker Bearer Token** to the same token
+
+You can also choose `HTTP Proxy` or `SOCKS Proxy` mode from the same settings panel.
+
 ---
 
 ### Option 3: Local Development

@@ -486,6 +486,19 @@ npx prisma migrate deploy
 3. 添加路由规则，将邮件转发到你的 Worker
 4. 发送测试邮件并在 TEmail 收件箱中查看
 
+#### 第六步（可选）：隐藏工作流 Webhook 的出口 IP
+
+如果你还希望隐藏工作流出站 webhook（`forward:webhook`、Discord、Slack、飞书、Server酱）请求的服务器出口 IP：
+
+1. 部署 `workers/cloudflare-egress-proxy`
+2. 在 Worker 设置环境变量 `WORKER_AUTH_TOKEN`
+3. 进入 TEmail 管理后台 → 设置 → 工作流：
+   - 将 **Webhook 出口模式** 设为 `Cloudflare Worker`
+   - 将 **Worker 代理 URL** 设为 `https://<your-worker>/proxy`
+   - 将 **Worker Bearer Token** 设为同一个 token
+
+同一位置也可选择 `HTTP 代理` 或 `SOCKS 代理` 模式。
+
 ---
 
 ### 方式三：本地开发
