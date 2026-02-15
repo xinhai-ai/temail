@@ -936,7 +936,7 @@
           "workerToken": {
             "label": "Worker Bearer Token",
             "placeholder": "输入 bearer token",
-            "help": "调用 Worker 时会以 Authorization: Bearer <token> 发送。"
+            "help": "调用 Worker 时会以 Authorization: Bearer token-value 发送。"
           }
         },
         "maxExecutionLogs": {

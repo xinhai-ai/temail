@@ -936,7 +936,7 @@
           "workerToken": {
             "label": "Worker Bearer Token",
             "placeholder": "Enter bearer token",
-            "help": "Sent as Authorization: Bearer <token> when calling Worker."
+            "help": "Sent as Authorization: Bearer token-value when calling Worker."
           }
         },
         "maxExecutionLogs": {
