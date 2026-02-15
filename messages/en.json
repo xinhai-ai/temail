@@ -586,6 +586,18 @@
         "upToDate": "Up to date",
         "checkCompleted": "Update check completed"
       },
+      "errors": {
+        "workflowEgress": {
+          "invalidMode": "Invalid webhook egress mode.",
+          "httpProxyRequired": "HTTP proxy URL is required when egress mode is HTTP Proxy.",
+          "httpProxyInvalid": "HTTP proxy URL must be a valid HTTP/HTTPS URL.",
+          "socksProxyRequired": "SOCKS proxy URL is required when egress mode is SOCKS Proxy.",
+          "socksProxyInvalid": "SOCKS proxy URL must be a valid SOCKS URL.",
+          "workerUrlRequired": "Cloudflare Worker URL is required when egress mode is Cloudflare Worker.",
+          "workerTokenRequired": "Cloudflare Worker token is required when egress mode is Cloudflare Worker.",
+          "workerUrlInvalid": "Cloudflare Worker URL must be a valid HTTP/HTTPS URL."
+        }
+      },
       "common": {
         "secretConfigured": "•••••••• (configured)"
       },

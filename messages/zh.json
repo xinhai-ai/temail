@@ -586,6 +586,18 @@
         "upToDate": "已是最新",
         "checkCompleted": "更新检查完成"
       },
+      "errors": {
+        "workflowEgress": {
+          "invalidMode": "Webhook 出口模式无效。",
+          "httpProxyRequired": "当出口模式为 HTTP 代理时，必须填写 HTTP 代理 URL。",
+          "httpProxyInvalid": "HTTP 代理 URL 必须是合法的 HTTP/HTTPS 地址。",
+          "socksProxyRequired": "当出口模式为 SOCKS 代理时，必须填写 SOCKS 代理 URL。",
+          "socksProxyInvalid": "SOCKS 代理 URL 必须是合法的 SOCKS 地址。",
+          "workerUrlRequired": "当出口模式为 Cloudflare Worker 时，必须填写 Worker URL。",
+          "workerTokenRequired": "当出口模式为 Cloudflare Worker 时，必须填写 Worker Token。",
+          "workerUrlInvalid": "Cloudflare Worker URL 必须是合法的 HTTP/HTTPS 地址。"
+        }
+      },
       "common": {
         "secretConfigured": "••••••••（已配置）"
       },

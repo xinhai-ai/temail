@@ -33,6 +33,16 @@ function normalize(value: string | undefined | null): string {
 
 const WORKFLOW_EGRESS_MODES = new Set(["direct", "http_proxy", "socks_proxy", "cloudflare_worker"]);
 
+type WorkflowEgressValidationErrorCode =
+  | "WORKFLOW_EGRESS_INVALID_MODE"
+  | "WORKFLOW_EGRESS_HTTP_PROXY_REQUIRED"
+  | "WORKFLOW_EGRESS_HTTP_PROXY_INVALID"
+  | "WORKFLOW_EGRESS_SOCKS_PROXY_REQUIRED"
+  | "WORKFLOW_EGRESS_SOCKS_PROXY_INVALID"
+  | "WORKFLOW_EGRESS_WORKER_URL_REQUIRED"
+  | "WORKFLOW_EGRESS_WORKER_TOKEN_REQUIRED"
+  | "WORKFLOW_EGRESS_WORKER_URL_INVALID";
+
 function parseUrlWithProtocols(raw: string, allowed: Set<string>): URL | null {
   try {
     const url = new URL(raw);
@@ -43,36 +53,80 @@ function parseUrlWithProtocols(raw: string, allowed: Set<string>): URL | null {
   }
 }
 
-function validateWorkflowEgressSettings(next: Record<string, string>): string | null {
+function validateWorkflowEgressSettings(
+  next: Record<string, string>
+): { ok: true } | { ok: false; errorCode: WorkflowEgressValidationErrorCode; error: string } {
   const mode = normalize(next.workflow_egress_mode || "direct").toLowerCase();
   if (!WORKFLOW_EGRESS_MODES.has(mode)) {
-    return "Invalid workflow egress mode";
+    return { ok: false, errorCode: "WORKFLOW_EGRESS_INVALID_MODE", error: "Invalid workflow egress mode" };
   }
 
   if (mode === "http_proxy") {
     const proxyUrl = normalize(next.workflow_egress_http_proxy_url);
-    if (!proxyUrl) return "HTTP proxy URL is required when workflow egress mode is http_proxy";
+    if (!proxyUrl) {
+      return {
+        ok: false,
+        errorCode: "WORKFLOW_EGRESS_HTTP_PROXY_REQUIRED",
+        error: "HTTP proxy URL is required when workflow egress mode is http_proxy",
+      };
+    }
     const parsed = parseUrlWithProtocols(proxyUrl, new Set(["http:", "https:"]));
-    if (!parsed) return "workflow_egress_http_proxy_url must be a valid HTTP/HTTPS URL";
+    if (!parsed) {
+      return {
+        ok: false,
+        errorCode: "WORKFLOW_EGRESS_HTTP_PROXY_INVALID",
+        error: "workflow_egress_http_proxy_url must be a valid HTTP/HTTPS URL",
+      };
+    }
   }
 
   if (mode === "socks_proxy") {
     const proxyUrl = normalize(next.workflow_egress_socks_proxy_url);
-    if (!proxyUrl) return "SOCKS proxy URL is required when workflow egress mode is socks_proxy";
+    if (!proxyUrl) {
+      return {
+        ok: false,
+        errorCode: "WORKFLOW_EGRESS_SOCKS_PROXY_REQUIRED",
+        error: "SOCKS proxy URL is required when workflow egress mode is socks_proxy",
+      };
+    }
     const parsed = parseUrlWithProtocols(proxyUrl, new Set(["socks:", "socks4:", "socks4a:", "socks5:", "socks5h:"]));
-    if (!parsed) return "workflow_egress_socks_proxy_url must be a valid SOCKS URL";
+    if (!parsed) {
+      return {
+        ok: false,
+        errorCode: "WORKFLOW_EGRESS_SOCKS_PROXY_INVALID",
+        error: "workflow_egress_socks_proxy_url must be a valid SOCKS URL",
+      };
+    }
   }
 
   if (mode === "cloudflare_worker") {
     const workerUrl = normalize(next.workflow_egress_worker_url);
     const workerToken = normalize(next.workflow_egress_worker_token);
-    if (!workerUrl) return "Cloudflare Worker URL is required when workflow egress mode is cloudflare_worker";
-    if (!workerToken) return "Cloudflare Worker token is required when workflow egress mode is cloudflare_worker";
+    if (!workerUrl) {
+      return {
+        ok: false,
+        errorCode: "WORKFLOW_EGRESS_WORKER_URL_REQUIRED",
+        error: "Cloudflare Worker URL is required when workflow egress mode is cloudflare_worker",
+      };
+    }
+    if (!workerToken) {
+      return {
+        ok: false,
+        errorCode: "WORKFLOW_EGRESS_WORKER_TOKEN_REQUIRED",
+        error: "Cloudflare Worker token is required when workflow egress mode is cloudflare_worker",
+      };
+    }
     const parsed = parseUrlWithProtocols(workerUrl, new Set(["http:", "https:"]));
-    if (!parsed) return "workflow_egress_worker_url must be a valid HTTP/HTTPS URL";
+    if (!parsed) {
+      return {
+        ok: false,
+        errorCode: "WORKFLOW_EGRESS_WORKER_URL_INVALID",
+        error: "workflow_egress_worker_url must be a valid HTTP/HTTPS URL",
+      };
+    }
   }
 
-  return null;
+  return { ok: true };
 }
 
 export async function GET() {
@@ -322,10 +376,10 @@ export async function PUT(request: NextRequest) {
         }
       }
 
-      const egressError = validateWorkflowEgressSettings(next);
-      if (egressError) {
+      const egressValidation = validateWorkflowEgressSettings(next);
+      if (!egressValidation.ok) {
         return NextResponse.json(
-          { error: egressError },
+          { error: egressValidation.error, errorCode: egressValidation.errorCode },
           { status: 400 }
         );
       }

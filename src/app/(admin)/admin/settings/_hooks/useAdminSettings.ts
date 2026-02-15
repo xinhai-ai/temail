@@ -18,6 +18,22 @@ type UseAdminSettingsReturn = {
   saveNow: () => Promise<void>;
 };
 
+type AdminSettingsApiError = {
+  error?: string;
+  errorCode?: string;
+};
+
+const ADMIN_SETTINGS_ERROR_CODE_TO_I18N: Record<string, string> = {
+  WORKFLOW_EGRESS_INVALID_MODE: "settings.errors.workflowEgress.invalidMode",
+  WORKFLOW_EGRESS_HTTP_PROXY_REQUIRED: "settings.errors.workflowEgress.httpProxyRequired",
+  WORKFLOW_EGRESS_HTTP_PROXY_INVALID: "settings.errors.workflowEgress.httpProxyInvalid",
+  WORKFLOW_EGRESS_SOCKS_PROXY_REQUIRED: "settings.errors.workflowEgress.socksProxyRequired",
+  WORKFLOW_EGRESS_SOCKS_PROXY_INVALID: "settings.errors.workflowEgress.socksProxyInvalid",
+  WORKFLOW_EGRESS_WORKER_URL_REQUIRED: "settings.errors.workflowEgress.workerUrlRequired",
+  WORKFLOW_EGRESS_WORKER_TOKEN_REQUIRED: "settings.errors.workflowEgress.workerTokenRequired",
+  WORKFLOW_EGRESS_WORKER_URL_INVALID: "settings.errors.workflowEgress.workerUrlInvalid",
+};
+
 export function useAdminSettings(): UseAdminSettingsReturn {
   const t = useTranslations("admin");
   const [loading, setLoading] = useState(true);
@@ -28,6 +44,17 @@ export function useAdminSettings(): UseAdminSettingsReturn {
   const pendingRef = useRef<Record<string, string>>({});
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const resolveApiErrorMessage = useCallback(
+    (data: AdminSettingsApiError | null | undefined, fallbackKey: string) => {
+      const errorCode = typeof data?.errorCode === "string" ? data.errorCode : "";
+      const i18nKey = errorCode ? ADMIN_SETTINGS_ERROR_CODE_TO_I18N[errorCode] : undefined;
+      if (i18nKey) return t(i18nKey);
+      if (typeof data?.error === "string" && data.error.trim()) return data.error;
+      return t(fallbackKey);
+    },
+    [t]
+  );
+
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
@@ -35,7 +62,7 @@ export function useAdminSettings(): UseAdminSettingsReturn {
       const data = await res.json().catch(() => []);
 
       if (!res.ok) {
-        toast.error(data?.error || t("settings.toasts.loadFailed"));
+        toast.error(resolveApiErrorMessage(data as AdminSettingsApiError, "settings.toasts.loadFailed"));
         setLoading(false);
         return;
       }
@@ -55,7 +82,7 @@ export function useAdminSettings(): UseAdminSettingsReturn {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [resolveApiErrorMessage, t]);
 
   const saveSettings = useCallback(async () => {
     const pending = { ...pendingRef.current };
@@ -81,15 +108,15 @@ export function useAdminSettings(): UseAdminSettingsReturn {
         // Hide saved indicator after 2 seconds
         setTimeout(() => setSaved(false), 2000);
       } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || t("settings.toasts.saveFailed"));
+        const data = (await res.json().catch(() => null)) as AdminSettingsApiError | null;
+        toast.error(resolveApiErrorMessage(data, "settings.toasts.saveFailed"));
       }
     } catch {
       toast.error(t("settings.toasts.saveFailed"));
     } finally {
       setSaving(false);
     }
-  }, [t]);
+  }, [resolveApiErrorMessage, t]);
 
   const scheduleSave = useCallback(() => {
     if (saveTimeoutRef.current) {
