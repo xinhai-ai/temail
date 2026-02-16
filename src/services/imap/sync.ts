@@ -30,9 +30,19 @@ export type SyncResult = {
   success: boolean;
   processed: number;
   errors: number;
+  skipReasonCounts?: Partial<Record<MessageSkipReason, number>>;
   newHighestUid?: number;
   uidValidity?: bigint;
 };
+
+export type MessageSkipReason =
+  | "parse_failed"
+  | "no_recipients_for_domain"
+  | "personal_mailbox_missing"
+  | "known_only_mailbox_missing"
+  | "no_matching_active_mailbox"
+  | "duplicate_message"
+  | "processing_error";
 
 export type RealtimePublisher = (
   userId: string,
@@ -191,6 +201,13 @@ function chunkArray<T>(values: T[], chunkSize: number): T[][] {
   return chunks;
 }
 
+function incrementSkipReason(
+  counts: Partial<Record<MessageSkipReason, number>>,
+  reason: MessageSkipReason
+): void {
+  counts[reason] = (counts[reason] || 0) + 1;
+}
+
 /**
  * Saves raw email content to file storage.
  * Returns the storage path.
@@ -273,14 +290,16 @@ async function processMessage(
   now: Date,
   options: SyncOptions,
   envelope?: MessageEnvelopeObject
-): Promise<{ processed: boolean; error?: string }> {
+): Promise<{ processed: boolean; reasons?: MessageSkipReason[] }> {
   const isPersonalDomain = domain.sourceType === "PERSONAL_IMAP";
   const normalizedDomainName = domain.name.toLowerCase();
+  const skipReasons = new Set<MessageSkipReason>();
 
   let parsed: ParsedMail | null = null;
   try {
     parsed = await simpleParser(raw);
   } catch (error) {
+    skipReasons.add("parse_failed");
     if (options.debug) {
       console.error(`[imap-sync] failed to parse message uid=${uid ?? "unknown"}:`, error);
     }
@@ -337,12 +356,13 @@ async function processMessage(
       },
     });
     if (!personalMailbox) {
-      return { processed: false };
+      return { processed: false, reasons: ["personal_mailbox_missing"] };
     }
   }
 
   if (!isPersonalDomain && recipients.length === 0) {
-    return { processed: false };
+    skipReasons.add("no_recipients_for_domain");
+    return { processed: false, reasons: Array.from(skipReasons) };
   }
 
   const fromEntry = parsed && Array.isArray(parsed.from?.value) ? parsed.from.value[0] : undefined;
@@ -387,6 +407,12 @@ async function processMessage(
         });
 
     if (!mailbox && !isPersonalDomain && domain.inboundPolicy === "KNOWN_ONLY") {
+      skipReasons.add("known_only_mailbox_missing");
+      continue;
+    }
+
+    if (!mailbox && !isPersonalDomain) {
+      skipReasons.add("no_matching_active_mailbox");
       continue;
     }
 
@@ -485,7 +511,10 @@ async function processMessage(
         where: { messageId: parsedMessageId, mailboxId: mailbox.id },
         select: { id: true },
       });
-      if (existing) continue;
+      if (existing) {
+        skipReasons.add("duplicate_message");
+        continue;
+      }
     }
 
     // Process attachments
@@ -569,7 +598,14 @@ async function processMessage(
     }
   }
 
-  return { processed: processedAny };
+  if (processedAny) {
+    return { processed: true };
+  }
+
+  return {
+    processed: false,
+    reasons: skipReasons.size > 0 ? Array.from(skipReasons) : undefined,
+  };
 }
 
 export async function syncUnseenMessages(
@@ -595,6 +631,7 @@ export async function syncUnseenMessages(
   const batches = chunkArray(unseen, 200);
   let processedCount = 0;
   let errorCount = 0;
+  const skipReasonCounts: Partial<Record<MessageSkipReason, number>> = {};
   let highestUid = currentLastSyncedUid;
 
   for (const batch of batches) {
@@ -613,9 +650,14 @@ export async function syncUnseenMessages(
         const result = await processMessage(domain, uid, raw, now, options, message.envelope);
         if (result.processed) {
           processedCount++;
+        } else {
+          for (const reason of result.reasons || []) {
+            incrementSkipReason(skipReasonCounts, reason);
+          }
         }
       } catch (err) {
         errorCount++;
+        incrementSkipReason(skipReasonCounts, "processing_error");
         if (options.debug) {
           console.error(`[imap-sync] error processing message uid=${uid}:`, err);
         }
@@ -668,6 +710,7 @@ export async function syncUnseenMessages(
     success: true,
     processed: processedCount,
     errors: errorCount,
+    skipReasonCounts: Object.keys(skipReasonCounts).length ? skipReasonCounts : undefined,
     newHighestUid: highestUid > 0 ? highestUid : undefined,
   };
 }
@@ -769,6 +812,7 @@ export async function syncByUidRange(
   const batches = chunkArray(uids, 200);
   let processedCount = 0;
   let errorCount = 0;
+  const skipReasonCounts: Partial<Record<MessageSkipReason, number>> = {};
   let highestUid = uidValidityChanged ? 0 : lastSyncedUid;
 
   for (const batch of batches) {
@@ -786,9 +830,14 @@ export async function syncByUidRange(
         const result = await processMessage(domain, uid, raw, now, options, message.envelope);
         if (result.processed) {
           processedCount++;
+        } else {
+          for (const reason of result.reasons || []) {
+            incrementSkipReason(skipReasonCounts, reason);
+          }
         }
       } catch (err) {
         errorCount++;
+        incrementSkipReason(skipReasonCounts, "processing_error");
         if (options.debug) {
           console.error(`[imap-sync] error processing message uid=${uid}:`, err);
         }
@@ -842,6 +891,7 @@ export async function syncByUidRange(
     success: true,
     processed: processedCount,
     errors: errorCount,
+    skipReasonCounts: Object.keys(skipReasonCounts).length ? skipReasonCounts : undefined,
     newHighestUid: highestUid > 0 ? highestUid : undefined,
     uidValidity: currentUidValidity ?? undefined,
   };

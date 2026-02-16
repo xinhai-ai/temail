@@ -380,7 +380,10 @@ export class EnhancedDomainWorker {
             const result = await syncByUidRange(this.client, this.domain, this.mailbox, this.syncOptions);
             this.lastSync = new Date();
             if (hasNewMessageSignal && result.processed === 0) {
-              this.log("exists event received but no messages were processed");
+              this.log("exists event received but no messages were processed", {
+                errors: result.errors,
+                skipReasonCounts: result.skipReasonCounts || {},
+              });
             }
             hasNewMessageSignal = false;
 
