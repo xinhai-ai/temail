@@ -37,6 +37,10 @@ const DEFAULT_CONFIG: WorkerConfig = {
   maxConsecutiveErrors: 10,
 };
 
+type InternalImapFlow = ImapFlow & {
+  preCheck?: (() => Promise<void>) | false;
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -278,8 +282,17 @@ export class EnhancedDomainWorker {
       maxIdleTime: this.config.idleTimeoutMs,
     });
 
-    // Track if we need to break IDLE
-    let idleResolve: (() => void) | null = null;
+    let hasNewMessageSignal = false;
+
+    const breakIdle = (reason: string) => {
+      if (!this.client) return;
+      const internalClient = this.client as InternalImapFlow;
+      if (typeof internalClient.preCheck === "function") {
+        internalClient.preCheck().catch((error) => {
+          this.log(`failed to break IDLE (${reason}): ${error instanceof Error ? error.message : String(error)}`);
+        });
+      }
+    };
 
     // Set up event handlers for connection monitoring
     this.client.on("error", (err) => {
@@ -288,22 +301,15 @@ export class EnhancedDomainWorker {
 
     this.client.on("close", () => {
       this.log("[event] close");
-      // Break IDLE if connection closed
-      if (idleResolve) {
-        idleResolve();
-        idleResolve = null;
-      }
+      breakIdle("connection close");
     });
 
     // IDLE related events - these should break IDLE to sync
     this.client.on("exists", (data) => {
       this.log(`[event] exists: ${JSON.stringify(data)}`);
-      // New message arrived - break IDLE to sync
-      if (idleResolve) {
-        this.log("breaking IDLE due to new message");
-        idleResolve();
-        idleResolve = null;
-      }
+      hasNewMessageSignal = true;
+      this.log("breaking IDLE due to new message");
+      breakIdle("new message");
     });
 
     this.client.on("expunge", (data) => {
@@ -355,21 +361,17 @@ export class EnhancedDomainWorker {
         this.log("entering IDLE mode");
 
         try {
-          // Create a promise that resolves when we need to break IDLE
-          const breakIdlePromise = new Promise<void>((resolve) => {
-            idleResolve = resolve;
-          });
+          const idleStartedAt = Date.now();
+          await this.client.idle();
+          const idleDurationMs = Date.now() - idleStartedAt;
+          this.log("IDLE interrupted or timed out", { durationMs: idleDurationMs, hasNewMessageSignal });
 
-          // Race between IDLE timeout and break signal
-          await Promise.race([
-            this.client.idle(),
-            breakIdlePromise,
-          ]);
-
-          // Clear the resolve function
-          idleResolve = null;
-
-          this.log("IDLE interrupted or timed out");
+          // Prevent hot-looping when server/client exits IDLE immediately.
+          if (idleDurationMs < 1000 && !hasNewMessageSignal) {
+            const backoffMs = Math.max(1000, Math.min(this.config.heartbeatMs, 5000));
+            await sleep(backoffMs);
+            continue;
+          }
 
           // After IDLE returns, sync new messages
           if (!this.signal.aborted && this.client.usable) {
@@ -377,6 +379,7 @@ export class EnhancedDomainWorker {
             this.mailbox = this.client.mailbox as MailboxObject;
             const result = await syncByUidRange(this.client, this.domain, this.mailbox, this.syncOptions);
             this.lastSync = new Date();
+            hasNewMessageSignal = false;
 
             if (result.processed > 0) {
               this.log(`synced ${result.processed} new messages`);
