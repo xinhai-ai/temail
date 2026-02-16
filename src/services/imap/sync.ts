@@ -76,9 +76,18 @@ export function createHttpRealtimePublisher(nextjsUrl: string): RealtimePublishe
         ...(serviceKey ? { "x-service-key": serviceKey } : {}),
       },
       body: JSON.stringify({ userId, event }),
-    }).catch((err) => {
-      console.error("[imap-sync] failed to publish realtime event:", err.message);
-    });
+    })
+      .then(async (response) => {
+        if (response.ok) return;
+        const body = await response.text().catch(() => "");
+        console.error("[imap-sync] failed to publish realtime event:", {
+          status: response.status,
+          body: body.slice(0, 500),
+        });
+      })
+      .catch((err) => {
+        console.error("[imap-sync] failed to publish realtime event:", err.message);
+      });
   };
 }
 
@@ -705,7 +714,6 @@ export async function syncByUidRange(
 
   // Calculate UID range to fetch
   const startUid = uidValidityChanged ? 1 : lastSyncedUid + 1;
-  const endUid = mailbox.uidNext ? Number(mailbox.uidNext) - 1 : "*";
   let syncMode: "incremental" | "personal-initial-recent" | "personal-backfill-all" = "incremental";
 
   let effectiveStartUid = startUid;
@@ -731,7 +739,7 @@ export async function syncByUidRange(
         lastSyncedUid,
         startUid,
         effectiveStartUid,
-        endUid,
+        mailboxUidNext: mailbox.uidNext ? Number(mailbox.uidNext) : null,
         syncMode,
         uidValidity: currentUidValidity?.toString() ?? null,
         storedUidValidity: storedUidValidity?.toString() ?? null,
@@ -739,12 +747,7 @@ export async function syncByUidRange(
     );
   }
 
-  if (typeof endUid === "number" && effectiveStartUid > endUid) {
-    // No messages in requested range.
-    return { success: true, processed: 0, errors: 0, uidValidity: currentUidValidity ?? undefined };
-  }
-
-  const uidRange = `${effectiveStartUid}:${endUid === "*" ? "*" : endUid}`;
+  const uidRange = `${effectiveStartUid}:*`;
 
   let uids: number[];
   try {
