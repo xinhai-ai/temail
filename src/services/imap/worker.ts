@@ -4,7 +4,6 @@ import { decryptString } from "@/lib/secret-encryption";
 import {
   type ImapDomain,
   type SyncOptions,
-  syncUnseenMessages,
   syncByUidRange,
   recordSyncError,
   resetSyncErrors,
@@ -376,7 +375,7 @@ export class EnhancedDomainWorker {
           if (!this.signal.aborted && this.client.usable) {
             this.status = "syncing";
             this.mailbox = this.client.mailbox as MailboxObject;
-            const result = await syncUnseenMessages(this.client, this.domain, this.syncOptions);
+            const result = await syncByUidRange(this.client, this.domain, this.mailbox, this.syncOptions);
             this.lastSync = new Date();
 
             if (result.processed > 0) {

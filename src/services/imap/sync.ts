@@ -1,4 +1,4 @@
-import { ImapFlow, type MailboxObject } from "imapflow";
+import { ImapFlow, type MailboxObject, type MessageAddressObject, type MessageEnvelopeObject } from "imapflow";
 import { simpleParser, type ParsedMail, type Attachment } from "mailparser";
 import { Prisma, type Domain, type ImapConfig, type PersonalImapAccount } from "@prisma/client";
 import prisma from "@/lib/prisma";
@@ -84,18 +84,64 @@ export function createHttpRealtimePublisher(nextjsUrl: string): RealtimePublishe
 
 const MAX_EMAIL_HEADER_COUNT = 200;
 const MAX_EMAIL_HEADER_VALUE_LENGTH = 4000;
+const RECIPIENT_HEADER_FALLBACK_NAMES = [
+  "delivered-to",
+  "x-original-to",
+  "envelope-to",
+  "x-forwarded-to",
+  "resent-to",
+  "apparently-to",
+] as const;
+const EMAIL_ADDRESS_PATTERN = /[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 function uniqueStrings(values: (string | null | undefined)[]): string[] {
   return Array.from(new Set(values.filter(Boolean) as string[]));
 }
 
+function normalizeEmailAddress(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || !trimmed.includes("@")) return null;
+  return trimmed;
+}
+
+function extractAddressesFromString(value: string): string[] {
+  const matches = value.match(EMAIL_ADDRESS_PATTERN);
+  if (!matches) return [];
+  return uniqueStrings(matches.map((entry) => normalizeEmailAddress(entry)));
+}
+
 function extractAddresses(value: unknown): string[] {
-  if (!value || typeof value !== "object") return [];
-  const addressObject = value as { value?: unknown };
-  if (!Array.isArray(addressObject.value)) return [];
-  const list = addressObject.value as { address?: unknown }[];
+  if (!value) return [];
+
+  if (typeof value === "string") {
+    return extractAddressesFromString(value);
+  }
+
+  if (Array.isArray(value)) {
+    return uniqueStrings(value.flatMap((entry) => extractAddresses(entry)));
+  }
+
+  if (typeof value === "object") {
+    const addressObject = value as { address?: unknown; value?: unknown };
+    const directAddress = normalizeEmailAddress(addressObject.address);
+    const nestedAddresses = extractAddresses(addressObject.value);
+    return uniqueStrings([directAddress, ...nestedAddresses]);
+  }
+
+  return [];
+}
+
+function extractEnvelopeAddresses(value: MessageAddressObject[] | null | undefined): string[] {
+  if (!Array.isArray(value)) return [];
+  return uniqueStrings(value.map((entry) => normalizeEmailAddress(entry?.address)));
+}
+
+function extractFallbackRecipientHeaders(parsed: ParsedMail): string[] {
   return uniqueStrings(
-    list.map((entry) => (typeof entry.address === "string" ? entry.address.toLowerCase() : null))
+    RECIPIENT_HEADER_FALLBACK_NAMES.flatMap((headerName) =>
+      extractAddresses(parsed.headers.get(headerName))
+    )
   );
 }
 
@@ -216,26 +262,48 @@ async function processMessage(
   uid: number | null,
   raw: string,
   now: Date,
-  options: SyncOptions
+  options: SyncOptions,
+  envelope?: MessageEnvelopeObject
 ): Promise<{ processed: boolean; error?: string }> {
   const isPersonalDomain = domain.sourceType === "PERSONAL_IMAP";
-  const parsed = await simpleParser(raw);
-  const parsedHeaders = extractEmailHeaders(parsed);
-  const parsedMessageId =
-    typeof parsed.messageId === "string" && parsed.messageId.trim()
-      ? parsed.messageId.trim()
-      : uid
-        ? `imap:${domain.id}:${uid}`
-        : null;
+  const normalizedDomainName = domain.name.toLowerCase();
 
-  const parsedRecipients = uniqueStrings([
-    ...extractAddresses(parsed.to),
-    ...extractAddresses(parsed.cc),
-    ...extractAddresses(parsed.bcc),
+  let parsed: ParsedMail | null = null;
+  try {
+    parsed = await simpleParser(raw);
+  } catch (error) {
+    if (options.debug) {
+      console.error(`[imap-sync] failed to parse message uid=${uid ?? "unknown"}:`, error);
+    }
+  }
+
+  const parsedHeaders = parsed ? extractEmailHeaders(parsed) : [];
+  const parsedMessageId =
+    (typeof parsed?.messageId === "string" && parsed.messageId.trim() ? parsed.messageId.trim() : null) ||
+    (typeof envelope?.messageId === "string" && envelope.messageId.trim() ? envelope.messageId.trim() : null) ||
+    (uid ? `imap:${domain.id}:${uid}` : null);
+
+  const parsedRecipients = parsed
+    ? uniqueStrings([
+        ...extractAddresses(parsed.to),
+        ...extractAddresses(parsed.cc),
+        ...extractAddresses(parsed.bcc),
+      ])
+    : [];
+  const envelopeRecipients = uniqueStrings([
+    ...extractEnvelopeAddresses(envelope?.to),
+    ...extractEnvelopeAddresses(envelope?.cc),
+    ...extractEnvelopeAddresses(envelope?.bcc),
+  ]);
+  const headerFallbackRecipients = parsed ? extractFallbackRecipientHeaders(parsed) : [];
+  const recipientCandidates = uniqueStrings([
+    ...parsedRecipients,
+    ...envelopeRecipients,
+    ...headerFallbackRecipients,
   ]);
   const recipients = isPersonalDomain
     ? []
-    : parsedRecipients.filter((addr) => addr.endsWith(`@${domain.name.toLowerCase()}`));
+    : recipientCandidates.filter((addr) => addr.endsWith(`@${normalizedDomainName}`));
 
   let personalMailbox:
     | {
@@ -268,14 +336,28 @@ async function processMessage(
     return { processed: false };
   }
 
-  const fromEntry = Array.isArray(parsed.from?.value) ? parsed.from.value[0] : undefined;
+  const fromEntry = parsed && Array.isArray(parsed.from?.value) ? parsed.from.value[0] : undefined;
+  const envelopeFromEntry = Array.isArray(envelope?.from) ? envelope.from[0] : undefined;
   const fromAddress =
-    typeof fromEntry?.address === "string" ? fromEntry.address : "unknown@unknown.com";
-  const fromName = typeof fromEntry?.name === "string" ? fromEntry.name : null;
-  const receivedAt = parsed.date ? new Date(parsed.date) : now;
-  const normalizedSubject = parsed.subject || "(No subject)";
-  const textBody = parsed.text || undefined;
-  const htmlBody = typeof parsed.html === "string" ? parsed.html : undefined;
+    normalizeEmailAddress(fromEntry?.address) ||
+    normalizeEmailAddress(envelopeFromEntry?.address) ||
+    "unknown@unknown.com";
+  const fromName =
+    (typeof fromEntry?.name === "string" && fromEntry.name.trim() ? fromEntry.name : null) ||
+    (typeof envelopeFromEntry?.name === "string" && envelopeFromEntry.name.trim()
+      ? envelopeFromEntry.name
+      : null);
+  const receivedAt = parsed?.date
+    ? new Date(parsed.date)
+    : envelope?.date
+      ? new Date(envelope.date)
+      : now;
+  const normalizedSubject =
+    (typeof parsed?.subject === "string" && parsed.subject.trim() ? parsed.subject : null) ||
+    (typeof envelope?.subject === "string" && envelope.subject.trim() ? envelope.subject : null) ||
+    "(No subject)";
+  const textBody = parsed?.text || undefined;
+  const htmlBody = typeof parsed?.html === "string" ? parsed.html : undefined;
 
   let processedAny = false;
   const preferenceByUserId = new Map<string, boolean>();
@@ -316,7 +398,7 @@ async function processMessage(
     const predictedRawBytes =
       shouldStoreRawAndAttachmentsForMailbox && raw ? Buffer.byteLength(raw, "utf8") : 0;
     const predictedAttachmentStats = shouldStoreRawAndAttachmentsForMailbox
-      ? (parsed.attachments || []).reduce(
+      ? (parsed?.attachments || []).reduce(
           (acc, attachment) => {
             if (!attachment.content) return acc;
             const size = Math.max(0, attachment.size || attachment.content.length || 0);
@@ -400,7 +482,7 @@ async function processMessage(
     // Process attachments
     const attachmentRecords = shouldPersistMailContent
       ? await processAttachments(
-          parsed.attachments || [],
+          parsed?.attachments || [],
           tempId,
           receivedAt,
           storage,
@@ -519,7 +601,7 @@ export async function syncUnseenMessages(
       }
 
       try {
-        const result = await processMessage(domain, uid, raw, now, options);
+        const result = await processMessage(domain, uid, raw, now, options, message.envelope);
         if (result.processed) {
           processedCount++;
         }
@@ -698,7 +780,7 @@ export async function syncByUidRange(
       }
 
       try {
-        const result = await processMessage(domain, uid, raw, now, options);
+        const result = await processMessage(domain, uid, raw, now, options, message.envelope);
         if (result.processed) {
           processedCount++;
         }
