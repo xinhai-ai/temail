@@ -31,6 +31,7 @@ export type SyncResult = {
   processed: number;
   errors: number;
   skipReasonCounts?: Partial<Record<MessageSkipReason, number>>;
+  processingErrorSamples?: Array<{ uid: number | null; message: string }>;
   newHighestUid?: number;
   uidValidity?: bigint;
 };
@@ -206,6 +207,13 @@ function incrementSkipReason(
   reason: MessageSkipReason
 ): void {
   counts[reason] = (counts[reason] || 0) + 1;
+}
+
+function summarizeError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
 }
 
 /**
@@ -632,6 +640,7 @@ export async function syncUnseenMessages(
   let processedCount = 0;
   let errorCount = 0;
   const skipReasonCounts: Partial<Record<MessageSkipReason, number>> = {};
+  const processingErrorSamples: Array<{ uid: number | null; message: string }> = [];
   let highestUid = currentLastSyncedUid;
 
   for (const batch of batches) {
@@ -658,6 +667,9 @@ export async function syncUnseenMessages(
       } catch (err) {
         errorCount++;
         incrementSkipReason(skipReasonCounts, "processing_error");
+        if (processingErrorSamples.length < 3) {
+          processingErrorSamples.push({ uid, message: summarizeError(err) });
+        }
         if (options.debug) {
           console.error(`[imap-sync] error processing message uid=${uid}:`, err);
         }
@@ -711,6 +723,7 @@ export async function syncUnseenMessages(
     processed: processedCount,
     errors: errorCount,
     skipReasonCounts: Object.keys(skipReasonCounts).length ? skipReasonCounts : undefined,
+    processingErrorSamples: processingErrorSamples.length ? processingErrorSamples : undefined,
     newHighestUid: highestUid > 0 ? highestUid : undefined,
   };
 }
@@ -813,6 +826,7 @@ export async function syncByUidRange(
   let processedCount = 0;
   let errorCount = 0;
   const skipReasonCounts: Partial<Record<MessageSkipReason, number>> = {};
+  const processingErrorSamples: Array<{ uid: number | null; message: string }> = [];
   let highestUid = uidValidityChanged ? 0 : lastSyncedUid;
 
   for (const batch of batches) {
@@ -838,6 +852,9 @@ export async function syncByUidRange(
       } catch (err) {
         errorCount++;
         incrementSkipReason(skipReasonCounts, "processing_error");
+        if (processingErrorSamples.length < 3) {
+          processingErrorSamples.push({ uid, message: summarizeError(err) });
+        }
         if (options.debug) {
           console.error(`[imap-sync] error processing message uid=${uid}:`, err);
         }
@@ -892,6 +909,7 @@ export async function syncByUidRange(
     processed: processedCount,
     errors: errorCount,
     skipReasonCounts: Object.keys(skipReasonCounts).length ? skipReasonCounts : undefined,
+    processingErrorSamples: processingErrorSamples.length ? processingErrorSamples : undefined,
     newHighestUid: highestUid > 0 ? highestUid : undefined,
     uidValidity: currentUidValidity ?? undefined,
   };

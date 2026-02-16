@@ -383,6 +383,7 @@ export class EnhancedDomainWorker {
               this.log("exists event received but no messages were processed", {
                 errors: result.errors,
                 skipReasonCounts: result.skipReasonCounts || {},
+                processingErrorSamples: result.processingErrorSamples || [],
               });
             }
             hasNewMessageSignal = false;
